@@ -1,7 +1,7 @@
 import argparse
 
 from job_radar.config import ConfigError, load_companies, load_settings
-from job_radar.storage import initialize_database
+from job_radar.storage import initialize_database, upsert_job_posting
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
 
@@ -45,17 +45,23 @@ def build_parser() -> argparse.ArgumentParser:
 def handle_scan(config_path: str, settings_path: str, report_path: str) -> None:
     companies = load_companies(config_path)
     settings = load_settings(settings_path)
+    database_path = settings["database_path"]
+
+    initialize_database(database_path)
 
     print("Scan requested")
     print(f"Config: {config_path}")
     print(f"Settings: {settings_path}")
     print(f"Report: {report_path}")
-    print(f"Database: {settings['database_path']}")
+    print(f"Database: {database_path}")
     print()
     print("Enabled companies:")
 
     total_jobs = 0
     total_errors = 0
+    jobs_new = 0
+    jobs_seen = 0
+    jobs_changed = 0
 
     for company in companies:
         company_key = company["company_key"]
@@ -74,13 +80,25 @@ def handle_scan(config_path: str, settings_path: str, report_path: str) -> None:
         total_jobs += len(postings)
         print(f"  collected_jobs={len(postings)}")
 
+        for posting in postings:
+            result = upsert_job_posting(database_path, posting)
+
+            if result == "new":
+                jobs_new += 1
+            elif result == "seen":
+                jobs_seen += 1
+            elif result == "changed":
+                jobs_changed += 1
+
     print()
     print("Scan summary:")
     print(f"Companies enabled: {len(companies)}")
     print(f"Jobs collected: {total_jobs}")
+    print(f"Jobs new: {jobs_new}")
+    print(f"Jobs seen: {jobs_seen}")
+    print(f"Jobs changed: {jobs_changed}")
     print(f"Collector errors: {total_errors}")
     print()
-    print("Database writes are not implemented yet.")
     print("Report generation is not implemented yet.")
 
 
