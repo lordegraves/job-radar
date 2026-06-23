@@ -1,0 +1,18 @@
+companies:
+  - company_key: example_ai
+    name: Example AI
+    source_type: greenhouse
+    source_slug: exampleai
+    enabled: true
+
+  - company_key: research_labs
+    name: Research Labs
+    source_type: lever
+    source_slug: researchlabs
+    enabled: true
+
+  - company_key: big_workday_company
+    name: Big Workday Company
+    source_type: workday
+    source_url: https://example.wd1.myworkdayjobs.com/External
+    enabled: false
