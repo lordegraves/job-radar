@@ -5,13 +5,14 @@ from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
 
 
-def test_handle_scan_collects_and_stores_jobs(
+def test_handle_scan_collects_stores_and_reports_jobs(
     tmp_path: Path,
     monkeypatch,
     capsys,
 ) -> None:
     config_file = tmp_path / "companies.yaml"
     settings_file = tmp_path / "settings.yaml"
+    scoring_file = tmp_path / "scoring.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     report_file = tmp_path / "today.md"
 
@@ -40,6 +41,18 @@ retention:
   log_backup_count: 5
   raw_capture_enabled: false
   raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    scoring_file.write_text(
+        """
+positive_keywords:
+  infrastructure: 10
+  linux: 10
+
+negative_keywords:
+  sales: -10
 """,
         encoding="utf-8",
     )
@@ -81,17 +94,39 @@ retention:
         config_path=str(config_file),
         settings_path=str(settings_file),
         report_path=str(report_file),
+        scoring_path=str(scoring_file),
     )
 
     output = capsys.readouterr().out
+    report_text = report_file.read_text(encoding="utf-8")
 
+    assert database_file.exists()
+    assert report_file.exists()
+
+    assert "Scan requested" in output
+    assert "Companies enabled: 1" in output
     assert "Jobs collected: 1" in output
     assert "Jobs new: 1" in output
     assert "Jobs seen: 0" in output
     assert "Jobs changed: 0" in output
     assert "Collector errors: 0" in output
-    assert database_file.exists()
-    assert report_file.exists()
-    report_text = report_file.read_text(encoding="utf-8")
+
     assert "# Job Radar Report" in report_text
-    assert "Senior Infrastructure Engineer" in report_text
+    assert "- Companies enabled: 1" in report_text
+    assert "- Jobs collected: 1" in report_text
+    assert "- New jobs: 1" in report_text
+    assert "- Seen jobs: 0" in report_text
+    assert "- Changed jobs: 0" in report_text
+    assert "- Collector errors: 0" in report_text
+    assert (
+    "### [Senior Infrastructure Engineer]"
+    "(https://boards.greenhouse.io/exampleai/jobs/123)"
+    in report_text
+    )
+    assert "- Score: 20" in report_text
+    assert "+10 infrastructure" in report_text
+    assert "+10 linux" in report_text
+    assert "- Company: Example AI" in report_text
+    assert "- Source: greenhouse" in report_text
+    assert "- Location: Remote" in report_text
+    assert "- URL: https://boards.greenhouse.io/exampleai/jobs/123" in report_text

@@ -1,10 +1,11 @@
 import argparse
 
-from job_radar.config import ConfigError, load_companies, load_settings
-from job_radar.storage import initialize_database, upsert_job_posting
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
-from job_radar.reporting import ScanError, ScanReport, write_markdown_report
+from job_radar.config import ConfigError, load_companies, load_settings
+from job_radar.reporting import ScanError, ScanReport, ScoredPosting, write_markdown_report
+from job_radar.scoring import load_scoring_config, score_posting
+from job_radar.storage import initialize_database, upsert_job_posting
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,6 +35,11 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Path to output Markdown report",
     )
+    scan_parser.add_argument(
+        "--scoring",
+        default="config/scoring.yaml",
+        help="Path to scoring YAML file",
+    )
 
     subparsers.add_parser(
         "init-db",
@@ -43,10 +49,16 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def handle_scan(config_path: str, settings_path: str, report_path: str) -> None:
+def handle_scan(
+    config_path: str,
+    settings_path: str,
+    report_path: str,
+    scoring_path: str = "config/scoring.yaml",
+) -> None:
     companies = load_companies(config_path)
     settings = load_settings(settings_path)
     database_path = settings["database_path"]
+    scoring_config = load_scoring_config(scoring_path)
 
     initialize_database(database_path)
 
@@ -100,6 +112,20 @@ def handle_scan(config_path: str, settings_path: str, report_path: str) -> None:
             elif result == "changed":
                 jobs_changed += 1
 
+    scored_postings = []
+
+    for posting in collected_postings:
+        score, reasons = score_posting(posting, scoring_config)
+        scored_postings.append(
+            ScoredPosting(
+                posting=posting,
+                score=score,
+                score_reasons=reasons,
+            )
+        )
+
+    scored_postings.sort(key=lambda item: item.score, reverse=True)
+
     report = ScanReport(
         companies_enabled=len(companies),
         jobs_collected=total_jobs,
@@ -108,6 +134,7 @@ def handle_scan(config_path: str, settings_path: str, report_path: str) -> None:
         jobs_changed=jobs_changed,
         collector_errors=collector_errors,
         postings=collected_postings,
+        scored_postings=scored_postings,
     )
 
     written_report_path = write_markdown_report(report_path, report)
@@ -133,6 +160,7 @@ def main() -> None:
                 config_path=args.config,
                 settings_path=args.settings,
                 report_path=args.report,
+                scoring_path=args.scoring,
             )
             return
 
@@ -141,9 +169,6 @@ def main() -> None:
             db_path = initialize_database(settings["database_path"])
             print(f"Database initialized: {db_path}")
             return
-
-    except ConfigError as error:
-        parser.exit(status=1, message=f"Config error: {error}\n")
 
     except ConfigError as error:
         parser.exit(status=1, message=f"Config error: {error}\n")
