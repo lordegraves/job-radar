@@ -91,3 +91,7 @@ retention:
     assert "Jobs changed: 0" in output
     assert "Collector errors: 0" in output
     assert database_file.exists()
+    assert report_file.exists()
+    report_text = report_file.read_text(encoding="utf-8")
+    assert "# Job Radar Report" in report_text
+    assert "Senior Infrastructure Engineer" in report_text

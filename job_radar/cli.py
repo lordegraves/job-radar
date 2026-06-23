@@ -4,6 +4,7 @@ from job_radar.config import ConfigError, load_companies, load_settings
 from job_radar.storage import initialize_database, upsert_job_posting
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
+from job_radar.reporting import ScanError, ScanReport, write_markdown_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -58,10 +59,11 @@ def handle_scan(config_path: str, settings_path: str, report_path: str) -> None:
     print("Enabled companies:")
 
     total_jobs = 0
-    total_errors = 0
     jobs_new = 0
     jobs_seen = 0
     jobs_changed = 0
+    collector_errors: list[ScanError] = []
+    collected_postings = []
 
     for company in companies:
         company_key = company["company_key"]
@@ -73,11 +75,19 @@ def handle_scan(config_path: str, settings_path: str, report_path: str) -> None:
         try:
             postings = collect_jobs_for_company(company)
         except CollectorError as error:
-            total_errors += 1
+            collector_errors.append(
+                ScanError(
+                    company_key=company_key,
+                    company_name=company_name,
+                    source_type=source_type,
+                    message=str(error),
+                )
+            )
             print(f"  ERROR: {error}")
             continue
 
         total_jobs += len(postings)
+        collected_postings.extend(postings)
         print(f"  collected_jobs={len(postings)}")
 
         for posting in postings:
@@ -90,6 +100,18 @@ def handle_scan(config_path: str, settings_path: str, report_path: str) -> None:
             elif result == "changed":
                 jobs_changed += 1
 
+    report = ScanReport(
+        companies_enabled=len(companies),
+        jobs_collected=total_jobs,
+        jobs_new=jobs_new,
+        jobs_seen=jobs_seen,
+        jobs_changed=jobs_changed,
+        collector_errors=collector_errors,
+        postings=collected_postings,
+    )
+
+    written_report_path = write_markdown_report(report_path, report)
+
     print()
     print("Scan summary:")
     print(f"Companies enabled: {len(companies)}")
@@ -97,9 +119,8 @@ def handle_scan(config_path: str, settings_path: str, report_path: str) -> None:
     print(f"Jobs new: {jobs_new}")
     print(f"Jobs seen: {jobs_seen}")
     print(f"Jobs changed: {jobs_changed}")
-    print(f"Collector errors: {total_errors}")
-    print()
-    print("Report generation is not implemented yet.")
+    print(f"Collector errors: {len(collector_errors)}")
+    print(f"Report written: {written_report_path}")
 
 
 def main() -> None:
