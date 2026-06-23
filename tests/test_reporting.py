@@ -340,7 +340,6 @@ def test_top_matches_excludes_business_roles_even_when_location_is_allowed() -> 
     assert "### [Staff Software Engineer, People Products]" in markdown
     assert "### [Data Center Strategic Sourcing Lead]" in markdown
 
-
 def test_top_matches_requires_strong_technical_signal() -> None:
     weak_posting = make_posting(title="Research Operations, External Artifacts")
     strong_posting = make_posting(title="Senior Kubernetes Platform Engineer")
@@ -380,5 +379,42 @@ def test_top_matches_requires_strong_technical_signal() -> None:
 
     assert "### [Senior Kubernetes Platform Engineer]" in top_matches_section
     assert "### [Research Operations, External Artifacts]" not in top_matches_section
-
     assert "### [Research Operations, External Artifacts]" in markdown
+
+
+def test_render_markdown_report_includes_human_readable_match_summary() -> None:
+    posting = make_posting(title="Data Center Design Execution Lead")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=158,
+                score_reasons=[
+                    "+10 body:infrastructure",
+                    "+10 body:hpc",
+                    "+8 body:datacenter",
+                    "+24 title:data center",
+                    "+6 body:systems",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert (
+        "- Why this matched: infrastructure, hpc, datacenter, data center, "
+        "systems, remote"
+        in markdown
+    )
+    assert "- Score reasons:" in markdown

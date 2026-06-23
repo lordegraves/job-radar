@@ -3,7 +3,9 @@ from pathlib import Path
 
 from job_radar.models import JobPosting
 
+
 TOP_MATCHES_LIMIT = 10
+
 
 @dataclass(frozen=True)
 class ScoredPosting:
@@ -49,86 +51,130 @@ def render_markdown_report(report: ScanReport) -> str:
     ]
 
     if report.collector_errors:
-        lines.extend(
-            [
-                "## Collector Errors",
-                "",
-            ]
-        )
-
-        for error in report.collector_errors:
-            lines.append(
-                "- "
-                f"{error.company_key} "
-                f"({error.company_name}, {error.source_type}): "
-                f"{error.message}"
-            )
-
-        lines.append("")
+        _append_collector_errors(lines, report.collector_errors)
 
     if report.scored_postings is not None:
-        lines.extend(
-            [
-                "## Top Matches",
-                "",
-            ]
-        )
-
-        top_matches = _get_top_matches(report.scored_postings)
-
-        if top_matches:
-            _append_top_matches_table(lines, top_matches)
-
-            for scored_posting in top_matches:
-                _append_scored_posting(lines, scored_posting)
-        else:
-            lines.extend(
-                [
-                    "No top matches found.",
-                    "",
-                ]
-            )
-
-        lines.extend(
-            [
-                "## All Jobs",
-                "",
-            ]
-        )
-
-        if report.scored_postings:
-            for scored_posting in report.scored_postings:
-                _append_scored_posting(lines, scored_posting)
-        else:
-            lines.extend(
-                [
-                    "No jobs were collected during this scan.",
-                    "",
-                ]
-            )
-
+        _append_scored_sections(lines, report.scored_postings)
     else:
-        lines.extend(
-            [
-                "## Jobs",
-                "",
-            ]
-        )
-
-        if report.postings:
-            for posting in report.postings:
-                _append_posting(lines, posting)
-        else:
-            lines.extend(
-                [
-                    "No jobs were collected during this scan.",
-                    "",
-                ]
-            )
+        _append_unscored_jobs_section(lines, report.postings)
 
     return "\n".join(lines).rstrip() + "\n"
 
-def _append_top_matches_table(
+
+def write_markdown_report(report_path: str | Path, report: ScanReport) -> Path:
+    path = Path(report_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_markdown_report(report), encoding="utf-8")
+    return path
+
+
+def _append_collector_errors(
+    lines: list[str],
+    collector_errors: list[ScanError],
+) -> None:
+    lines.extend(
+        [
+            "## Collector Errors",
+            "",
+        ]
+    )
+
+    for error in collector_errors:
+        lines.append(
+            "- "
+            f"{error.company_key} "
+            f"({error.company_name}, {error.source_type}): "
+            f"{error.message}"
+        )
+
+    lines.append("")
+
+
+def _append_scored_sections(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    _append_top_matches_section(lines, scored_postings)
+    _append_all_jobs_section(lines, scored_postings)
+
+
+def _append_top_matches_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    lines.extend(
+        [
+            "## Top Matches",
+            "",
+        ]
+    )
+
+    top_matches = _get_top_matches(scored_postings)
+
+    if not top_matches:
+        lines.extend(
+            [
+                "No top matches found.",
+                "",
+            ]
+        )
+        return
+
+    _append_top_matches_quick_view(lines, top_matches)
+
+    for scored_posting in top_matches:
+        _append_scored_posting(lines, scored_posting)
+
+
+def _append_all_jobs_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    lines.extend(
+        [
+            "## All Jobs",
+            "",
+        ]
+    )
+
+    if not scored_postings:
+        lines.extend(
+            [
+                "No jobs were collected during this scan.",
+                "",
+            ]
+        )
+        return
+
+    for scored_posting in scored_postings:
+        _append_scored_posting(lines, scored_posting)
+
+
+def _append_unscored_jobs_section(
+    lines: list[str],
+    postings: list[JobPosting],
+) -> None:
+    lines.extend(
+        [
+            "## Jobs",
+            "",
+        ]
+    )
+
+    if not postings:
+        lines.extend(
+            [
+                "No jobs were collected during this scan.",
+                "",
+            ]
+        )
+        return
+
+    for posting in postings:
+        _append_posting(lines, posting)
+
+
+def _append_top_matches_quick_view(
     lines: list[str],
     top_matches: list[ScoredPosting],
 ) -> None:
@@ -155,7 +201,11 @@ def _append_top_matches_table(
 
     lines.append("")
 
-def _append_scored_posting(lines: list[str], scored_posting: ScoredPosting) -> None:
+
+def _append_scored_posting(
+    lines: list[str],
+    scored_posting: ScoredPosting,
+) -> None:
     posting = scored_posting.posting
 
     lines.extend(
@@ -163,6 +213,8 @@ def _append_scored_posting(lines: list[str], scored_posting: ScoredPosting) -> N
             f"### [{posting.title}]({posting.source_url})",
             "",
             f"- Score: {scored_posting.score}",
+            f"- Why this matched: "
+            f"{_format_match_summary(scored_posting.score_reasons)}",
             f"- Score reasons: {_format_score_reasons(scored_posting.score_reasons)}",
             f"- Location status: {scored_posting.location_status}",
             f"- Company: {posting.company_name}",
@@ -206,11 +258,36 @@ def _append_posting(lines: list[str], posting: JobPosting) -> None:
     )
 
 
+def _format_match_summary(score_reasons: list[str]) -> str:
+    if not score_reasons:
+        return "No scoring reasons recorded"
+
+    labels: list[str] = []
+
+    for reason in score_reasons:
+        if reason.startswith("-"):
+            continue
+
+        if ":" not in reason:
+            continue
+
+        keyword = reason.split(":", maxsplit=1)[1].strip()
+
+        if keyword and keyword not in labels:
+            labels.append(keyword)
+
+    if not labels:
+        return "No positive match reasons"
+
+    return ", ".join(labels)
+
+
 def _format_score_reasons(score_reasons: list[str]) -> str:
     if not score_reasons:
         return "None"
 
     return ", ".join(score_reasons)
+
 
 def _get_top_matches(scored_postings: list[ScoredPosting]) -> list[ScoredPosting]:
     eligible_postings = [
@@ -239,6 +316,7 @@ def _is_top_match_eligible(scored_posting: ScoredPosting) -> bool:
         return False
 
     return True
+
 
 def _has_negative_title_match(scored_posting: ScoredPosting) -> bool:
     for reason in scored_posting.score_reasons:
@@ -305,9 +383,3 @@ def _has_strong_technical_signal(scored_posting: ScoredPosting) -> bool:
                 return True
 
     return False
-
-def write_markdown_report(report_path: str | Path, report: ScanReport) -> Path:
-    path = Path(report_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render_markdown_report(report), encoding="utf-8")
-    return path
