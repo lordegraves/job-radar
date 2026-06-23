@@ -7,6 +7,10 @@ from job_radar.models import JobPosting
 from job_radar.normalize import clean_text
 
 
+TITLE_WEIGHT = 3
+BODY_WEIGHT = 1
+
+
 class ScoringConfigError(Exception):
     pass
 
@@ -62,27 +66,33 @@ def score_posting(
     posting: JobPosting,
     scoring_config: dict[str, dict[str, int]],
 ) -> tuple[int, list[str]]:
-    searchable_text = _build_searchable_text(posting)
+    title_text = clean_text(posting.title).lower()
+    body_text = _build_body_text(posting)
 
     score = 0
     reasons: list[str] = []
 
     for keyword, points in scoring_config["positive_keywords"].items():
-        if keyword in searchable_text:
-            score += points
-            reasons.append(f"+{points} {keyword}")
+        if keyword in title_text:
+            weighted_points = points * TITLE_WEIGHT
+            score += weighted_points
+            reasons.append(f"+{weighted_points} title:{keyword}")
+        elif keyword in body_text:
+            weighted_points = points * BODY_WEIGHT
+            score += weighted_points
+            reasons.append(f"+{weighted_points} body:{keyword}")
 
     for keyword, points in scoring_config["negative_keywords"].items():
-        if keyword in searchable_text:
-            score += points
-            reasons.append(f"{points} {keyword}")
+        if keyword in title_text:
+            weighted_points = points * TITLE_WEIGHT
+            score += weighted_points
+            reasons.append(f"{weighted_points} title:{keyword}")
 
     return score, reasons
 
 
-def _build_searchable_text(posting: JobPosting) -> str:
+def _build_body_text(posting: JobPosting) -> str:
     parts = [
-        posting.title,
         posting.location,
         posting.remote_status,
         posting.salary_text,

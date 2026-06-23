@@ -61,7 +61,7 @@ def test_load_scoring_config_rejects_missing_file(tmp_path: Path) -> None:
         load_scoring_config(tmp_path / "missing.yaml")
 
 
-def test_score_posting_adds_positive_keyword_scores() -> None:
+def test_score_posting_weights_title_matches_more_than_body_matches() -> None:
     posting = make_posting(
         title="Senior Linux Infrastructure Engineer",
         description="Run Kubernetes clusters.",
@@ -78,16 +78,16 @@ def test_score_posting_adds_positive_keyword_scores() -> None:
 
     score, reasons = score_posting(posting, config)
 
-    assert score == 28
-    assert "+10 linux" in reasons
-    assert "+10 infrastructure" in reasons
-    assert "+8 kubernetes" in reasons
+    assert score == 68
+    assert "+30 title:linux" in reasons
+    assert "+30 title:infrastructure" in reasons
+    assert "+8 body:kubernetes" in reasons
 
 
-def test_score_posting_applies_negative_keyword_scores() -> None:
+def test_score_posting_applies_negative_keyword_scores_to_title_only() -> None:
     posting = make_posting(
         title="Account Executive",
-        description="Sales role for customer accounts.",
+        description="Sales role with recruiter and HR boilerplate.",
     )
 
     config = {
@@ -95,17 +95,21 @@ def test_score_posting_applies_negative_keyword_scores() -> None:
         "negative_keywords": {
             "account executive": -20,
             "sales": -15,
+            "recruiter": -12,
+            "hr": -12,
         },
     }
 
     score, reasons = score_posting(posting, config)
 
-    assert score == -35
-    assert "-20 account executive" in reasons
-    assert "-15 sales" in reasons
+    assert score == -60
+    assert "-60 title:account executive" in reasons
+    assert "-15 body:sales" not in reasons
+    assert "-12 body:recruiter" not in reasons
+    assert "-12 body:hr" not in reasons
 
 
-def test_score_posting_combines_positive_and_negative_scores() -> None:
+def test_score_posting_combines_positive_and_negative_title_scores() -> None:
     posting = make_posting(
         title="Infrastructure Customer Success Engineer",
         description="Linux troubleshooting for customers.",
@@ -125,7 +129,7 @@ def test_score_posting_combines_positive_and_negative_scores() -> None:
     score, reasons = score_posting(posting, config)
 
     assert score == 15
-    assert "+10 infrastructure" in reasons
-    assert "+10 linux" in reasons
-    assert "+5 troubleshooting" in reasons
-    assert "-10 customer success" in reasons
+    assert "+30 title:infrastructure" in reasons
+    assert "+10 body:linux" in reasons
+    assert "+5 body:troubleshooting" in reasons
+    assert "-30 title:customer success" in reasons

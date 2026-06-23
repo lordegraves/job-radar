@@ -32,9 +32,10 @@ def make_fake_posting() -> JobPosting:
     )
 
 
-def write_test_config_files(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
+def write_test_config_files(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path]:
     config_file = tmp_path / "companies.yaml"
     settings_file = tmp_path / "settings.yaml"
+    scoring_file = tmp_path / "scoring.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     report_file = tmp_path / "today.md"
 
@@ -67,7 +68,19 @@ retention:
         encoding="utf-8",
     )
 
-    return config_file, settings_file, database_file, report_file
+    scoring_file.write_text(
+        """
+positive_keywords:
+  infrastructure: 10
+  linux: 10
+
+negative_keywords:
+  sales: -10
+""",
+        encoding="utf-8",
+    )
+
+    return config_file, settings_file, database_file, report_file, scoring_file
 
 
 def test_phase1a_scan_pipeline_tracks_new_then_seen(
@@ -75,8 +88,8 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     monkeypatch,
     capsys,
 ) -> None:
-    config_file, settings_file, database_file, report_file = write_test_config_files(
-        tmp_path
+    config_file, settings_file, database_file, report_file, scoring_file = (
+        write_test_config_files(tmp_path)
     )
 
     fake_posting = make_fake_posting()
@@ -93,6 +106,7 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
         config_path=str(config_file),
         settings_path=str(settings_file),
         report_path=str(report_file),
+        scoring_path=str(scoring_file),
     )
 
     first_output = capsys.readouterr().out
@@ -105,12 +119,20 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "Jobs changed: 0" in first_output
     assert "- New jobs: 1" in first_report
     assert "- Seen jobs: 0" in first_report
-    assert "Senior Infrastructure Engineer" in first_report
+    assert (
+        "### [Senior Infrastructure Engineer]"
+        "(https://boards.greenhouse.io/exampleai/jobs/123)"
+        in first_report
+    )
+    assert "- Score: 40" in first_report
+    assert "+30 title:infrastructure" in first_report
+    assert "+10 body:linux" in first_report
 
     handle_scan(
         config_path=str(config_file),
         settings_path=str(settings_file),
         report_path=str(report_file),
+        scoring_path=str(scoring_file),
     )
 
     second_output = capsys.readouterr().out
@@ -122,4 +144,11 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "Jobs changed: 0" in second_output
     assert "- New jobs: 0" in second_report
     assert "- Seen jobs: 1" in second_report
-    assert "Senior Infrastructure Engineer" in second_report
+    assert (
+        "### [Senior Infrastructure Engineer]"
+        "(https://boards.greenhouse.io/exampleai/jobs/123)"
+        in second_report
+    )
+    assert "- Score: 40" in second_report
+    assert "+30 title:infrastructure" in second_report
+    assert "+10 body:linux" in second_report

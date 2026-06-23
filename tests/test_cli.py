@@ -123,9 +123,9 @@ negative_keywords:
     "(https://boards.greenhouse.io/exampleai/jobs/123)"
     in report_text
     )
-    assert "- Score: 20" in report_text
-    assert "+10 infrastructure" in report_text
-    assert "+10 linux" in report_text
+    assert "- Score: 40" in report_text
+    assert "+30 title:infrastructure" in report_text
+    assert "+10 body:linux" in report_text
     assert "- Company: Example AI" in report_text
     assert "- Source: greenhouse" in report_text
     assert "- Location: Remote" in report_text
