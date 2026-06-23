@@ -3,6 +3,7 @@ from pathlib import Path
 
 from job_radar.models import JobPosting
 
+TOP_MATCHES_LIMIT = 10
 
 @dataclass(frozen=True)
 class ScoredPosting:
@@ -62,23 +63,52 @@ def render_markdown_report(report: ScanReport) -> str:
 
         lines.append("")
 
+    if report.scored_postings is not None:
+        if not report.scored_postings:
+            lines.extend(
+                [
+                    "## Top Matches",
+                    "",
+                    "No jobs were collected during this scan.",
+                    "",
+                    "## All Jobs",
+                    "",
+                    "No jobs were collected during this scan.",
+                    "",
+                ]
+            )
+            return "\n".join(lines)
+
+        top_matches = report.scored_postings[:TOP_MATCHES_LIMIT]
+
+        lines.extend(
+            [
+                "## Top Matches",
+                "",
+            ]
+        )
+
+        for scored_posting in top_matches:
+            _append_scored_posting(lines, scored_posting)
+
+        lines.extend(
+            [
+                "## All Jobs",
+                "",
+            ]
+        )
+
+        for scored_posting in report.scored_postings:
+            _append_scored_posting(lines, scored_posting)
+
+        return "\n".join(lines)
+
     lines.extend(
         [
             "## Jobs",
             "",
         ]
     )
-
-    if report.scored_postings is not None:
-        if not report.scored_postings:
-            lines.append("No jobs were collected during this scan.")
-            lines.append("")
-            return "\n".join(lines)
-
-        for scored_posting in report.scored_postings:
-            _append_scored_posting(lines, scored_posting)
-
-        return "\n".join(lines)
 
     if not report.postings:
         lines.append("No jobs were collected during this scan.")

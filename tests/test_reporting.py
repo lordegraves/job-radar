@@ -165,3 +165,41 @@ def test_render_markdown_report_includes_score_and_score_reasons() -> None:
 
     assert "- Score: 28" in markdown
     assert "- Score reasons: +10 linux, +10 infrastructure, +8 kubernetes" in markdown
+
+def test_render_markdown_report_includes_top_matches_and_all_jobs() -> None:
+    high_score_posting = make_posting(title="Senior Kubernetes Platform Engineer")
+    low_score_posting = make_posting(title="Account Executive")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=2,
+        jobs_new=2,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[high_score_posting, low_score_posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=high_score_posting,
+                score=100,
+                score_reasons=["+24 title:kubernetes"],
+            ),
+            ScoredPosting(
+                posting=low_score_posting,
+                score=-60,
+                score_reasons=["-60 title:account executive"],
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "## Top Matches" in markdown
+    assert "## All Jobs" in markdown
+    assert markdown.index("## Top Matches") < markdown.index("## All Jobs")
+    assert (
+        "### [Senior Kubernetes Platform Engineer]"
+        "(https://boards.greenhouse.io/exampleai/jobs/123)"
+        in markdown
+    )
+    assert "### [Account Executive]" in markdown
