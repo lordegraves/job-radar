@@ -96,6 +96,12 @@ ON job_postings(content_hash);
 
 CREATE INDEX IF NOT EXISTS idx_job_seen_events_created_at
 ON job_seen_events(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_job_postings_source_job_id
+ON job_postings(source_type, source_job_id);
+
+CREATE INDEX IF NOT EXISTS idx_job_postings_source_url
+ON job_postings(source_url);
 """
 
 
@@ -108,20 +114,49 @@ def initialize_database(database_path: str | Path) -> Path:
 
     return db_path
 
+
+def _find_existing_job(
+    connection: sqlite3.Connection,
+    posting: JobPosting,
+) -> sqlite3.Row | None:
+    if posting.source_job_id:
+        return connection.execute(
+            """
+            SELECT id, content_hash
+            FROM job_postings
+            WHERE source_type = ?
+            AND source_job_id = ?
+            """,
+            (posting.source_type, posting.source_job_id),
+        ).fetchone()
+
+    if posting.source_url:
+        return connection.execute(
+            """
+            SELECT id, content_hash
+            FROM job_postings
+            WHERE source_url = ?
+            """,
+            (posting.source_url,),
+        ).fetchone()
+
+    return connection.execute(
+        """
+        SELECT id, content_hash
+        FROM job_postings
+        WHERE canonical_key = ?
+        """,
+        (posting.canonical_key,),
+    ).fetchone()
+
+
 def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
     db_path = Path(database_path)
 
     with sqlite3.connect(db_path) as connection:
         connection.row_factory = sqlite3.Row
 
-        existing = connection.execute(
-            """
-            SELECT id, content_hash
-            FROM job_postings
-            WHERE canonical_key = ?
-            """,
-            (posting.canonical_key,),
-        ).fetchone()
+        existing = _find_existing_job(connection, posting)
 
         if existing is None:
             cursor = connection.execute(
@@ -176,6 +211,8 @@ def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
                 """
                 UPDATE job_postings
                 SET
+                    company_key = ?,
+                    source_type = ?,
                     source_job_id = ?,
                     source_url = ?,
                     title = ?,
@@ -183,6 +220,7 @@ def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
                     remote_status = ?,
                     salary_text = ?,
                     description = ?,
+                    canonical_key = ?,
                     content_hash = ?,
                     last_seen_at = CURRENT_TIMESTAMP,
                     last_changed_at = CURRENT_TIMESTAMP,
@@ -191,6 +229,8 @@ def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
                 WHERE id = ?
                 """,
                 (
+                    posting.company_key,
+                    posting.source_type,
                     posting.source_job_id,
                     posting.source_url,
                     posting.title,
@@ -198,6 +238,7 @@ def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
                     posting.remote_status,
                     posting.salary_text,
                     posting.description,
+                    posting.canonical_key,
                     posting.content_hash,
                     existing["id"],
                 ),
@@ -218,3 +259,4 @@ def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
         )
 
         return "seen"
+

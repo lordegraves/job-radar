@@ -130,3 +130,43 @@ def test_upsert_job_posting_returns_changed_for_different_content(tmp_path: Path
     assert count_rows(database_path, "job_status") == 1
     assert row["description"] == "Build Linux and Kubernetes infrastructure."
     assert row["last_changed_at"] is not None
+
+def test_upsert_job_posting_treats_same_title_location_with_different_source_ids_as_different_jobs(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    first_posting = JobPosting(
+        company_key="anthropic",
+        company_name="Anthropic",
+        source_type="greenhouse",
+        source_job_id="111",
+        source_url="https://job-boards.greenhouse.io/anthropic/jobs/111",
+        title="Account Executive",
+        location="Remote",
+        description="First posting.",
+        canonical_key="anthropic:account-executive:remote",
+        content_hash="hash-111",
+    )
+
+    second_posting = JobPosting(
+        company_key="anthropic",
+        company_name="Anthropic",
+        source_type="greenhouse",
+        source_job_id="222",
+        source_url="https://job-boards.greenhouse.io/anthropic/jobs/222",
+        title="Account Executive",
+        location="Remote",
+        description="Second posting.",
+        canonical_key="anthropic:account-executive:remote",
+        content_hash="hash-222",
+    )
+
+    first_result = upsert_job_posting(database_path, first_posting)
+    second_result = upsert_job_posting(database_path, second_posting)
+
+    assert first_result == "new"
+    assert second_result == "new"
+    assert count_rows(database_path, "job_postings") == 2
+    assert count_rows(database_path, "job_status") == 2

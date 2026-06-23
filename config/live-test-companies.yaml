@@ -1,0 +1,6 @@
+companies:
+  - company_key: anthropic
+    name: Anthropic
+    source_type: greenhouse
+    source_slug: anthropic
+    enabled: true
