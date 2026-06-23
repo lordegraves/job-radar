@@ -34,7 +34,7 @@ class ScanReport:
 
 
 def render_markdown_report(report: ScanReport) -> str:
-    lines = [
+    lines: list[str] = [
         "# Job Radar Report",
         "",
         "## Summary",
@@ -58,30 +58,15 @@ def render_markdown_report(report: ScanReport) -> str:
 
         for error in report.collector_errors:
             lines.append(
-                f"- {error.company_key} ({error.company_name}, {error.source_type}): "
+                "- "
+                f"{error.company_key} "
+                f"({error.company_name}, {error.source_type}): "
                 f"{error.message}"
             )
 
         lines.append("")
 
     if report.scored_postings is not None:
-        if not report.scored_postings:
-            lines.extend(
-                [
-                    "## Top Matches",
-                    "",
-                    "No jobs were collected during this scan.",
-                    "",
-                    "## All Jobs",
-                    "",
-                    "No jobs were collected during this scan.",
-                    "",
-                ]
-            )
-            return "\n".join(lines)
-
-        top_matches = _get_top_matches(report.scored_postings)
-
         lines.extend(
             [
                 "## Top Matches",
@@ -89,8 +74,20 @@ def render_markdown_report(report: ScanReport) -> str:
             ]
         )
 
-        for scored_posting in top_matches:
-            _append_scored_posting(lines, scored_posting)
+        top_matches = _get_top_matches(report.scored_postings)
+
+        if top_matches:
+            _append_top_matches_table(lines, top_matches)
+
+            for scored_posting in top_matches:
+                _append_scored_posting(lines, scored_posting)
+        else:
+            lines.extend(
+                [
+                    "No top matches found.",
+                    "",
+                ]
+            )
 
         lines.extend(
             [
@@ -99,28 +96,64 @@ def render_markdown_report(report: ScanReport) -> str:
             ]
         )
 
-        for scored_posting in report.scored_postings:
-            _append_scored_posting(lines, scored_posting)
+        if report.scored_postings:
+            for scored_posting in report.scored_postings:
+                _append_scored_posting(lines, scored_posting)
+        else:
+            lines.extend(
+                [
+                    "No jobs were collected during this scan.",
+                    "",
+                ]
+            )
 
-        return "\n".join(lines)
+    else:
+        lines.extend(
+            [
+                "## Jobs",
+                "",
+            ]
+        )
 
+        if report.postings:
+            for posting in report.postings:
+                _append_posting(lines, posting)
+        else:
+            lines.extend(
+                [
+                    "No jobs were collected during this scan.",
+                    "",
+                ]
+            )
+
+    return "\n".join(lines).rstrip() + "\n"
+
+def _append_top_matches_table(
+    lines: list[str],
+    top_matches: list[ScoredPosting],
+) -> None:
     lines.extend(
         [
-            "## Jobs",
+            "### Quick View",
             "",
         ]
     )
 
-    if not report.postings:
-        lines.append("No jobs were collected during this scan.")
-        lines.append("")
-        return "\n".join(lines)
+    for scored_posting in top_matches:
+        posting = scored_posting.posting
+        location = posting.location or "Unknown"
 
-    for posting in report.postings:
-        _append_posting(lines, posting)
+        lines.extend(
+            [
+                f"- **{scored_posting.score}** - "
+                f"[{posting.title}]({posting.source_url})",
+                f"  - Company: {posting.company_name}",
+                f"  - Location: {location}",
+                f"  - Status: {scored_posting.location_status}",
+            ]
+        )
 
-    return "\n".join(lines)
-
+    lines.append("")
 
 def _append_scored_posting(lines: list[str], scored_posting: ScoredPosting) -> None:
     posting = scored_posting.posting
