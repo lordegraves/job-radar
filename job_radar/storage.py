@@ -1,6 +1,8 @@
 import sqlite3
 from pathlib import Path
 
+from job_radar.models import JobPosting
+
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS companies (
@@ -105,3 +107,114 @@ def initialize_database(database_path: str | Path) -> Path:
         connection.executescript(SCHEMA_SQL)
 
     return db_path
+
+def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
+    db_path = Path(database_path)
+
+    with sqlite3.connect(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+
+        existing = connection.execute(
+            """
+            SELECT id, content_hash
+            FROM job_postings
+            WHERE canonical_key = ?
+            """,
+            (posting.canonical_key,),
+        ).fetchone()
+
+        if existing is None:
+            cursor = connection.execute(
+                """
+                INSERT INTO job_postings (
+                    company_key,
+                    source_type,
+                    source_job_id,
+                    source_url,
+                    title,
+                    location,
+                    remote_status,
+                    salary_text,
+                    description,
+                    canonical_key,
+                    content_hash
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    posting.company_key,
+                    posting.source_type,
+                    posting.source_job_id,
+                    posting.source_url,
+                    posting.title,
+                    posting.location,
+                    posting.remote_status,
+                    posting.salary_text,
+                    posting.description,
+                    posting.canonical_key,
+                    posting.content_hash,
+                ),
+            )
+
+            job_posting_id = cursor.lastrowid
+
+            connection.execute(
+                """
+                INSERT INTO job_status (
+                    job_posting_id,
+                    status
+                )
+                VALUES (?, 'new')
+                """,
+                (job_posting_id,),
+            )
+
+            return "new"
+
+        if existing["content_hash"] != posting.content_hash:
+            connection.execute(
+                """
+                UPDATE job_postings
+                SET
+                    source_job_id = ?,
+                    source_url = ?,
+                    title = ?,
+                    location = ?,
+                    remote_status = ?,
+                    salary_text = ?,
+                    description = ?,
+                    content_hash = ?,
+                    last_seen_at = CURRENT_TIMESTAMP,
+                    last_changed_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP,
+                    is_active = 1
+                WHERE id = ?
+                """,
+                (
+                    posting.source_job_id,
+                    posting.source_url,
+                    posting.title,
+                    posting.location,
+                    posting.remote_status,
+                    posting.salary_text,
+                    posting.description,
+                    posting.content_hash,
+                    existing["id"],
+                ),
+            )
+
+            return "changed"
+
+        connection.execute(
+            """
+            UPDATE job_postings
+            SET
+                last_seen_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP,
+                is_active = 1
+            WHERE id = ?
+            """,
+            (existing["id"],),
+        )
+
+        return "seen"

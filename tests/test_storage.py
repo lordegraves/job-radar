@@ -1,7 +1,8 @@
 import sqlite3
 from pathlib import Path
 
-from job_radar.storage import initialize_database
+from job_radar.storage import initialize_database, upsert_job_posting
+from job_radar.models import JobPosting
 
 
 def table_exists(database_path: Path, table_name: str) -> bool:
@@ -53,3 +54,79 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
 
     assert database_path.exists()
     assert table_exists(database_path, "companies")
+
+def make_posting(description: str = "Build Linux infrastructure.") -> JobPosting:
+    return JobPosting(
+        company_key="example_ai",
+        company_name="Example AI",
+        source_type="greenhouse",
+        source_job_id="123",
+        source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description=description,
+        canonical_key="example-ai:senior-infrastructure-engineer:remote",
+        content_hash=f"hash-{description}",
+    )
+
+
+def count_rows(database_path: Path, table_name: str) -> int:
+    with sqlite3.connect(database_path) as connection:
+        cursor = connection.execute(f"SELECT COUNT(*) FROM {table_name}")
+        return int(cursor.fetchone()[0])
+
+
+def get_job_row(database_path: Path) -> sqlite3.Row:
+    with sqlite3.connect(database_path) as connection:
+        connection.row_factory = sqlite3.Row
+        row = connection.execute(
+            "SELECT * FROM job_postings WHERE canonical_key = ?",
+            ("example-ai:senior-infrastructure-engineer:remote",),
+        ).fetchone()
+
+        assert row is not None
+        return row
+
+
+def test_upsert_job_posting_inserts_new_job_and_status(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    result = upsert_job_posting(database_path, make_posting())
+
+    assert result == "new"
+    assert count_rows(database_path, "job_postings") == 1
+    assert count_rows(database_path, "job_status") == 1
+
+
+def test_upsert_job_posting_returns_seen_for_same_content(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    first = upsert_job_posting(database_path, make_posting())
+    second = upsert_job_posting(database_path, make_posting())
+
+    assert first == "new"
+    assert second == "seen"
+    assert count_rows(database_path, "job_postings") == 1
+    assert count_rows(database_path, "job_status") == 1
+
+
+def test_upsert_job_posting_returns_changed_for_different_content(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    first = upsert_job_posting(database_path, make_posting())
+    second = upsert_job_posting(
+        database_path,
+        make_posting(description="Build Linux and Kubernetes infrastructure."),
+    )
+
+    row = get_job_row(database_path)
+
+    assert first == "new"
+    assert second == "changed"
+    assert count_rows(database_path, "job_postings") == 1
+    assert count_rows(database_path, "job_status") == 1
+    assert row["description"] == "Build Linux and Kubernetes infrastructure."
+    assert row["last_changed_at"] is not None
