@@ -268,3 +268,117 @@ def test_top_matches_only_includes_allowed_locations_without_negative_title_matc
 
     assert "### [Senior Kubernetes Engineer]" in markdown
     assert "### [Recruiting Coordinator]" in markdown
+
+def test_top_matches_excludes_business_roles_even_when_location_is_allowed() -> None:
+    technical_posting = make_posting(title="Senior Infrastructure Engineer")
+    finance_posting = make_posting(title="Head of FX & Risk")
+    people_posting = make_posting(title="Staff Software Engineer, People Products")
+    sourcing_posting = make_posting(title="Data Center Strategic Sourcing Lead")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=4,
+        jobs_new=4,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[
+            technical_posting,
+            finance_posting,
+            people_posting,
+            sourcing_posting,
+        ],
+        scored_postings=[
+            ScoredPosting(
+                posting=technical_posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+            ScoredPosting(
+                posting=finance_posting,
+                score=120,
+                score_reasons=[
+                    "+6 body:systems",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+            ScoredPosting(
+                posting=people_posting,
+                score=120,
+                score_reasons=[
+                    "+6 body:systems",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+            ScoredPosting(
+                posting=sourcing_posting,
+                score=159,
+                score_reasons=[
+                    "+24 title:data center",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+    top_matches_section = markdown.split("## All Jobs")[0]
+
+    assert "### [Senior Infrastructure Engineer]" in top_matches_section
+    assert "### [Head of FX & Risk]" not in top_matches_section
+    assert "### [Staff Software Engineer, People Products]" not in top_matches_section
+    assert "### [Data Center Strategic Sourcing Lead]" not in top_matches_section
+
+    assert "### [Head of FX & Risk]" in markdown
+    assert "### [Staff Software Engineer, People Products]" in markdown
+    assert "### [Data Center Strategic Sourcing Lead]" in markdown
+
+
+def test_top_matches_requires_strong_technical_signal() -> None:
+    weak_posting = make_posting(title="Research Operations, External Artifacts")
+    strong_posting = make_posting(title="Senior Kubernetes Platform Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=2,
+        jobs_new=2,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[weak_posting, strong_posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=weak_posting,
+                score=106,
+                score_reasons=[
+                    "+6 body:systems",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+            ScoredPosting(
+                posting=strong_posting,
+                score=124,
+                score_reasons=[
+                    "+24 title:kubernetes",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+    top_matches_section = markdown.split("## All Jobs")[0]
+
+    assert "### [Senior Kubernetes Platform Engineer]" in top_matches_section
+    assert "### [Research Operations, External Artifacts]" not in top_matches_section
+
+    assert "### [Research Operations, External Artifacts]" in markdown
