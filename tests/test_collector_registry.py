@@ -6,10 +6,10 @@ from job_radar.collectors.registry import collect_jobs_for_company
 
 def test_collect_jobs_for_company_rejects_unimplemented_source_type() -> None:
     company_config = {
-        "company_key": "research_labs",
-        "name": "Research Labs",
-        "source_type": "lever",
-        "source_slug": "researchlabs",
+        "company_key": "future_company",
+        "name": "Future Company",
+        "source_type": "workday",
+        "source_url": "https://example.wd1.myworkdayjobs.com/External",
         "enabled": True,
     }
 
