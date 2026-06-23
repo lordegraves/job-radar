@@ -2,6 +2,8 @@ import argparse
 
 from job_radar.config import ConfigError, load_companies, load_settings
 from job_radar.storage import initialize_database
+from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.registry import collect_jobs_for_company
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,15 +54,34 @@ def handle_scan(config_path: str, settings_path: str, report_path: str) -> None:
     print()
     print("Enabled companies:")
 
+    total_jobs = 0
+    total_errors = 0
+
     for company in companies:
-        print(
-            f"- {company['company_key']} "
-            f"({company['name']}) "
-            f"source_type={company['source_type']}"
-        )
+        company_key = company["company_key"]
+        company_name = company["name"]
+        source_type = company["source_type"]
+
+        print(f"- {company_key} ({company_name}) source_type={source_type}")
+
+        try:
+            postings = collect_jobs_for_company(company)
+        except CollectorError as error:
+            total_errors += 1
+            print(f"  ERROR: {error}")
+            continue
+
+        total_jobs += len(postings)
+        print(f"  collected_jobs={len(postings)}")
 
     print()
-    print("Collector execution is not implemented yet.")
+    print("Scan summary:")
+    print(f"Companies enabled: {len(companies)}")
+    print(f"Jobs collected: {total_jobs}")
+    print(f"Collector errors: {total_errors}")
+    print()
+    print("Database writes are not implemented yet.")
+    print("Report generation is not implemented yet.")
 
 
 def main() -> None:

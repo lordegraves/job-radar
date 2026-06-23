@@ -1,0 +1,16 @@
+from typing import Any
+
+from job_radar.collectors.greenhouse import CollectorError, collect_greenhouse_jobs
+from job_radar.models import JobPosting
+
+
+def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]:
+    source_type = company_config.get("source_type")
+
+    if source_type == "greenhouse":
+        return collect_greenhouse_jobs(company_config)
+
+    raise CollectorError(
+        f"No collector implemented for source_type={source_type} "
+        f"company={company_config.get('company_key')}"
+    )
