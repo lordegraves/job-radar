@@ -29,7 +29,7 @@ def make_posting(
     )
 
 
-def test_load_scoring_config_reads_positive_and_negative_keywords(
+def test_load_scoring_config_reads_keywords_and_location_preferences(
     tmp_path: Path,
 ) -> None:
     scoring_file = tmp_path / "scoring.yaml"
@@ -41,6 +41,15 @@ positive_keywords:
 
 negative_keywords:
   sales: -15
+
+location_preferences:
+  allowed:
+    remote: 100
+    cheyenne: 100
+  conditional:
+    denver: -25
+  skipped:
+    london: -100
 """,
         encoding="utf-8",
     )
@@ -54,6 +63,18 @@ negative_keywords:
     assert config["negative_keywords"] == {
         "sales": -15,
     }
+    assert config["location_preferences"] == {
+        "allowed": {
+            "remote": 100,
+            "cheyenne": 100,
+        },
+        "conditional": {
+            "denver": -25,
+        },
+        "skipped": {
+            "london": -100,
+        },
+    }
 
 
 def test_load_scoring_config_rejects_missing_file(tmp_path: Path) -> None:
@@ -65,6 +86,7 @@ def test_score_posting_weights_title_matches_more_than_body_matches() -> None:
     posting = make_posting(
         title="Senior Linux Infrastructure Engineer",
         description="Run Kubernetes clusters.",
+        location="Remote",
     )
 
     config = {
@@ -74,6 +96,11 @@ def test_score_posting_weights_title_matches_more_than_body_matches() -> None:
             "kubernetes": 8,
         },
         "negative_keywords": {},
+        "location_preferences": {
+            "allowed": {},
+            "conditional": {},
+            "skipped": {},
+        },
     }
 
     score, reasons = score_posting(posting, config)
@@ -97,6 +124,11 @@ def test_score_posting_applies_negative_keyword_scores_to_title_only() -> None:
             "sales": -15,
             "recruiter": -12,
             "hr": -12,
+        },
+        "location_preferences": {
+            "allowed": {},
+            "conditional": {},
+            "skipped": {},
         },
     }
 
@@ -124,6 +156,11 @@ def test_score_posting_combines_positive_and_negative_title_scores() -> None:
         "negative_keywords": {
             "customer success": -10,
         },
+        "location_preferences": {
+            "allowed": {},
+            "conditional": {},
+            "skipped": {},
+        },
     }
 
     score, reasons = score_posting(posting, config)
@@ -133,3 +170,106 @@ def test_score_posting_combines_positive_and_negative_title_scores() -> None:
     assert "+10 body:linux" in reasons
     assert "+5 body:troubleshooting" in reasons
     assert "-30 title:customer success" in reasons
+
+
+def test_score_posting_applies_allowed_location_scores() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="Remote - United States",
+    )
+
+    config = {
+        "positive_keywords": {
+            "infrastructure": 10,
+            "linux": 10,
+        },
+        "negative_keywords": {},
+        "location_preferences": {
+            "allowed": {
+                "remote": 100,
+                "cheyenne": 100,
+            },
+            "conditional": {},
+            "skipped": {
+                "london": -100,
+            },
+        },
+    }
+
+    score, reasons = score_posting(posting, config)
+
+    assert score == 140
+    assert "+30 title:infrastructure" in reasons
+    assert "+10 body:linux" in reasons
+    assert "+100 location_allowed:remote" in reasons
+    assert "-100 location_skipped:london" not in reasons
+
+
+def test_score_posting_applies_conditional_location_scores() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="Denver, CO",
+    )
+
+    config = {
+        "positive_keywords": {
+            "infrastructure": 10,
+            "linux": 10,
+        },
+        "negative_keywords": {},
+        "location_preferences": {
+            "allowed": {
+                "remote": 100,
+                "cheyenne": 100,
+            },
+            "conditional": {
+                "denver": -25,
+                "boulder": -25,
+            },
+            "skipped": {},
+        },
+    }
+
+    score, reasons = score_posting(posting, config)
+
+    assert score == 15
+    assert "+30 title:infrastructure" in reasons
+    assert "+10 body:linux" in reasons
+    assert "-25 location_conditional:denver" in reasons
+
+
+def test_score_posting_applies_skipped_location_scores() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="London, UK",
+    )
+
+    config = {
+        "positive_keywords": {
+            "infrastructure": 10,
+            "linux": 10,
+        },
+        "negative_keywords": {},
+        "location_preferences": {
+            "allowed": {
+                "remote": 100,
+                "cheyenne": 100,
+            },
+            "conditional": {},
+            "skipped": {
+                "london": -100,
+                "uk": -100,
+            },
+        },
+    }
+
+    score, reasons = score_posting(posting, config)
+
+    assert score == -160
+    assert "+30 title:infrastructure" in reasons
+    assert "+10 body:linux" in reasons
+    assert "-100 location_skipped:london" in reasons
+    assert "-100 location_skipped:uk" in reasons

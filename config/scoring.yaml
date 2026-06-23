@@ -34,3 +34,38 @@ negative_keywords:
   customer success: -10
   product marketing: -10
   communications: -10
+
+location_preferences:
+  allowed:
+    remote: 100
+    northern colorado: 100
+    fort collins: 100
+    loveland: 100
+    greeley: 100
+    cheyenne: 100
+    cheyenne wy: 100
+    cheyenne wyoming: 100
+
+  conditional:
+    denver: -25
+    boulder: -25
+
+  skipped:
+    san francisco: -100
+    new york: -100
+    new york city: -100
+    seattle: -100
+    london: -100
+    dublin: -100
+    sydney: -100
+    australia: -100
+    uk: -100
+    united kingdom: -100
+    ireland: -100
+    canada: -100
+    toronto: -100
+    vancouver: -100
+    europe: -100
+    germany: -100
+    france: -100
+    singapore: -100

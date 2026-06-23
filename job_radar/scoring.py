@@ -15,7 +15,7 @@ class ScoringConfigError(Exception):
     pass
 
 
-def load_scoring_config(path: str | Path) -> dict[str, dict[str, int]]:
+def load_scoring_config(path: str | Path) -> dict[str, Any]:
     config_path = Path(path)
 
     if not config_path.exists():
@@ -29,6 +29,7 @@ def load_scoring_config(path: str | Path) -> dict[str, dict[str, int]]:
 
     positive_keywords = data.get("positive_keywords", {})
     negative_keywords = data.get("negative_keywords", {})
+    location_preferences = data.get("location_preferences", {})
 
     if not isinstance(positive_keywords, dict):
         raise ScoringConfigError("positive_keywords must be a mapping")
@@ -39,6 +40,7 @@ def load_scoring_config(path: str | Path) -> dict[str, dict[str, int]]:
     return {
         "positive_keywords": _validate_keyword_scores(positive_keywords),
         "negative_keywords": _validate_keyword_scores(negative_keywords),
+        "location_preferences": _validate_location_preferences(location_preferences),
     }
 
 
@@ -62,12 +64,42 @@ def _validate_keyword_scores(raw_scores: dict[str, Any]) -> dict[str, int]:
     return validated_scores
 
 
+def _validate_location_preferences(
+    raw_preferences: Any,
+) -> dict[str, dict[str, int]]:
+    if raw_preferences is None:
+        raw_preferences = {}
+
+    if not isinstance(raw_preferences, dict):
+        raise ScoringConfigError("location_preferences must be a mapping")
+
+    allowed = raw_preferences.get("allowed", {})
+    conditional = raw_preferences.get("conditional", {})
+    skipped = raw_preferences.get("skipped", {})
+
+    if not isinstance(allowed, dict):
+        raise ScoringConfigError("location_preferences.allowed must be a mapping")
+
+    if not isinstance(conditional, dict):
+        raise ScoringConfigError("location_preferences.conditional must be a mapping")
+
+    if not isinstance(skipped, dict):
+        raise ScoringConfigError("location_preferences.skipped must be a mapping")
+
+    return {
+        "allowed": _validate_keyword_scores(allowed),
+        "conditional": _validate_keyword_scores(conditional),
+        "skipped": _validate_keyword_scores(skipped),
+    }
+
+
 def score_posting(
     posting: JobPosting,
-    scoring_config: dict[str, dict[str, int]],
+    scoring_config: dict[str, Any],
 ) -> tuple[int, list[str]]:
     title_text = clean_text(posting.title).lower()
     body_text = _build_body_text(posting)
+    location_text = clean_text(posting.location).lower()
 
     score = 0
     reasons: list[str] = []
@@ -88,12 +120,43 @@ def score_posting(
             score += weighted_points
             reasons.append(f"{weighted_points} title:{keyword}")
 
+    location_score, location_reasons = _score_location(
+        location_text=location_text,
+        location_preferences=scoring_config["location_preferences"],
+    )
+    score += location_score
+    reasons.extend(location_reasons)
+
+    return score, reasons
+
+
+def _score_location(
+    location_text: str,
+    location_preferences: dict[str, dict[str, int]],
+) -> tuple[int, list[str]]:
+    score = 0
+    reasons: list[str] = []
+
+    for keyword, points in location_preferences["allowed"].items():
+        if keyword in location_text:
+            score += points
+            reasons.append(f"+{points} location_allowed:{keyword}")
+
+    for keyword, points in location_preferences["conditional"].items():
+        if keyword in location_text:
+            score += points
+            reasons.append(f"{points} location_conditional:{keyword}")
+
+    for keyword, points in location_preferences["skipped"].items():
+        if keyword in location_text:
+            score += points
+            reasons.append(f"{points} location_skipped:{keyword}")
+
     return score, reasons
 
 
 def _build_body_text(posting: JobPosting) -> str:
     parts = [
-        posting.location,
         posting.remote_status,
         posting.salary_text,
         posting.description,

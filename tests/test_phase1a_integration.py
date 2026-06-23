@@ -76,6 +76,12 @@ positive_keywords:
 
 negative_keywords:
   sales: -10
+
+location_preferences:
+  allowed:
+    remote: 100
+  conditional: {}
+  skipped: {}
 """,
         encoding="utf-8",
     )
@@ -117,16 +123,21 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "Jobs new: 1" in first_output
     assert "Jobs seen: 0" in first_output
     assert "Jobs changed: 0" in first_output
+
     assert "- New jobs: 1" in first_report
     assert "- Seen jobs: 0" in first_report
+    assert "## Top Matches" in first_report
+    assert "## All Jobs" in first_report
     assert (
         "### [Senior Infrastructure Engineer]"
         "(https://boards.greenhouse.io/exampleai/jobs/123)"
         in first_report
     )
-    assert "- Score: 40" in first_report
+
+    assert "- Score: 140" in first_report
     assert "+30 title:infrastructure" in first_report
     assert "+10 body:linux" in first_report
+    assert "+100 location_allowed:remote" in first_report
 
     handle_scan(
         config_path=str(config_file),
@@ -142,13 +153,18 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "Jobs new: 0" in second_output
     assert "Jobs seen: 1" in second_output
     assert "Jobs changed: 0" in second_output
+
     assert "- New jobs: 0" in second_report
     assert "- Seen jobs: 1" in second_report
+    assert "## Top Matches" in second_report
+    assert "## All Jobs" in second_report
     assert (
         "### [Senior Infrastructure Engineer]"
         "(https://boards.greenhouse.io/exampleai/jobs/123)"
         in second_report
     )
-    assert "- Score: 40" in second_report
+
+    assert "- Score: 140" in second_report
     assert "+30 title:infrastructure" in second_report
     assert "+10 body:linux" in second_report
+    assert "+100 location_allowed:remote" in second_report

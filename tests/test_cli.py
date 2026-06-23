@@ -5,7 +5,7 @@ from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
 
 
-def test_handle_scan_collects_stores_and_reports_jobs(
+def test_handle_scan_collects_stores_scores_and_reports_jobs(
     tmp_path: Path,
     monkeypatch,
     capsys,
@@ -53,6 +53,12 @@ positive_keywords:
 
 negative_keywords:
   sales: -10
+
+location_preferences:
+  allowed:
+    remote: 100
+  conditional: {}
+  skipped: {}
 """,
         encoding="utf-8",
     )
@@ -118,15 +124,22 @@ negative_keywords:
     assert "- Seen jobs: 0" in report_text
     assert "- Changed jobs: 0" in report_text
     assert "- Collector errors: 0" in report_text
+
+    assert "## Top Matches" in report_text
+    assert "## All Jobs" in report_text
     assert (
-    "### [Senior Infrastructure Engineer]"
-    "(https://boards.greenhouse.io/exampleai/jobs/123)"
-    in report_text
+        "### [Senior Infrastructure Engineer]"
+        "(https://boards.greenhouse.io/exampleai/jobs/123)"
+        in report_text
     )
-    assert "- Score: 40" in report_text
+
+    assert "- Score: 140" in report_text
     assert "+30 title:infrastructure" in report_text
     assert "+10 body:linux" in report_text
+    assert "+100 location_allowed:remote" in report_text
+
     assert "- Company: Example AI" in report_text
     assert "- Source: greenhouse" in report_text
     assert "- Location: Remote" in report_text
     assert "- URL: https://boards.greenhouse.io/exampleai/jobs/123" in report_text
+    assert "- Canonical key: `example-ai:senior-infrastructure-engineer:remote`" in report_text
