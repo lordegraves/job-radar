@@ -1,0 +1,36 @@
+positive_keywords:
+  linux: 10
+  infrastructure: 10
+  sre: 10
+  site reliability: 10
+  reliability: 8
+  kubernetes: 8
+  k8s: 8
+  cluster: 8
+  hpc: 10
+  slurm: 10
+  gpu: 8
+  datacenter: 8
+  data center: 8
+  hardware: 7
+  systems: 6
+  observability: 6
+  incident: 5
+  automation: 5
+  python: 4
+  networking: 4
+  storage: 4
+
+negative_keywords:
+  account executive: -20
+  sales: -15
+  marketing: -15
+  legal: -12
+  finance: -12
+  recruiter: -12
+  recruiting: -12
+  people operations: -12
+  hr: -12
+  customer success: -10
+  product marketing: -10
+  communications: -10
