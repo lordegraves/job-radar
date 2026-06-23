@@ -10,6 +10,7 @@ class ScoredPosting:
     posting: JobPosting
     score: int
     score_reasons: list[str]
+    location_status: str = "unknown"
 
 
 @dataclass(frozen=True)
@@ -79,7 +80,7 @@ def render_markdown_report(report: ScanReport) -> str:
             )
             return "\n".join(lines)
 
-        top_matches = report.scored_postings[:TOP_MATCHES_LIMIT]
+        top_matches = _get_top_matches(report.scored_postings)
 
         lines.extend(
             [
@@ -130,6 +131,7 @@ def _append_scored_posting(lines: list[str], scored_posting: ScoredPosting) -> N
             "",
             f"- Score: {scored_posting.score}",
             f"- Score reasons: {_format_score_reasons(scored_posting.score_reasons)}",
+            f"- Location status: {scored_posting.location_status}",
             f"- Company: {posting.company_name}",
             f"- Source: {posting.source_type}",
             f"- Location: {posting.location or 'Unknown'}",
@@ -177,6 +179,28 @@ def _format_score_reasons(score_reasons: list[str]) -> str:
 
     return ", ".join(score_reasons)
 
+def _get_top_matches(scored_postings: list[ScoredPosting]) -> list[ScoredPosting]:
+    eligible_postings = [
+        scored_posting
+        for scored_posting in scored_postings
+        if _is_top_match_eligible(scored_posting)
+    ]
+
+    return eligible_postings[:TOP_MATCHES_LIMIT]
+
+
+def _is_top_match_eligible(scored_posting: ScoredPosting) -> bool:
+    if scored_posting.location_status != "allowed":
+        return False
+
+    if scored_posting.score <= 0:
+        return False
+
+    for reason in scored_posting.score_reasons:
+        if reason.startswith("-") and "title:" in reason:
+            return False
+
+    return True
 
 def write_markdown_report(report_path: str | Path, report: ScanReport) -> Path:
     path = Path(report_path)

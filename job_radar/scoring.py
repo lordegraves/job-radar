@@ -154,6 +154,29 @@ def _score_location(
 
     return score, reasons
 
+def classify_location(
+    posting: JobPosting,
+    scoring_config: dict[str, Any],
+) -> str:
+    location_text = clean_text(posting.location).lower()
+    location_preferences = scoring_config["location_preferences"]
+
+    for keyword in location_preferences["allowed"]:
+        if keyword in location_text:
+            return "allowed"
+
+    for keyword in location_preferences["conditional"]:
+        if keyword in location_text:
+            return "conditional"
+
+    for keyword in location_preferences["skipped"]:
+        if keyword in location_text:
+            return "skipped"
+
+    if not location_text:
+        return "unknown"
+
+    return "unknown"
 
 def _build_body_text(posting: JobPosting) -> str:
     parts = [

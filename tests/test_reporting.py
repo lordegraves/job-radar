@@ -102,6 +102,7 @@ def test_render_markdown_report_includes_jobs() -> None:
         in markdown
     )
 
+
 def test_render_markdown_report_handles_no_jobs() -> None:
     report = ScanReport(
         companies_enabled=1,
@@ -137,7 +138,7 @@ def test_write_markdown_report_writes_file(tmp_path: Path) -> None:
     assert "# Job Radar Report" in report_path.read_text(encoding="utf-8")
 
 
-def test_render_markdown_report_includes_score_and_score_reasons() -> None:
+def test_render_markdown_report_includes_score_reasons_and_location_status() -> None:
     posting = make_posting(title="Senior Linux Infrastructure Engineer")
 
     report = ScanReport(
@@ -151,20 +152,27 @@ def test_render_markdown_report_includes_score_and_score_reasons() -> None:
         scored_postings=[
             ScoredPosting(
                 posting=posting,
-                score=28,
+                score=140,
                 score_reasons=[
-                    "+10 linux",
-                    "+10 infrastructure",
-                    "+8 kubernetes",
+                    "+30 title:linux",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
                 ],
+                location_status="allowed",
             )
         ],
     )
 
     markdown = render_markdown_report(report)
 
-    assert "- Score: 28" in markdown
-    assert "- Score reasons: +10 linux, +10 infrastructure, +8 kubernetes" in markdown
+    assert "- Score: 140" in markdown
+    assert (
+        "- Score reasons: +30 title:linux, +10 body:infrastructure, "
+        "+100 location_allowed:remote"
+        in markdown
+    )
+    assert "- Location status: allowed" in markdown
+
 
 def test_render_markdown_report_includes_top_matches_and_all_jobs() -> None:
     high_score_posting = make_posting(title="Senior Kubernetes Platform Engineer")
@@ -183,11 +191,13 @@ def test_render_markdown_report_includes_top_matches_and_all_jobs() -> None:
                 posting=high_score_posting,
                 score=100,
                 score_reasons=["+24 title:kubernetes"],
+                location_status="allowed",
             ),
             ScoredPosting(
                 posting=low_score_posting,
                 score=-60,
                 score_reasons=["-60 title:account executive"],
+                location_status="allowed",
             ),
         ],
     )
@@ -203,3 +213,58 @@ def test_render_markdown_report_includes_top_matches_and_all_jobs() -> None:
         in markdown
     )
     assert "### [Account Executive]" in markdown
+
+
+def test_top_matches_only_includes_allowed_locations_without_negative_title_matches() -> None:
+    allowed_posting = make_posting(title="Senior Infrastructure Engineer")
+    skipped_posting = make_posting(title="Senior Kubernetes Engineer")
+    recruiting_posting = make_posting(title="Recruiting Coordinator")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=3,
+        jobs_new=3,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[allowed_posting, skipped_posting, recruiting_posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=allowed_posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+            ScoredPosting(
+                posting=skipped_posting,
+                score=200,
+                score_reasons=[
+                    "+24 title:kubernetes",
+                ],
+                location_status="skipped",
+            ),
+            ScoredPosting(
+                posting=recruiting_posting,
+                score=80,
+                score_reasons=[
+                    "-36 title:recruiting",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+    top_matches_section = markdown.split("## All Jobs")[0]
+
+    assert "## Top Matches" in markdown
+    assert "### [Senior Infrastructure Engineer]" in top_matches_section
+    assert "### [Senior Kubernetes Engineer]" not in top_matches_section
+    assert "### [Recruiting Coordinator]" not in top_matches_section
+
+    assert "### [Senior Kubernetes Engineer]" in markdown
+    assert "### [Recruiting Coordinator]" in markdown

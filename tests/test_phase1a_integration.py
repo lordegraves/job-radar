@@ -138,6 +138,7 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "+30 title:infrastructure" in first_report
     assert "+10 body:linux" in first_report
     assert "+100 location_allowed:remote" in first_report
+    assert "- Location status: allowed" in first_report
 
     handle_scan(
         config_path=str(config_file),
@@ -168,3 +169,4 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "+30 title:infrastructure" in second_report
     assert "+10 body:linux" in second_report
     assert "+100 location_allowed:remote" in second_report
+    assert "- Location status: allowed" in second_report
