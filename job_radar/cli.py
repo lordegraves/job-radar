@@ -1,6 +1,7 @@
 import argparse
 
 from job_radar.config import ConfigError, load_companies, load_settings
+from job_radar.storage import initialize_database
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -76,8 +77,13 @@ def main() -> None:
             return
 
         if args.command == "init-db":
-            print("Database initialization is not implemented yet.")
+            settings = load_settings()
+            db_path = initialize_database(settings["database_path"])
+            print(f"Database initialized: {db_path}")
             return
+
+    except ConfigError as error:
+        parser.exit(status=1, message=f"Config error: {error}\n")
 
     except ConfigError as error:
         parser.exit(status=1, message=f"Config error: {error}\n")
