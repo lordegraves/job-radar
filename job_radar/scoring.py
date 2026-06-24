@@ -30,6 +30,7 @@ def load_scoring_config(path: str | Path) -> dict[str, Any]:
     positive_keywords = data.get("positive_keywords", {})
     negative_keywords = data.get("negative_keywords", {})
     location_preferences = data.get("location_preferences", {})
+    top_matches = data.get("top_matches", {})
 
     if not isinstance(positive_keywords, dict):
         raise ScoringConfigError("positive_keywords must be a mapping")
@@ -41,6 +42,7 @@ def load_scoring_config(path: str | Path) -> dict[str, Any]:
         "positive_keywords": _validate_keyword_scores(positive_keywords),
         "negative_keywords": _validate_keyword_scores(negative_keywords),
         "location_preferences": _validate_location_preferences(location_preferences),
+        "top_matches": _validate_top_matches(top_matches),
     }
 
 
@@ -62,6 +64,29 @@ def _validate_keyword_scores(raw_scores: dict[str, Any]) -> dict[str, int]:
         validated_scores[cleaned_keyword] = score
 
     return validated_scores
+
+
+def _validate_keyword_list(raw_keywords: Any, config_key: str) -> list[str]:
+    if raw_keywords is None:
+        raw_keywords = []
+
+    if not isinstance(raw_keywords, list):
+        raise ScoringConfigError(f"{config_key} must be a list")
+
+    validated_keywords: list[str] = []
+
+    for keyword in raw_keywords:
+        if not isinstance(keyword, str):
+            raise ScoringConfigError(f"{config_key} entries must be strings")
+
+        cleaned_keyword = clean_text(keyword).lower()
+
+        if not cleaned_keyword:
+            raise ScoringConfigError(f"{config_key} entries cannot be empty")
+
+        validated_keywords.append(cleaned_keyword)
+
+    return validated_keywords
 
 
 def _validate_location_preferences(
@@ -90,6 +115,28 @@ def _validate_location_preferences(
         "allowed": _validate_keyword_scores(allowed),
         "conditional": _validate_keyword_scores(conditional),
         "skipped": _validate_keyword_scores(skipped),
+    }
+
+
+def _validate_top_matches(raw_top_matches: Any) -> dict[str, list[str]]:
+    if raw_top_matches is None:
+        raw_top_matches = {}
+
+    if not isinstance(raw_top_matches, dict):
+        raise ScoringConfigError("top_matches must be a mapping")
+
+    excluded_title_keywords = raw_top_matches.get("excluded_title_keywords", [])
+    strong_signals = raw_top_matches.get("strong_signals", [])
+
+    return {
+        "excluded_title_keywords": _validate_keyword_list(
+            excluded_title_keywords,
+            "top_matches.excluded_title_keywords",
+        ),
+        "strong_signals": _validate_keyword_list(
+            strong_signals,
+            "top_matches.strong_signals",
+        ),
     }
 
 
@@ -154,6 +201,7 @@ def _score_location(
 
     return score, reasons
 
+
 def classify_location(
     posting: JobPosting,
     scoring_config: dict[str, Any],
@@ -177,6 +225,7 @@ def classify_location(
         return "unknown"
 
     return "unknown"
+
 
 def _build_body_text(posting: JobPosting) -> str:
     parts = [

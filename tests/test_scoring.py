@@ -62,10 +62,23 @@ def make_scoring_config() -> dict:
             "customer success": -10,
         },
         "location_preferences": make_location_preferences(),
+        "top_matches": {
+            "excluded_title_keywords": [
+                "account executive",
+                "customer success",
+                "recruiter",
+                "sales",
+            ],
+            "strong_signals": [
+                "title:infrastructure",
+                "title:linux",
+                "body:kubernetes",
+            ],
+        },
     }
 
 
-def test_load_scoring_config_reads_keywords_and_location_preferences(
+def test_load_scoring_config_reads_keywords_location_preferences_and_top_matches(
     tmp_path: Path,
 ) -> None:
     scoring_file = tmp_path / "scoring.yaml"
@@ -86,6 +99,14 @@ location_preferences:
     denver: -25
   skipped:
     london: -100
+
+top_matches:
+  excluded_title_keywords:
+    - sales
+    - recruiting
+  strong_signals:
+    - title:linux
+    - body:hpc
 """,
         encoding="utf-8",
     )
@@ -111,6 +132,72 @@ location_preferences:
             "london": -100,
         },
     }
+    assert config["top_matches"] == {
+        "excluded_title_keywords": [
+            "sales",
+            "recruiting",
+        ],
+        "strong_signals": [
+            "title:linux",
+            "body:hpc",
+        ],
+    }
+
+
+def test_load_scoring_config_defaults_top_matches_to_empty_lists(
+    tmp_path: Path,
+) -> None:
+    scoring_file = tmp_path / "scoring.yaml"
+    scoring_file.write_text(
+        """
+positive_keywords:
+  linux: 10
+
+negative_keywords: {}
+
+location_preferences:
+  allowed: {}
+  conditional: {}
+  skipped: {}
+""",
+        encoding="utf-8",
+    )
+
+    config = load_scoring_config(scoring_file)
+
+    assert config["top_matches"] == {
+        "excluded_title_keywords": [],
+        "strong_signals": [],
+    }
+
+
+def test_load_scoring_config_rejects_invalid_top_matches(
+    tmp_path: Path,
+) -> None:
+    scoring_file = tmp_path / "scoring.yaml"
+    scoring_file.write_text(
+        """
+positive_keywords:
+  linux: 10
+
+negative_keywords: {}
+
+location_preferences:
+  allowed: {}
+  conditional: {}
+  skipped: {}
+
+top_matches:
+  excluded_title_keywords:
+    sales: bad
+  strong_signals:
+    - title:linux
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ScoringConfigError):
+        load_scoring_config(scoring_file)
 
 
 def test_load_scoring_config_rejects_missing_file(tmp_path: Path) -> None:
