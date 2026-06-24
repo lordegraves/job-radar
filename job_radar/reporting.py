@@ -5,6 +5,30 @@ from job_radar.models import JobPosting
 
 
 TOP_MATCHES_LIMIT = 10
+REVIEW_NEEDED_MIN_SCORE = 100
+REVIEW_NEEDED_EXCLUDED_LOCATION_STATUSES = {
+    "skipped",
+    "unknown",
+}
+REVIEW_NEEDED_SIGNAL_KEYWORDS = [
+    "title:infrastructure",
+    "title:kubernetes",
+    "title:linux",
+    "title:cluster",
+    "title:datacenter",
+    "title:data center",
+    "title:reliability",
+    "title:sre",
+    "body:hpc",
+    "body:slurm",
+    "body:gpu",
+    "body:kubernetes",
+    "body:linux",
+    "body:infrastructure",
+    "body:datacenter",
+    "body:data center",
+    "body:hardware",
+]
 
 
 @dataclass(frozen=True)
@@ -155,6 +179,7 @@ def _append_scored_sections(
     scored_postings: list[ScoredPosting],
 ) -> None:
     _append_top_matches_section(lines, scored_postings)
+    _append_review_needed_section(lines, scored_postings)
     _append_all_jobs_section(lines, scored_postings)
 
 
@@ -184,6 +209,64 @@ def _append_top_matches_section(
 
     for scored_posting in top_matches:
         _append_scored_posting(lines, scored_posting)
+
+
+def _append_review_needed_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    lines.extend(
+        [
+            "## Review Needed",
+            "",
+        ]
+    )
+
+    review_needed = _get_review_needed(scored_postings)
+
+    if not review_needed:
+        lines.extend(
+            [
+                "No review-needed jobs found.",
+                "",
+            ]
+        )
+        return
+
+    for scored_posting in review_needed:
+        _append_scored_posting(lines, scored_posting)
+
+
+def _get_review_needed(
+    scored_postings: list[ScoredPosting],
+) -> list[ScoredPosting]:
+    return [
+        scored_posting
+        for scored_posting in scored_postings
+        if _is_review_needed(scored_posting)
+    ]
+
+
+def _is_review_needed(scored_posting: ScoredPosting) -> bool:
+    if scored_posting.top_match_eligible:
+        return False
+
+    if scored_posting.score < REVIEW_NEEDED_MIN_SCORE:
+        return False
+
+    if scored_posting.location_status in REVIEW_NEEDED_EXCLUDED_LOCATION_STATUSES:
+        return False
+
+    return _has_review_needed_signal(scored_posting.score_reasons)
+
+
+def _has_review_needed_signal(score_reasons: list[str]) -> bool:
+    for reason in score_reasons:
+        for signal_keyword in REVIEW_NEEDED_SIGNAL_KEYWORDS:
+            if signal_keyword in reason:
+                return True
+
+    return False
 
 
 def _append_all_jobs_section(

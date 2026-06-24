@@ -266,7 +266,7 @@ def test_top_matches_only_includes_allowed_locations_without_negative_title_matc
     )
 
     markdown = render_markdown_report(report)
-    top_matches_section = markdown.split("## All Jobs")[0]
+    top_matches_section = markdown.split("## Review Needed")[0]
 
     assert "## Top Matches" in markdown
     assert "### [Senior Infrastructure Engineer]" in top_matches_section
@@ -338,7 +338,7 @@ def test_top_matches_excludes_business_roles_even_when_location_is_allowed() -> 
     )
 
     markdown = render_markdown_report(report)
-    top_matches_section = markdown.split("## All Jobs")[0]
+    top_matches_section = markdown.split("## Review Needed")[0]
 
     assert "### [Senior Infrastructure Engineer]" in top_matches_section
     assert "### [Head of FX & Risk]" not in top_matches_section
@@ -386,7 +386,7 @@ def test_top_matches_requires_strong_technical_signal() -> None:
     )
 
     markdown = render_markdown_report(report)
-    top_matches_section = markdown.split("## All Jobs")[0]
+    top_matches_section = markdown.split("## Review Needed")[0]
 
     assert "### [Senior Kubernetes Platform Engineer]" in top_matches_section
     assert "### [Research Operations, External Artifacts]" not in top_matches_section
@@ -533,3 +533,108 @@ def test_render_markdown_report_includes_companies_scanned_summary() -> None:
     assert "  - Anthropic: 1" in markdown
     assert "  - Scale AI: 1" in markdown
     assert "  - Distro: 1" in markdown
+
+
+def test_render_markdown_report_includes_review_needed_section() -> None:
+    top_match_posting = make_posting(title="Senior Infrastructure Engineer")
+    mixed_posting = make_posting(title="Senior Systems Engineer")
+    conditional_posting = make_posting(title="Senior Linux Engineer")
+    allowed_high_score_posting = make_posting(
+        title="Data Center Strategic Sourcing Lead"
+    )
+    weak_allowed_posting = make_posting(title="Administrative Assistant")
+    skipped_posting = make_posting(title="Account Executive")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=6,
+        jobs_new=6,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[
+            top_match_posting,
+            mixed_posting,
+            conditional_posting,
+            allowed_high_score_posting,
+            weak_allowed_posting,
+            skipped_posting,
+        ],
+        scored_postings=[
+            ScoredPosting(
+                posting=top_match_posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+            ),
+            ScoredPosting(
+                posting=mixed_posting,
+                score=120,
+                score_reasons=[
+                    "+20 title:systems",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="mixed",
+            ),
+            ScoredPosting(
+                posting=conditional_posting,
+                score=110,
+                score_reasons=[
+                    "+10 title:linux",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="conditional",
+            ),
+            ScoredPosting(
+                posting=allowed_high_score_posting,
+                score=159,
+                score_reasons=[
+                    "+24 title:data center",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+            ScoredPosting(
+                posting=weak_allowed_posting,
+                score=106,
+                score_reasons=[
+                    "+6 body:systems",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+            ScoredPosting(
+                posting=skipped_posting,
+                score=-20,
+                score_reasons=[
+                    "-20 title:account executive",
+                ],
+                location_status="skipped",
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "## Top Matches" in markdown
+    assert "## Review Needed" in markdown
+    assert "## All Jobs" in markdown
+
+    assert markdown.index("## Top Matches") < markdown.index("## Review Needed")
+    assert markdown.index("## Review Needed") < markdown.index("## All Jobs")
+
+    review_needed_section = markdown.split("## Review Needed")[1].split("## All Jobs")[0]
+
+    assert "### [Senior Systems Engineer]" in review_needed_section
+    assert "### [Senior Linux Engineer]" in review_needed_section
+    assert "### [Data Center Strategic Sourcing Lead]" in review_needed_section
+
+    assert "### [Senior Infrastructure Engineer]" not in review_needed_section
+    assert "### [Administrative Assistant]" not in review_needed_section
+    assert "### [Account Executive]" not in review_needed_section
