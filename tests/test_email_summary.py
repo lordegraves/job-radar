@@ -1,4 +1,8 @@
-from job_radar.email_summary import build_email_body, build_email_subject
+from job_radar.email_summary import (
+    build_email_body,
+    build_email_subject,
+    write_email_preview,
+)
 from job_radar.models import JobPosting
 from job_radar.reporting import ScanReport, ScoredPosting
 
@@ -140,3 +144,51 @@ def test_build_email_body_handles_empty_sections() -> None:
     assert "Generated at: Unknown" in body
     assert "Top Matches:\n- None" in body
     assert "Review Needed:\n- None" in body
+
+
+def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
+    top_match = make_posting(
+        title="Data Center Design Execution Lead",
+        company_name="Anthropic",
+    )
+
+    report = ScanReport(
+        generated_at="2026-06-24T17:08:47+00:00",
+        companies_enabled=3,
+        jobs_collected=811,
+        jobs_new=811,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[top_match],
+        scored_postings=[
+            ScoredPosting(
+                posting=top_match,
+                score=158,
+                score_reasons=["+24 title:data center"],
+                location_status="allowed",
+                top_match_eligible=True,
+            ),
+        ],
+    )
+
+    preview_path = tmp_path / "email-preview.txt"
+
+    written_path = write_email_preview(
+        preview_path,
+        report,
+        "reports/live-test.md",
+    )
+
+    preview_text = written_path.read_text(encoding="utf-8")
+
+    assert written_path == preview_path
+    assert preview_text.startswith(
+        "Subject: Job Radar Report - 2026-06-24 - "
+        "811 jobs - 1 top match - 0 review needed"
+    )
+    assert "Generated at: 2026-06-24T17:08:47+00:00" in preview_text
+    assert "Top Matches:" in preview_text
+    assert "- Data Center Design Execution Lead - Anthropic - 158" in preview_text
+    assert "Full report:" in preview_text
+    assert "reports/live-test.md" in preview_text

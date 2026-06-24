@@ -12,3 +12,4 @@ reports/*.md
 !data/.gitkeep
 !logs/.gitkeep
 !reports/.gitkeep
+reports/*.txt

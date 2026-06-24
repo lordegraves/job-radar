@@ -14,6 +14,8 @@ from job_radar.scoring import (
 )
 from job_radar.storage import initialize_database, upsert_job_posting
 
+from job_radar.email_summary import write_email_preview
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -43,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to output Markdown report",
     )
     scan_parser.add_argument(
+        "--email-preview",
+        default=None,
+        help="Optional path to write a plain-text email preview. No email is sent.",
+    )
+    scan_parser.add_argument(
         "--scoring",
         default="config/scoring.yaml",
         help="Path to scoring YAML file",
@@ -61,6 +68,7 @@ def handle_scan(
     settings_path: str,
     report_path: str,
     scoring_path: str = "config/scoring.yaml",
+    email_preview_path: str | None = None,
 ) -> None:
     companies = load_companies(config_path)
     settings = load_settings(settings_path)
@@ -167,6 +175,14 @@ def handle_scan(
     )
 
     written_report_path = write_markdown_report(report_path, report)
+    written_email_preview_path = None
+
+    if email_preview_path is not None:
+        written_email_preview_path = write_email_preview(
+            email_preview_path,
+            report,
+            written_report_path,
+        )
 
     print()
     print("Scan summary:")
@@ -177,6 +193,9 @@ def handle_scan(
     print(f"Jobs changed: {jobs_changed}")
     print(f"Collector errors: {len(collector_errors)}")
     print(f"Report written: {written_report_path}")
+
+    if written_email_preview_path is not None:
+        print(f"Email preview written: {written_email_preview_path}")
 
 
 def main() -> None:
@@ -190,6 +209,7 @@ def main() -> None:
                 settings_path=args.settings,
                 report_path=args.report,
                 scoring_path=args.scoring,
+                email_preview_path=args.email_preview,
             )
             return
 
