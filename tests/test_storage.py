@@ -214,3 +214,63 @@ def test_upsert_job_posting_tracks_new_seen_and_changed_counts_across_scan_passe
 
     assert count_rows(database_path, "job_postings") == 2
     assert count_rows(database_path, "job_status") == 2
+
+
+def test_upsert_job_posting_tracks_changed_count_when_content_changes(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    first_scan_postings = [
+        make_posting(description="Build Linux infrastructure."),
+        JobPosting(
+            company_key="example_ai",
+            company_name="Example AI",
+            source_type="greenhouse",
+            source_job_id="456",
+            source_url="https://boards.greenhouse.io/exampleai/jobs/456",
+            title="Senior Kubernetes Engineer",
+            location="Remote",
+            description="Build Kubernetes infrastructure.",
+            canonical_key="example-ai:senior-kubernetes-engineer:remote",
+            content_hash="hash-kubernetes",
+        ),
+    ]
+
+    second_scan_postings = [
+        make_posting(description="Build Linux infrastructure."),
+        JobPosting(
+            company_key="example_ai",
+            company_name="Example AI",
+            source_type="greenhouse",
+            source_job_id="456",
+            source_url="https://boards.greenhouse.io/exampleai/jobs/456",
+            title="Senior Kubernetes Engineer",
+            location="Remote",
+            description="Build Kubernetes and GPU infrastructure.",
+            canonical_key="example-ai:senior-kubernetes-engineer:remote",
+            content_hash="hash-kubernetes-gpu",
+        ),
+    ]
+
+    first_scan_results = [
+        upsert_job_posting(database_path, posting)
+        for posting in first_scan_postings
+    ]
+
+    second_scan_results = [
+        upsert_job_posting(database_path, posting)
+        for posting in second_scan_postings
+    ]
+
+    assert first_scan_results.count("new") == 2
+    assert first_scan_results.count("seen") == 0
+    assert first_scan_results.count("changed") == 0
+
+    assert second_scan_results.count("new") == 0
+    assert second_scan_results.count("seen") == 1
+    assert second_scan_results.count("changed") == 1
+
+    assert count_rows(database_path, "job_postings") == 2
+    assert count_rows(database_path, "job_status") == 2
