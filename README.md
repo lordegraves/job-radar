@@ -24,6 +24,7 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Summarizes source type counts
 - Builds a plain-text email preview during scan
 - Keeps generated email preview files out of git
+- Validates email settings without sending email
 
 ## Current live validation sources
 
@@ -74,7 +75,7 @@ python -m pytest
 Expected current result:
 
 ```text
-83 passed
+86 passed
 ```
 
 ## Report structure
@@ -117,6 +118,8 @@ python -m job_radar scan --config config/live-test-companies.yaml --settings con
 
 Get-Content reports\live-email-preview.txt -Raw
 ```
+
+Email settings are validated from the settings file, but this command still only writes a local preview file and does not send email.
 
 ## Project principles
 
