@@ -1,3 +1,9 @@
+# Live validation company configuration.
+# These entries are real job-board sources used to test live collection.
+#
+# Example:
+#   python -m job_radar scan --config config/live-test-companies.yaml --settings config/live-test-settings.yaml --report reports/live-test.md
+
 companies:
   - company_key: anthropic
     name: Anthropic

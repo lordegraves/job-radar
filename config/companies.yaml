@@ -1,3 +1,9 @@
+# Sample company configuration used for local/demo testing.
+# These entries are placeholders, not real live scan targets.
+#
+# For live validation, use:
+#   config/live-test-companies.yaml
+
 companies:
   - company_key: example_ai
     name: Example AI
