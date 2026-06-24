@@ -70,7 +70,7 @@ location_preferences:
     france: -100
     singapore: -100
 
-    top_matches:
+top_matches:
   excluded_title_keywords:
     - account executive
     - business
