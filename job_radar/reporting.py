@@ -51,6 +51,8 @@ def render_markdown_report(report: ScanReport) -> str:
         f"- Collector errors: {len(report.collector_errors)}",
     ]
 
+    _append_companies_scanned_summary(lines, report.postings)
+
     if report.scored_postings is not None:
         _append_location_status_summary(lines, report.scored_postings)
 
@@ -72,6 +74,25 @@ def write_markdown_report(report_path: str | Path, report: ScanReport) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render_markdown_report(report), encoding="utf-8")
     return path
+
+
+def _append_companies_scanned_summary(
+    lines: list[str],
+    postings: list[JobPosting],
+) -> None:
+    if not postings:
+        return
+
+    company_counts: dict[str, int] = {}
+
+    for posting in postings:
+        company_name = posting.company_name or "Unknown"
+        company_counts[company_name] = company_counts.get(company_name, 0) + 1
+
+    lines.append("- Companies scanned:")
+
+    for company_name in sorted(company_counts):
+        lines.append(f"  - {company_name}: {company_counts[company_name]}")
 
 
 def _append_location_status_summary(

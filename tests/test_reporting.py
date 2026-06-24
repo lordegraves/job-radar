@@ -10,10 +10,13 @@ from job_radar.reporting import (
 )
 
 
-def make_posting(title: str = "Senior Infrastructure Engineer") -> JobPosting:
+def make_posting(
+    title: str = "Senior Infrastructure Engineer",
+    company_name: str = "Example AI",
+) -> JobPosting:
     return JobPosting(
         company_key="example_ai",
-        company_name="Example AI",
+        company_name=company_name,
         source_type="greenhouse",
         source_job_id="123",
         source_url="https://boards.greenhouse.io/exampleai/jobs/123",
@@ -478,3 +481,55 @@ def test_render_markdown_report_includes_location_status_summary() -> None:
     assert "  - allowed: 1" in markdown
     assert "  - mixed: 1" in markdown
     assert "  - unknown: 1" in markdown
+
+
+def test_render_markdown_report_includes_companies_scanned_summary() -> None:
+    anthropic_posting = make_posting(
+        company_name="Anthropic",
+        title="Senior Infrastructure Engineer",
+    )
+    scale_posting = make_posting(
+        company_name="Scale AI",
+        title="Data Center Engineer",
+    )
+    distro_posting = make_posting(
+        company_name="Distro",
+        title="Network Engineer",
+    )
+
+    report = ScanReport(
+        companies_enabled=3,
+        jobs_collected=3,
+        jobs_new=3,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[anthropic_posting, scale_posting, distro_posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=anthropic_posting,
+                score=140,
+                score_reasons=["+100 location_allowed:remote"],
+                location_status="allowed",
+            ),
+            ScoredPosting(
+                posting=scale_posting,
+                score=80,
+                score_reasons=["-100 location_skipped:san francisco"],
+                location_status="skipped",
+            ),
+            ScoredPosting(
+                posting=distro_posting,
+                score=10,
+                score_reasons=["+10 body:infrastructure"],
+                location_status="unknown",
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Companies scanned:" in markdown
+    assert "  - Anthropic: 1" in markdown
+    assert "  - Scale AI: 1" in markdown
+    assert "  - Distro: 1" in markdown
