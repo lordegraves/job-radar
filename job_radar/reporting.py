@@ -62,6 +62,7 @@ def render_markdown_report(report: ScanReport) -> str:
     )
 
     _append_companies_scanned_summary(lines, report.postings)
+    _append_source_type_summary(lines, report.postings)
 
     if report.scored_postings is not None:
         _append_location_status_summary(lines, report.scored_postings)
@@ -103,6 +104,25 @@ def _append_companies_scanned_summary(
 
     for company_name in sorted(company_counts):
         lines.append(f"  - {company_name}: {company_counts[company_name]}")
+
+
+def _append_source_type_summary(
+    lines: list[str],
+    postings: list[JobPosting],
+) -> None:
+    if not postings:
+        return
+
+    source_type_counts: dict[str, int] = {}
+
+    for posting in postings:
+        source_type = posting.source_type or "unknown"
+        source_type_counts[source_type] = source_type_counts.get(source_type, 0) + 1
+
+    lines.append("- Source types:")
+
+    for source_type in sorted(source_type_counts):
+        lines.append(f"  - {source_type}: {source_type_counts[source_type]}")
 
 
 def _append_location_status_summary(

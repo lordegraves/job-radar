@@ -13,11 +13,12 @@ from job_radar.reporting import (
 def make_posting(
     title: str = "Senior Infrastructure Engineer",
     company_name: str = "Example AI",
+    source_type: str = "greenhouse",
 ) -> JobPosting:
     return JobPosting(
         company_key="example_ai",
         company_name=company_name,
-        source_type="greenhouse",
+        source_type=source_type,
         source_job_id="123",
         source_url="https://boards.greenhouse.io/exampleai/jobs/123",
         title=title,
@@ -661,3 +662,36 @@ def test_render_markdown_report_includes_generated_at() -> None:
     markdown = render_markdown_report(report)
 
     assert "- Generated at: 2026-06-24T12:34:56+00:00" in markdown
+
+
+def test_render_markdown_report_includes_source_type_summary() -> None:
+    greenhouse_posting = make_posting(
+        title="Infrastructure Engineer",
+        company_name="Anthropic",
+        source_type="greenhouse",
+    )
+    lever_posting = make_posting(
+        title="Systems Engineer",
+        company_name="Distro",
+        source_type="lever",
+    )
+
+    report = ScanReport(
+        companies_enabled=2,
+        jobs_collected=3,
+        jobs_new=3,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[
+            greenhouse_posting,
+            greenhouse_posting,
+            lever_posting,
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Source types:" in markdown
+    assert "  - greenhouse: 2" in markdown
+    assert "  - lever: 1" in markdown
