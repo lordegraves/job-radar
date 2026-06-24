@@ -227,6 +227,68 @@ def classify_location(
     return "unknown"
 
 
+def evaluate_top_match_eligibility(
+    posting: JobPosting,
+    score: int,
+    score_reasons: list[str],
+    location_status: str,
+    scoring_config: dict[str, Any],
+) -> tuple[bool, list[str]]:
+    if location_status != "allowed":
+        return False, [f"location_not_allowed:{location_status}"]
+
+    if score <= 0:
+        return False, ["score_not_positive"]
+
+    if _has_negative_title_match(score_reasons):
+        return False, ["negative_title_match"]
+
+    excluded_keyword = _find_excluded_title_keyword(posting, scoring_config)
+    if excluded_keyword:
+        return False, [f"excluded_title_keyword:{excluded_keyword}"]
+
+    if not _has_strong_technical_signal(score_reasons, scoring_config):
+        return False, ["missing_strong_signal"]
+
+    return True, ["eligible"]
+
+
+def _has_negative_title_match(score_reasons: list[str]) -> bool:
+    for reason in score_reasons:
+        if reason.startswith("-") and "title:" in reason:
+            return True
+
+    return False
+
+
+def _find_excluded_title_keyword(
+    posting: JobPosting,
+    scoring_config: dict[str, Any],
+) -> str | None:
+    title = clean_text(posting.title).lower()
+    excluded_title_keywords = scoring_config["top_matches"]["excluded_title_keywords"]
+
+    for keyword in excluded_title_keywords:
+        if keyword in title:
+            return keyword
+
+    return None
+
+
+def _has_strong_technical_signal(
+    score_reasons: list[str],
+    scoring_config: dict[str, Any],
+) -> bool:
+    strong_signals = scoring_config["top_matches"]["strong_signals"]
+
+    for reason in score_reasons:
+        for signal in strong_signals:
+            if signal in reason:
+                return True
+
+    return False
+
+
 def _build_body_text(posting: JobPosting) -> str:
     parts = [
         posting.remote_status,

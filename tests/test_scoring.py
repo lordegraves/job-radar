@@ -6,6 +6,7 @@ from job_radar.models import JobPosting
 from job_radar.scoring import (
     ScoringConfigError,
     classify_location,
+    evaluate_top_match_eligibility,
     load_scoring_config,
     score_posting,
 )
@@ -367,3 +368,126 @@ def test_classify_location_returns_unknown_for_unmatched_location() -> None:
     config = make_scoring_config()
 
     assert classify_location(posting, config) == "unknown"
+
+
+def test_evaluate_top_match_eligibility_returns_true_for_allowed_strong_match() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="Remote",
+    )
+
+    config = make_scoring_config()
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=140,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        scoring_config=config,
+    )
+
+    assert eligible is True
+    assert reasons == ["eligible"]
+
+
+def test_evaluate_top_match_eligibility_rejects_non_allowed_location() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="Denver, CO",
+    )
+
+    config = make_scoring_config()
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=15,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "-25 location_conditional:denver",
+        ],
+        location_status="conditional",
+        scoring_config=config,
+    )
+
+    assert eligible is False
+    assert reasons == ["location_not_allowed:conditional"]
+
+
+def test_evaluate_top_match_eligibility_rejects_negative_title_match() -> None:
+    posting = make_posting(
+        title="Infrastructure Customer Success Engineer",
+        description="Linux troubleshooting for customers.",
+        location="Remote",
+    )
+
+    config = make_scoring_config()
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=110,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "-30 title:customer success",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        scoring_config=config,
+    )
+
+    assert eligible is False
+    assert reasons == ["negative_title_match"]
+
+
+def test_evaluate_top_match_eligibility_rejects_missing_strong_signal() -> None:
+    posting = make_posting(
+        title="General Systems Analyst",
+        description="General operations role.",
+        location="Remote",
+    )
+
+    config = make_scoring_config()
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=100,
+        score_reasons=[
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        scoring_config=config,
+    )
+
+    assert eligible is False
+    assert reasons == ["missing_strong_signal"]
+
+
+def test_evaluate_top_match_eligibility_uses_configured_excluded_keywords() -> None:
+    posting = make_posting(
+        title="Infrastructure Recruiter",
+        description="Recruiting for infrastructure teams.",
+        location="Remote",
+    )
+
+    config = make_scoring_config()
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=100,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        scoring_config=config,
+    )
+
+    assert eligible is False
+    assert reasons == ["excluded_title_keyword:recruiter"]
