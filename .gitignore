@@ -13,3 +13,4 @@ reports/*.md
 !logs/.gitkeep
 !reports/.gitkeep
 reports/*.txt
+config/local-gmail-settings.yaml
