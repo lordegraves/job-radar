@@ -1,6 +1,35 @@
 from job_radar.email_sender import send_email_report
 
 
+class FakeSMTP:
+    instances = []
+
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.started_tls = False
+        self.login_username = None
+        self.login_password = None
+        self.sent_message = None
+        FakeSMTP.instances.append(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return None
+
+    def starttls(self):
+        self.started_tls = True
+
+    def login(self, username, password):
+        self.login_username = username
+        self.login_password = password
+
+    def send_message(self, message):
+        self.sent_message = message
+
+
 def test_send_email_report_refuses_when_disabled() -> None:
     result = send_email_report(
         email_settings={
@@ -9,6 +38,9 @@ def test_send_email_report_refuses_when_disabled() -> None:
             "recipients": [],
             "smtp_host": "",
             "smtp_port": 587,
+            "smtp_username": "",
+            "smtp_password_env": "",
+            "smtp_tls_mode": "starttls",
         },
         subject="Job Radar Report",
         body="Report body",
@@ -18,7 +50,9 @@ def test_send_email_report_refuses_when_disabled() -> None:
     assert result.message == "Email sending disabled by settings"
 
 
-def test_send_email_report_does_not_send_when_enabled_but_not_implemented() -> None:
+def test_send_email_report_refuses_when_password_env_missing(monkeypatch) -> None:
+    monkeypatch.delenv("JOB_RADAR_SMTP_PASSWORD", raising=False)
+
     result = send_email_report(
         email_settings={
             "enabled": True,
@@ -26,6 +60,9 @@ def test_send_email_report_does_not_send_when_enabled_but_not_implemented() -> N
             "recipients": ["clayton@example.com"],
             "smtp_host": "smtp.example.com",
             "smtp_port": 587,
+            "smtp_username": "clayton@example.com",
+            "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
+            "smtp_tls_mode": "starttls",
         },
         subject="Job Radar Report",
         body="Report body",
@@ -34,5 +71,101 @@ def test_send_email_report_does_not_send_when_enabled_but_not_implemented() -> N
     assert result.sent is False
     assert (
         result.message
-        == "Email sending is enabled, but SMTP delivery is not implemented yet"
+        == "Email password environment variable is not set: JOB_RADAR_SMTP_PASSWORD"
     )
+
+
+def test_send_email_report_sends_with_starttls(monkeypatch) -> None:
+    FakeSMTP.instances = []
+    monkeypatch.setenv("JOB_RADAR_SMTP_PASSWORD", "not-a-real-password")
+    monkeypatch.setattr("smtplib.SMTP", FakeSMTP)
+
+    result = send_email_report(
+        email_settings={
+            "enabled": True,
+            "sender": "clayton@example.com",
+            "recipients": ["clayton@example.com"],
+            "smtp_host": "smtp.example.com",
+            "smtp_port": 587,
+            "smtp_username": "clayton@example.com",
+            "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
+            "smtp_tls_mode": "starttls",
+        },
+        subject="Job Radar Report",
+        body="Report body",
+    )
+
+    smtp = FakeSMTP.instances[0]
+
+    assert result.sent is True
+    assert result.message == "Email sent"
+    assert smtp.host == "smtp.example.com"
+    assert smtp.port == 587
+    assert smtp.started_tls is True
+    assert smtp.login_username == "clayton@example.com"
+    assert smtp.login_password == "not-a-real-password"
+    assert smtp.sent_message["Subject"] == "Job Radar Report"
+    assert smtp.sent_message["From"] == "clayton@example.com"
+    assert smtp.sent_message["To"] == "clayton@example.com"
+    assert "Report body" in smtp.sent_message.get_content()
+
+
+def test_send_email_report_sends_with_ssl(monkeypatch) -> None:
+    FakeSMTP.instances = []
+    monkeypatch.setenv("JOB_RADAR_SMTP_PASSWORD", "not-a-real-password")
+    monkeypatch.setattr("smtplib.SMTP_SSL", FakeSMTP)
+
+    result = send_email_report(
+        email_settings={
+            "enabled": True,
+            "sender": "clayton@example.com",
+            "recipients": ["clayton@example.com"],
+            "smtp_host": "smtp.example.com",
+            "smtp_port": 465,
+            "smtp_username": "clayton@example.com",
+            "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
+            "smtp_tls_mode": "ssl",
+        },
+        subject="Job Radar Report",
+        body="Report body",
+    )
+
+    smtp = FakeSMTP.instances[0]
+
+    assert result.sent is True
+    assert result.message == "Email sent"
+    assert smtp.host == "smtp.example.com"
+    assert smtp.port == 465
+    assert smtp.started_tls is False
+    assert smtp.login_username == "clayton@example.com"
+    assert smtp.login_password == "not-a-real-password"
+    assert smtp.sent_message["Subject"] == "Job Radar Report"
+
+
+def test_send_email_report_sends_without_tls_for_local_relay(monkeypatch) -> None:
+    FakeSMTP.instances = []
+    monkeypatch.setenv("JOB_RADAR_SMTP_PASSWORD", "not-a-real-password")
+    monkeypatch.setattr("smtplib.SMTP", FakeSMTP)
+
+    result = send_email_report(
+        email_settings={
+            "enabled": True,
+            "sender": "clayton@example.com",
+            "recipients": ["clayton@example.com"],
+            "smtp_host": "localhost",
+            "smtp_port": 1025,
+            "smtp_username": "clayton@example.com",
+            "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
+            "smtp_tls_mode": "none",
+        },
+        subject="Job Radar Report",
+        body="Report body",
+    )
+
+    smtp = FakeSMTP.instances[0]
+
+    assert result.sent is True
+    assert result.message == "Email sent"
+    assert smtp.host == "localhost"
+    assert smtp.port == 1025
+    assert smtp.started_tls is False
