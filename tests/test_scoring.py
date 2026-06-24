@@ -7,6 +7,7 @@ from job_radar.scoring import (
     ScoringConfigError,
     classify_location,
     evaluate_top_match_eligibility,
+    evaluate_review_needed_eligibility,
     load_scoring_config,
     score_posting,
 )
@@ -611,3 +612,54 @@ review_needed:
         assert "review_needed.min_score must be an integer" in str(error)
     else:
         raise AssertionError("Expected ScoringConfigError")
+    
+
+def test_evaluate_review_needed_eligibility_accepts_configured_signal() -> None:
+    config = load_scoring_config(Path("config/scoring.yaml"))
+
+    result = evaluate_review_needed_eligibility(
+        score=120,
+        score_reasons=[
+            "+10 body:infrastructure",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=False,
+        scoring_config=config,
+    )
+
+    assert result is True
+
+
+def test_evaluate_review_needed_eligibility_rejects_top_match() -> None:
+    config = load_scoring_config(Path("config/scoring.yaml"))
+
+    result = evaluate_review_needed_eligibility(
+        score=120,
+        score_reasons=[
+            "+10 body:infrastructure",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        scoring_config=config,
+    )
+
+    assert result is False
+
+
+def test_evaluate_review_needed_eligibility_rejects_weak_signal() -> None:
+    config = load_scoring_config(Path("config/scoring.yaml"))
+
+    result = evaluate_review_needed_eligibility(
+        score=106,
+        score_reasons=[
+            "+6 body:systems",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=False,
+        scoring_config=config,
+    )
+
+    assert result is False

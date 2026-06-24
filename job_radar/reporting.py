@@ -5,30 +5,6 @@ from job_radar.models import JobPosting
 
 
 TOP_MATCHES_LIMIT = 10
-REVIEW_NEEDED_MIN_SCORE = 100
-REVIEW_NEEDED_EXCLUDED_LOCATION_STATUSES = {
-    "skipped",
-    "unknown",
-}
-REVIEW_NEEDED_SIGNAL_KEYWORDS = [
-    "title:infrastructure",
-    "title:kubernetes",
-    "title:linux",
-    "title:cluster",
-    "title:datacenter",
-    "title:data center",
-    "title:reliability",
-    "title:sre",
-    "body:hpc",
-    "body:slurm",
-    "body:gpu",
-    "body:kubernetes",
-    "body:linux",
-    "body:infrastructure",
-    "body:datacenter",
-    "body:data center",
-    "body:hardware",
-]
 
 
 @dataclass(frozen=True)
@@ -39,6 +15,7 @@ class ScoredPosting:
     location_status: str = "unknown"
     top_match_eligible: bool = False
     top_match_reasons: list[str] | None = None
+    review_needed_eligible: bool = False
 
 
 @dataclass(frozen=True)
@@ -243,30 +220,8 @@ def _get_review_needed(
     return [
         scored_posting
         for scored_posting in scored_postings
-        if _is_review_needed(scored_posting)
+        if scored_posting.review_needed_eligible
     ]
-
-
-def _is_review_needed(scored_posting: ScoredPosting) -> bool:
-    if scored_posting.top_match_eligible:
-        return False
-
-    if scored_posting.score < REVIEW_NEEDED_MIN_SCORE:
-        return False
-
-    if scored_posting.location_status in REVIEW_NEEDED_EXCLUDED_LOCATION_STATUSES:
-        return False
-
-    return _has_review_needed_signal(scored_posting.score_reasons)
-
-
-def _has_review_needed_signal(score_reasons: list[str]) -> bool:
-    for reason in score_reasons:
-        for signal_keyword in REVIEW_NEEDED_SIGNAL_KEYWORDS:
-            if signal_keyword in reason:
-                return True
-
-    return False
 
 
 def _append_all_jobs_section(

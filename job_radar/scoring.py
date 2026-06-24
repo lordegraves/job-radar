@@ -358,6 +358,30 @@ def evaluate_top_match_eligibility(
     return True, ["eligible"]
 
 
+def evaluate_review_needed_eligibility(
+    score: int,
+    score_reasons: list[str],
+    location_status: str,
+    top_match_eligible: bool,
+    scoring_config: dict[str, Any],
+) -> bool:
+    review_needed_config = scoring_config["review_needed"]
+
+    if top_match_eligible:
+        return False
+
+    if score < review_needed_config["min_score"]:
+        return False
+
+    if location_status in review_needed_config["excluded_location_statuses"]:
+        return False
+
+    return _has_configured_signal(
+        score_reasons,
+        review_needed_config["strong_signals"],
+    )
+
+
 def _has_negative_title_match(score_reasons: list[str]) -> bool:
     for reason in score_reasons:
         if reason.startswith("-") and "title:" in reason:
@@ -384,10 +408,18 @@ def _has_strong_technical_signal(
     score_reasons: list[str],
     scoring_config: dict[str, Any],
 ) -> bool:
-    strong_signals = scoring_config["top_matches"]["strong_signals"]
+    return _has_configured_signal(
+        score_reasons,
+        scoring_config["top_matches"]["strong_signals"],
+    )
 
+
+def _has_configured_signal(
+    score_reasons: list[str],
+    configured_signals: list[str],
+) -> bool:
     for reason in score_reasons:
-        for signal in strong_signals:
+        for signal in configured_signals:
             if signal in reason:
                 return True
 

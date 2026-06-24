@@ -571,6 +571,7 @@ def test_render_markdown_report_includes_review_needed_section() -> None:
                 location_status="allowed",
                 top_match_eligible=True,
                 top_match_reasons=["eligible"],
+                review_needed_eligible=False,
             ),
             ScoredPosting(
                 posting=mixed_posting,
@@ -581,6 +582,7 @@ def test_render_markdown_report_includes_review_needed_section() -> None:
                     "+100 location_allowed:remote",
                 ],
                 location_status="mixed",
+                review_needed_eligible=True,
             ),
             ScoredPosting(
                 posting=conditional_posting,
@@ -590,6 +592,7 @@ def test_render_markdown_report_includes_review_needed_section() -> None:
                     "+100 location_allowed:remote",
                 ],
                 location_status="conditional",
+                review_needed_eligible=True,
             ),
             ScoredPosting(
                 posting=allowed_high_score_posting,
@@ -599,6 +602,7 @@ def test_render_markdown_report_includes_review_needed_section() -> None:
                     "+100 location_allowed:remote",
                 ],
                 location_status="allowed",
+                review_needed_eligible=True,
             ),
             ScoredPosting(
                 posting=weak_allowed_posting,
@@ -608,6 +612,7 @@ def test_render_markdown_report_includes_review_needed_section() -> None:
                     "+100 location_allowed:remote",
                 ],
                 location_status="allowed",
+                review_needed_eligible=False,
             ),
             ScoredPosting(
                 posting=skipped_posting,
@@ -616,6 +621,7 @@ def test_render_markdown_report_includes_review_needed_section() -> None:
                     "-20 title:account executive",
                 ],
                 location_status="skipped",
+                review_needed_eligible=False,
             ),
         ],
     )

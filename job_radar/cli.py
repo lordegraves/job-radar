@@ -7,6 +7,7 @@ from job_radar.reporting import ScanError, ScanReport, ScoredPosting, write_mark
 from job_radar.scoring import (
     classify_location,
     evaluate_top_match_eligibility,
+    evaluate_review_needed_eligibility,
     load_scoring_config,
     score_posting,
 )
@@ -130,6 +131,14 @@ def handle_scan(
             scoring_config=scoring_config,
         )
 
+        review_needed_eligible = evaluate_review_needed_eligibility(
+            score=score,
+            score_reasons=reasons,
+            location_status=location_status,
+            top_match_eligible=top_match_eligible,
+            scoring_config=scoring_config,
+        )
+
         scored_postings.append(
             ScoredPosting(
                 posting=posting,
@@ -137,6 +146,7 @@ def handle_scan(
                 score_reasons=reasons,
                 location_status=location_status,
                 top_match_eligible=top_match_eligible,
+                review_needed_eligible=review_needed_eligible,
                 top_match_reasons=top_match_reasons,
             )
         )
