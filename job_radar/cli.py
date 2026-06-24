@@ -4,17 +4,21 @@ from datetime import UTC, datetime
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.config import ConfigError, load_companies, load_settings
+from job_radar.email_sender import send_email_report
+from job_radar.email_summary import (
+    build_email_body,
+    build_email_subject,
+    write_email_preview,
+)
 from job_radar.reporting import ScanError, ScanReport, ScoredPosting, write_markdown_report
 from job_radar.scoring import (
     classify_location,
-    evaluate_top_match_eligibility,
     evaluate_review_needed_eligibility,
+    evaluate_top_match_eligibility,
     load_scoring_config,
     score_posting,
 )
 from job_radar.storage import initialize_database, upsert_job_posting
-
-from job_radar.email_summary import write_email_preview
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -50,6 +54,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional path to write a plain-text email preview. No email is sent.",
     )
     scan_parser.add_argument(
+        "--send-email",
+        action="store_true",
+        help="Call the email send path after scan. Current implementation does not send SMTP email.",
+    )
+    scan_parser.add_argument(
         "--scoring",
         default="config/scoring.yaml",
         help="Path to scoring YAML file",
@@ -69,6 +78,7 @@ def handle_scan(
     report_path: str,
     scoring_path: str = "config/scoring.yaml",
     email_preview_path: str | None = None,
+    send_email: bool = False,
 ) -> None:
     companies = load_companies(config_path)
     settings = load_settings(settings_path)
@@ -175,6 +185,7 @@ def handle_scan(
     )
 
     written_report_path = write_markdown_report(report_path, report)
+
     written_email_preview_path = None
 
     if email_preview_path is not None:
@@ -182,6 +193,15 @@ def handle_scan(
             email_preview_path,
             report,
             written_report_path,
+        )
+
+    email_send_result = None
+
+    if send_email:
+        email_send_result = send_email_report(
+            email_settings=settings["email"],
+            subject=build_email_subject(report),
+            body=build_email_body(report, written_report_path),
         )
 
     print()
@@ -197,6 +217,9 @@ def handle_scan(
     if written_email_preview_path is not None:
         print(f"Email preview written: {written_email_preview_path}")
 
+    if email_send_result is not None:
+        print(f"Email send result: {email_send_result.message}")
+
 
 def main() -> None:
     parser = build_parser()
@@ -210,6 +233,7 @@ def main() -> None:
                 report_path=args.report,
                 scoring_path=args.scoring,
                 email_preview_path=args.email_preview,
+                send_email=args.send_email
             )
             return
 
