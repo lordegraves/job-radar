@@ -20,6 +20,8 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Generates a Markdown report
 - Summarizes scanned companies
 - Summarizes location status counts
+- Adds a generated timestamp to each report
+- Summarizes source type counts
 
 ## Current live validation sources
 
@@ -70,7 +72,7 @@ python -m pytest
 Expected current result:
 
 ```text
-77 passed
+79 passed
 ```
 
 ## Report structure
