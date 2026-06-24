@@ -49,8 +49,12 @@ def render_markdown_report(report: ScanReport) -> str:
         f"- Seen jobs: {report.jobs_seen}",
         f"- Changed jobs: {report.jobs_changed}",
         f"- Collector errors: {len(report.collector_errors)}",
-        "",
     ]
+
+    if report.scored_postings is not None:
+        _append_location_status_summary(lines, report.scored_postings)
+
+    lines.append("")
 
     if report.collector_errors:
         _append_collector_errors(lines, report.collector_errors)
@@ -68,6 +72,39 @@ def write_markdown_report(report_path: str | Path, report: ScanReport) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render_markdown_report(report), encoding="utf-8")
     return path
+
+
+def _append_location_status_summary(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    if not scored_postings:
+        return
+
+    status_counts: dict[str, int] = {}
+
+    for scored_posting in scored_postings:
+        location_status = scored_posting.location_status or "unknown"
+        status_counts[location_status] = status_counts.get(location_status, 0) + 1
+
+    preferred_order = [
+        "allowed",
+        "allowed_with_travel",
+        "mixed",
+        "conditional",
+        "skipped",
+        "unknown",
+    ]
+
+    lines.append("- Location statuses:")
+
+    for location_status in preferred_order:
+        if location_status in status_counts:
+            lines.append(f"  - {location_status}: {status_counts[location_status]}")
+
+    for location_status in sorted(status_counts):
+        if location_status not in preferred_order:
+            lines.append(f"  - {location_status}: {status_counts[location_status]}")
 
 
 def _append_collector_errors(

@@ -426,3 +426,55 @@ def test_render_markdown_report_includes_human_readable_match_summary() -> None:
         in markdown
     )
     assert "- Score reasons:" in markdown
+
+
+def test_render_markdown_report_includes_location_status_summary() -> None:
+    allowed_posting = make_posting(title="Senior Infrastructure Engineer")
+    mixed_posting = make_posting(title="Senior Systems Engineer")
+    unknown_posting = make_posting(title="Research Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=3,
+        jobs_new=3,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[allowed_posting, mixed_posting, unknown_posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=allowed_posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+            ),
+            ScoredPosting(
+                posting=mixed_posting,
+                score=100,
+                score_reasons=[
+                    "+100 location_allowed:remote",
+                ],
+                location_status="mixed",
+            ),
+            ScoredPosting(
+                posting=unknown_posting,
+                score=10,
+                score_reasons=[
+                    "+10 body:infrastructure",
+                ],
+                location_status="unknown",
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Location statuses:" in markdown
+    assert "  - allowed: 1" in markdown
+    assert "  - mixed: 1" in markdown
+    assert "  - unknown: 1" in markdown
