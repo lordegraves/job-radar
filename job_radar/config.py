@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any
 
@@ -114,6 +115,7 @@ def _validate_email_settings(raw_email_settings: Any) -> dict[str, Any]:
     recipients = raw_email_settings.get("recipients", [])
     smtp_host = raw_email_settings.get("smtp_host", "")
     smtp_port = raw_email_settings.get("smtp_port", 587)
+    smtp_password_env = raw_email_settings.get("smtp_password_env", "")
 
     if not isinstance(enabled, bool):
         raise ConfigError("settings.yaml email.enabled must be true or false")
@@ -135,6 +137,17 @@ def _validate_email_settings(raw_email_settings: Any) -> dict[str, Any]:
 
     if not isinstance(smtp_port, int) or isinstance(smtp_port, bool):
         raise ConfigError("settings.yaml email.smtp_port must be an integer")
+    
+    if not isinstance(smtp_password_env, str):
+        raise ConfigError("settings.yaml email.smtp_password_env must be a string")
+
+    if enabled:
+        _validate_enabled_email_settings(
+            sender=sender,
+            recipients=recipients,
+            smtp_host=smtp_host,
+            smtp_password_env=smtp_password_env,
+        )
 
     return {
         "enabled": enabled,
@@ -142,4 +155,33 @@ def _validate_email_settings(raw_email_settings: Any) -> dict[str, Any]:
         "recipients": recipients,
         "smtp_host": smtp_host,
         "smtp_port": smtp_port,
+        "smtp_password_env": smtp_password_env,
     }
+
+
+def _validate_enabled_email_settings(
+    sender: str,
+    recipients: list[str],
+    smtp_host: str,
+    smtp_password_env: str,
+) -> None:
+    if not sender:
+        raise ConfigError("settings.yaml email.sender is required when email is enabled")
+
+    if not recipients:
+        raise ConfigError(
+            "settings.yaml email.recipients is required when email is enabled"
+        )
+
+    if not smtp_host:
+        raise ConfigError("settings.yaml email.smtp_host is required when email is enabled")
+
+    if not smtp_password_env:
+        raise ConfigError(
+            "settings.yaml email.smtp_password_env is required when email is enabled"
+        )
+
+    if smtp_password_env not in os.environ:
+        raise ConfigError(
+            f"Email password environment variable is not set: {smtp_password_env}"
+        )

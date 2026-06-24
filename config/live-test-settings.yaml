@@ -16,3 +16,4 @@ email:
   recipients: []
   smtp_host: ""
   smtp_port: 587
+  smtp_password_env: ""

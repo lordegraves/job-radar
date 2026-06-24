@@ -92,6 +92,7 @@ retention:
         "recipients": [],
         "smtp_host": "",
         "smtp_port": 587,
+        "smtp_password_env": "",
     }
 
 
@@ -130,6 +131,7 @@ email:
         "recipients": ["clayton@example.com"],
         "smtp_host": "smtp.example.com",
         "smtp_port": 587,
+        "smtp_password_env": "",
     }
 
 
@@ -157,4 +159,120 @@ email:
     )
 
     with pytest.raises(ConfigError, match="email.recipients must be a list"):
+        load_settings(settings_file)
+
+
+def test_load_settings_accepts_enabled_email_when_password_env_exists(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("JOB_RADAR_SMTP_PASSWORD", "not-a-real-password")
+
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+
+email:
+  enabled: true
+  sender: clayton@example.com
+  recipients:
+    - clayton@example.com
+  smtp_host: smtp.example.com
+  smtp_port: 587
+  smtp_password_env: JOB_RADAR_SMTP_PASSWORD
+""",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(settings_file)
+
+    assert settings["email"]["enabled"] is True
+    assert settings["email"]["smtp_password_env"] == "JOB_RADAR_SMTP_PASSWORD"
+
+
+def test_load_settings_rejects_enabled_email_without_password_env(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+
+email:
+  enabled: true
+  sender: clayton@example.com
+  recipients:
+    - clayton@example.com
+  smtp_host: smtp.example.com
+  smtp_port: 587
+  smtp_password_env: JOB_RADAR_SMTP_PASSWORD
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ConfigError,
+        match="Email password environment variable is not set",
+    ):
+        load_settings(settings_file)
+
+
+def test_load_settings_rejects_enabled_email_without_sender(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("JOB_RADAR_SMTP_PASSWORD", "not-a-real-password")
+
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+
+email:
+  enabled: true
+  sender: ""
+  recipients:
+    - clayton@example.com
+  smtp_host: smtp.example.com
+  smtp_port: 587
+  smtp_password_env: JOB_RADAR_SMTP_PASSWORD
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ConfigError,
+        match="email.sender is required when email is enabled",
+    ):
         load_settings(settings_file)
