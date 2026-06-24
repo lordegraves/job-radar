@@ -553,3 +553,61 @@ def test_evaluate_top_match_eligibility_allows_limited_travel() -> None:
 
     assert eligible is True
     assert reasons == ["eligible"]
+
+
+def test_load_scoring_config_reads_review_needed(tmp_path: Path) -> None:
+    config_path = tmp_path / "scoring.yaml"
+    config_path.write_text(
+        """
+review_needed:
+  min_score: 100
+  excluded_location_statuses:
+    - skipped
+    - unknown
+  strong_signals:
+    - title:infrastructure
+    - body:gpu
+""",
+        encoding="utf-8",
+    )
+
+    config = load_scoring_config(config_path)
+
+    assert config["review_needed"] == {
+        "min_score": 100,
+        "excluded_location_statuses": [
+            "skipped",
+            "unknown",
+        ],
+        "strong_signals": [
+            "title:infrastructure",
+            "body:gpu",
+        ],
+    }
+
+
+def test_load_scoring_config_defaults_review_needed() -> None:
+    config = load_scoring_config(Path("config/scoring.yaml"))
+
+    assert config["review_needed"]["min_score"] == 100
+    assert "skipped" in config["review_needed"]["excluded_location_statuses"]
+    assert "unknown" in config["review_needed"]["excluded_location_statuses"]
+    assert "title:infrastructure" in config["review_needed"]["strong_signals"]
+
+
+def test_load_scoring_config_rejects_invalid_review_needed(tmp_path: Path) -> None:
+    config_path = tmp_path / "scoring.yaml"
+    config_path.write_text(
+        """
+review_needed:
+  min_score: high
+""",
+        encoding="utf-8",
+    )
+
+    try:
+        load_scoring_config(config_path)
+    except ScoringConfigError as error:
+        assert "review_needed.min_score must be an integer" in str(error)
+    else:
+        raise AssertionError("Expected ScoringConfigError")

@@ -31,6 +31,7 @@ def load_scoring_config(path: str | Path) -> dict[str, Any]:
     negative_keywords = data.get("negative_keywords", {})
     location_preferences = data.get("location_preferences", {})
     top_matches = data.get("top_matches", {})
+    review_needed = data.get("review_needed", {})
 
     if not isinstance(positive_keywords, dict):
         raise ScoringConfigError("positive_keywords must be a mapping")
@@ -43,6 +44,7 @@ def load_scoring_config(path: str | Path) -> dict[str, Any]:
         "negative_keywords": _validate_keyword_scores(negative_keywords),
         "location_preferences": _validate_location_preferences(location_preferences),
         "top_matches": _validate_top_matches(top_matches),
+        "review_needed": _validate_review_needed(review_needed),
     }
 
 
@@ -136,6 +138,36 @@ def _validate_top_matches(raw_top_matches: Any) -> dict[str, list[str]]:
         "strong_signals": _validate_keyword_list(
             strong_signals,
             "top_matches.strong_signals",
+        ),
+    }
+
+
+def _validate_review_needed(raw_review_needed: Any) -> dict[str, Any]:
+    if raw_review_needed is None:
+        raw_review_needed = {}
+
+    if not isinstance(raw_review_needed, dict):
+        raise ScoringConfigError("review_needed must be a mapping")
+
+    min_score = raw_review_needed.get("min_score", 100)
+    excluded_location_statuses = raw_review_needed.get(
+        "excluded_location_statuses",
+        [],
+    )
+    strong_signals = raw_review_needed.get("strong_signals", [])
+
+    if not isinstance(min_score, int) or isinstance(min_score, bool):
+        raise ScoringConfigError("review_needed.min_score must be an integer")
+
+    return {
+        "min_score": min_score,
+        "excluded_location_statuses": _validate_keyword_list(
+            excluded_location_statuses,
+            "review_needed.excluded_location_statuses",
+        ),
+        "strong_signals": _validate_keyword_list(
+            strong_signals,
+            "review_needed.strong_signals",
         ),
     }
 

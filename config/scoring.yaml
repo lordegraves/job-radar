@@ -108,3 +108,29 @@ top_matches:
     - body:datacenter
     - body:data center
     - body:hardware
+
+review_needed:
+  min_score: 100
+
+  excluded_location_statuses:
+    - skipped
+    - unknown
+
+  strong_signals:
+    - title:infrastructure
+    - title:kubernetes
+    - title:linux
+    - title:cluster
+    - title:datacenter
+    - title:data center
+    - title:reliability
+    - title:sre
+    - body:hpc
+    - body:slurm
+    - body:gpu
+    - body:kubernetes
+    - body:linux
+    - body:infrastructure
+    - body:datacenter
+    - body:data center
+    - body:hardware
