@@ -22,6 +22,8 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Summarizes location status counts
 - Adds a generated timestamp to each report
 - Summarizes source type counts
+- Builds a plain-text email preview during scan
+- Keeps generated email preview files out of git
 
 ## Current live validation sources
 
@@ -72,7 +74,7 @@ python -m pytest
 Expected current result:
 
 ```text
-79 passed
+83 passed
 ```
 
 ## Report structure
@@ -104,6 +106,16 @@ Expected good output:
 ```text
 Companies enabled: 3
 Collector errors: 0
+```
+## Run live validation with email preview
+
+```powershell
+Remove-Item data\live_test.sqlite3 -ErrorAction SilentlyContinue
+Remove-Item reports\live-email-preview.txt -ErrorAction SilentlyContinue
+
+python -m job_radar scan --config config/live-test-companies.yaml --settings config/live-test-settings.yaml --report reports/live-test.md --email-preview reports/live-email-preview.txt
+
+Get-Content reports\live-email-preview.txt -Raw
 ```
 
 ## Project principles
