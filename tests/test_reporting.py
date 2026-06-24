@@ -644,3 +644,20 @@ def test_render_markdown_report_includes_review_needed_section() -> None:
     assert "### [Senior Infrastructure Engineer]" not in review_needed_section
     assert "### [Administrative Assistant]" not in review_needed_section
     assert "### [Account Executive]" not in review_needed_section
+
+
+def test_render_markdown_report_includes_generated_at() -> None:
+    report = ScanReport(
+        generated_at="2026-06-24T12:34:56+00:00",
+        companies_enabled=1,
+        jobs_collected=0,
+        jobs_new=0,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Generated at: 2026-06-24T12:34:56+00:00" in markdown

@@ -1,4 +1,5 @@
 import argparse
+from datetime import UTC, datetime
 
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
@@ -154,6 +155,7 @@ def handle_scan(
     scored_postings.sort(key=lambda item: item.score, reverse=True)
 
     report = ScanReport(
+        generated_at=datetime.now(UTC).isoformat(timespec="seconds"),
         companies_enabled=len(companies),
         jobs_collected=total_jobs,
         jobs_new=jobs_new,

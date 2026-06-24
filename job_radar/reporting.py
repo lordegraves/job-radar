@@ -36,6 +36,7 @@ class ScanReport:
     collector_errors: list[ScanError]
     postings: list[JobPosting]
     scored_postings: list[ScoredPosting] | None = None
+    generated_at: str | None = None
 
 
 def render_markdown_report(report: ScanReport) -> str:
@@ -44,13 +45,21 @@ def render_markdown_report(report: ScanReport) -> str:
         "",
         "## Summary",
         "",
-        f"- Companies enabled: {report.companies_enabled}",
-        f"- Jobs collected: {report.jobs_collected}",
-        f"- New jobs: {report.jobs_new}",
-        f"- Seen jobs: {report.jobs_seen}",
-        f"- Changed jobs: {report.jobs_changed}",
-        f"- Collector errors: {len(report.collector_errors)}",
     ]
+
+    if report.generated_at is not None:
+        lines.append(f"- Generated at: {report.generated_at}")
+
+    lines.extend(
+        [
+            f"- Companies enabled: {report.companies_enabled}",
+            f"- Jobs collected: {report.jobs_collected}",
+            f"- New jobs: {report.jobs_new}",
+            f"- Seen jobs: {report.jobs_seen}",
+            f"- Changed jobs: {report.jobs_changed}",
+            f"- Collector errors: {len(report.collector_errors)}",
+        ]
+    )
 
     _append_companies_scanned_summary(lines, report.postings)
 
