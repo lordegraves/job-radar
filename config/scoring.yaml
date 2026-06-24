@@ -69,3 +69,42 @@ location_preferences:
     germany: -100
     france: -100
     singapore: -100
+
+    top_matches:
+  excluded_title_keywords:
+    - account executive
+    - business
+    - communications
+    - customer success
+    - finance
+    - fx
+    - gtm
+    - investments
+    - legal
+    - liquidity
+    - marketing
+    - people
+    - product manager
+    - recruiter
+    - recruiting
+    - sales
+    - sourcing
+
+  strong_signals:
+    - title:infrastructure
+    - title:kubernetes
+    - title:linux
+    - title:cluster
+    - title:datacenter
+    - title:data center
+    - title:reliability
+    - title:sre
+    - body:hpc
+    - body:slurm
+    - body:gpu
+    - body:kubernetes
+    - body:linux
+    - body:infrastructure
+    - body:datacenter
+    - body:data center
+    - body:hardware
