@@ -302,7 +302,12 @@ def evaluate_top_match_eligibility(
     location_status: str,
     scoring_config: dict[str, Any],
 ) -> tuple[bool, list[str]]:
-    if location_status != "allowed":
+    allowed_top_match_location_statuses = [
+        "allowed",
+        "allowed_with_travel",
+    ]
+
+    if location_status not in allowed_top_match_location_statuses:
         return False, [f"location_not_allowed:{location_status}"]
 
     if score <= 0:

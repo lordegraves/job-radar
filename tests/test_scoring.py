@@ -528,3 +528,28 @@ def test_evaluate_top_match_eligibility_uses_configured_excluded_keywords() -> N
 
     assert eligible is False
     assert reasons == ["excluded_title_keyword:recruiter"]
+
+
+def test_evaluate_top_match_eligibility_allows_limited_travel() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="Remote-Friendly, United States - Travel required 10-20%",
+    )
+
+    config = make_scoring_config()
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=140,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed_with_travel",
+        scoring_config=config,
+    )
+
+    assert eligible is True
+    assert reasons == ["eligible"]
