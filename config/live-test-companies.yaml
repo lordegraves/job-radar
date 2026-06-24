@@ -5,6 +5,7 @@
 #   python -m job_radar scan --config config/live-test-companies.yaml --settings config/live-test-settings.yaml --report reports/live-test.md
 
 companies:
+  # Greenhouse sources
   - company_key: anthropic
     name: Anthropic
     source_type: greenhouse
@@ -15,4 +16,11 @@ companies:
     name: Scale AI
     source_type: greenhouse
     source_slug: scaleai
+    enabled: true
+
+  # Lever sources
+  - company_key: distro
+    name: Distro
+    source_type: lever
+    source_slug: distro
     enabled: true
