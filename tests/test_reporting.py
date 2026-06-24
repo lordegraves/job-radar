@@ -192,6 +192,8 @@ def test_render_markdown_report_includes_top_matches_and_all_jobs() -> None:
                 score=100,
                 score_reasons=["+24 title:kubernetes"],
                 location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
             ),
             ScoredPosting(
                 posting=low_score_posting,
@@ -237,6 +239,8 @@ def test_top_matches_only_includes_allowed_locations_without_negative_title_matc
                     "+100 location_allowed:remote",
                 ],
                 location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
             ),
             ScoredPosting(
                 posting=skipped_posting,
@@ -297,6 +301,8 @@ def test_top_matches_excludes_business_roles_even_when_location_is_allowed() -> 
                     "+100 location_allowed:remote",
                 ],
                 location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
             ),
             ScoredPosting(
                 posting=finance_posting,
@@ -370,6 +376,8 @@ def test_top_matches_requires_strong_technical_signal() -> None:
                     "+100 location_allowed:remote",
                 ],
                 location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"]
             ),
         ],
     )
