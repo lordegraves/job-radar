@@ -27,6 +27,7 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Validates email settings without sending email
 - Wires the email send path behind an explicit --send-email flag
 - Keeps SMTP delivery disabled until implemented intentionally
+- Requires email passwords to come from environment variables when email is enabled
 
 ## Current live validation sources
 
@@ -77,7 +78,7 @@ python -m pytest
 Expected current result:
 
 ```text
-89 passed
+92 passed
 ```
 
 ## Report structure
@@ -121,13 +122,36 @@ python -m job_radar scan --config config/live-test-companies.yaml --settings con
 Get-Content reports\live-email-preview.txt -Raw
 ```
 
-Email settings are validated from the settings file, but this command still only writes a local preview file and does not send email.
+Email settings are validated from the settings file. With `email.enabled` set to `false`, `--send-email` only exercises the guarded send path and prints that email sending is disabled. No SMTP connection is made and no email is sent.
 
 ```powershell
 python -m job_radar scan --config config/live-test-companies.yaml --settings config/live-test-settings.yaml --report reports/live-test.md --email-preview reports/live-email-preview.txt --send-email
 ```
 
 With email.enabled set to false, --send-email only exercises the guarded send path and prints that email sending is disabled.
+
+## Email secret handling
+
+Email passwords must not be stored in YAML files.
+
+When email sending is eventually enabled, the settings file should name an environment variable that contains the SMTP password:
+
+```yaml
+email:
+  enabled: true
+  sender: "you@example.com"
+  recipients:
+    - "you@example.com"
+  smtp_host: "smtp.example.com"
+  smtp_port: 587
+  smtp_password_env: "JOB_RADAR_SMTP_PASSWORD"
+  ```
+
+For local testing, that environment variable can be set in the shell.
+
+For k3s, that environment variable should come from a Kubernetes Secret.
+
+If email.enabled is true and the configured password environment variable is missing, Job Radar fails cleanly before attempting to send email.
 
 ## Project principles
 
