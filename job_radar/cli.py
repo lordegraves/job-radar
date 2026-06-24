@@ -4,7 +4,12 @@ from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.config import ConfigError, load_companies, load_settings
 from job_radar.reporting import ScanError, ScanReport, ScoredPosting, write_markdown_report
-from job_radar.scoring import classify_location, load_scoring_config, score_posting
+from job_radar.scoring import (
+    classify_location,
+    evaluate_top_match_eligibility,
+    load_scoring_config,
+    score_posting,
+)
 from job_radar.storage import initialize_database, upsert_job_posting
 
 
@@ -117,6 +122,13 @@ def handle_scan(
     for posting in collected_postings:
         score, reasons = score_posting(posting, scoring_config)
         location_status = classify_location(posting, scoring_config)
+        top_match_eligible, top_match_reasons = evaluate_top_match_eligibility(
+            posting=posting,
+            score=score,
+            score_reasons=reasons,
+            location_status=location_status,
+            scoring_config=scoring_config,
+        )
 
         scored_postings.append(
             ScoredPosting(
@@ -124,6 +136,8 @@ def handle_scan(
                 score=score,
                 score_reasons=reasons,
                 location_status=location_status,
+                top_match_eligible=top_match_eligible,
+                top_match_reasons=top_match_reasons,
             )
         )
 
