@@ -96,4 +96,50 @@ def load_settings(path: str | Path = "config/settings.yaml") -> dict[str, Any]:
     if not isinstance(data["retention"], dict):
         raise ConfigError("settings.yaml retention section must be a mapping")
 
+    email_settings = data.get("email", {})
+    data["email"] = _validate_email_settings(email_settings)
+
     return data
+
+
+def _validate_email_settings(raw_email_settings: Any) -> dict[str, Any]:
+    if raw_email_settings is None:
+        raw_email_settings = {}
+
+    if not isinstance(raw_email_settings, dict):
+        raise ConfigError("settings.yaml email section must be a mapping")
+
+    enabled = raw_email_settings.get("enabled", False)
+    sender = raw_email_settings.get("sender", "")
+    recipients = raw_email_settings.get("recipients", [])
+    smtp_host = raw_email_settings.get("smtp_host", "")
+    smtp_port = raw_email_settings.get("smtp_port", 587)
+
+    if not isinstance(enabled, bool):
+        raise ConfigError("settings.yaml email.enabled must be true or false")
+
+    if not isinstance(sender, str):
+        raise ConfigError("settings.yaml email.sender must be a string")
+
+    if not isinstance(recipients, list):
+        raise ConfigError("settings.yaml email.recipients must be a list")
+
+    for index, recipient in enumerate(recipients, start=1):
+        if not isinstance(recipient, str):
+            raise ConfigError(
+                f"settings.yaml email.recipients entry #{index} must be a string"
+            )
+
+    if not isinstance(smtp_host, str):
+        raise ConfigError("settings.yaml email.smtp_host must be a string")
+
+    if not isinstance(smtp_port, int) or isinstance(smtp_port, bool):
+        raise ConfigError("settings.yaml email.smtp_port must be an integer")
+
+    return {
+        "enabled": enabled,
+        "sender": sender,
+        "recipients": recipients,
+        "smtp_host": smtp_host,
+        "smtp_port": smtp_port,
+    }

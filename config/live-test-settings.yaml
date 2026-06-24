@@ -9,3 +9,10 @@ retention:
   log_backup_count: 5
   raw_capture_enabled: false
   raw_capture_retention_days: 7
+
+email:
+  enabled: false
+  sender: ""
+  recipients: []
+  smtp_host: ""
+  smtp_port: 587

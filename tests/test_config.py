@@ -63,3 +63,98 @@ logs_path: logs
 
     with pytest.raises(ConfigError, match="retention"):
         load_settings(settings_file)
+
+
+def test_load_settings_defaults_email_settings(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(settings_file)
+
+    assert settings["email"] == {
+        "enabled": False,
+        "sender": "",
+        "recipients": [],
+        "smtp_host": "",
+        "smtp_port": 587,
+    }
+
+
+def test_load_settings_reads_email_settings(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+
+email:
+  enabled: false
+  sender: clayton@example.com
+  recipients:
+    - clayton@example.com
+  smtp_host: smtp.example.com
+  smtp_port: 587
+""",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(settings_file)
+
+    assert settings["email"] == {
+        "enabled": False,
+        "sender": "clayton@example.com",
+        "recipients": ["clayton@example.com"],
+        "smtp_host": "smtp.example.com",
+        "smtp_port": 587,
+    }
+
+
+def test_load_settings_rejects_invalid_email_recipients(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+
+email:
+  enabled: false
+  recipients: clayton@example.com
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="email.recipients must be a list"):
+        load_settings(settings_file)
