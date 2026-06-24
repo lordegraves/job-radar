@@ -13,6 +13,8 @@ class ScoredPosting:
     score: int
     score_reasons: list[str]
     location_status: str = "unknown"
+    top_match_eligible: bool = False
+    top_match_reasons: list[str] | None = None
 
 
 @dataclass(frozen=True)
