@@ -209,22 +209,90 @@ def classify_location(
     location_text = clean_text(posting.location).lower()
     location_preferences = scoring_config["location_preferences"]
 
-    for keyword in location_preferences["allowed"]:
-        if keyword in location_text:
-            return "allowed"
-
-    for keyword in location_preferences["conditional"]:
-        if keyword in location_text:
-            return "conditional"
-
-    for keyword in location_preferences["skipped"]:
-        if keyword in location_text:
-            return "skipped"
-
     if not location_text:
         return "unknown"
 
+    has_allowed_location = _has_location_keyword(
+        location_text,
+        location_preferences["allowed"],
+    )
+    has_conditional_location = _has_location_keyword(
+        location_text,
+        location_preferences["conditional"],
+    )
+    has_skipped_location = _has_location_keyword(
+        location_text,
+        location_preferences["skipped"],
+    )
+
+    if has_allowed_location and _has_limited_travel(location_text):
+        return "allowed_with_travel"
+
+    if has_allowed_location and _has_travel_required(location_text):
+        return "mixed"
+
+    if has_allowed_location and has_skipped_location:
+        return "mixed"
+
+    if has_allowed_location and has_conditional_location:
+        return "mixed"
+
+    if has_allowed_location:
+        return "allowed"
+
+    if has_conditional_location:
+        return "conditional"
+
+    if has_skipped_location:
+        return "skipped"
+
     return "unknown"
+
+
+def _has_location_keyword(
+    location_text: str,
+    location_keywords: dict[str, int],
+) -> bool:
+    for keyword in location_keywords:
+        if keyword in location_text:
+            return True
+
+    return False
+
+
+def _has_travel_required(location_text: str) -> bool:
+    travel_markers = [
+        "travel required",
+        "requires travel",
+        "travel:",
+        "travel -",
+        "travel up to",
+    ]
+
+    for marker in travel_markers:
+        if marker in location_text:
+            return True
+
+    return False
+
+
+def _has_limited_travel(location_text: str) -> bool:
+    limited_travel_markers = [
+        "travel required 10-20%",
+        "travel required 10 - 20%",
+        "travel 10-20%",
+        "travel 10 - 20%",
+        "10-20% travel",
+        "10 - 20% travel",
+        "up to 20% travel",
+        "travel up to 20%",
+    ]
+
+    for marker in limited_travel_markers:
+        if marker in location_text:
+            return True
+
+    return False
 
 
 def evaluate_top_match_eligibility(

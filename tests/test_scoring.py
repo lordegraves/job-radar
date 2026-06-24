@@ -42,6 +42,7 @@ def make_location_preferences() -> dict[str, dict[str, int]]:
             "boulder": -25,
         },
         "skipped": {
+            "san francisco": -100,
             "london": -100,
             "uk": -100,
         },
@@ -332,6 +333,42 @@ def test_classify_location_returns_allowed() -> None:
     config = make_scoring_config()
 
     assert classify_location(posting, config) == "allowed"
+
+
+def test_classify_location_returns_allowed_with_travel_for_limited_travel() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="Remote-Friendly, United States - Travel required 10-20%",
+    )
+
+    config = make_scoring_config()
+
+    assert classify_location(posting, config) == "allowed_with_travel"
+
+
+def test_classify_location_returns_mixed_for_remote_with_vague_travel() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="Remote-Friendly, United States - Travel required",
+    )
+
+    config = make_scoring_config()
+
+    assert classify_location(posting, config) == "mixed"
+
+
+def test_classify_location_returns_mixed_for_remote_with_skipped_city() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="Remote-Friendly | San Francisco, CA",
+    )
+
+    config = make_scoring_config()
+
+    assert classify_location(posting, config) == "mixed"
 
 
 def test_classify_location_returns_conditional() -> None:
