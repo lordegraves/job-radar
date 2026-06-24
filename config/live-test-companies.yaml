@@ -4,3 +4,9 @@ companies:
     source_type: greenhouse
     source_slug: anthropic
     enabled: true
+
+  - company_key: scale_ai
+    name: Scale AI
+    source_type: greenhouse
+    source_slug: scaleai
+    enabled: true
