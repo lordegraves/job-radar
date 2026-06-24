@@ -25,6 +25,8 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Builds a plain-text email preview during scan
 - Keeps generated email preview files out of git
 - Validates email settings without sending email
+- Wires the email send path behind an explicit --send-email flag
+- Keeps SMTP delivery disabled until implemented intentionally
 
 ## Current live validation sources
 
@@ -75,7 +77,7 @@ python -m pytest
 Expected current result:
 
 ```text
-86 passed
+89 passed
 ```
 
 ## Report structure
@@ -120,6 +122,12 @@ Get-Content reports\live-email-preview.txt -Raw
 ```
 
 Email settings are validated from the settings file, but this command still only writes a local preview file and does not send email.
+
+```powershell
+python -m job_radar scan --config config/live-test-companies.yaml --settings config/live-test-settings.yaml --report reports/live-test.md --email-preview reports/live-email-preview.txt --send-email
+```
+
+With email.enabled set to false, --send-email only exercises the guarded send path and prints that email sending is disabled.
 
 ## Project principles
 
