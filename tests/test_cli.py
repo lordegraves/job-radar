@@ -23,6 +23,7 @@ def test_handle_scan_collects_stores_scores_and_reports_jobs(
     scoring_file = tmp_path / "scoring.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     report_file = tmp_path / "today.md"
+    html_report_file = tmp_path / "today.html"
 
     config_file.write_text(
         """
@@ -122,6 +123,7 @@ top_matches:
 
     assert database_file.exists()
     assert report_file.exists()
+    assert html_report_file.exists()
     assert count_job_posting_rows(database_file) == 1
 
     assert "Scan requested" in output
@@ -168,7 +170,7 @@ top_matches:
     assert "- Canonical key: `example-ai:senior-infrastructure-engineer:remote`" in report_text
 
 
-def test_handle_scan_passes_markdown_report_attachment_to_email_sender(
+def test_handle_scan_passes_html_report_attachment_to_email_sender(
     tmp_path: Path,
     monkeypatch,
     capsys,
@@ -178,6 +180,7 @@ def test_handle_scan_passes_markdown_report_attachment_to_email_sender(
     scoring_file = tmp_path / "scoring.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     report_file = tmp_path / "today.md"
+    html_report_file = tmp_path / "today.html"
 
     config_file.write_text(
         """
@@ -308,7 +311,8 @@ top_matches:
     output = capsys.readouterr().out
 
     assert report_file.exists()
-    assert captured_email_call["attachment_path"] == report_file
+    assert html_report_file.exists()
+    assert captured_email_call["attachment_path"] == html_report_file
     assert captured_email_call["subject"].startswith("Job Radar Report - ")
     assert "Full report:" in captured_email_call["body"]
     assert "Attached as Markdown file." in captured_email_call["body"]
@@ -316,4 +320,5 @@ top_matches:
     assert captured_email_call["html_body"] is not None
     assert "<h1>Job Radar Report</h1>" in captured_email_call["html_body"]
     assert "View posting" in captured_email_call["html_body"]
+    assert f"HTML report written: {html_report_file}" in output
     assert "Email send result: Email sent" in output

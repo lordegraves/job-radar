@@ -14,3 +14,6 @@ reports/*.md
 !reports/.gitkeep
 reports/*.txt
 config/local-gmail-settings.yaml
+
+# Generated report outputs
+reports/*.html

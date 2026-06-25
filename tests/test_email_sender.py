@@ -268,3 +268,42 @@ def test_send_email_report_sends_html_alternative(monkeypatch) -> None:
     assert result.message == "Email sent"
     assert html_part is not None
     assert "HTML body" in html_part.get_content()
+
+
+def test_send_email_report_attaches_html_report(monkeypatch, tmp_path) -> None:
+    FakeSMTP.instances = []
+    monkeypatch.setenv("JOB_RADAR_SMTP_PASSWORD", "not-a-real-password")
+    monkeypatch.setattr("smtplib.SMTP", FakeSMTP)
+
+    report_path = tmp_path / "live-test.html"
+    report_path.write_text(
+        "<!doctype html><html><body>Report details.</body></html>",
+        encoding="utf-8",
+    )
+
+    result = send_email_report(
+        email_settings={
+            "enabled": True,
+            "sender": "clayton@example.com",
+            "sender_name": "Job Radar",
+            "recipients": ["clayton@example.com"],
+            "smtp_host": "smtp.example.com",
+            "smtp_port": 587,
+            "smtp_username": "clayton@example.com",
+            "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
+            "smtp_tls_mode": "starttls",
+        },
+        subject="Job Radar Report",
+        body="Report body",
+        attachment_path=report_path,
+    )
+
+    smtp = FakeSMTP.instances[0]
+    attachments = list(smtp.sent_message.iter_attachments())
+
+    assert result.sent is True
+    assert result.message == "Email sent"
+    assert len(attachments) == 1
+    assert attachments[0].get_filename() == "live-test.html"
+    assert attachments[0].get_content_type() == "text/html"
+    assert "Report details." in attachments[0].get_content()

@@ -1,5 +1,6 @@
 import argparse
 from datetime import UTC, datetime
+from pathlib import Path
 
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
@@ -11,7 +12,13 @@ from job_radar.email_summary import (
     build_email_subject,
     write_email_preview,
 )
-from job_radar.reporting import ScanError, ScanReport, ScoredPosting, write_markdown_report
+from job_radar.reporting import (
+    ScanError,
+    ScanReport,
+    ScoredPosting,
+    write_html_report,
+    write_markdown_report,
+)
 from job_radar.scoring import (
     classify_location,
     evaluate_review_needed_eligibility,
@@ -200,6 +207,10 @@ def handle_scan(
     )
 
     written_report_path = write_markdown_report(report_path, report)
+    written_html_report_path = write_html_report(
+        Path(report_path).with_suffix(".html"),
+        report,
+    )
 
     written_email_preview_path = None
 
@@ -218,15 +229,15 @@ def handle_scan(
             subject=build_email_subject(report),
             body=build_email_body(
                 report=report,
-                report_path=written_report_path,
+                report_path=written_html_report_path,
                 include_report_path=False,
             ),
             html_body=build_email_html_body(
                 report=report,
-                report_path=written_report_path,
+                report_path=written_html_report_path,
                 include_report_path=False,
             ),
-            attachment_path=written_report_path,
+            attachment_path=written_html_report_path,
         )
 
     print()
@@ -240,6 +251,7 @@ def handle_scan(
     print(f"Jobs changed: {jobs_changed}")
     print(f"Collector errors: {len(collector_errors)}")
     print(f"Report written: {written_report_path}")
+    print(f"HTML report written: {written_html_report_path}")
 
     if written_email_preview_path is not None:
         print(f"Email preview written: {written_email_preview_path}")

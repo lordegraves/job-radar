@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from html import escape
 from pathlib import Path
 
 from job_radar.models import JobPosting
@@ -106,18 +107,125 @@ def write_markdown_report(report_path: str | Path, report: ScanReport) -> Path:
     return path
 
 
-def _append_companies_scanned_summary(
-    lines: list[str],
-    postings: list[JobPosting],
-) -> None:
-    if not postings:
-        return
+def render_html_report(report: ScanReport) -> str:
+    lines: list[str] = [
+        "<!doctype html>",
+        "<html>",
+        "<head>",
+        '<meta charset="utf-8">',
+        "<title>Job Radar Report</title>",
+        "</head>",
+        "<body>",
+        "<h1>Job Radar Report</h1>",
+        "<h2>Summary</h2>",
+        "<ul>",
+    ]
 
+    if report.generated_at is not None:
+        lines.append(
+            f"<li><strong>Generated at:</strong> "
+            f"{escape(_format_generated_at(report.generated_at))}</li>"
+        )
+
+    lines.extend(
+        [
+            f"<li><strong>Companies enabled:</strong> {report.companies_enabled}</li>",
+            f"<li><strong>Jobs collected:</strong> {report.jobs_collected}</li>",
+            f"<li><strong>New jobs:</strong> {report.jobs_new}</li>",
+            f"<li><strong>Seen jobs:</strong> {report.jobs_seen}</li>",
+            f"<li><strong>Changed jobs:</strong> {report.jobs_changed}</li>",
+            f"<li><strong>Collector errors:</strong> "
+            f"{len(report.collector_errors)}</li>",
+        ]
+    )
+
+    if report.jobs_stored is not None:
+        lines.append(f"<li><strong>Jobs stored:</strong> {report.jobs_stored}</li>")
+
+    if report.jobs_omitted is not None:
+        lines.append(f"<li><strong>Jobs omitted:</strong> {report.jobs_omitted}</li>")
+
+    if report.top_match_min_score is not None:
+        lines.append(
+            f"<li><strong>Top match score threshold:</strong> "
+            f"{report.top_match_min_score}</li>"
+        )
+
+    if report.review_needed_min_score is not None:
+        lines.append(
+            f"<li><strong>Review-needed score threshold:</strong> "
+            f"{report.review_needed_min_score}</li>"
+        )
+
+    _append_html_count_summary(
+        lines=lines,
+        heading="Companies scanned",
+        counts=_count_companies(report.postings),
+    )
+    _append_html_count_summary(
+        lines=lines,
+        heading="Source types",
+        counts=_count_source_types(report.postings),
+    )
+
+    if report.scored_postings is not None:
+        _append_html_location_status_summary(lines, report.scored_postings)
+
+    lines.append("</ul>")
+
+    if report.collector_errors:
+        _append_html_collector_errors(lines, report.collector_errors)
+
+    if report.scored_postings is not None:
+        _append_html_scored_sections(lines, report.scored_postings)
+    else:
+        _append_html_unscored_jobs_section(lines, report.postings)
+
+    lines.extend(
+        [
+            "</body>",
+            "</html>",
+        ]
+    )
+
+    return "\n".join(lines) + "\n"
+
+
+def write_html_report(report_path: str | Path, report: ScanReport) -> Path:
+    path = Path(report_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_html_report(report), encoding="utf-8")
+    return path
+
+
+def _count_companies(postings: list[JobPosting]) -> dict[str, int]:
     company_counts: dict[str, int] = {}
 
     for posting in postings:
         company_name = posting.company_name or "Unknown"
         company_counts[company_name] = company_counts.get(company_name, 0) + 1
+
+    return company_counts
+
+
+def _count_source_types(postings: list[JobPosting]) -> dict[str, int]:
+    source_type_counts: dict[str, int] = {}
+
+    for posting in postings:
+        source_type = posting.source_type or "unknown"
+        source_type_counts[source_type] = source_type_counts.get(source_type, 0) + 1
+
+    return source_type_counts
+
+
+def _append_companies_scanned_summary(
+    lines: list[str],
+    postings: list[JobPosting],
+) -> None:
+    company_counts = _count_companies(postings)
+
+    if not company_counts:
+        return
 
     lines.append("- Companies scanned:")
 
@@ -129,14 +237,10 @@ def _append_source_type_summary(
     lines: list[str],
     postings: list[JobPosting],
 ) -> None:
-    if not postings:
+    source_type_counts = _count_source_types(postings)
+
+    if not source_type_counts:
         return
-
-    source_type_counts: dict[str, int] = {}
-
-    for posting in postings:
-        source_type = posting.source_type or "unknown"
-        source_type_counts[source_type] = source_type_counts.get(source_type, 0) + 1
 
     lines.append("- Source types:")
 
@@ -473,3 +577,247 @@ def _get_top_matches(scored_postings: list[ScoredPosting]) -> list[ScoredPosting
     ]
 
     return eligible_postings[:TOP_MATCHES_LIMIT]
+
+
+def _append_html_count_summary(
+    lines: list[str],
+    heading: str,
+    counts: dict[str, int],
+) -> None:
+    if not counts:
+        return
+
+    lines.append(f"<li><strong>{escape(heading)}:</strong><ul>")
+
+    for label in sorted(counts):
+        lines.append(f"<li>{escape(label)}: {counts[label]}</li>")
+
+    lines.append("</ul></li>")
+
+
+def _append_html_location_status_summary(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    if not scored_postings:
+        return
+
+    status_counts: dict[str, int] = {}
+
+    for scored_posting in scored_postings:
+        location_status = scored_posting.location_status or "unknown"
+        status_counts[location_status] = status_counts.get(location_status, 0) + 1
+
+    preferred_order = [
+        "allowed",
+        "allowed_with_travel",
+        "mixed",
+        "conditional",
+        "skipped",
+        "unknown",
+    ]
+
+    lines.append("<li><strong>Location statuses:</strong><ul>")
+
+    for location_status in preferred_order:
+        if location_status in status_counts:
+            lines.append(
+                f"<li>{escape(location_status)}: "
+                f"{status_counts[location_status]}</li>"
+            )
+
+    for location_status in sorted(status_counts):
+        if location_status not in preferred_order:
+            lines.append(
+                f"<li>{escape(location_status)}: "
+                f"{status_counts[location_status]}</li>"
+            )
+
+    lines.append("</ul></li>")
+
+
+def _append_html_collector_errors(
+    lines: list[str],
+    collector_errors: list[ScanError],
+) -> None:
+    lines.extend(
+        [
+            "<h2>Collector Errors</h2>",
+            "<ul>",
+        ]
+    )
+
+    for error in collector_errors:
+        lines.append(
+            "<li>"
+            f"{escape(error.company_key)} "
+            f"({escape(error.company_name)}, {escape(error.source_type)}): "
+            f"{escape(error.message)}"
+            "</li>"
+        )
+
+    lines.append("</ul>")
+
+
+def _append_html_scored_sections(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    _append_html_top_matches_section(lines, scored_postings)
+    _append_html_review_needed_section(lines, scored_postings)
+    _append_html_omitted_jobs_section(lines, scored_postings)
+
+
+def _append_html_top_matches_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    lines.append("<h2>Top Matches</h2>")
+
+    top_matches = _get_top_matches(scored_postings)
+
+    if not top_matches:
+        lines.append("<p>No top matches found.</p>")
+        return
+
+    lines.extend(
+        [
+            "<h3>Quick View</h3>",
+            "<ul>",
+        ]
+    )
+
+    for scored_posting in top_matches:
+        posting = scored_posting.posting
+        lines.append(
+            "<li>"
+            f"<strong>{scored_posting.score}</strong> - "
+            f'<a href="{escape(posting.source_url, quote=True)}">'
+            f"{escape(posting.title)}</a>"
+            f"<br>Company: {escape(posting.company_name)}"
+            f"<br>Location: {escape(posting.location or 'Unknown')}"
+            f"<br>Status: {escape(scored_posting.location_status)}"
+            "</li>"
+        )
+
+    lines.append("</ul>")
+
+    for scored_posting in top_matches:
+        _append_html_scored_posting(lines, scored_posting)
+
+
+def _append_html_review_needed_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    lines.append("<h2>Review Needed</h2>")
+
+    review_needed = _get_review_needed(scored_postings)
+
+    if not review_needed:
+        lines.append("<p>No review-needed jobs found.</p>")
+        return
+
+    for scored_posting in review_needed:
+        _append_html_scored_posting(lines, scored_posting)
+
+
+def _append_html_omitted_jobs_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    omitted_count = len(
+        [
+            scored_posting
+            for scored_posting in scored_postings
+            if not scored_posting.top_match_eligible
+            and not scored_posting.review_needed_eligible
+        ]
+    )
+
+    lines.append("<h2>Omitted Jobs</h2>")
+
+    if omitted_count == 0:
+        lines.append("<p>No scored jobs were omitted from the detailed report.</p>")
+        return
+
+    lines.append(
+        "<p>"
+        f"{omitted_count} scored jobs were omitted because they did not "
+        "qualify as Top Match or Review Needed."
+        "</p>"
+    )
+
+
+def _append_html_unscored_jobs_section(
+    lines: list[str],
+    postings: list[JobPosting],
+) -> None:
+    lines.append("<h2>Jobs</h2>")
+
+    if not postings:
+        lines.append("<p>No jobs were collected during this scan.</p>")
+        return
+
+    for posting in postings:
+        lines.extend(
+            [
+                "<section>",
+                f'<h3><a href="{escape(posting.source_url, quote=True)}">'
+                f"{escape(posting.title)}</a></h3>",
+                "<ul>",
+                f"<li><strong>Company:</strong> "
+                f"{escape(posting.company_name)}</li>",
+                f"<li><strong>Source:</strong> {escape(posting.source_type)}</li>",
+                f"<li><strong>Location:</strong> "
+                f"{escape(posting.location or 'Unknown')}</li>",
+                f"<li><strong>URL:</strong> "
+                f'<a href="{escape(posting.source_url, quote=True)}">'
+                f"{escape(posting.source_url)}</a></li>",
+                "</ul>",
+                "</section>",
+            ]
+        )
+
+
+def _append_html_scored_posting(
+    lines: list[str],
+    scored_posting: ScoredPosting,
+) -> None:
+    posting = scored_posting.posting
+
+    lines.extend(
+        [
+            "<section>",
+            f'<h3><a href="{escape(posting.source_url, quote=True)}">'
+            f"{escape(posting.title)}</a></h3>",
+            "<ul>",
+            f"<li><strong>Score:</strong> {scored_posting.score}</li>",
+            f"<li><strong>Why this matched:</strong> "
+            f"{escape(_format_match_summary(scored_posting.score_reasons))}</li>",
+            f"<li><strong>Score reasons:</strong> "
+            f"{escape(_format_score_reasons(scored_posting.score_reasons))}</li>",
+            f"<li><strong>Location status:</strong> "
+            f"{escape(scored_posting.location_status)}</li>",
+            f"<li><strong>Company:</strong> "
+            f"{escape(posting.company_name)}</li>",
+            f"<li><strong>Source:</strong> {escape(posting.source_type)}</li>",
+            f"<li><strong>Location:</strong> "
+            f"{escape(posting.location or 'Unknown')}</li>",
+            f"<li><strong>URL:</strong> "
+            f'<a href="{escape(posting.source_url, quote=True)}">'
+            f"{escape(posting.source_url)}</a></li>",
+        ]
+    )
+
+    if posting.salary_text:
+        lines.append(f"<li><strong>Salary:</strong> {escape(posting.salary_text)}</li>")
+
+    lines.extend(
+        [
+            f"<li><strong>Canonical key:</strong> "
+            f"<code>{escape(posting.canonical_key)}</code></li>",
+            "</ul>",
+            "</section>",
+        ]
+    )

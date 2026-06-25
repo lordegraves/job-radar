@@ -5,7 +5,9 @@ from job_radar.reporting import (
     ScanError,
     ScanReport,
     ScoredPosting,
+    render_html_report,
     render_markdown_report,
+    write_html_report,
     write_markdown_report,
 )
 
@@ -759,3 +761,88 @@ def test_render_markdown_report_keeps_unparseable_generated_at_value() -> None:
     markdown = render_markdown_report(report)
 
     assert "- Generated at: not-a-timestamp" in markdown
+
+
+def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
+    posting = make_posting(title="Data Center Design Execution Lead")
+
+    report = ScanReport(
+        generated_at="2026-06-24T12:34:56+00:00",
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        jobs_stored=1,
+        jobs_omitted=0,
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=158,
+                score_reasons=[
+                    "+10 body:infrastructure",
+                    "+24 title:data center",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+            )
+        ],
+    )
+
+    html = render_html_report(report)
+
+    assert "<h1>Job Radar Report</h1>" in html
+    assert "<strong>Generated at:</strong> 2026-06-24 12:34 UTC" in html
+    assert "<strong>Jobs stored:</strong> 1" in html
+    assert "<strong>Jobs omitted:</strong> 0" in html
+    assert "Data Center Design Execution Lead" in html
+    assert (
+        '<a href="https://boards.greenhouse.io/exampleai/jobs/123">'
+        "Data Center Design Execution Lead</a>"
+        in html
+    )
+    assert "<h2>Omitted Jobs</h2>" in html
+
+
+def test_render_html_report_escapes_html_special_characters() -> None:
+    posting = make_posting(
+        title="Senior <Linux> & Infrastructure Engineer",
+        company_name="Example & AI",
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+    )
+
+    html = render_html_report(report)
+
+    assert "Senior &lt;Linux&gt; &amp; Infrastructure Engineer" in html
+    assert "Example &amp; AI" in html
+
+
+def test_write_html_report_writes_file(tmp_path: Path) -> None:
+    report_path = tmp_path / "today.html"
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[make_posting()],
+    )
+
+    written_path = write_html_report(report_path, report)
+
+    assert written_path == report_path
+    assert report_path.exists()
+    assert "<h1>Job Radar Report</h1>" in report_path.read_text(encoding="utf-8")

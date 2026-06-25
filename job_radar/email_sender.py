@@ -100,9 +100,19 @@ def _attach_text_file(message: EmailMessage, attachment_path: str | Path) -> Non
 
     message.add_attachment(
         content,
-        subtype="markdown",
+        subtype=_get_text_attachment_subtype(path),
         filename=path.name,
     )
+
+
+def _get_text_attachment_subtype(path: Path) -> str:
+    if path.suffix.lower() in {".html", ".htm"}:
+        return "html"
+
+    if path.suffix.lower() == ".md":
+        return "markdown"
+
+    return "plain"
 
 
 def _send_smtp_message(
