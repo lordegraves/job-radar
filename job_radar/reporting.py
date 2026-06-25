@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from job_radar.models import JobPosting
@@ -52,7 +53,7 @@ def render_markdown_report(report: ScanReport) -> str:
     ]
 
     if report.generated_at is not None:
-        lines.append(f"- Generated at: {report.generated_at}")
+        lines.append(f"- Generated at: {_format_generated_at(report.generated_at)}")
 
     lines.extend(
         [
@@ -448,6 +449,20 @@ def _format_score_reasons(score_reasons: list[str]) -> str:
         return "None"
 
     return ", ".join(score_reasons)
+
+
+def _format_generated_at(generated_at: str) -> str:
+    try:
+        parsed_timestamp = datetime.fromisoformat(generated_at)
+    except ValueError:
+        return generated_at
+
+    timezone_name = "UTC"
+
+    if parsed_timestamp.tzinfo is None:
+        timezone_name = "local"
+
+    return f"{parsed_timestamp:%Y-%m-%d %H:%M} {timezone_name}"
 
 
 def _get_top_matches(scored_postings: list[ScoredPosting]) -> list[ScoredPosting]:

@@ -689,7 +689,7 @@ def test_render_markdown_report_includes_generated_at() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "- Generated at: 2026-06-24T12:34:56+00:00" in markdown
+    assert "- Generated at: 2026-06-24 12:34 UTC" in markdown
 
 
 def test_render_markdown_report_includes_source_type_summary() -> None:
@@ -742,3 +742,20 @@ def test_render_markdown_report_includes_stored_and_omitted_counts() -> None:
 
     assert "- Jobs stored: 3" in markdown
     assert "- Jobs omitted: 7" in markdown
+
+
+def test_render_markdown_report_keeps_unparseable_generated_at_value() -> None:
+    report = ScanReport(
+        generated_at="not-a-timestamp",
+        companies_enabled=1,
+        jobs_collected=0,
+        jobs_new=0,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Generated at: not-a-timestamp" in markdown
