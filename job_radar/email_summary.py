@@ -30,19 +30,27 @@ def build_email_body(report: ScanReport, report_path: str | Path) -> str:
         f"Changed jobs: {report.jobs_changed}",
         f"Collector errors: {len(report.collector_errors)}",
         "",
-        "Top Matches:",
+        f"Top Matches, up to {TOP_MATCHES_LIMIT}:",
     ]
 
-    _append_email_posting_lines(lines, top_matches)
+    _append_email_posting_lines(
+        lines=lines,
+        scored_postings=top_matches,
+        section_type="top_match",
+    )
 
     lines.extend(
         [
             "",
-            "Review Needed:",
+            f"Review Needed, up to {TOP_MATCHES_LIMIT}:",
         ]
     )
 
-    _append_email_posting_lines(lines, review_needed)
+    _append_email_posting_lines(
+        lines=lines,
+        scored_postings=review_needed,
+        section_type="review_needed",
+    )
 
     lines.extend(
         [
@@ -102,22 +110,103 @@ def _get_review_needed(
         scored_posting
         for scored_posting in scored_postings
         if scored_posting.review_needed_eligible
-    ]
+    ][:TOP_MATCHES_LIMIT]
 
 
 def _append_email_posting_lines(
     lines: list[str],
     scored_postings: list[ScoredPosting],
+    section_type: str,
 ) -> None:
     if not scored_postings:
         lines.append("- None")
         return
 
-    for scored_posting in scored_postings:
-        posting = scored_posting.posting
-        lines.append(
-            f"- {posting.title} - {posting.company_name} - {scored_posting.score}"
+    for index, scored_posting in enumerate(scored_postings, start=1):
+        _append_email_posting_detail(
+            lines=lines,
+            scored_posting=scored_posting,
+            index=index,
+            section_type=section_type,
         )
+
+
+def _append_email_posting_detail(
+    lines: list[str],
+    scored_posting: ScoredPosting,
+    index: int,
+    section_type: str,
+) -> None:
+    posting = scored_posting.posting
+
+    lines.extend(
+        [
+            f"{index}. {_format_value(posting.title)}",
+            f"   Company: {_format_value(posting.company_name)}",
+            f"   Score: {scored_posting.score}",
+            f"   Location: {_format_value(posting.location)}",
+            f"   URL: {_format_value(posting.source_url)}",
+        ]
+    )
+
+    if section_type == "top_match":
+        _append_reason_lines(
+            lines=lines,
+            heading="Why it is a top match:",
+            reasons=_get_top_match_reasons(scored_posting),
+        )
+
+    if section_type == "review_needed":
+        _append_reason_lines(
+            lines=lines,
+            heading="Why it needs review:",
+            reasons=_get_review_needed_reasons(scored_posting),
+        )
+
+    _append_reason_lines(
+        lines=lines,
+        heading="Why it scored:",
+        reasons=scored_posting.score_reasons,
+    )
+
+
+def _get_top_match_reasons(scored_posting: ScoredPosting) -> list[str]:
+    if scored_posting.top_match_reasons:
+        return scored_posting.top_match_reasons
+
+    return [
+        "marked eligible by top-match scoring rules",
+        f"location status: {scored_posting.location_status or 'unknown'}",
+    ]
+
+
+def _get_review_needed_reasons(scored_posting: ScoredPosting) -> list[str]:
+    return [
+        "marked eligible by review-needed scoring rules",
+        f"location status: {scored_posting.location_status or 'unknown'}",
+    ]
+
+
+def _append_reason_lines(
+    lines: list[str],
+    heading: str,
+    reasons: list[str] | None,
+) -> None:
+    lines.append(f"   {heading}")
+
+    if not reasons:
+        lines.append("      - None")
+        return
+
+    for reason in reasons:
+        lines.append(f"      - {reason}")
+
+
+def _format_value(value: str | None) -> str:
+    if not value:
+        return "Unknown"
+
+    return value
 
 
 def _plural_suffix(count: int) -> str:
