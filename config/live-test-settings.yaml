@@ -13,6 +13,7 @@ retention:
 email:
   enabled: false
   sender: ""
+  sender_name: "Job Radar"
   recipients: []
   smtp_host: ""
   smtp_port: 587

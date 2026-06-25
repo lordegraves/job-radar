@@ -112,6 +112,7 @@ def _validate_email_settings(raw_email_settings: Any) -> dict[str, Any]:
 
     enabled = raw_email_settings.get("enabled", False)
     sender = raw_email_settings.get("sender", "")
+    sender_name = raw_email_settings.get("sender_name", "")
     recipients = raw_email_settings.get("recipients", [])
     smtp_host = raw_email_settings.get("smtp_host", "")
     smtp_port = raw_email_settings.get("smtp_port", 587)
@@ -124,6 +125,9 @@ def _validate_email_settings(raw_email_settings: Any) -> dict[str, Any]:
 
     if not isinstance(sender, str):
         raise ConfigError("settings.yaml email.sender must be a string")
+
+    if not isinstance(sender_name, str):
+        raise ConfigError("settings.yaml email.sender_name must be a string")
 
     if not isinstance(recipients, list):
         raise ConfigError("settings.yaml email.recipients must be a list")
@@ -166,6 +170,7 @@ def _validate_email_settings(raw_email_settings: Any) -> dict[str, Any]:
     return {
         "enabled": enabled,
         "sender": sender,
+        "sender_name": sender_name,
         "recipients": recipients,
         "smtp_host": smtp_host,
         "smtp_port": smtp_port,

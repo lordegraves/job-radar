@@ -2,6 +2,7 @@ import os
 import smtplib
 from dataclasses import dataclass
 from email.message import EmailMessage
+from email.utils import formataddr
 from typing import Any
 
 
@@ -33,6 +34,7 @@ def send_email_report(
 
     message = _build_email_message(
         sender=email_settings["sender"],
+        sender_name=email_settings.get("sender_name", ""),
         recipients=email_settings["recipients"],
         subject=subject,
         body=body,
@@ -58,17 +60,25 @@ def send_email_report(
 
 def _build_email_message(
     sender: str,
+    sender_name: str,
     recipients: list[str],
     subject: str,
     body: str,
 ) -> EmailMessage:
     message = EmailMessage()
-    message["From"] = sender
+    message["From"] = _format_sender(sender=sender, sender_name=sender_name)
     message["To"] = ", ".join(recipients)
     message["Subject"] = subject
     message.set_content(body)
 
     return message
+
+
+def _format_sender(sender: str, sender_name: str) -> str:
+    if not sender_name:
+        return sender
+
+    return formataddr((sender_name, sender))
 
 
 def _send_smtp_message(
