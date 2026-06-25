@@ -1,9 +1,16 @@
+import sqlite3
 from pathlib import Path
 
 from job_radar.cli import handle_scan
 from job_radar.email_sender import EmailSendResult
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
+
+
+def count_job_posting_rows(database_file: Path) -> int:
+    with sqlite3.connect(database_file) as connection:
+        cursor = connection.execute("SELECT COUNT(*) FROM job_postings")
+        return int(cursor.fetchone()[0])
 
 
 def test_handle_scan_collects_stores_scores_and_reports_jobs(
@@ -60,6 +67,12 @@ location_preferences:
     remote: 100
   conditional: {}
   skipped: {}
+
+top_matches:
+  min_score: 1
+  excluded_title_keywords: []
+  strong_signals:
+    - title:infrastructure
 """,
         encoding="utf-8",
     )
@@ -109,10 +122,13 @@ location_preferences:
 
     assert database_file.exists()
     assert report_file.exists()
+    assert count_job_posting_rows(database_file) == 1
 
     assert "Scan requested" in output
     assert "Companies enabled: 1" in output
     assert "Jobs collected: 1" in output
+    assert "Jobs stored: 1" in output
+    assert "Jobs omitted: 0" in output
     assert "Jobs new: 1" in output
     assert "Jobs seen: 0" in output
     assert "Jobs changed: 0" in output
@@ -121,6 +137,8 @@ location_preferences:
     assert "# Job Radar Report" in report_text
     assert "- Companies enabled: 1" in report_text
     assert "- Jobs collected: 1" in report_text
+    assert "- Jobs stored: 1" in report_text
+    assert "- Jobs omitted: 0" in report_text
     assert "- New jobs: 1" in report_text
     assert "- Seen jobs: 0" in report_text
     assert "- Changed jobs: 0" in report_text
@@ -129,7 +147,8 @@ location_preferences:
     assert "- Review-needed score threshold: 100" in report_text
 
     assert "## Top Matches" in report_text
-    assert "## All Jobs" in report_text
+    assert "## Omitted Jobs" in report_text
+    assert "## All Jobs" not in report_text
     assert (
         "### [Senior Infrastructure Engineer]"
         "(https://boards.greenhouse.io/exampleai/jobs/123)"

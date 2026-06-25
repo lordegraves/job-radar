@@ -30,6 +30,8 @@ def build_email_body(
         f"Generated at: {_format_generated_at(report.generated_at)}",
         f"Companies enabled: {report.companies_enabled}",
         f"Jobs collected: {report.jobs_collected}",
+        _format_optional_count_line("Jobs stored", report.jobs_stored),
+        _format_optional_count_line("Jobs omitted", report.jobs_omitted),
         f"New jobs: {report.jobs_new}",
         f"Seen jobs: {report.jobs_seen}",
         f"Changed jobs: {report.jobs_changed}",
@@ -126,6 +128,13 @@ def _format_threshold_line(label: str, threshold: int | None) -> str:
         return f"{label}: Unknown"
 
     return f"{label}: {threshold}"
+
+
+def _format_optional_count_line(label: str, count: int | None) -> str:
+    if count is None:
+        return f"{label}: Unknown"
+
+    return f"{label}: {count}"
 
 
 def _get_top_matches(

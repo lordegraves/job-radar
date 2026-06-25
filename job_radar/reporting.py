@@ -39,6 +39,8 @@ class ScanReport:
     generated_at: str | None = None
     top_match_min_score: int | None = None
     review_needed_min_score: int | None = None
+    jobs_stored: int | None = None
+    jobs_omitted: int | None = None
 
 
 def render_markdown_report(report: ScanReport) -> str:
@@ -62,6 +64,12 @@ def render_markdown_report(report: ScanReport) -> str:
             f"- Collector errors: {len(report.collector_errors)}",
         ]
     )
+
+    if report.jobs_stored is not None:
+        lines.append(f"- Jobs stored: {report.jobs_stored}")
+
+    if report.jobs_omitted is not None:
+        lines.append(f"- Jobs omitted: {report.jobs_omitted}")
 
     if report.top_match_min_score is not None:
         lines.append(f"- Top match score threshold: {report.top_match_min_score}")
@@ -196,7 +204,7 @@ def _append_scored_sections(
 ) -> None:
     _append_top_matches_section(lines, scored_postings)
     _append_review_needed_section(lines, scored_postings)
-    _append_all_jobs_section(lines, scored_postings)
+    _append_omitted_jobs_section(lines, scored_postings)
 
 
 def _append_top_matches_section(
@@ -263,28 +271,44 @@ def _get_review_needed(
     ]
 
 
-def _append_all_jobs_section(
+def _append_omitted_jobs_section(
     lines: list[str],
     scored_postings: list[ScoredPosting],
 ) -> None:
+    omitted_count = len(
+        [
+            scored_posting
+            for scored_posting in scored_postings
+            if not scored_posting.top_match_eligible
+            and not scored_posting.review_needed_eligible
+        ]
+    )
+
     lines.extend(
         [
-            "## All Jobs",
+            "## Omitted Jobs",
             "",
         ]
     )
 
-    if not scored_postings:
+    if omitted_count == 0:
         lines.extend(
             [
-                "No jobs were collected during this scan.",
+                "No scored jobs were omitted from the detailed report.",
                 "",
             ]
         )
         return
 
-    for scored_posting in scored_postings:
-        _append_scored_posting(lines, scored_posting)
+    lines.extend(
+        [
+            (
+                f"{omitted_count} scored jobs were omitted because they did not "
+                "qualify as Top Match or Review Needed."
+            ),
+            "",
+        ]
+    )
 
 
 def _append_unscored_jobs_section(

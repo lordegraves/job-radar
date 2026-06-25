@@ -127,16 +127,6 @@ def handle_scan(
         collected_postings.extend(postings)
         print(f"  collected_jobs={len(postings)}")
 
-        for posting in postings:
-            result = upsert_job_posting(database_path, posting)
-
-            if result == "new":
-                jobs_new += 1
-            elif result == "seen":
-                jobs_seen += 1
-            elif result == "changed":
-                jobs_changed += 1
-
     scored_postings = []
 
     for posting in collected_postings:
@@ -172,6 +162,26 @@ def handle_scan(
 
     scored_postings.sort(key=lambda item: item.score, reverse=True)
 
+    relevant_scored_postings = [
+        scored_posting
+        for scored_posting in scored_postings
+        if scored_posting.top_match_eligible or scored_posting.review_needed_eligible
+    ]
+
+    jobs_stored = 0
+    jobs_omitted = total_jobs - len(relevant_scored_postings)
+
+    for scored_posting in relevant_scored_postings:
+        result = upsert_job_posting(database_path, scored_posting.posting)
+        jobs_stored += 1
+
+        if result == "new":
+            jobs_new += 1
+        elif result == "seen":
+            jobs_seen += 1
+        elif result == "changed":
+            jobs_changed += 1
+
     report = ScanReport(
         generated_at=datetime.now(UTC).isoformat(timespec="seconds"),
         companies_enabled=len(companies),
@@ -184,6 +194,8 @@ def handle_scan(
         scored_postings=scored_postings,
         top_match_min_score=scoring_config["top_matches"]["min_score"],
         review_needed_min_score=scoring_config["review_needed"]["min_score"],
+        jobs_stored=jobs_stored,
+        jobs_omitted=jobs_omitted,
     )
 
     written_report_path = write_markdown_report(report_path, report)
@@ -215,6 +227,8 @@ def handle_scan(
     print("Scan summary:")
     print(f"Companies enabled: {len(companies)}")
     print(f"Jobs collected: {total_jobs}")
+    print(f"Jobs stored: {jobs_stored}")
+    print(f"Jobs omitted: {jobs_omitted}")
     print(f"Jobs new: {jobs_new}")
     print(f"Jobs seen: {jobs_seen}")
     print(f"Jobs changed: {jobs_changed}")

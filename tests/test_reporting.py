@@ -163,6 +163,12 @@ def test_render_markdown_report_includes_score_reasons_and_location_status() -> 
                     "+100 location_allowed:remote",
                 ],
                 location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=[
+                    "score 140 meets top-match threshold 1",
+                    "location status is acceptable: allowed",
+                    "strong signal matched: title:linux",
+                ],
             )
         ],
     )
@@ -178,18 +184,20 @@ def test_render_markdown_report_includes_score_reasons_and_location_status() -> 
     assert "- Location status: allowed" in markdown
 
 
-def test_render_markdown_report_includes_top_matches_and_all_jobs() -> None:
+def test_render_markdown_report_includes_top_matches_and_omitted_jobs_summary() -> None:
     high_score_posting = make_posting(title="Senior Kubernetes Platform Engineer")
     low_score_posting = make_posting(title="Account Executive")
 
     report = ScanReport(
         companies_enabled=1,
         jobs_collected=2,
-        jobs_new=2,
+        jobs_new=1,
         jobs_seen=0,
         jobs_changed=0,
         collector_errors=[],
         postings=[high_score_posting, low_score_posting],
+        jobs_stored=1,
+        jobs_omitted=1,
         scored_postings=[
             ScoredPosting(
                 posting=high_score_posting,
@@ -197,7 +205,11 @@ def test_render_markdown_report_includes_top_matches_and_all_jobs() -> None:
                 score_reasons=["+24 title:kubernetes"],
                 location_status="allowed",
                 top_match_eligible=True,
-                top_match_reasons=["eligible"],
+                top_match_reasons=[
+                    "score 100 meets top-match threshold 1",
+                    "location status is acceptable: allowed",
+                    "strong signal matched: title:kubernetes",
+                ],
             ),
             ScoredPosting(
                 posting=low_score_posting,
@@ -211,14 +223,20 @@ def test_render_markdown_report_includes_top_matches_and_all_jobs() -> None:
     markdown = render_markdown_report(report)
 
     assert "## Top Matches" in markdown
-    assert "## All Jobs" in markdown
-    assert markdown.index("## Top Matches") < markdown.index("## All Jobs")
+    assert "## Omitted Jobs" in markdown
+    assert "## All Jobs" not in markdown
+    assert markdown.index("## Top Matches") < markdown.index("## Omitted Jobs")
     assert (
         "### [Senior Kubernetes Platform Engineer]"
         "(https://boards.greenhouse.io/exampleai/jobs/123)"
         in markdown
     )
-    assert "### [Account Executive]" in markdown
+    assert "### [Account Executive]" not in markdown
+    assert (
+        "1 scored jobs were omitted because they did not qualify as Top Match "
+        "or Review Needed."
+        in markdown
+    )
 
 
 def test_top_matches_only_includes_allowed_locations_without_negative_title_matches() -> None:
@@ -274,8 +292,9 @@ def test_top_matches_only_includes_allowed_locations_without_negative_title_matc
     assert "### [Senior Kubernetes Engineer]" not in top_matches_section
     assert "### [Recruiting Coordinator]" not in top_matches_section
 
-    assert "### [Senior Kubernetes Engineer]" in markdown
-    assert "### [Recruiting Coordinator]" in markdown
+    assert "### [Senior Kubernetes Engineer]" not in markdown
+    assert "### [Recruiting Coordinator]" not in markdown
+    assert "## Omitted Jobs" in markdown
 
 def test_top_matches_excludes_business_roles_even_when_location_is_allowed() -> None:
     technical_posting = make_posting(title="Senior Infrastructure Engineer")
@@ -346,9 +365,10 @@ def test_top_matches_excludes_business_roles_even_when_location_is_allowed() -> 
     assert "### [Staff Software Engineer, People Products]" not in top_matches_section
     assert "### [Data Center Strategic Sourcing Lead]" not in top_matches_section
 
-    assert "### [Head of FX & Risk]" in markdown
-    assert "### [Staff Software Engineer, People Products]" in markdown
-    assert "### [Data Center Strategic Sourcing Lead]" in markdown
+    assert "### [Head of FX & Risk]" not in markdown
+    assert "### [Staff Software Engineer, People Products]" not in markdown
+    assert "### [Data Center Strategic Sourcing Lead]" not in markdown
+    assert "## Omitted Jobs" in markdown
 
 def test_top_matches_requires_strong_technical_signal() -> None:
     weak_posting = make_posting(title="Research Operations, External Artifacts")
@@ -391,7 +411,8 @@ def test_top_matches_requires_strong_technical_signal() -> None:
 
     assert "### [Senior Kubernetes Platform Engineer]" in top_matches_section
     assert "### [Research Operations, External Artifacts]" not in top_matches_section
-    assert "### [Research Operations, External Artifacts]" in markdown
+    assert "### [Research Operations, External Artifacts]" not in markdown
+    assert "## Omitted Jobs" in markdown
 
 
 def test_render_markdown_report_includes_human_readable_match_summary() -> None:
@@ -418,6 +439,12 @@ def test_render_markdown_report_includes_human_readable_match_summary() -> None:
                     "+100 location_allowed:remote",
                 ],
                 location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=[
+                    "score 158 meets top-match threshold 1",
+                    "location status is acceptable: allowed",
+                    "strong signal matched: body:infrastructure",
+                ],
             )
         ],
     )
@@ -631,12 +658,13 @@ def test_render_markdown_report_includes_review_needed_section() -> None:
 
     assert "## Top Matches" in markdown
     assert "## Review Needed" in markdown
-    assert "## All Jobs" in markdown
+    assert "## Omitted Jobs" in markdown
+    assert "## All Jobs" not in markdown
 
     assert markdown.index("## Top Matches") < markdown.index("## Review Needed")
-    assert markdown.index("## Review Needed") < markdown.index("## All Jobs")
+    assert markdown.index("## Review Needed") < markdown.index("## Omitted Jobs")
 
-    review_needed_section = markdown.split("## Review Needed")[1].split("## All Jobs")[0]
+    review_needed_section = markdown.split("## Review Needed")[1].split("## Omitted Jobs")[0]
 
     assert "### [Senior Systems Engineer]" in review_needed_section
     assert "### [Senior Linux Engineer]" in review_needed_section
@@ -695,3 +723,22 @@ def test_render_markdown_report_includes_source_type_summary() -> None:
     assert "- Source types:" in markdown
     assert "  - greenhouse: 2" in markdown
     assert "  - lever: 1" in markdown
+
+
+def test_render_markdown_report_includes_stored_and_omitted_counts() -> None:
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=10,
+        jobs_new=1,
+        jobs_seen=2,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[make_posting()],
+        jobs_stored=3,
+        jobs_omitted=7,
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Jobs stored: 3" in markdown
+    assert "- Jobs omitted: 7" in markdown
