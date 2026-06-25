@@ -114,11 +114,24 @@ def render_html_report(report: ScanReport) -> str:
         "<head>",
         '<meta charset="utf-8">',
         "<title>Job Radar Report</title>",
+        "<style>",
+        "body { font-family: Arial, sans-serif; line-height: 1.4; margin: 24px; }",
+        "h1 { margin-bottom: 8px; }",
+        "h2 { border-bottom: 1px solid #cccccc; padding-bottom: 4px; margin-top: 28px; }",
+        "h3 { margin-bottom: 8px; }",
+        "a { color: #0b66c3; }",
+        ".summary { background: #f6f8fa; border: 1px solid #dddddd; padding: 12px 16px; }",
+        ".job-card { border: 1px solid #dddddd; padding: 14px 16px; margin: 16px 0; border-radius: 6px; }",
+        ".top-match { border-left: 6px solid #2e7d32; }",
+        ".review-needed { border-left: 6px solid #b26a00; }",
+        ".quick-view { background: #f6f8fa; border: 1px solid #dddddd; padding: 10px 14px; }",
+        "code { background: #f6f8fa; padding: 2px 4px; }",
+        "</style>",
         "</head>",
         "<body>",
         "<h1>Job Radar Report</h1>",
         "<h2>Summary</h2>",
-        "<ul>",
+        '<ul class="summary">',
     ]
 
     if report.generated_at is not None:
@@ -683,7 +696,7 @@ def _append_html_top_matches_section(
     lines.extend(
         [
             "<h3>Quick View</h3>",
-            "<ul>",
+            '<ul class="quick-view">',
         ]
     )
 
@@ -762,7 +775,7 @@ def _append_html_unscored_jobs_section(
     for posting in postings:
         lines.extend(
             [
-                "<section>",
+                '<section class="job-card">',
                 f'<h3><a href="{escape(posting.source_url, quote=True)}">'
                 f"{escape(posting.title)}</a></h3>",
                 "<ul>",
@@ -771,9 +784,9 @@ def _append_html_unscored_jobs_section(
                 f"<li><strong>Source:</strong> {escape(posting.source_type)}</li>",
                 f"<li><strong>Location:</strong> "
                 f"{escape(posting.location or 'Unknown')}</li>",
-                f"<li><strong>URL:</strong> "
+                f"<li><strong>Posting:</strong> "
                 f'<a href="{escape(posting.source_url, quote=True)}">'
-                f"{escape(posting.source_url)}</a></li>",
+                "View posting</a></li>",
                 "</ul>",
                 "</section>",
             ]
@@ -785,10 +798,16 @@ def _append_html_scored_posting(
     scored_posting: ScoredPosting,
 ) -> None:
     posting = scored_posting.posting
+    section_class = "job-card"
+
+    if scored_posting.top_match_eligible:
+        section_class = "job-card top-match"
+    elif scored_posting.review_needed_eligible:
+        section_class = "job-card review-needed"
 
     lines.extend(
         [
-            "<section>",
+            f'<section class="{section_class}">',
             f'<h3><a href="{escape(posting.source_url, quote=True)}">'
             f"{escape(posting.title)}</a></h3>",
             "<ul>",
@@ -804,9 +823,9 @@ def _append_html_scored_posting(
             f"<li><strong>Source:</strong> {escape(posting.source_type)}</li>",
             f"<li><strong>Location:</strong> "
             f"{escape(posting.location or 'Unknown')}</li>",
-            f"<li><strong>URL:</strong> "
+            f"<li><strong>Posting:</strong> "
             f'<a href="{escape(posting.source_url, quote=True)}">'
-            f"{escape(posting.source_url)}</a></li>",
+            "View posting</a></li>",
         ]
     )
 

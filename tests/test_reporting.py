@@ -806,6 +806,14 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     )
     assert "<h2>Omitted Jobs</h2>" in html
 
+    assert "<style>" in html
+    assert 'class="summary"' in html
+    assert 'class="quick-view"' in html
+    assert 'class="job-card top-match"' in html
+    assert "<strong>Posting:</strong>" in html
+    assert "View posting</a>" in html
+    assert "<strong>URL:</strong>" not in html
+
 
 def test_render_html_report_escapes_html_special_characters() -> None:
     posting = make_posting(
