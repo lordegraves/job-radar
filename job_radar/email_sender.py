@@ -3,6 +3,7 @@ import smtplib
 from dataclasses import dataclass
 from email.message import EmailMessage
 from email.utils import formataddr
+from pathlib import Path
 from typing import Any
 
 
@@ -16,6 +17,7 @@ def send_email_report(
     email_settings: dict[str, Any],
     subject: str,
     body: str,
+    attachment_path: str | Path | None = None,
 ) -> EmailSendResult:
     if not email_settings.get("enabled", False):
         return EmailSendResult(
@@ -32,15 +34,16 @@ def send_email_report(
             message=f"Email password environment variable is not set: {password_env}",
         )
 
-    message = _build_email_message(
-        sender=email_settings["sender"],
-        sender_name=email_settings.get("sender_name", ""),
-        recipients=email_settings["recipients"],
-        subject=subject,
-        body=body,
-    )
-
     try:
+        message = _build_email_message(
+            sender=email_settings["sender"],
+            sender_name=email_settings.get("sender_name", ""),
+            recipients=email_settings["recipients"],
+            subject=subject,
+            body=body,
+            attachment_path=attachment_path,
+        )
+
         _send_smtp_message(
             email_settings=email_settings,
             message=message,
@@ -64,12 +67,16 @@ def _build_email_message(
     recipients: list[str],
     subject: str,
     body: str,
+    attachment_path: str | Path | None = None,
 ) -> EmailMessage:
     message = EmailMessage()
     message["From"] = _format_sender(sender=sender, sender_name=sender_name)
     message["To"] = ", ".join(recipients)
     message["Subject"] = subject
     message.set_content(body)
+
+    if attachment_path is not None:
+        _attach_text_file(message=message, attachment_path=attachment_path)
 
     return message
 
@@ -79,6 +86,17 @@ def _format_sender(sender: str, sender_name: str) -> str:
         return sender
 
     return formataddr((sender_name, sender))
+
+
+def _attach_text_file(message: EmailMessage, attachment_path: str | Path) -> None:
+    path = Path(attachment_path)
+    content = path.read_text(encoding="utf-8")
+
+    message.add_attachment(
+        content,
+        subtype="markdown",
+        filename=path.name,
+    )
 
 
 def _send_smtp_message(

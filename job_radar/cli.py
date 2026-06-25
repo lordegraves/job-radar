@@ -201,7 +201,12 @@ def handle_scan(
         email_send_result = send_email_report(
             email_settings=settings["email"],
             subject=build_email_subject(report),
-            body=build_email_body(report, written_report_path),
+            body=build_email_body(
+                report=report,
+                report_path=written_report_path,
+                include_report_path=False,
+            ),
+            attachment_path=written_report_path,
         )
 
     print()

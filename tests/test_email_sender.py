@@ -201,3 +201,39 @@ def test_send_email_report_uses_sender_display_name(monkeypatch) -> None:
     assert result.sent is True
     assert result.message == "Email sent"
     assert smtp.sent_message["From"] == "Job Radar <clayton@example.com>"
+
+
+def test_send_email_report_attaches_markdown_report(monkeypatch, tmp_path) -> None:
+    FakeSMTP.instances = []
+    monkeypatch.setenv("JOB_RADAR_SMTP_PASSWORD", "not-a-real-password")
+    monkeypatch.setattr("smtplib.SMTP", FakeSMTP)
+
+    report_path = tmp_path / "live-test.md"
+    report_path.write_text("# Job Radar Report\n\nReport details.\n", encoding="utf-8")
+
+    result = send_email_report(
+        email_settings={
+            "enabled": True,
+            "sender": "clayton@example.com",
+            "sender_name": "Job Radar",
+            "recipients": ["clayton@example.com"],
+            "smtp_host": "smtp.example.com",
+            "smtp_port": 587,
+            "smtp_username": "clayton@example.com",
+            "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
+            "smtp_tls_mode": "starttls",
+        },
+        subject="Job Radar Report",
+        body="Report body",
+        attachment_path=report_path,
+    )
+
+    smtp = FakeSMTP.instances[0]
+    attachments = list(smtp.sent_message.iter_attachments())
+
+    assert result.sent is True
+    assert result.message == "Email sent"
+    assert len(attachments) == 1
+    assert attachments[0].get_filename() == "live-test.md"
+    assert attachments[0].get_content_type() == "text/markdown"
+    assert "# Job Radar Report" in attachments[0].get_content()

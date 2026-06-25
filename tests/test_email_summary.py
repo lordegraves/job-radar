@@ -341,3 +341,40 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
     assert "   Score: 158" in preview_text
     assert "Full report:" in preview_text
     assert "reports/live-test.md" in preview_text
+
+
+def test_build_email_body_can_reference_attached_report_instead_of_path() -> None:
+    top_match = make_posting(
+        title="Data Center Design Execution Lead",
+        company_name="Anthropic",
+    )
+
+    report = ScanReport(
+        generated_at="2026-06-24T17:08:47+00:00",
+        companies_enabled=3,
+        jobs_collected=811,
+        jobs_new=811,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[top_match],
+        scored_postings=[
+            ScoredPosting(
+                posting=top_match,
+                score=158,
+                score_reasons=["+24 title:data center"],
+                location_status="allowed",
+                top_match_eligible=True,
+            ),
+        ],
+    )
+
+    body = build_email_body(
+        report=report,
+        report_path="reports/live-test.md",
+        include_report_path=False,
+    )
+
+    assert "Full report:" in body
+    assert "Attached as Markdown file." in body
+    assert "reports/live-test.md" not in body

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from job_radar.cli import handle_scan
+from job_radar.email_sender import EmailSendResult
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
 
@@ -146,7 +147,7 @@ location_preferences:
     assert "- Canonical key: `example-ai:senior-infrastructure-engineer:remote`" in report_text
 
 
-def test_handle_scan_can_call_disabled_email_send_stub(
+def test_handle_scan_passes_markdown_report_attachment_to_email_sender(
     tmp_path: Path,
     monkeypatch,
     capsys,
@@ -186,6 +187,7 @@ retention:
 email:
   enabled: false
   sender: ""
+  sender_name: "Job Radar"
   recipients: []
   smtp_host: ""
   smtp_port: 587
@@ -236,12 +238,34 @@ location_preferences:
         content_hash=content_hash,
     )
 
+    captured_email_call = {}
+
     def fake_collect_jobs_for_company(company_config):
         return [fake_posting]
+
+    def fake_send_email_report(
+        email_settings,
+        subject,
+        body,
+        attachment_path=None,
+    ):
+        captured_email_call["email_settings"] = email_settings
+        captured_email_call["subject"] = subject
+        captured_email_call["body"] = body
+        captured_email_call["attachment_path"] = attachment_path
+
+        return EmailSendResult(
+            sent=True,
+            message="Email sent",
+        )
 
     monkeypatch.setattr(
         "job_radar.cli.collect_jobs_for_company",
         fake_collect_jobs_for_company,
+    )
+    monkeypatch.setattr(
+        "job_radar.cli.send_email_report",
+        fake_send_email_report,
     )
 
     handle_scan(
@@ -255,4 +279,9 @@ location_preferences:
     output = capsys.readouterr().out
 
     assert report_file.exists()
-    assert "Email send result: Email sending disabled by settings" in output
+    assert captured_email_call["attachment_path"] == report_file
+    assert captured_email_call["subject"].startswith("Job Radar Report - ")
+    assert "Full report:" in captured_email_call["body"]
+    assert "Attached as Markdown file." in captured_email_call["body"]
+    assert str(report_file) not in captured_email_call["body"]
+    assert "Email send result: Email sent" in output

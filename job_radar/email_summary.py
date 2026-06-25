@@ -17,7 +17,11 @@ def build_email_subject(report: ScanReport) -> str:
     )
 
 
-def build_email_body(report: ScanReport, report_path: str | Path) -> str:
+def build_email_body(
+    report: ScanReport,
+    report_path: str | Path,
+    include_report_path: bool = True,
+) -> str:
     top_matches = _get_top_matches(report.scored_postings)
     review_needed = _get_review_needed(report.scored_postings)
 
@@ -56,9 +60,13 @@ def build_email_body(report: ScanReport, report_path: str | Path) -> str:
         [
             "",
             "Full report:",
-            str(report_path),
         ]
     )
+
+    if include_report_path:
+        lines.append(str(report_path))
+    else:
+        lines.append("Attached as Markdown file.")
 
     return "\n".join(lines)
 
