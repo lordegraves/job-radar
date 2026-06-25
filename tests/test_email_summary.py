@@ -128,14 +128,14 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "   Company: Anthropic" in body
     assert "   Score: 158" in body
     assert "   Location: Remote" in body
-    assert "   URL: https://boards.greenhouse.io/anthropic/jobs/123" in body
+    assert "   URL:" not in body
+    assert "https://boards.greenhouse.io/anthropic/jobs/123" not in body
     assert "   Why it is a top match:" in body
     assert "      - score meets top match threshold" in body
     assert "      - location is acceptable" in body
     assert "      - required strong signal found" in body
-    assert "   Why it scored:" in body
-    assert "      - +24 title:data center" in body
-    assert "      - +10 body:linux" in body
+    assert "   Why it scored:" not in body
+    assert "   Signals: data center, linux" in body
     assert "Full report:" in body
     assert "reports/live-test.md" in body
 
@@ -177,13 +177,13 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert "   Company: Anthropic" in body
     assert "   Score: 151" in body
     assert "   Location: Remote" in body
-    assert "   URL: https://boards.greenhouse.io/anthropic/jobs/456" in body
+    assert "   URL:" not in body
+    assert "https://boards.greenhouse.io/anthropic/jobs/456" not in body
     assert "   Why it needs review:" in body
     assert "      - marked eligible by review-needed scoring rules" in body
     assert "      - location status: allowed" in body
-    assert "   Why it scored:" in body
-    assert "      - +24 title:data center" in body
-    assert "      - +10 body:infrastructure" in body
+    assert "   Why it scored:" not in body
+    assert "   Signals: data center, infrastructure" in body
 
 
 def test_build_email_body_handles_empty_sections() -> None:
@@ -265,7 +265,7 @@ def test_build_email_body_limits_top_matches_and_review_needed() -> None:
     assert f"{TOP_MATCHES_LIMIT + 1}. Review Needed {TOP_MATCHES_LIMIT}" not in body
 
 
-def test_build_email_body_handles_missing_location_and_url() -> None:
+def test_build_email_body_handles_missing_location_and_empty_signals() -> None:
     top_match = make_posting(
         title="Linux Infrastructure Engineer",
         location="",
@@ -296,9 +296,9 @@ def test_build_email_body_handles_missing_location_and_url() -> None:
 
     assert "1. Linux Infrastructure Engineer" in body
     assert "   Location: Unknown" in body
-    assert "   URL: Unknown" in body
-    assert "   Why it scored:" in body
-    assert "      - None" in body
+    assert "   URL:" not in body
+    assert "   Why it scored:" not in body
+    assert "   Signals: None" in body
 
 
 def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
@@ -404,3 +404,49 @@ def test_build_email_body_keeps_unparseable_generated_at_value() -> None:
     body = build_email_body(report, "reports/empty.md")
 
     assert "Generated at: not-a-timestamp" in body
+
+
+def test_build_email_body_does_not_include_raw_posting_urls() -> None:
+    top_match = make_posting(
+        title="Data Center Design Execution Lead",
+        company_name="Anthropic",
+        source_url="https://job-boards.greenhouse.io/anthropic/jobs/123",
+    )
+    review_needed = make_posting(
+        title="Operations Sourcing Manager, Data Center",
+        company_name="Anthropic",
+        source_url="https://job-boards.greenhouse.io/anthropic/jobs/456",
+    )
+
+    report = ScanReport(
+        generated_at="2026-06-24T17:08:47+00:00",
+        companies_enabled=3,
+        jobs_collected=2,
+        jobs_new=2,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[top_match, review_needed],
+        scored_postings=[
+            ScoredPosting(
+                posting=top_match,
+                score=158,
+                score_reasons=["+24 title:data center"],
+                location_status="allowed",
+                top_match_eligible=True,
+            ),
+            ScoredPosting(
+                posting=review_needed,
+                score=151,
+                score_reasons=["+10 body:infrastructure"],
+                location_status="allowed",
+                review_needed_eligible=True,
+            ),
+        ],
+    )
+
+    body = build_email_body(report, "reports/live-test.md")
+
+    assert "   URL:" not in body
+    assert "https://job-boards.greenhouse.io/anthropic/jobs/123" not in body
+    assert "https://job-boards.greenhouse.io/anthropic/jobs/456" not in body

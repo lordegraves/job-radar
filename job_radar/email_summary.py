@@ -195,7 +195,6 @@ def _append_email_posting_detail(
             f"   Company: {_format_value(posting.company_name)}",
             f"   Score: {scored_posting.score}",
             f"   Location: {_format_value(posting.location)}",
-            f"   URL: {_format_value(posting.source_url)}",
         ]
     )
 
@@ -213,10 +212,8 @@ def _append_email_posting_detail(
             reasons=_get_review_needed_reasons(scored_posting),
         )
 
-    _append_reason_lines(
-        lines=lines,
-        heading="Why it scored:",
-        reasons=scored_posting.score_reasons,
+    lines.append(
+        f"   Signals: {_format_signal_summary(scored_posting.score_reasons)}"
     )
 
 
@@ -250,6 +247,30 @@ def _append_reason_lines(
 
     for reason in reasons:
         lines.append(f"      - {reason}")
+
+
+def _format_signal_summary(score_reasons: list[str]) -> str:
+    if not score_reasons:
+        return "None"
+
+    labels: list[str] = []
+
+    for reason in score_reasons:
+        if reason.startswith("-"):
+            continue
+
+        if ":" not in reason:
+            continue
+
+        label = reason.split(":", maxsplit=1)[1].strip()
+
+        if label and label not in labels:
+            labels.append(label)
+
+    if not labels:
+        return "None"
+
+    return ", ".join(labels)
 
 
 def _format_value(value: str | None) -> str:
