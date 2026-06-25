@@ -125,6 +125,8 @@ location_preferences:
     assert "- Seen jobs: 0" in report_text
     assert "- Changed jobs: 0" in report_text
     assert "- Collector errors: 0" in report_text
+    assert "- Top match score threshold: 1" in report_text
+    assert "- Review-needed score threshold: 100" in report_text
 
     assert "## Top Matches" in report_text
     assert "## All Jobs" in report_text

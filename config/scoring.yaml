@@ -71,6 +71,8 @@ location_preferences:
     singapore: -100
 
 top_matches:
+  min_score: 120
+
   excluded_title_keywords:
     - account executive
     - business

@@ -120,17 +120,22 @@ def _validate_location_preferences(
     }
 
 
-def _validate_top_matches(raw_top_matches: Any) -> dict[str, list[str]]:
+def _validate_top_matches(raw_top_matches: Any) -> dict[str, Any]:
     if raw_top_matches is None:
         raw_top_matches = {}
 
     if not isinstance(raw_top_matches, dict):
         raise ScoringConfigError("top_matches must be a mapping")
 
+    min_score = raw_top_matches.get("min_score", 1)
     excluded_title_keywords = raw_top_matches.get("excluded_title_keywords", [])
     strong_signals = raw_top_matches.get("strong_signals", [])
 
+    if not isinstance(min_score, int) or isinstance(min_score, bool):
+        raise ScoringConfigError("top_matches.min_score must be an integer")
+
     return {
+        "min_score": min_score,
         "excluded_title_keywords": _validate_keyword_list(
             excluded_title_keywords,
             "top_matches.excluded_title_keywords",
@@ -342,8 +347,10 @@ def evaluate_top_match_eligibility(
     if location_status not in allowed_top_match_location_statuses:
         return False, [f"location_not_allowed:{location_status}"]
 
-    if score <= 0:
-        return False, ["score_not_positive"]
+    min_score = scoring_config["top_matches"]["min_score"]
+
+    if score < min_score:
+        return False, [f"score_below_top_match_threshold:{score}<{min_score}"]
 
     if _has_negative_title_match(score_reasons):
         return False, ["negative_title_match"]
@@ -352,10 +359,18 @@ def evaluate_top_match_eligibility(
     if excluded_keyword:
         return False, [f"excluded_title_keyword:{excluded_keyword}"]
 
-    if not _has_strong_technical_signal(score_reasons, scoring_config):
+    strong_signal = _find_configured_signal(
+        score_reasons,
+        scoring_config["top_matches"]["strong_signals"],
+    )
+    if strong_signal is None:
         return False, ["missing_strong_signal"]
 
-    return True, ["eligible"]
+    return True, [
+        f"score {score} meets top-match threshold {min_score}",
+        f"location status is acceptable: {location_status}",
+        f"strong signal matched: {strong_signal}",
+    ]
 
 
 def evaluate_review_needed_eligibility(
@@ -418,12 +433,19 @@ def _has_configured_signal(
     score_reasons: list[str],
     configured_signals: list[str],
 ) -> bool:
+    return _find_configured_signal(score_reasons, configured_signals) is not None
+
+
+def _find_configured_signal(
+    score_reasons: list[str],
+    configured_signals: list[str],
+) -> str | None:
     for reason in score_reasons:
         for signal in configured_signals:
             if signal in reason:
-                return True
+                return signal
 
-    return False
+    return None
 
 
 def _build_body_text(posting: JobPosting) -> str:

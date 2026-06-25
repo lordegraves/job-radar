@@ -34,6 +34,14 @@ def build_email_body(
         f"Seen jobs: {report.jobs_seen}",
         f"Changed jobs: {report.jobs_changed}",
         f"Collector errors: {len(report.collector_errors)}",
+        _format_threshold_line(
+            label="Top match score threshold",
+            threshold=report.top_match_min_score,
+        ),
+        _format_threshold_line(
+            label="Review-needed score threshold",
+            threshold=report.review_needed_min_score,
+        ),
         "",
         f"Top Matches, up to {TOP_MATCHES_LIMIT}:",
     ]
@@ -111,6 +119,13 @@ def _format_generated_at(generated_at: str | None) -> str:
         timezone_name = "local"
 
     return f"{parsed_timestamp:%Y-%m-%d %H:%M} {timezone_name}"
+
+
+def _format_threshold_line(label: str, threshold: int | None) -> str:
+    if threshold is None:
+        return f"{label}: Unknown"
+
+    return f"{label}: {threshold}"
 
 
 def _get_top_matches(

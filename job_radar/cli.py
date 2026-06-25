@@ -182,6 +182,8 @@ def handle_scan(
         collector_errors=collector_errors,
         postings=collected_postings,
         scored_postings=scored_postings,
+        top_match_min_score=scoring_config["top_matches"]["min_score"],
+        review_needed_min_score=scoring_config["review_needed"]["min_score"],
     )
 
     written_report_path = write_markdown_report(report_path, report)

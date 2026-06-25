@@ -87,6 +87,8 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
         jobs_changed=0,
         collector_errors=[],
         postings=[top_match],
+        top_match_min_score=120,
+        review_needed_min_score=100,
         scored_postings=[
             ScoredPosting(
                 posting=top_match,
@@ -115,6 +117,8 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "Seen jobs: 0" in body
     assert "Changed jobs: 0" in body
     assert "Collector errors: 0" in body
+    assert "Top match score threshold: 120" in body
+    assert "Review-needed score threshold: 100" in body
     assert f"Top Matches, up to {TOP_MATCHES_LIMIT}:" in body
     assert "1. Data Center Design Execution Lead" in body
     assert "   Company: Anthropic" in body

@@ -66,6 +66,7 @@ def make_scoring_config() -> dict:
         },
         "location_preferences": make_location_preferences(),
         "top_matches": {
+            "min_score": 100,
             "excluded_title_keywords": [
                 "account executive",
                 "customer success",
@@ -104,6 +105,7 @@ location_preferences:
     london: -100
 
 top_matches:
+  min_score: 120
   excluded_title_keywords:
     - sales
     - recruiting
@@ -136,6 +138,7 @@ top_matches:
         },
     }
     assert config["top_matches"] == {
+        "min_score": 120,
         "excluded_title_keywords": [
             "sales",
             "recruiting",
@@ -169,6 +172,7 @@ location_preferences:
     config = load_scoring_config(scoring_file)
 
     assert config["top_matches"] == {
+        "min_score": 1,
         "excluded_title_keywords": [],
         "strong_signals": [],
     }
@@ -430,7 +434,36 @@ def test_evaluate_top_match_eligibility_returns_true_for_allowed_strong_match() 
     )
 
     assert eligible is True
-    assert reasons == ["eligible"]
+    assert reasons == [
+        "score 140 meets top-match threshold 100",
+        "location status is acceptable: allowed",
+        "strong signal matched: title:infrastructure",
+    ]
+
+
+def test_evaluate_top_match_eligibility_rejects_below_min_score() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="Remote",
+    )
+
+    config = make_scoring_config()
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=99,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        scoring_config=config,
+    )
+
+    assert eligible is False
+    assert reasons == ["score_below_top_match_threshold:99<100"]
 
 
 def test_evaluate_top_match_eligibility_rejects_non_allowed_location() -> None:
@@ -553,7 +586,11 @@ def test_evaluate_top_match_eligibility_allows_limited_travel() -> None:
     )
 
     assert eligible is True
-    assert reasons == ["eligible"]
+    assert reasons == [
+        "score 140 meets top-match threshold 100",
+        "location status is acceptable: allowed_with_travel",
+        "strong signal matched: title:infrastructure",
+    ]
 
 
 def test_load_scoring_config_reads_review_needed(tmp_path: Path) -> None:

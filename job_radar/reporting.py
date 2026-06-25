@@ -37,6 +37,8 @@ class ScanReport:
     postings: list[JobPosting]
     scored_postings: list[ScoredPosting] | None = None
     generated_at: str | None = None
+    top_match_min_score: int | None = None
+    review_needed_min_score: int | None = None
 
 
 def render_markdown_report(report: ScanReport) -> str:
@@ -60,6 +62,14 @@ def render_markdown_report(report: ScanReport) -> str:
             f"- Collector errors: {len(report.collector_errors)}",
         ]
     )
+
+    if report.top_match_min_score is not None:
+        lines.append(f"- Top match score threshold: {report.top_match_min_score}")
+
+    if report.review_needed_min_score is not None:
+        lines.append(
+            f"- Review-needed score threshold: {report.review_needed_min_score}"
+        )
 
     _append_companies_scanned_summary(lines, report.postings)
     _append_source_type_summary(lines, report.postings)
