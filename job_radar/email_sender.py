@@ -17,6 +17,7 @@ def send_email_report(
     email_settings: dict[str, Any],
     subject: str,
     body: str,
+    html_body: str | None = None,
     attachment_path: str | Path | None = None,
 ) -> EmailSendResult:
     if not email_settings.get("enabled", False):
@@ -41,6 +42,7 @@ def send_email_report(
             recipients=email_settings["recipients"],
             subject=subject,
             body=body,
+            html_body=html_body,
             attachment_path=attachment_path,
         )
 
@@ -67,6 +69,7 @@ def _build_email_message(
     recipients: list[str],
     subject: str,
     body: str,
+    html_body: str | None = None,
     attachment_path: str | Path | None = None,
 ) -> EmailMessage:
     message = EmailMessage()
@@ -74,6 +77,9 @@ def _build_email_message(
     message["To"] = ", ".join(recipients)
     message["Subject"] = subject
     message.set_content(body)
+
+    if html_body is not None:
+        message.add_alternative(html_body, subtype="html")
 
     if attachment_path is not None:
         _attach_text_file(message=message, attachment_path=attachment_path)

@@ -230,6 +230,12 @@ location_preferences:
     remote: 100
   conditional: {}
   skipped: {}
+
+top_matches:
+  min_score: 1
+  excluded_title_keywords: []
+  strong_signals:
+    - title:infrastructure
 """,
         encoding="utf-8",
     )
@@ -268,11 +274,13 @@ location_preferences:
         email_settings,
         subject,
         body,
+        html_body=None,
         attachment_path=None,
     ):
         captured_email_call["email_settings"] = email_settings
         captured_email_call["subject"] = subject
         captured_email_call["body"] = body
+        captured_email_call["html_body"] = html_body
         captured_email_call["attachment_path"] = attachment_path
 
         return EmailSendResult(
@@ -305,4 +313,7 @@ location_preferences:
     assert "Full report:" in captured_email_call["body"]
     assert "Attached as Markdown file." in captured_email_call["body"]
     assert str(report_file) not in captured_email_call["body"]
+    assert captured_email_call["html_body"] is not None
+    assert "<h1>Job Radar Report</h1>" in captured_email_call["html_body"]
+    assert "View posting" in captured_email_call["html_body"]
     assert "Email send result: Email sent" in output

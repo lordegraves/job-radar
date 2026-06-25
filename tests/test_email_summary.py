@@ -1,5 +1,6 @@
 from job_radar.email_summary import (
     build_email_body,
+    build_email_html_body,
     build_email_subject,
     write_email_preview,
 )
@@ -450,3 +451,105 @@ def test_build_email_body_does_not_include_raw_posting_urls() -> None:
     assert "   URL:" not in body
     assert "https://job-boards.greenhouse.io/anthropic/jobs/123" not in body
     assert "https://job-boards.greenhouse.io/anthropic/jobs/456" not in body
+
+
+def test_build_email_html_body_includes_clickable_posting_links() -> None:
+    top_match = make_posting(
+        title="Data Center Design Execution Lead",
+        company_name="Anthropic",
+        source_url="https://job-boards.greenhouse.io/anthropic/jobs/123",
+    )
+    review_needed = make_posting(
+        title="Operations Sourcing Manager, Data Center",
+        company_name="Anthropic",
+        source_url="https://job-boards.greenhouse.io/anthropic/jobs/456",
+    )
+
+    report = ScanReport(
+        generated_at="2026-06-24T17:08:47+00:00",
+        companies_enabled=3,
+        jobs_collected=2,
+        jobs_new=2,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        jobs_stored=2,
+        jobs_omitted=0,
+        postings=[top_match, review_needed],
+        scored_postings=[
+            ScoredPosting(
+                posting=top_match,
+                score=158,
+                score_reasons=["+24 title:data center"],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=[
+                    "score 158 meets top-match threshold 120",
+                    "location status is acceptable: allowed",
+                    "strong signal matched: body:infrastructure",
+                ],
+            ),
+            ScoredPosting(
+                posting=review_needed,
+                score=151,
+                score_reasons=["+10 body:infrastructure"],
+                location_status="allowed",
+                review_needed_eligible=True,
+            ),
+        ],
+    )
+
+    html_body = build_email_html_body(
+        report=report,
+        report_path="reports/live-test.md",
+        include_report_path=False,
+    )
+
+    assert "<h1>Job Radar Report</h1>" in html_body
+    assert "Data Center Design Execution Lead" in html_body
+    assert "Operations Sourcing Manager, Data Center" in html_body
+    assert (
+        '<a href="https://job-boards.greenhouse.io/anthropic/jobs/123">'
+        "View posting</a>"
+        in html_body
+    )
+    assert (
+        '<a href="https://job-boards.greenhouse.io/anthropic/jobs/456">'
+        "View posting</a>"
+        in html_body
+    )
+    assert "Attached as Markdown file." in html_body
+
+
+def test_build_email_html_body_escapes_html_special_characters() -> None:
+    top_match = make_posting(
+        title="Senior <Linux> & Infrastructure Engineer",
+        company_name="Example & AI",
+        source_url="https://example.com/jobs?id=123&source=test",
+    )
+
+    report = ScanReport(
+        generated_at="2026-06-24T17:08:47+00:00",
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[top_match],
+        scored_postings=[
+            ScoredPosting(
+                posting=top_match,
+                score=140,
+                score_reasons=["+10 body:linux"],
+                location_status="allowed",
+                top_match_eligible=True,
+            ),
+        ],
+    )
+
+    html_body = build_email_html_body(report, "reports/live-test.md")
+
+    assert "Senior &lt;Linux&gt; &amp; Infrastructure Engineer" in html_body
+    assert "Example &amp; AI" in html_body
+    assert 'href="https://example.com/jobs?id=123&amp;source=test"' in html_body

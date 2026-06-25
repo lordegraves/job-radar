@@ -7,6 +7,7 @@ from job_radar.config import ConfigError, load_companies, load_settings
 from job_radar.email_sender import send_email_report
 from job_radar.email_summary import (
     build_email_body,
+    build_email_html_body,
     build_email_subject,
     write_email_preview,
 )
@@ -216,6 +217,11 @@ def handle_scan(
             email_settings=settings["email"],
             subject=build_email_subject(report),
             body=build_email_body(
+                report=report,
+                report_path=written_report_path,
+                include_report_path=False,
+            ),
+            html_body=build_email_html_body(
                 report=report,
                 report_path=written_report_path,
                 include_report_path=False,
