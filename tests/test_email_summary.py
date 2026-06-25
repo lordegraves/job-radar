@@ -108,7 +108,7 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
 
     body = build_email_body(report, "reports/live-test.md")
 
-    assert "Generated at: 2026-06-24T17:08:47+00:00" in body
+    assert "Generated at: 2026-06-24 17:08 UTC" in body
     assert "Companies enabled: 3" in body
     assert "Jobs collected: 811" in body
     assert "New jobs: 811" in body
@@ -334,7 +334,7 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
         "Subject: Job Radar Report - 2026-06-24 - "
         "811 jobs - 1 top match - 0 review needed"
     )
-    assert "Generated at: 2026-06-24T17:08:47+00:00" in preview_text
+    assert "Generated at: 2026-06-24 17:08 UTC" in preview_text
     assert f"Top Matches, up to {TOP_MATCHES_LIMIT}:" in preview_text
     assert "1. Data Center Design Execution Lead" in preview_text
     assert "   Company: Anthropic" in preview_text
@@ -378,3 +378,21 @@ def test_build_email_body_can_reference_attached_report_instead_of_path() -> Non
     assert "Full report:" in body
     assert "Attached as Markdown file." in body
     assert "reports/live-test.md" not in body
+
+
+def test_build_email_body_keeps_unparseable_generated_at_value() -> None:
+    report = ScanReport(
+        generated_at="not-a-timestamp",
+        companies_enabled=0,
+        jobs_collected=0,
+        jobs_new=0,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[],
+        scored_postings=[],
+    )
+
+    body = build_email_body(report, "reports/empty.md")
+
+    assert "Generated at: not-a-timestamp" in body

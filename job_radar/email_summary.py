@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 from job_radar.reporting import ScanReport, ScoredPosting, TOP_MATCHES_LIMIT
@@ -26,7 +27,7 @@ def build_email_body(
     review_needed = _get_review_needed(report.scored_postings)
 
     lines: list[str] = [
-        f"Generated at: {report.generated_at or 'Unknown'}",
+        f"Generated at: {_format_generated_at(report.generated_at)}",
         f"Companies enabled: {report.companies_enabled}",
         f"Jobs collected: {report.jobs_collected}",
         f"New jobs: {report.jobs_new}",
@@ -93,6 +94,23 @@ def _get_report_date(generated_at: str | None) -> str:
         return "unknown-date"
 
     return generated_at.split("T", maxsplit=1)[0]
+
+
+def _format_generated_at(generated_at: str | None) -> str:
+    if not generated_at:
+        return "Unknown"
+
+    try:
+        parsed_timestamp = datetime.fromisoformat(generated_at)
+    except ValueError:
+        return generated_at
+
+    timezone_name = "UTC"
+
+    if parsed_timestamp.tzinfo is None:
+        timezone_name = "local"
+
+    return f"{parsed_timestamp:%Y-%m-%d %H:%M} {timezone_name}"
 
 
 def _get_top_matches(
