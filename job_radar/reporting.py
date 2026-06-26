@@ -486,12 +486,22 @@ def _append_scored_posting(
     scored_posting: ScoredPosting,
 ) -> None:
     posting = scored_posting.posting
+    decision_explanation = _format_markdown_decision_explanation(scored_posting)
 
     lines.extend(
         [
             f"### [{posting.title}]({posting.source_url})",
             "",
             f"- Score: {scored_posting.score}",
+        ]
+    )
+
+    if decision_explanation is not None:
+        label, explanation = decision_explanation
+        lines.append(f"- {label}: {explanation}")
+
+    lines.extend(
+        [
             f"- Why this matched: "
             f"{_format_match_summary(scored_posting.score_reasons)}",
             f"- Score reasons: {_format_score_reasons(scored_posting.score_reasons)}",
@@ -568,7 +578,19 @@ def _format_score_reasons(score_reasons: list[str]) -> str:
     return ", ".join(score_reasons)
 
 
+def _format_markdown_decision_explanation(
+    scored_posting: ScoredPosting,
+) -> tuple[str, str] | None:
+    return _format_decision_explanation(scored_posting)
+
+
 def _format_html_decision_explanation(
+    scored_posting: ScoredPosting,
+) -> tuple[str, str] | None:
+    return _format_decision_explanation(scored_posting)
+
+
+def _format_decision_explanation(
     scored_posting: ScoredPosting,
 ) -> tuple[str, str] | None:
     if scored_posting.top_match_eligible:

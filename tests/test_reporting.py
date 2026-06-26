@@ -912,3 +912,48 @@ def test_render_html_report_explains_top_match_and_review_needed_cards() -> None
         "but the location fit needs confirmation."
         in html
     )
+
+
+def test_render_markdown_report_explains_review_needed_cards() -> None:
+    review_needed_posting = make_posting(title="Data Center Design Execution Lead")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[review_needed_posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=review_needed_posting,
+                score=158,
+                score_reasons=[
+                    "+10 body:infrastructure",
+                    "+10 body:hpc",
+                    "+8 body:datacenter",
+                    "+24 title:data center",
+                    "+6 body:systems",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                review_needed_eligible=True,
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "## Review Needed" in markdown
+    assert "### [Data Center Design Execution Lead]" in markdown
+    assert (
+        "- Why it needs review: This role has enough signal to review manually, "
+        "but it did not qualify as a Top Match."
+        in markdown
+    )
+    assert (
+        "- Why this matched: infrastructure, hpc, datacenter, data center, "
+        "systems, remote"
+        in markdown
+    )
