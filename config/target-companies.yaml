@@ -1,26 +1,23 @@
-# Real target company configuration.
-# This is the daily-use scan list.
+# Job Radar target company configuration
 #
-# Run:
-#   python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports/target-email-preview.txt --send-email
-#
-# Source status:
-#   greenhouse: supported now
-#   lever: supported now
-#   ashby: supported now
-#   workday: supported now
-#   usajobs: known source type, collector not implemented yet
-#   html: known source type, collector not implemented yet
-#
-# Notes:
-#   - Unsupported collector sources are included but disabled.
-#   - Enable source blocks only after the collector exists.
-#   - Voltage Park is represented through Lightning AI after the merger, so it is listed
-#     but disabled to avoid duplicate coverage.
+# Source types:
+#   greenhouse: implemented
+#   lever: implemented
+#   ashby: implemented
+#   workday: implemented
+#   usajobs: known future source
+#   icims: known future source
+#   oracle_hcm: known future source
+#   dayforce: known future source
+#   adp: known future source
+#   smartrecruiters: known future source
+#   selectminds: known future source
+#   phenom: known future source
+#   html: custom / generic career pages
 
 companies:
   # ---------------------------------------------------------------------------
-  # Greenhouse sources - supported now
+  # Greenhouse - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: nebius
@@ -40,12 +37,6 @@ companies:
     source_type: greenhouse
     source_slug: lightningai
     enabled: true
-
-  - company_key: voltage_park
-    name: Voltage Park
-    source_type: greenhouse
-    source_slug: lightningai
-    enabled: false
 
   - company_key: together_ai
     name: Together AI
@@ -92,11 +83,11 @@ companies:
   - company_key: tailscale
     name: Tailscale
     source_type: greenhouse
-    source_slug: Tailscale
+    source_slug: tailscale
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # Lever sources - supported now
+  # Lever - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: mistral_ai
@@ -106,7 +97,7 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # Ashby sources - Supported now
+  # Ashby - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: crusoe
@@ -139,12 +130,6 @@ companies:
     source_slug: RunPod
     enabled: true
 
-  - company_key: nscale
-    name: Nscale
-    source_type: ashby
-    source_slug: nscale
-    enabled: false
-
   - company_key: modal
     name: Modal
     source_type: ashby
@@ -163,8 +148,15 @@ companies:
     source_slug: FireworksAI
     enabled: true
 
+  - company_key: nscale
+    name: Nscale
+    source_type: ashby
+    source_slug: nscale
+    enabled: false
+    notes: Ashby slug needs investigation; previous probe returned 404.
+
   # ---------------------------------------------------------------------------
-  # Workday sources - supported now
+  # Workday - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: nvidia
@@ -181,114 +173,12 @@ companies:
     source_base_url: https://argonne.wd1.myworkdayjobs.com/Argonne_Careers
     enabled: true
 
-  - company_key: battelle
-    name: Battelle
-    source_type: workday
-    source_slug: battelle
-    enabled: false
-
-  - company_key: kbr
-    name: KBR
-    source_type: workday
-    source_slug: kbr
-    enabled: false
-
-  - company_key: jacobs
-    name: Jacobs
-    source_type: workday
-    source_slug: jacobs
-    enabled: false
-
-  - company_key: amentum
-    name: Amentum
-    source_type: workday
-    source_slug: amentum
-    enabled: false
-
-  - company_key: leidos
-    name: Leidos
-    source_type: workday
-    source_slug: leidos
-    enabled: false
-
-  - company_key: saic
-    name: SAIC
-    source_type: workday
-    source_slug: saic
-    enabled: false
-
-  - company_key: caci
-    name: CACI
-    source_type: workday
-    source_slug: caci
-    enabled: false
-
-  - company_key: gdit
-    name: General Dynamics IT
-    source_type: workday
-    source_slug: gdit
-    enabled: false
-
-  - company_key: booz_allen
-    name: Booz Allen Hamilton
-    source_type: workday
-    source_slug: boozallen
-    enabled: false
-
-  - company_key: peraton
-    name: Peraton
-    source_type: workday
-    source_slug: peraton
-    enabled: false
-
-  - company_key: asrc_federal
-    name: ASRC Federal
-    source_type: workday
-    source_slug: asrcfederal
-    enabled: false
-
-  - company_key: usra
-    name: USRA
-    source_type: workday
-    source_slug: usra
-    enabled: false
-
   - company_key: jpl
     name: JPL / Caltech
     source_type: workday
     source_url: https://citjpl.wd5.myworkdayjobs.com/wday/cxs/citjpl/Jobs/jobs
     source_base_url: https://citjpl.wd5.myworkdayjobs.com/Jobs
     enabled: true
-
-  - company_key: woods_hole
-    name: Woods Hole Oceanographic Institution
-    source_type: workday
-    source_slug: whoi
-    enabled: false
-
-  - company_key: mbari
-    name: Monterey Bay Aquarium Research Institute
-    source_type: workday
-    source_slug: mbari
-    enabled: false
-
-  - company_key: scripps
-    name: Scripps Institution of Oceanography
-    source_type: workday
-    source_slug: scripps
-    enabled: false
-
-  - company_key: fugro
-    name: Fugro
-    source_type: workday
-    source_slug: fugro
-    enabled: false
-
-  - company_key: penguin_solutions
-    name: Penguin Solutions
-    source_type: workday
-    source_slug: penguinsolutions
-    enabled: false
 
   - company_key: hpe
     name: HPE
@@ -305,13 +195,6 @@ companies:
     source_base_url: https://hp.wd5.myworkdayjobs.com/ExternalCareerSite
     enabled: true
 
-  - company_key: dell
-    name: Dell Technologies
-    source_type: workday
-    source_url: https://dell.wd1.myworkdayjobs.com/wday/cxs/dell/External/jobs
-    source_base_url: https://dell.wd1.myworkdayjobs.com/External
-    enabled: false
-
   - company_key: intel
     name: Intel
     source_type: workday
@@ -319,109 +202,135 @@ companies:
     source_base_url: https://intel.wd1.myworkdayjobs.com/External
     enabled: true
 
+  - company_key: kbr
+    name: KBR
+    source_type: workday
+    source_url: https://kbr.wd5.myworkdayjobs.com/wday/cxs/kbr/kbr_Careers/jobs
+    source_base_url: https://kbr.wd5.myworkdayjobs.com/kbr_Careers
+    enabled: true
+
+  - company_key: leidos
+    name: Leidos
+    source_type: workday
+    source_url: https://leidos.wd5.myworkdayjobs.com/wday/cxs/leidos/External/jobs
+    source_base_url: https://leidos.wd5.myworkdayjobs.com/External
+    enabled: true
+
+  - company_key: caci
+    name: CACI
+    source_type: workday
+    source_url: https://caci.wd1.myworkdayjobs.com/wday/cxs/caci/External/jobs
+    source_base_url: https://caci.wd1.myworkdayjobs.com/External
+    enabled: true
+
+  - company_key: gdit
+    name: General Dynamics IT
+    source_type: workday
+    source_url: https://gdit.wd5.myworkdayjobs.com/wday/cxs/gdit/External_Career_Site/jobs
+    source_base_url: https://gdit.wd5.myworkdayjobs.com/External_Career_Site
+    enabled: true
+
+  - company_key: booz_allen
+    name: Booz Allen Hamilton
+    source_type: workday
+    source_url: https://bah.wd1.myworkdayjobs.com/wday/cxs/bah/BAH_Jobs/jobs
+    source_base_url: https://bah.wd1.myworkdayjobs.com/BAH_Jobs
+    enabled: true
+    notes: Existing probe missed this because tenant is bah, not booz_allen.
+
+  - company_key: woods_hole
+    name: Woods Hole Oceanographic Institution
+    source_type: workday
+    source_url: https://whoi.wd5.myworkdayjobs.com/wday/cxs/whoi/WHOI-External/jobs
+    source_base_url: https://whoi.wd5.myworkdayjobs.com/WHOI-External
+    enabled: true
+    notes: Existing probe missed this because tenant is whoi, not woods_hole.
+
+  - company_key: colorado_state_university
+    name: Colorado State University
+    source_type: workday
+    source_url: https://csusystem.wd12.myworkdayjobs.com/wday/cxs/csusystem/fortcollins_careers/jobs
+    source_base_url: https://csusystem.wd12.myworkdayjobs.com/fortcollins_careers
+    enabled: true
+
   # ---------------------------------------------------------------------------
-  # USAJobs sources - collector not implemented yet
-  #
-  # Federal filter rules:
-  #   Allowed:
-  #     - U.S. citizenship required
-  #     - Public Trust
-  #     - background investigation
-  #     - suitability investigation
-  #     - ability to obtain clearance
-  #
-  #   Review:
-  #     - ability to obtain and maintain Secret clearance
-  #
-  #   Reject:
-  #     - active/current Secret clearance required
-  #     - Secret clearance required
-  #     - Top Secret required
-  #     - TS/SCI required
-  #     - SCI required
-  #     - polygraph required
-  #     - existing federal employees only
-  #     - status candidates only
+  # USAJobs - collector not implemented yet
   # ---------------------------------------------------------------------------
 
-  - company_key: noaa
-    name: NOAA
-    source_type: usajobs
-    source_slug: noaa
-    enabled: false
-
-  - company_key: nasa
+  - company_key: nasa_usajobs
     name: NASA
     source_type: usajobs
-    source_slug: nasa
+    source_url: https://www.usajobs.gov/Search/Results?a=NN00
+    enabled: false
+
+  - company_key: noaa_usajobs
+    name: NOAA
+    source_type: usajobs
+    source_url: https://www.usajobs.gov/Search/Results?a=CM54
     enabled: false
 
   # ---------------------------------------------------------------------------
-  # HTML / custom career pages - collector not implemented yet
+  # iCIMS - collector not implemented yet
   # ---------------------------------------------------------------------------
 
-  - company_key: voleon
-    name: Voleon
-    source_type: html
-    source_slug: https://www.voleon.com/jobs/
+  - company_key: amd
+    name: AMD
+    source_type: icims
+    source_url: https://careers.amd.com/careers-home/jobs
     enabled: false
 
-  - company_key: ocean_infinity
-    name: Ocean Infinity
-    source_type: html
-    source_slug: https://oceaninfinity.com/careers/
-    enabled: false
-
-  - company_key: saildrone
-    name: Saildrone
-    source_type: html
-    source_slug: https://www.saildrone.com/careers/available-jobs
-    enabled: false
-
-  - company_key: ddn
-    name: DDN
-    source_type: html
-    source_slug: https://www.ddn.com/company/careers/
-    enabled: false
-
-  - company_key: weka
-    name: WEKA
-    source_type: html
-    source_slug: https://www.weka.io/company/careers/
-    enabled: false
-
-  - company_key: sandia
-    name: Sandia National Laboratories
-    source_type: workday
-    source_slug: sandia
-    enabled: false
-
-  - company_key: lanl
-    name: Los Alamos National Laboratory
-    source_type: html
-    source_url: https://lanl.jobs/
-    enabled: false
-
-  - company_key: pnnl
-    name: Pacific Northwest National Laboratory
-    source_type: workday
-    source_slug: pnnl
-    enabled: false
-
-  - company_key: ornl
-    name: Oak Ridge National Laboratory
-    source_type: workday
-    source_slug: ornl
+  - company_key: peraton
+    name: Peraton
+    source_type: icims
+    source_url: https://careers-peraton.icims.com/jobs
     enabled: false
 
   # ---------------------------------------------------------------------------
-  # smartrecruiters - collector not implemented yet
+  # Oracle HCM - collector not implemented yet
+  # ---------------------------------------------------------------------------
+
+  - company_key: dell
+    name: Dell Technologies
+    source_type: oracle_hcm
+    source_url: https://iawmqy.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/careers
+    enabled: false
+    notes: Prior Workday endpoint responded but returned total=0.
+
+  - company_key: saic
+    name: SAIC
+    source_type: oracle_hcm
+    source_url: https://eihu.fa.us8.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/jobs
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # Dayforce - collector not implemented yet
+  # ---------------------------------------------------------------------------
+
+  - company_key: asrc_federal
+    name: ASRC Federal
+    source_type: dayforce
+    source_url: https://jobs.dayforcehcm.com/asrcfh/CANDIDATEPORTAL
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # ADP Workforce Now - collector not implemented yet
+  # ---------------------------------------------------------------------------
+
+  - company_key: usra
+    name: USRA
+    source_type: adp
+    source_url: https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=f03960f2-20cd-4828-9ae5-415eefc7072e&ccId=19000101_000001&lang=en_US
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # SmartRecruiters - collector not implemented yet
   # ---------------------------------------------------------------------------
 
   - company_key: lawrence_livermore
     name: Lawrence Livermore National Laboratory
     source_type: smartrecruiters
     source_slug: LLNL
+    source_url: https://careers.smartrecruiters.com/LLNL
     enabled: false
 
   # ---------------------------------------------------------------------------
@@ -441,11 +350,105 @@ companies:
     enabled: false
 
   # ---------------------------------------------------------------------------
-  # iCIMS - collector not implemented yet
+  # Phenom / custom enterprise career sites - collector not implemented yet
   # ---------------------------------------------------------------------------
 
-  - company_key: amd
-    name: AMD
-    source_type: icims
-    source_url: https://careers.amd.com/careers-home/jobs
+  - company_key: battelle
+    name: Battelle
+    source_type: phenom
+    source_url: https://jobs.battelle.org/us/en/search-results
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # HTML / custom career pages - collector not implemented yet
+  # ---------------------------------------------------------------------------
+
+  - company_key: jacobs
+    name: Jacobs
+    source_type: html
+    source_url: https://careers.jacobs.com/en_US/careers
+    enabled: false
+
+  - company_key: amentum
+    name: Amentum
+    source_type: html
+    source_url: https://www.amentumcareers.com/jobs
+    enabled: false
+
+  - company_key: sandia
+    name: Sandia National Laboratories
+    source_type: html
+    source_url: https://sandia.jobs/
+    enabled: false
+
+  - company_key: lanl
+    name: Los Alamos National Laboratory
+    source_type: html
+    source_url: https://lanl.jobs/
+    enabled: false
+
+  - company_key: pnnl
+    name: Pacific Northwest National Laboratory
+    source_type: html
+    source_url: https://careers.pnnl.gov/
+    enabled: false
+
+  - company_key: ornl
+    name: Oak Ridge National Laboratory
+    source_type: html
+    source_url: https://jobs.ornl.gov/
+    enabled: false
+
+  - company_key: mbari
+    name: Monterey Bay Aquarium Research Institute
+    source_type: html
+    source_url: https://www.mbari.org/about/careers/job-openings/
+    enabled: false
+
+  - company_key: scripps
+    name: Scripps Institution of Oceanography
+    source_type: html
+    source_url: https://scripps.ucsd.edu/portal/jobs
+    enabled: false
+
+  - company_key: fugro
+    name: Fugro
+    source_type: html
+    source_url: https://www.fugro.com/careers/jobs
+    enabled: false
+
+  - company_key: penguin_solutions
+    name: Penguin Solutions
+    source_type: html
+    source_url: https://careers.penguinsolutions.com/search/?locationsearch=
+    enabled: false
+
+  - company_key: voleon
+    name: Voleon
+    source_type: html
+    source_url: https://www.voleon.com/careers
+    enabled: false
+
+  - company_key: ocean_infinity
+    name: Ocean Infinity
+    source_type: html
+    source_url: https://oceaninfinity.com/careers/
+    enabled: false
+
+  - company_key: saildrone
+    name: Saildrone
+    source_type: html
+    source_url: https://www.saildrone.com/careers
+    enabled: false
+
+  - company_key: ddn
+    name: DDN
+    source_type: html
+    source_url: https://www.ddn.com/company/careers/
+    enabled: false
+
+  - company_key: weka
+    name: WEKA
+    source_type: html
+    source_url: https://www.weka.io/company/careers/
     enabled: false

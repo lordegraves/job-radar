@@ -11,9 +11,13 @@ SUPPORTED_SOURCE_TYPES = {
     "workday",
     "ashby",
     "usajobs",
+    "icims",
+    "oracle_hcm",
+    "dayforce",
+    "adp",
     "smartrecruiters",
     "selectminds",
-    "icims",
+    "phenom",
     "html",
 }
 
