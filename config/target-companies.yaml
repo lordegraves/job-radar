@@ -1,0 +1,425 @@
+# Real target company configuration.
+# This is the daily-use scan list.
+#
+# Run:
+#   python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports/target-email-preview.txt --send-email
+#
+# Source status:
+#   greenhouse: supported now
+#   lever: supported now
+#   ashby: known source type, collector not implemented yet
+#   workday: known source type, collector not implemented yet
+#   usajobs: known source type, collector not implemented yet
+#   html: known source type, collector not implemented yet
+#
+# Notes:
+#   - Unsupported collector sources are included but disabled.
+#   - Enable source blocks only after the collector exists.
+#   - Voltage Park is represented through Lightning AI after the merger, so it is listed
+#     but disabled to avoid duplicate coverage.
+
+companies:
+  # ---------------------------------------------------------------------------
+  # Greenhouse sources - supported now
+  # ---------------------------------------------------------------------------
+
+  - company_key: nebius
+    name: Nebius
+    source_type: greenhouse
+    source_slug: nebius
+    enabled: true
+
+  - company_key: coreweave
+    name: CoreWeave
+    source_type: greenhouse
+    source_slug: coreweave
+    enabled: true
+
+  - company_key: lightning_ai
+    name: Lightning AI
+    source_type: greenhouse
+    source_slug: lightningai
+    enabled: true
+
+  - company_key: voltage_park
+    name: Voltage Park
+    source_type: greenhouse
+    source_slug: lightningai
+    enabled: false
+
+  - company_key: together_ai
+    name: Together AI
+    source_type: greenhouse
+    source_slug: togetherai
+    enabled: true
+
+  - company_key: anthropic
+    name: Anthropic
+    source_type: greenhouse
+    source_slug: anthropic
+    enabled: true
+
+  - company_key: launchdarkly
+    name: LaunchDarkly
+    source_type: greenhouse
+    source_slug: launchdarkly
+    enabled: true
+
+  - company_key: voxel51
+    name: Voxel51
+    source_type: greenhouse
+    source_slug: voxel51
+    enabled: true
+
+  - company_key: wasabi
+    name: Wasabi
+    source_type: greenhouse
+    source_slug: wasabi
+    enabled: true
+
+  - company_key: stack_av
+    name: Stack AV
+    source_type: greenhouse
+    source_slug: stackav
+    enabled: true
+
+  - company_key: vast_data
+    name: VAST Data
+    source_type: greenhouse
+    source_slug: vast
+    enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Lever sources - supported now
+  # ---------------------------------------------------------------------------
+
+  - company_key: mistral_ai
+    name: Mistral AI
+    source_type: lever
+    source_slug: mistral
+    enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Ashby sources - collector not implemented yet
+  # ---------------------------------------------------------------------------
+
+  - company_key: crusoe
+    name: Crusoe
+    source_type: ashby
+    source_slug: Crusoe
+    enabled: false
+
+  - company_key: fluidstack
+    name: Fluidstack
+    source_type: ashby
+    source_slug: fluidstack
+    enabled: false
+
+  - company_key: lambda
+    name: Lambda
+    source_type: ashby
+    source_slug: Lambda
+    enabled: false
+
+  - company_key: openai
+    name: OpenAI
+    source_type: ashby
+    source_slug: openai
+    enabled: false
+
+  - company_key: runpod
+    name: RunPod
+    source_type: ashby
+    source_slug: RunPod
+    enabled: false
+
+  - company_key: tailscale
+    name: Tailscale
+    source_type: ashby
+    source_slug: Tailscale
+    enabled: false
+
+  - company_key: nscale
+    name: Nscale
+    source_type: ashby
+    source_slug: nscale
+    enabled: false
+
+  - company_key: modal
+    name: Modal
+    source_type: ashby
+    source_slug: Modal
+    enabled: false
+
+  - company_key: baseten
+    name: Baseten
+    source_type: ashby
+    source_slug: Baseten
+    enabled: false
+
+  - company_key: fireworks_ai
+    name: Fireworks AI
+    source_type: ashby
+    source_slug: FireworksAI
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # Workday sources - collector not implemented yet
+  # ---------------------------------------------------------------------------
+
+  - company_key: nvidia
+    name: NVIDIA
+    source_type: workday
+    source_slug: nvidia
+    enabled: false
+
+  - company_key: ornl
+    name: Oak Ridge National Laboratory
+    source_type: workday
+    source_slug: ornl
+    enabled: false
+
+  - company_key: argonne
+    name: Argonne National Laboratory
+    source_type: workday
+    source_slug: argonne
+    enabled: false
+
+  - company_key: lawrence_livermore
+    name: Lawrence Livermore National Laboratory
+    source_type: workday
+    source_slug: llnl
+    enabled: false
+
+  - company_key: los_alamos
+    name: Los Alamos National Laboratory
+    source_type: workday
+    source_slug: lanl
+    enabled: false
+
+  - company_key: sandia
+    name: Sandia National Laboratories
+    source_type: workday
+    source_slug: sandia
+    enabled: false
+
+  - company_key: pnnl
+    name: Pacific Northwest National Laboratory
+    source_type: workday
+    source_slug: pnnl
+    enabled: false
+
+  - company_key: idaho_national_lab
+    name: Idaho National Laboratory
+    source_type: workday
+    source_slug: inl
+    enabled: false
+
+  - company_key: lawrence_berkeley_nersc
+    name: Lawrence Berkeley National Laboratory / NERSC
+    source_type: workday
+    source_slug: lbl
+    enabled: false
+
+  - company_key: battelle
+    name: Battelle
+    source_type: workday
+    source_slug: battelle
+    enabled: false
+
+  - company_key: kbr
+    name: KBR
+    source_type: workday
+    source_slug: kbr
+    enabled: false
+
+  - company_key: jacobs
+    name: Jacobs
+    source_type: workday
+    source_slug: jacobs
+    enabled: false
+
+  - company_key: amentum
+    name: Amentum
+    source_type: workday
+    source_slug: amentum
+    enabled: false
+
+  - company_key: leidos
+    name: Leidos
+    source_type: workday
+    source_slug: leidos
+    enabled: false
+
+  - company_key: saic
+    name: SAIC
+    source_type: workday
+    source_slug: saic
+    enabled: false
+
+  - company_key: caci
+    name: CACI
+    source_type: workday
+    source_slug: caci
+    enabled: false
+
+  - company_key: gdit
+    name: General Dynamics IT
+    source_type: workday
+    source_slug: gdit
+    enabled: false
+
+  - company_key: booz_allen
+    name: Booz Allen Hamilton
+    source_type: workday
+    source_slug: boozallen
+    enabled: false
+
+  - company_key: peraton
+    name: Peraton
+    source_type: workday
+    source_slug: peraton
+    enabled: false
+
+  - company_key: asrc_federal
+    name: ASRC Federal
+    source_type: workday
+    source_slug: asrcfederal
+    enabled: false
+
+  - company_key: usra
+    name: USRA
+    source_type: workday
+    source_slug: usra
+    enabled: false
+
+  - company_key: jpl
+    name: JPL / Caltech
+    source_type: workday
+    source_slug: jpl
+    enabled: false
+
+  - company_key: woods_hole
+    name: Woods Hole Oceanographic Institution
+    source_type: workday
+    source_slug: whoi
+    enabled: false
+
+  - company_key: mbari
+    name: Monterey Bay Aquarium Research Institute
+    source_type: workday
+    source_slug: mbari
+    enabled: false
+
+  - company_key: scripps
+    name: Scripps Institution of Oceanography
+    source_type: workday
+    source_slug: scripps
+    enabled: false
+
+  - company_key: fugro
+    name: Fugro
+    source_type: workday
+    source_slug: fugro
+    enabled: false
+
+  - company_key: penguin_solutions
+    name: Penguin Solutions
+    source_type: workday
+    source_slug: penguinsolutions
+    enabled: false
+
+  - company_key: hpe
+    name: HPE
+    source_type: workday
+    source_slug: hpe
+    enabled: false
+
+  - company_key: dell
+    name: Dell Technologies
+    source_type: workday
+    source_slug: dell
+    enabled: false
+
+  - company_key: amd
+    name: AMD
+    source_type: workday
+    source_slug: amd
+    enabled: false
+
+  - company_key: intel
+    name: Intel
+    source_type: workday
+    source_slug: intel
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # USAJobs sources - collector not implemented yet
+  #
+  # Federal filter rules:
+  #   Allowed:
+  #     - U.S. citizenship required
+  #     - Public Trust
+  #     - background investigation
+  #     - suitability investigation
+  #     - ability to obtain clearance
+  #
+  #   Review:
+  #     - ability to obtain and maintain Secret clearance
+  #
+  #   Reject:
+  #     - active/current Secret clearance required
+  #     - Secret clearance required
+  #     - Top Secret required
+  #     - TS/SCI required
+  #     - SCI required
+  #     - polygraph required
+  #     - existing federal employees only
+  #     - status candidates only
+  # ---------------------------------------------------------------------------
+
+  - company_key: noaa
+    name: NOAA
+    source_type: usajobs
+    source_slug: noaa
+    enabled: false
+
+  - company_key: nasa
+    name: NASA
+    source_type: usajobs
+    source_slug: nasa
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # HTML / custom career pages - collector not implemented yet
+  # ---------------------------------------------------------------------------
+
+  - company_key: voleon
+    name: Voleon
+    source_type: html
+    source_slug: https://www.voleon.com/jobs/
+    enabled: false
+
+  - company_key: ocean_infinity
+    name: Ocean Infinity
+    source_type: html
+    source_slug: https://oceaninfinity.com/careers/
+    enabled: false
+
+  - company_key: saildrone
+    name: Saildrone
+    source_type: html
+    source_slug: https://www.saildrone.com/careers/available-jobs
+    enabled: false
+
+  - company_key: ddn
+    name: DDN
+    source_type: html
+    source_slug: https://www.ddn.com/company/careers/
+    enabled: false
+
+  - company_key: weka
+    name: WEKA
+    source_type: html
+    source_slug: https://www.weka.io/company/careers/
+    enabled: false

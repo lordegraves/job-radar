@@ -382,3 +382,31 @@ email:
         match="email.smtp_username is required when email is enabled",
     ):
         load_settings(settings_file)
+
+
+def test_load_companies_allows_disabled_future_source_types(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "companies.yaml"
+    config_file.write_text(
+        """
+companies:
+  - company_key: enabled_company
+    name: Enabled Company
+    source_type: greenhouse
+    source_slug: enabled
+    enabled: true
+
+  - company_key: disabled_usajobs_company
+    name: Disabled USAJobs Company
+    source_type: usajobs
+    source_slug: disabled-usajobs
+    enabled: false
+""",
+        encoding="utf-8",
+    )
+
+    companies = load_companies(config_file)
+
+    assert len(companies) == 1
+    assert companies[0]["company_key"] == "enabled_company"

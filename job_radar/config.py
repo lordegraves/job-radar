@@ -10,6 +10,7 @@ SUPPORTED_SOURCE_TYPES = {
     "lever",
     "workday",
     "ashby",
+    "usajobs",
     "html",
 }
 
