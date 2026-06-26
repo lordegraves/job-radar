@@ -11,6 +11,8 @@ SUPPORTED_SOURCE_TYPES = {
     "workday",
     "ashby",
     "usajobs",
+    "smartrecruiters",
+    "selectminds",
     "html",
 }
 

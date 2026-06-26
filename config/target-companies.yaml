@@ -187,30 +187,6 @@ companies:
     source_base_url: https://argonne.wd1.myworkdayjobs.com/Argonne_Careers
     enabled: true
 
-  - company_key: lawrence_livermore
-    name: Lawrence Livermore National Laboratory
-    source_type: workday
-    source_slug: llnl
-    enabled: false
-
-  - company_key: los_alamos
-    name: Los Alamos National Laboratory
-    source_type: workday
-    source_slug: lanl
-    enabled: false
-
-  - company_key: sandia
-    name: Sandia National Laboratories
-    source_type: workday
-    source_slug: sandia
-    enabled: false
-
-  - company_key: pnnl
-    name: Pacific Northwest National Laboratory
-    source_type: workday
-    source_slug: pnnl
-    enabled: false
-
   - company_key: idaho_national_lab
     name: Idaho National Laboratory
     source_type: workday
@@ -434,4 +410,32 @@ companies:
     name: WEKA
     source_type: html
     source_slug: https://www.weka.io/company/careers/
+    enabled: false
+
+  - company_key: sandia
+    name: Sandia National Laboratories
+    source_type: workday
+    source_slug: sandia
+    enabled: false
+
+  - company_key: lanl
+    name: Los Alamos National Laboratory
+    source_type: html
+    source_url: https://lanl.jobs/
+    enabled: false
+
+  - company_key: pnnl
+    name: Pacific Northwest National Laboratory
+    source_type: workday
+    source_slug: pnnl
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # smartrecruiters - collector not implemented yet
+  # ---------------------------------------------------------------------------
+
+  - company_key: lawrence_livermore
+    name: Lawrence Livermore National Laboratory
+    source_type: smartrecruiters
+    source_slug: LLNL
     enabled: false
