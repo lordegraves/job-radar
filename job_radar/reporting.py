@@ -568,6 +568,39 @@ def _format_score_reasons(score_reasons: list[str]) -> str:
     return ", ".join(score_reasons)
 
 
+def _format_html_decision_explanation(
+    scored_posting: ScoredPosting,
+) -> tuple[str, str] | None:
+    if scored_posting.top_match_eligible:
+        if scored_posting.top_match_reasons:
+            return (
+                "Why it is a top match",
+                "; ".join(scored_posting.top_match_reasons),
+            )
+
+        return (
+            "Why it is a top match",
+            "This role met the Top Match eligibility rules for score, "
+            "location, and technical alignment.",
+        )
+
+    if scored_posting.review_needed_eligible:
+        if scored_posting.location_status in {"mixed", "conditional", "unknown"}:
+            return (
+                "Why it needs review",
+                "This role has enough technical signal to review manually, "
+                "but the location fit needs confirmation.",
+            )
+
+        return (
+            "Why it needs review",
+            "This role has enough signal to review manually, but it did "
+            "not qualify as a Top Match.",
+        )
+
+    return None
+
+
 def _format_generated_at(generated_at: str) -> str:
     try:
         parsed_timestamp = datetime.fromisoformat(generated_at)
@@ -805,6 +838,8 @@ def _append_html_scored_posting(
     elif scored_posting.review_needed_eligible:
         section_class = "job-card review-needed"
 
+    decision_explanation = _format_html_decision_explanation(scored_posting)
+
     lines.extend(
         [
             f'<section class="{section_class}">',
@@ -812,6 +847,18 @@ def _append_html_scored_posting(
             f"{escape(posting.title)}</a></h3>",
             "<ul>",
             f"<li><strong>Score:</strong> {scored_posting.score}</li>",
+        ]
+    )
+
+    if decision_explanation is not None:
+        label, explanation = decision_explanation
+        lines.append(
+            f"<li><strong>{escape(label)}:</strong> "
+            f"{escape(explanation)}</li>"
+        )
+
+    lines.extend(
+        [
             f"<li><strong>Why this matched:</strong> "
             f"{escape(_format_match_summary(scored_posting.score_reasons))}</li>",
             f"<li><strong>Score reasons:</strong> "

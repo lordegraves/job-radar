@@ -854,3 +854,61 @@ def test_write_html_report_writes_file(tmp_path: Path) -> None:
     assert written_path == report_path
     assert report_path.exists()
     assert "<h1>Job Radar Report</h1>" in report_path.read_text(encoding="utf-8")
+
+
+def test_render_html_report_explains_top_match_and_review_needed_cards() -> None:
+    top_match_posting = make_posting(title="Senior Linux Infrastructure Engineer")
+    review_needed_posting = make_posting(title="Senior Systems Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=2,
+        jobs_new=2,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[top_match_posting, review_needed_posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=top_match_posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:linux",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=[
+                    "score 140 meets top-match threshold 1",
+                    "location status is acceptable: allowed",
+                    "strong signal matched: title:linux",
+                ],
+            ),
+            ScoredPosting(
+                posting=review_needed_posting,
+                score=120,
+                score_reasons=[
+                    "+20 title:systems",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="mixed",
+                review_needed_eligible=True,
+            ),
+        ],
+    )
+
+    html = render_html_report(report)
+
+    assert "<strong>Why it is a top match:</strong>" in html
+    assert "score 140 meets top-match threshold 1" in html
+    assert "location status is acceptable: allowed" in html
+    assert "strong signal matched: title:linux" in html
+
+    assert "<strong>Why it needs review:</strong>" in html
+    assert (
+        "This role has enough technical signal to review manually, "
+        "but the location fit needs confirmation."
+        in html
+    )
