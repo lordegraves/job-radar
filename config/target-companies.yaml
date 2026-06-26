@@ -254,20 +254,22 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # USAJobs - collector not implemented yet
+  # USAJobs - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: nasa_usajobs
     name: NASA
     source_type: usajobs
-    source_url: https://www.usajobs.gov/Search/Results?a=NN00
-    enabled: false
+    enabled: true
+    query_params:
+      Organization: NN
 
   - company_key: noaa_usajobs
     name: NOAA
     source_type: usajobs
-    source_url: https://www.usajobs.gov/Search/Results?a=CM54
-    enabled: false
+    enabled: true
+    query_params:
+      Organization: CM54
 
   # ---------------------------------------------------------------------------
   # iCIMS - collector not implemented yet

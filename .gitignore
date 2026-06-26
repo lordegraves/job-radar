@@ -17,3 +17,10 @@ config/local-gmail-settings.yaml
 
 # Generated report outputs
 reports/*.html
+# Local probe / API scratch files
+usajobs-codelist-sample.json
+probe_workday_sources.py
+
+# Local credentials / environment files
+.env
+*.env
