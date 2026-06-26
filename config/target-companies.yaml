@@ -187,18 +187,6 @@ companies:
     source_base_url: https://argonne.wd1.myworkdayjobs.com/Argonne_Careers
     enabled: true
 
-  - company_key: idaho_national_lab
-    name: Idaho National Laboratory
-    source_type: workday
-    source_slug: inl
-    enabled: false
-
-  - company_key: lawrence_berkeley_nersc
-    name: Lawrence Berkeley National Laboratory / NERSC
-    source_type: workday
-    source_slug: lbl
-    enabled: false
-
   - company_key: battelle
     name: Battelle
     source_type: workday
@@ -311,15 +299,17 @@ companies:
   - company_key: hpe
     name: HPE
     source_type: workday
-    source_slug: hpe
-    enabled: false
+    source_url: https://hpe.wd5.myworkdayjobs.com/wday/cxs/hpe/Jobsathpe/jobs
+    source_base_url: https://hpe.wd5.myworkdayjobs.com/Jobsathpe
+    enabled: true
     notes: Eligible for rehire starting April next year.
 
   - company_key: hp
     name: HP Inc.
     source_type: workday
-    source_slug: hp
-    enabled: false
+    source_url: https://hp.wd5.myworkdayjobs.com/wday/cxs/hp/ExternalCareerSite/jobs
+    source_base_url: https://hp.wd5.myworkdayjobs.com/ExternalCareerSite
+    enabled: true
 
   - company_key: dell
     name: Dell Technologies
@@ -438,4 +428,20 @@ companies:
     name: Lawrence Livermore National Laboratory
     source_type: smartrecruiters
     source_slug: LLNL
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # SelectMinds / referrals - collector not implemented yet
+  # ---------------------------------------------------------------------------
+
+  - company_key: lawrence_berkeley
+    name: Lawrence Berkeley National Laboratory / NERSC
+    source_type: selectminds
+    source_url: https://lbl.referrals.selectminds.com/
+    enabled: false
+
+  - company_key: idaho_national_lab
+    name: Idaho National Laboratory
+    source_type: selectminds
+    source_url: https://inl.referrals.selectminds.com/
     enabled: false
