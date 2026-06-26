@@ -700,3 +700,41 @@ def test_evaluate_review_needed_eligibility_rejects_weak_signal() -> None:
     )
 
     assert result is False
+
+
+def test_real_config_omits_data_center_sourcing_roles_from_review_needed() -> None:
+    posting = make_posting(
+        title="Data Center Strategic Sourcing Lead",
+        description=(
+            "Partner with infrastructure, hardware, systems, and networking "
+            "teams on data center vendor strategy."
+        ),
+        location="Remote-Friendly, United States",
+    )
+
+    config = load_scoring_config(Path("config/scoring.yaml"))
+
+    score, reasons = score_posting(posting, config)
+    location_status = classify_location(posting, config)
+
+    top_match_eligible, top_match_reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=score,
+        score_reasons=reasons,
+        location_status=location_status,
+        scoring_config=config,
+    )
+
+    review_needed_eligible = evaluate_review_needed_eligibility(
+        score=score,
+        score_reasons=reasons,
+        location_status=location_status,
+        top_match_eligible=top_match_eligible,
+        scoring_config=config,
+    )
+
+    assert score < config["review_needed"]["min_score"]
+    assert "-90 title:sourcing" in reasons
+    assert top_match_eligible is False
+    assert top_match_reasons == [f"score_below_top_match_threshold:{score}<120"]
+    assert review_needed_eligible is False

@@ -23,6 +23,12 @@ positive_keywords:
 
 negative_keywords:
   account executive: -20
+  sourcing: -30
+  procurement: -30
+  supply chain: -30
+  vendor: -20
+  vendor management: -25
+  business operations: -20
   sales: -15
   marketing: -15
   legal: -12
