@@ -7,8 +7,8 @@
 # Source status:
 #   greenhouse: supported now
 #   lever: supported now
-#   ashby: known source type, collector not implemented yet
-#   workday: known source type, collector not implemented yet
+#   ashby: supported now
+#   workday: supported now
 #   usajobs: known source type, collector not implemented yet
 #   html: known source type, collector not implemented yet
 #
@@ -164,14 +164,15 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # Workday sources - collector not implemented yet
+  # Workday sources - supported now
   # ---------------------------------------------------------------------------
 
   - company_key: nvidia
     name: NVIDIA
     source_type: workday
-    source_slug: nvidia
-    enabled: false
+    source_url: https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs
+    source_base_url: https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
+    enabled: true
 
   - company_key: ornl
     name: Oak Ridge National Laboratory
@@ -329,16 +330,17 @@ companies:
     source_slug: penguinsolutions
     enabled: false
 
-  - company_key: hpe
-    name: HPE
+  - company_key: hp
+    name: HP Inc.
     source_type: workday
-    source_slug: hpe
+    source_slug: hp
     enabled: false
 
   - company_key: dell
     name: Dell Technologies
     source_type: workday
-    source_slug: dell
+    source_url: https://dell.wd1.myworkdayjobs.com/wday/cxs/dell/External/jobs
+    source_base_url: https://dell.wd1.myworkdayjobs.com/External
     enabled: false
 
   - company_key: amd
@@ -350,8 +352,9 @@ companies:
   - company_key: intel
     name: Intel
     source_type: workday
-    source_slug: intel
-    enabled: false
+    source_url: https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs
+    source_base_url: https://intel.wd1.myworkdayjobs.com/External
+    enabled: true
 
   # ---------------------------------------------------------------------------
   # USAJobs sources - collector not implemented yet

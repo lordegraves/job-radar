@@ -8,8 +8,8 @@ def test_collect_jobs_for_company_rejects_unimplemented_source_type() -> None:
     company_config = {
         "company_key": "future_company",
         "name": "Future Company",
-        "source_type": "workday",
-        "source_url": "https://example.wd1.myworkdayjobs.com/External",
+        "source_type": "html",
+        "source_url": "https://example.com/careers",
         "enabled": True,
     }
 
