@@ -183,8 +183,9 @@ companies:
   - company_key: argonne
     name: Argonne National Laboratory
     source_type: workday
-    source_slug: argonne
-    enabled: false
+    source_url: https://argonne.wd1.myworkdayjobs.com/wday/cxs/argonne/Argonne_Careers/jobs
+    source_base_url: https://argonne.wd1.myworkdayjobs.com/Argonne_Careers
+    enabled: true
 
   - company_key: lawrence_livermore
     name: Lawrence Livermore National Laboratory
@@ -297,8 +298,9 @@ companies:
   - company_key: jpl
     name: JPL / Caltech
     source_type: workday
-    source_slug: jpl
-    enabled: false
+    source_url: https://citjpl.wd5.myworkdayjobs.com/wday/cxs/citjpl/Jobs/jobs
+    source_base_url: https://citjpl.wd5.myworkdayjobs.com/Jobs
+    enabled: true
 
   - company_key: woods_hole
     name: Woods Hole Oceanographic Institution
@@ -329,6 +331,13 @@ companies:
     source_type: workday
     source_slug: penguinsolutions
     enabled: false
+
+  - company_key: hpe
+    name: HPE
+    source_type: workday
+    source_slug: hpe
+    enabled: false
+    notes: Eligible for rehire starting April next year.
 
   - company_key: hp
     name: HP Inc.
