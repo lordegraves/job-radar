@@ -89,6 +89,12 @@ companies:
     source_slug: vast
     enabled: true
 
+  - company_key: tailscale
+    name: Tailscale
+    source_type: greenhouse
+    source_slug: Tailscale
+    enabled: true
+
   # ---------------------------------------------------------------------------
   # Lever sources - supported now
   # ---------------------------------------------------------------------------
@@ -100,44 +106,38 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # Ashby sources - collector not implemented yet
+  # Ashby sources - Supported now
   # ---------------------------------------------------------------------------
 
   - company_key: crusoe
     name: Crusoe
     source_type: ashby
     source_slug: Crusoe
-    enabled: false
+    enabled: true
 
   - company_key: fluidstack
     name: Fluidstack
     source_type: ashby
     source_slug: fluidstack
-    enabled: false
+    enabled: true
 
   - company_key: lambda
     name: Lambda
     source_type: ashby
     source_slug: Lambda
-    enabled: false
+    enabled: true
 
   - company_key: openai
     name: OpenAI
     source_type: ashby
     source_slug: openai
-    enabled: false
+    enabled: true
 
   - company_key: runpod
     name: RunPod
     source_type: ashby
     source_slug: RunPod
-    enabled: false
-
-  - company_key: tailscale
-    name: Tailscale
-    source_type: ashby
-    source_slug: Tailscale
-    enabled: false
+    enabled: true
 
   - company_key: nscale
     name: Nscale
@@ -149,19 +149,19 @@ companies:
     name: Modal
     source_type: ashby
     source_slug: Modal
-    enabled: false
+    enabled: true
 
   - company_key: baseten
     name: Baseten
     source_type: ashby
     source_slug: Baseten
-    enabled: false
+    enabled: true
 
   - company_key: fireworks_ai
     name: Fireworks AI
     source_type: ashby
     source_slug: FireworksAI
-    enabled: false
+    enabled: true
 
   # ---------------------------------------------------------------------------
   # Workday sources - collector not implemented yet
