@@ -315,7 +315,7 @@ top_matches:
     assert captured_email_call["attachment_path"] == html_report_file
     assert captured_email_call["subject"].startswith("Job Radar Report - ")
     assert "Full report:" in captured_email_call["body"]
-    assert "Attached as Markdown file." in captured_email_call["body"]
+    assert "Attached as HTML file." in captured_email_call["body"]
     assert str(report_file) not in captured_email_call["body"]
     assert captured_email_call["html_body"] is not None
     assert "<h1>Job Radar Report</h1>" in captured_email_call["html_body"]

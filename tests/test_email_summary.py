@@ -385,7 +385,7 @@ def test_build_email_body_can_reference_attached_report_instead_of_path() -> Non
     )
 
     assert "Full report:" in body
-    assert "Attached as Markdown file." in body
+    assert "Attached as HTML file." in body
     assert "reports/live-test.md" not in body
 
 
@@ -518,7 +518,7 @@ def test_build_email_html_body_includes_clickable_posting_links() -> None:
         "View posting</a>"
         in html_body
     )
-    assert "Attached as Markdown file." in html_body
+    assert "Attached as HTML file." in html_body
 
 
 def test_build_email_html_body_escapes_html_special_characters() -> None:

@@ -78,7 +78,7 @@ def build_email_body(
     if include_report_path:
         lines.append(str(report_path))
     else:
-        lines.append("Attached as Markdown file.")
+        lines.append("Attached as HTML file.")
 
     return "\n".join(lines)
 
@@ -139,7 +139,7 @@ def build_email_html_body(
     if include_report_path:
         lines.append(f"<p>{escape(str(report_path))}</p>")
     else:
-        lines.append("<p>Attached as Markdown file.</p>")
+        lines.append("<p>Attached as HTML file.</p>")
 
     lines.extend(
         [
