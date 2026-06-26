@@ -738,3 +738,44 @@ def test_real_config_omits_data_center_sourcing_roles_from_review_needed() -> No
     assert top_match_eligible is False
     assert top_match_reasons == [f"score_below_top_match_threshold:{score}<120"]
     assert review_needed_eligible is False
+
+
+def test_real_config_data_center_alone_is_review_needed_not_top_match() -> None:
+    posting = make_posting(
+        title="Data Center Design Execution Lead",
+        description=(
+            "Own design execution for AI datacenter infrastructure. "
+            "Partner with construction, commissioning, facilities operations, "
+            "and external design teams. Support large-scale HPC infrastructure "
+            "requirements across power and cooling systems."
+        ),
+        location="Remote-Friendly, United States",
+    )
+
+    config = load_scoring_config(Path("config/scoring.yaml"))
+
+    score, reasons = score_posting(posting, config)
+    location_status = classify_location(posting, config)
+
+    top_match_eligible, top_match_reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=score,
+        score_reasons=reasons,
+        location_status=location_status,
+        scoring_config=config,
+    )
+
+    review_needed_eligible = evaluate_review_needed_eligibility(
+        score=score,
+        score_reasons=reasons,
+        location_status=location_status,
+        top_match_eligible=top_match_eligible,
+        scoring_config=config,
+    )
+
+    assert score >= config["top_matches"]["min_score"]
+    assert "+24 title:data center" in reasons
+    assert "+10 body:hpc" in reasons
+    assert top_match_eligible is False
+    assert top_match_reasons == ["excluded_title_keyword:design execution"]
+    assert review_needed_eligible is True

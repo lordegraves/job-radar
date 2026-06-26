@@ -97,14 +97,13 @@ top_matches:
     - recruiting
     - sales
     - sourcing
+    - design execution
 
   strong_signals:
     - title:infrastructure
     - title:kubernetes
     - title:linux
     - title:cluster
-    - title:datacenter
-    - title:data center
     - title:reliability
     - title:sre
     - body:hpc
@@ -113,8 +112,6 @@ top_matches:
     - body:kubernetes
     - body:linux
     - body:infrastructure
-    - body:datacenter
-    - body:data center
     - body:hardware
 
 review_needed:
