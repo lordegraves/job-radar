@@ -13,6 +13,7 @@ SUPPORTED_SOURCE_TYPES = {
     "usajobs",
     "smartrecruiters",
     "selectminds",
+    "icims",
     "html",
 }
 

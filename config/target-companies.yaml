@@ -174,12 +174,6 @@ companies:
     source_base_url: https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
     enabled: true
 
-  - company_key: ornl
-    name: Oak Ridge National Laboratory
-    source_type: workday
-    source_slug: ornl
-    enabled: false
-
   - company_key: argonne
     name: Argonne National Laboratory
     source_type: workday
@@ -318,12 +312,6 @@ companies:
     source_base_url: https://dell.wd1.myworkdayjobs.com/External
     enabled: false
 
-  - company_key: amd
-    name: AMD
-    source_type: workday
-    source_slug: amd
-    enabled: false
-
   - company_key: intel
     name: Intel
     source_type: workday
@@ -420,6 +408,12 @@ companies:
     source_slug: pnnl
     enabled: false
 
+  - company_key: ornl
+    name: Oak Ridge National Laboratory
+    source_type: workday
+    source_slug: ornl
+    enabled: false
+
   # ---------------------------------------------------------------------------
   # smartrecruiters - collector not implemented yet
   # ---------------------------------------------------------------------------
@@ -444,4 +438,14 @@ companies:
     name: Idaho National Laboratory
     source_type: selectminds
     source_url: https://inl.referrals.selectminds.com/
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # iCIMS - collector not implemented yet
+  # ---------------------------------------------------------------------------
+
+  - company_key: amd
+    name: AMD
+    source_type: icims
+    source_url: https://careers.amd.com/careers-home/jobs
     enabled: false
