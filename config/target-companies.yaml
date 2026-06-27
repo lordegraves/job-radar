@@ -7,6 +7,7 @@
 #   workday: implemented
 #   usajobs: known future source
 #   icims: implemented
+#   jibe: implemented
 #   oracle_hcm: known future source
 #   dayforce: known future source
 #   adp: known future source
@@ -275,16 +276,22 @@ companies:
   # iCIMS - implemented
   # ---------------------------------------------------------------------------
 
-  - company_key: amd
-    name: AMD
-    source_type: icims
-    source_url: https://careers.amd.com/careers-home/jobs
-    enabled: false
-
   - company_key: peraton
     name: Peraton
     source_type: icims
     source_url: https://careers-peraton.icims.com/jobs/search?ss=1&searchRelation=keyword_all&in_iframe=1
+    enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Jibe - implemented
+  # ---------------------------------------------------------------------------
+
+  - company_key: amd
+    name: AMD
+    source_type: jibe
+    source_url: https://careers.amd.com/api/jobs
+    referer_url: https://careers.amd.com/careers-home/jobs
+    job_url_template: https://careers.amd.com/careers-home/jobs/{slug}
     enabled: true
 
   # ---------------------------------------------------------------------------
