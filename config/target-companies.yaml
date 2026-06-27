@@ -6,7 +6,7 @@
 #   ashby: implemented
 #   workday: implemented
 #   usajobs: known future source
-#   icims: known future source
+#   icims: implemented
 #   oracle_hcm: known future source
 #   dayforce: known future source
 #   adp: known future source
@@ -272,7 +272,7 @@ companies:
       Organization: CM54
 
   # ---------------------------------------------------------------------------
-  # iCIMS - collector not implemented yet
+  # iCIMS - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: amd
@@ -284,8 +284,8 @@ companies:
   - company_key: peraton
     name: Peraton
     source_type: icims
-    source_url: https://careers-peraton.icims.com/jobs
-    enabled: false
+    source_url: https://careers-peraton.icims.com/jobs/search?ss=1&searchRelation=keyword_all&in_iframe=1
+    enabled: true
 
   # ---------------------------------------------------------------------------
   # Oracle HCM - collector not implemented yet
