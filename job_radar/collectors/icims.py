@@ -13,6 +13,8 @@ from job_radar.normalize import make_canonical_key, make_content_hash
 
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_USER_AGENT = "JobRadar/0.1 local career-source scanner"
+MAX_PAGES = 5
+
 
 def _clean_title(value: str) -> str:
     title = " ".join(value.split()).strip()
@@ -93,6 +95,49 @@ class ICIMSJobLinkParser(HTMLParser):
         absolute_url = urljoin(self.base_url, href)
         self.job_links.append((title, absolute_url))
 
+class ICIMSNextPageParser(HTMLParser):
+    def __init__(self, base_url: str) -> None:
+        super().__init__()
+        self.base_url = base_url
+        self.next_page_url: str | None = None
+
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        if tag.lower() != "link":
+            return
+
+        attrs_dict = dict(attrs)
+        rel = attrs_dict.get("rel")
+        href = attrs_dict.get("href")
+
+        if not rel or not href:
+            return
+
+        if rel.lower() != "next":
+            return
+
+        self.next_page_url = urljoin(self.base_url, href)
+
+
+def _ensure_iframe_url(url: str) -> str:
+    parsed_url = urlparse(url)
+    query_params = dict(parse_qsl(parsed_url.query, keep_blank_values=True))
+    query_params["in_iframe"] = "1"
+
+    return urlunparse(
+        (
+            parsed_url.scheme,
+            parsed_url.netloc,
+            parsed_url.path,
+            parsed_url.params,
+            urlencode(query_params),
+            parsed_url.fragment,
+        )
+    )
+
 
 def _build_search_url(source_url: str) -> str:
     parsed = urlparse(source_url)
@@ -106,21 +151,7 @@ def _build_search_url(source_url: str) -> str:
         else:
             search_url = f"{base}/jobs/search?ss=1&searchRelation=keyword_all"
 
-    parsed_search_url = urlparse(search_url)
-    query_params = dict(parse_qsl(parsed_search_url.query, keep_blank_values=True))
-    query_params["in_iframe"] = "1"
-
-    return urlunparse(
-        (
-            parsed_search_url.scheme,
-            parsed_search_url.netloc,
-            parsed_search_url.path,
-            parsed_search_url.params,
-            urlencode(query_params),
-            parsed_search_url.fragment,
-        )
-    )
-
+    return _ensure_iframe_url(search_url)
 
 def _build_headers() -> dict[str, str]:
     return {
@@ -156,6 +187,16 @@ def _dedupe_links(links: list[tuple[str, str]]) -> list[tuple[str, str]]:
         deduped.append((title, url))
 
     return deduped
+
+
+def _extract_next_page_url(html: str, current_url: str) -> str | None:
+    parser = ICIMSNextPageParser(base_url=current_url)
+    parser.feed(html)
+
+    if parser.next_page_url is None:
+        return None
+
+    return _ensure_iframe_url(parser.next_page_url)
 
 
 def _parse_icims_html(
@@ -203,23 +244,39 @@ def _parse_icims_html(
 
 
 def collect_icims_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
-    source_url = str(company_config["source_url"])
-    search_url = _build_search_url(source_url)
+    next_url: str | None = _build_search_url(str(company_config["source_url"]))
+    postings: list[JobPosting] = []
+    seen_urls: set[str] = set()
 
-    try:
-        response = requests.get(
-            search_url,
-            headers=_build_headers(),
-            timeout=DEFAULT_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status()
-    except requests.HTTPError as error:
-        response_body = response.text[:500].replace("\n", " ")
-        raise CollectorError(
-            f"Failed to fetch iCIMS postings: {error}; "
-            f"response_body={response_body}"
-        ) from error
-    except requests.RequestException as error:
-        raise CollectorError(f"Failed to fetch iCIMS postings: {error}") from error
+    for _page in range(MAX_PAGES):
+        if next_url is None:
+            break
 
-    return _parse_icims_html(company_config, response.text, search_url)
+        current_url = next_url
+
+        try:
+            response = requests.get(
+                current_url,
+                headers=_build_headers(),
+                timeout=DEFAULT_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+        except requests.HTTPError as error:
+            response_body = response.text[:500].replace("\n", " ")
+            raise CollectorError(
+                f"Failed to fetch iCIMS postings: {error}; "
+                f"response_body={response_body}"
+            ) from error
+        except requests.RequestException as error:
+            raise CollectorError(f"Failed to fetch iCIMS postings: {error}") from error
+
+        page_postings = _parse_icims_html(company_config, response.text, current_url)
+        for posting in page_postings:
+            if posting.source_url in seen_urls:
+                continue
+            seen_urls.add(posting.source_url)
+            postings.append(posting)
+
+        next_url = _extract_next_page_url(response.text, current_url)
+
+    return postings

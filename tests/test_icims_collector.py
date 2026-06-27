@@ -8,6 +8,7 @@ import requests
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.icims import (
     _build_search_url,
+    _extract_next_page_url,
     _extract_source_job_id,
     _parse_icims_html,
     collect_icims_jobs,
@@ -46,6 +47,23 @@ def test_build_search_url_keeps_existing_search_url_and_adds_iframe() -> None:
     assert (
         _build_search_url(source_url)
         == "https://careers-peraton.icims.com/jobs/search?ss=1&searchRelation=keyword_all&in_iframe=1"
+    )
+
+
+def test_extract_next_page_url_adds_iframe() -> None:
+    html = """
+    <html>
+      <head>
+        <link rel="next" href="https://careers-peraton.icims.com/jobs/search?pr=1&amp;searchRelation=keyword_all" />
+      </head>
+    </html>
+    """
+
+    assert _extract_next_page_url(
+        html,
+        "https://careers-peraton.icims.com/jobs/search?ss=1&searchRelation=keyword_all&in_iframe=1",
+    ) == (
+        "https://careers-peraton.icims.com/jobs/search?pr=1&searchRelation=keyword_all&in_iframe=1"
     )
 
 
@@ -126,15 +144,14 @@ def test_collect_icims_jobs_fetches_and_parses(monkeypatch: pytest.MonkeyPatch) 
     </html>
     """
 
-    captured_url = None
+    captured_urls = []
 
     def fake_get(
         url: str,
         headers: dict[str, str],
         timeout: int,
     ) -> FakeResponse:
-        nonlocal captured_url
-        captured_url = url
+        captured_urls.append(url)
         assert "User-Agent" in headers
         assert timeout == 30
         return FakeResponse(text=html)
@@ -143,11 +160,61 @@ def test_collect_icims_jobs_fetches_and_parses(monkeypatch: pytest.MonkeyPatch) 
 
     postings = collect_icims_jobs(_company_config())
 
-    assert captured_url == (
+    assert captured_urls == [
         "https://careers-peraton.icims.com/jobs/search?ss=1&searchRelation=keyword_all&in_iframe=1"
-    )
+    ]
     assert len(postings) == 1
     assert postings[0].title == "Senior Linux Systems Engineer"
+
+
+def test_collect_icims_jobs_follows_next_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page_one = """
+    <html>
+      <head>
+        <link rel="next" href="https://careers-peraton.icims.com/jobs/search?pr=1&amp;searchRelation=keyword_all" />
+      </head>
+      <body>
+        <a href="/jobs/160000/senior-linux-systems-engineer/job">
+          Senior Linux Systems Engineer
+        </a>
+      </body>
+    </html>
+    """
+    page_two = """
+    <html>
+      <body>
+        <a href="/jobs/160001/hpc-systems-engineer/job">
+          HPC Systems Engineer
+        </a>
+      </body>
+    </html>
+    """
+
+    responses = {
+        "https://careers-peraton.icims.com/jobs/search?ss=1&searchRelation=keyword_all&in_iframe=1": page_one,
+        "https://careers-peraton.icims.com/jobs/search?pr=1&searchRelation=keyword_all&in_iframe=1": page_two,
+    }
+    captured_urls = []
+
+    def fake_get(
+        url: str,
+        headers: dict[str, str],
+        timeout: int,
+    ) -> FakeResponse:
+        captured_urls.append(url)
+        return FakeResponse(text=responses[url])
+
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    postings = collect_icims_jobs(_company_config())
+
+    assert captured_urls == list(responses.keys())
+    assert [posting.title for posting in postings] == [
+        "Senior Linux Systems Engineer",
+        "HPC Systems Engineer",
+    ]
 
 
 def test_collect_icims_jobs_wraps_request_errors(
