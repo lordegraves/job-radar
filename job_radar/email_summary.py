@@ -2,7 +2,10 @@ from datetime import datetime
 from html import escape
 from pathlib import Path
 
-from job_radar.reporting import ScanReport, ScoredPosting, TOP_MATCHES_LIMIT
+from job_radar.reporting import ScanReport, ScoredPosting
+
+
+EMAIL_POSTINGS_LIMIT = 10
 
 
 def build_email_subject(report: ScanReport) -> str:
@@ -46,7 +49,7 @@ def build_email_body(
             threshold=report.review_needed_min_score,
         ),
         "",
-        f"Top Matches, up to {TOP_MATCHES_LIMIT}:",
+        f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:",
     ]
 
     _append_email_posting_lines(
@@ -58,7 +61,7 @@ def build_email_body(
     lines.extend(
         [
             "",
-            f"Review Needed, up to {TOP_MATCHES_LIMIT}:",
+            f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:",
         ]
     )
 
@@ -118,14 +121,14 @@ def build_email_html_body(
 
     _append_html_posting_section(
         lines=lines,
-        heading=f"Top Matches, up to {TOP_MATCHES_LIMIT}",
+        heading=f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}",
         scored_postings=top_matches,
         section_type="top_match",
     )
 
     _append_html_posting_section(
         lines=lines,
-        heading=f"Review Needed, up to {TOP_MATCHES_LIMIT}",
+        heading=f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}",
         scored_postings=review_needed,
         section_type="review_needed",
     )
@@ -216,7 +219,7 @@ def _get_top_matches(
         scored_posting
         for scored_posting in scored_postings
         if scored_posting.top_match_eligible
-    ][:TOP_MATCHES_LIMIT]
+    ][:EMAIL_POSTINGS_LIMIT]
 
 
 def _get_review_needed(
@@ -229,7 +232,7 @@ def _get_review_needed(
         scored_posting
         for scored_posting in scored_postings
         if scored_posting.review_needed_eligible
-    ][:TOP_MATCHES_LIMIT]
+    ][:EMAIL_POSTINGS_LIMIT]
 
 
 def _append_email_posting_lines(

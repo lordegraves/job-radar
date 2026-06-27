@@ -6,7 +6,7 @@ from pathlib import Path
 from job_radar.models import JobPosting
 
 
-TOP_MATCHES_LIMIT = 10
+TOP_MATCHES_QUICK_VIEW_LIMIT = 10
 NORTHERN_COLORADO_HIGHLIGHTS_LIMIT = 10
 NORTHERN_COLORADO_LOCATION_KEYWORDS = (
     "fort collins",
@@ -359,7 +359,10 @@ def _append_top_matches_section(
         )
         return
 
-    _append_top_matches_quick_view(lines, top_matches)
+    _append_top_matches_quick_view(
+        lines,
+        top_matches[:TOP_MATCHES_QUICK_VIEW_LIMIT],
+    )
 
     for scored_posting in top_matches:
         _append_scored_posting(lines, scored_posting)
@@ -682,7 +685,7 @@ def _get_top_matches(scored_postings: list[ScoredPosting]) -> list[ScoredPosting
         if scored_posting.top_match_eligible
     ]
 
-    return eligible_postings[:TOP_MATCHES_LIMIT]
+    return eligible_postings
 
 
 def _get_northern_colorado_highlights(
@@ -817,6 +820,8 @@ def _append_html_top_matches_section(
         lines.append("<p>No top matches found.</p>")
         return
 
+    quick_view_top_matches = top_matches[:TOP_MATCHES_QUICK_VIEW_LIMIT]
+
     lines.extend(
         [
             "<h3>Quick View</h3>",
@@ -824,7 +829,7 @@ def _append_html_top_matches_section(
         ]
     )
 
-    for scored_posting in top_matches:
+    for scored_posting in quick_view_top_matches:
         posting = scored_posting.posting
         lines.append(
             "<li>"

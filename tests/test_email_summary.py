@@ -1,11 +1,12 @@
 from job_radar.email_summary import (
+    EMAIL_POSTINGS_LIMIT,
     build_email_body,
     build_email_html_body,
     build_email_subject,
     write_email_preview,
 )
 from job_radar.models import JobPosting
-from job_radar.reporting import TOP_MATCHES_LIMIT, ScanReport, ScoredPosting
+from job_radar.reporting import ScanReport, ScoredPosting
 
 
 def make_posting(
@@ -124,7 +125,7 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "Collector errors: 0" in body
     assert "Top match score threshold: 120" in body
     assert "Review-needed score threshold: 100" in body
-    assert f"Top Matches, up to {TOP_MATCHES_LIMIT}:" in body
+    assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:" in body
     assert "1. Data Center Design Execution Lead" in body
     assert "   Company: Anthropic" in body
     assert "   Score: 158" in body
@@ -173,7 +174,7 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
 
     body = build_email_body(report, "reports/live-test.md")
 
-    assert f"Review Needed, up to {TOP_MATCHES_LIMIT}:" in body
+    assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:" in body
     assert "1. Operations Sourcing Manager, Data Center" in body
     assert "   Company: Anthropic" in body
     assert "   Score: 151" in body
@@ -208,14 +209,14 @@ def test_build_email_body_handles_empty_sections() -> None:
         "0 jobs - 0 top matches - 0 review needed"
     )
     assert "Generated at: Unknown" in body
-    assert f"Top Matches, up to {TOP_MATCHES_LIMIT}:\n- None" in body
-    assert f"Review Needed, up to {TOP_MATCHES_LIMIT}:\n- None" in body
+    assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
+    assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
 
 
 def test_build_email_body_limits_top_matches_and_review_needed() -> None:
     scored_postings: list[ScoredPosting] = []
 
-    for index in range(TOP_MATCHES_LIMIT + 1):
+    for index in range(EMAIL_POSTINGS_LIMIT + 1):
         top_match = make_posting(
             title=f"Top Match {index}",
             source_job_id=f"top-{index}",
@@ -260,10 +261,10 @@ def test_build_email_body_limits_top_matches_and_review_needed() -> None:
 
     body = build_email_body(report, "reports/live-test.md")
 
-    assert f"{TOP_MATCHES_LIMIT}. Top Match {TOP_MATCHES_LIMIT - 1}" in body
-    assert f"{TOP_MATCHES_LIMIT + 1}. Top Match {TOP_MATCHES_LIMIT}" not in body
-    assert f"{TOP_MATCHES_LIMIT}. Review Needed {TOP_MATCHES_LIMIT - 1}" in body
-    assert f"{TOP_MATCHES_LIMIT + 1}. Review Needed {TOP_MATCHES_LIMIT}" not in body
+    assert f"{EMAIL_POSTINGS_LIMIT}. Top Match {EMAIL_POSTINGS_LIMIT - 1}" in body
+    assert f"{EMAIL_POSTINGS_LIMIT + 1}. Top Match {EMAIL_POSTINGS_LIMIT}" not in body
+    assert f"{EMAIL_POSTINGS_LIMIT}. Review Needed {EMAIL_POSTINGS_LIMIT - 1}" in body
+    assert f"{EMAIL_POSTINGS_LIMIT + 1}. Review Needed {EMAIL_POSTINGS_LIMIT}" not in body
 
 
 def test_build_email_body_handles_missing_location_and_empty_signals() -> None:
@@ -344,7 +345,7 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
         "811 jobs - 1 top match - 0 review needed"
     )
     assert "Generated at: 2026-06-24 17:08 UTC" in preview_text
-    assert f"Top Matches, up to {TOP_MATCHES_LIMIT}:" in preview_text
+    assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:" in preview_text
     assert "1. Data Center Design Execution Lead" in preview_text
     assert "   Company: Anthropic" in preview_text
     assert "   Score: 158" in preview_text
