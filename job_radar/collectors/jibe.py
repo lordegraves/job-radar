@@ -12,6 +12,8 @@ from job_radar.normalize import make_canonical_key, make_content_hash
 
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_USER_AGENT = "JobRadar/0.1 local career-source scanner"
+DEFAULT_PAGE_SIZE = 100
+MAX_PAGES = 5
 
 
 def _build_headers(company_config: dict[str, Any]) -> dict[str, str]:
@@ -163,12 +165,41 @@ def _parse_jibe_payload(
     return postings
 
 
-def collect_jibe_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
+def _get_positive_int_config(
+    company_config: dict[str, Any],
+    key: str,
+    default: int,
+) -> int:
+    value = company_config.get(key, default)
+
+    if isinstance(value, bool):
+        return default
+
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+
+    if parsed < 1:
+        return default
+
+    return parsed
+
+
+def _fetch_jibe_page(
+    company_config: dict[str, Any],
+    page: int,
+    limit: int,
+) -> dict[str, Any]:
     source_url = str(company_config["source_url"])
 
     try:
         response = requests.get(
             source_url,
+            params={
+                "page": page,
+                "limit": limit,
+            },
             headers=_build_headers(company_config),
             timeout=DEFAULT_TIMEOUT_SECONDS,
         )
@@ -186,4 +217,49 @@ def collect_jibe_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     if not isinstance(payload, dict):
         raise CollectorError("Jibe response is not a JSON object")
 
-    return _parse_jibe_payload(company_config, payload)
+    return payload
+
+
+def collect_jibe_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
+    page_size = _get_positive_int_config(
+        company_config=company_config,
+        key="page_size",
+        default=DEFAULT_PAGE_SIZE,
+    )
+    max_pages = _get_positive_int_config(
+        company_config=company_config,
+        key="max_pages",
+        default=MAX_PAGES,
+    )
+
+    postings: list[JobPosting] = []
+    seen_urls: set[str] = set()
+
+    for page in range(1, max_pages + 1):
+        payload = _fetch_jibe_page(
+            company_config=company_config,
+            page=page,
+            limit=page_size,
+        )
+
+        page_postings = _parse_jibe_payload(company_config, payload)
+        if not page_postings:
+            break
+
+        added_count = 0
+        for posting in page_postings:
+            if posting.source_url in seen_urls:
+                continue
+
+            seen_urls.add(posting.source_url)
+            postings.append(posting)
+            added_count += 1
+
+        if added_count == 0:
+            break
+
+        total_count = payload.get("totalCount") or payload.get("count")
+        if isinstance(total_count, int) and len(postings) >= total_count:
+            break
+
+    return postings

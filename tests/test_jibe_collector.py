@@ -129,16 +129,19 @@ def test_collect_jibe_jobs_fetches_and_parses(monkeypatch: pytest.MonkeyPatch) -
                     "full_location": "Austin, Texas",
                 }
             }
-        ]
+        ],
+        "totalCount": 1,
     }
     captured = {}
 
     def fake_get(
         url: str,
+        params: dict[str, int],
         headers: dict[str, str],
         timeout: int,
     ) -> FakeResponse:
         captured["url"] = url
+        captured["params"] = params
         captured["headers"] = headers
         captured["timeout"] = timeout
         return FakeResponse(payload=payload)
@@ -148,6 +151,7 @@ def test_collect_jibe_jobs_fetches_and_parses(monkeypatch: pytest.MonkeyPatch) -
     postings = collect_jibe_jobs(_company_config())
 
     assert captured["url"] == "https://careers.amd.com/api/jobs"
+    assert captured["params"] == {"page": 1, "limit": 100}
     assert captured["headers"]["Referer"] == "https://careers.amd.com/careers-home/jobs"
     assert captured["timeout"] == 30
     assert len(postings) == 1
@@ -159,6 +163,7 @@ def test_collect_jibe_jobs_wraps_request_errors(
 ) -> None:
     def fake_get(
         url: str,
+        params: dict[str, int],
         headers: dict[str, str],
         timeout: int,
     ) -> FakeResponse:
@@ -175,6 +180,7 @@ def test_collect_jibe_jobs_requires_json_object(
 ) -> None:
     def fake_get(
         url: str,
+        params: dict[str, int],
         headers: dict[str, str],
         timeout: int,
     ) -> FakeResponse:
@@ -184,3 +190,59 @@ def test_collect_jibe_jobs_requires_json_object(
 
     with pytest.raises(CollectorError, match="Jibe response is not a JSON object"):
         collect_jibe_jobs(_company_config())
+
+
+def test_collect_jibe_jobs_follows_pages(monkeypatch: pytest.MonkeyPatch) -> None:
+    payloads = {
+        1: {
+            "jobs": [
+                {
+                    "data": {
+                        "slug": "87440",
+                        "req_id": "87440",
+                        "title": "GPU Performance Architect",
+                        "description": "Build GPU performance models.",
+                        "full_location": "Austin, Texas",
+                    }
+                }
+            ],
+            "totalCount": 2,
+        },
+        2: {
+            "jobs": [
+                {
+                    "data": {
+                        "slug": "87095",
+                        "req_id": "87095",
+                        "title": "VLSI RTL design engineer",
+                        "description": "Design RTL systems.",
+                        "full_location": "Fort Collins, Colorado",
+                    }
+                }
+            ],
+            "totalCount": 2,
+        },
+    }
+    captured_pages = []
+
+    def fake_get(
+        url: str,
+        params: dict[str, int],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> FakeResponse:
+        captured_pages.append(params["page"])
+        return FakeResponse(payload=payloads[params["page"]])
+
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    config = {
+        **_company_config(),
+        "page_size": 1,
+        "max_pages": 5,
+    }
+
+    postings = collect_jibe_jobs(config)
+
+    assert captured_pages == [1, 2]
+    assert [posting.source_job_id for posting in postings] == ["87440", "87095"]

@@ -292,6 +292,8 @@ companies:
     source_url: https://careers.amd.com/api/jobs
     referer_url: https://careers.amd.com/careers-home/jobs
     job_url_template: https://careers.amd.com/careers-home/jobs/{slug}
+    page_size: 100
+    max_pages: 12
     enabled: true
 
   # ---------------------------------------------------------------------------
