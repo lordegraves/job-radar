@@ -7,6 +7,17 @@ from job_radar.models import JobPosting
 
 
 TOP_MATCHES_LIMIT = 10
+NORTHERN_COLORADO_HIGHLIGHTS_LIMIT = 10
+NORTHERN_COLORADO_LOCATION_KEYWORDS = (
+    "fort collins",
+    "loveland",
+    "greeley",
+    "windsor",
+    "berthoud",
+    "longmont",
+    "northern colorado",
+    "cheyenne",
+)
 
 
 @dataclass(frozen=True)
@@ -321,6 +332,7 @@ def _append_scored_sections(
     scored_postings: list[ScoredPosting],
 ) -> None:
     _append_top_matches_section(lines, scored_postings)
+    _append_northern_colorado_highlights_section(lines, scored_postings)
     _append_review_needed_section(lines, scored_postings)
     _append_omitted_jobs_section(lines, scored_postings)
 
@@ -350,6 +362,32 @@ def _append_top_matches_section(
     _append_top_matches_quick_view(lines, top_matches)
 
     for scored_posting in top_matches:
+        _append_scored_posting(lines, scored_posting)
+
+
+def _append_northern_colorado_highlights_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    lines.extend(
+        [
+            "## Northern Colorado Highlights",
+            "",
+        ]
+    )
+
+    highlights = _get_northern_colorado_highlights(scored_postings)
+
+    if not highlights:
+        lines.extend(
+            [
+                "No Northern Colorado highlights found.",
+                "",
+            ]
+        )
+        return
+
+    for scored_posting in highlights:
         _append_scored_posting(lines, scored_posting)
 
 
@@ -647,6 +685,36 @@ def _get_top_matches(scored_postings: list[ScoredPosting]) -> list[ScoredPosting
     return eligible_postings[:TOP_MATCHES_LIMIT]
 
 
+def _get_northern_colorado_highlights(
+    scored_postings: list[ScoredPosting],
+) -> list[ScoredPosting]:
+    top_match_urls = {
+        scored_posting.posting.source_url
+        for scored_posting in _get_top_matches(scored_postings)
+    }
+
+    highlights = [
+        scored_posting
+        for scored_posting in scored_postings
+        if scored_posting.posting.source_url not in top_match_urls
+        and _is_northern_colorado_highlight(scored_posting)
+    ]
+
+    return highlights[:NORTHERN_COLORADO_HIGHLIGHTS_LIMIT]
+
+
+def _is_northern_colorado_highlight(scored_posting: ScoredPosting) -> bool:
+    if not scored_posting.top_match_eligible and not scored_posting.review_needed_eligible:
+        return False
+
+    location = (scored_posting.posting.location or "").lower()
+
+    return any(
+        keyword in location
+        for keyword in NORTHERN_COLORADO_LOCATION_KEYWORDS
+    )
+
+
 def _append_html_count_summary(
     lines: list[str],
     heading: str,
@@ -732,6 +800,7 @@ def _append_html_scored_sections(
     scored_postings: list[ScoredPosting],
 ) -> None:
     _append_html_top_matches_section(lines, scored_postings)
+    _append_html_northern_colorado_highlights_section(lines, scored_postings)
     _append_html_review_needed_section(lines, scored_postings)
     _append_html_omitted_jobs_section(lines, scored_postings)
 
@@ -771,6 +840,22 @@ def _append_html_top_matches_section(
     lines.append("</ul>")
 
     for scored_posting in top_matches:
+        _append_html_scored_posting(lines, scored_posting)
+
+
+def _append_html_northern_colorado_highlights_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    lines.append("<h2>Northern Colorado Highlights</h2>")
+
+    highlights = _get_northern_colorado_highlights(scored_postings)
+
+    if not highlights:
+        lines.append("<p>No Northern Colorado highlights found.</p>")
+        return
+
+    for scored_posting in highlights:
         _append_html_scored_posting(lines, scored_posting)
 
 
