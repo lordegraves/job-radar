@@ -326,8 +326,12 @@ companies:
   - company_key: saic
     name: SAIC
     source_type: oracle_hcm
-    source_url: https://eihu.fa.us8.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/jobs
-    enabled: false
+    source_url: https://eihu.fa.us8.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions
+    site_number: CX
+    referer_url: https://eihu.fa.us8.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/
+    page_size: 25
+    max_pages: 40
+    enabled: true
 
   # ---------------------------------------------------------------------------
   # Dayforce - collector not implemented yet
