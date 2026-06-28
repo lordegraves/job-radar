@@ -60,22 +60,27 @@ Current implemented source types:
 - Jibe
 - Jobsyn
 - Oracle HCM
+- SmartRecruiters
+- SelectMinds
+- Phenom
 - HTML
 
 Current verified live scan state:
 
-    Companies enabled: 42
-    Jobs collected: 7,619
+    Companies enabled: 43
+    Jobs collected: 7,760
     Jobs stored: 120
-    Jobs omitted: 7,499
+    Jobs omitted: 7,640
     Collector errors: 0
 
 Recently validated source additions:
- 
-- Sandia - Jobsyn
+
 - Oak Ridge National Laboratory - HTML
-- LLNL - SmartRecruiters
+- Sandia National Laboratories - Jobsyn
 - SAIC - Oracle HCM
+- Lawrence Livermore National Laboratory - SmartRecruiters
+- Berkeley Lab / NERSC - SelectMinds
+- Battelle - Phenom
 
 ## Important config files
 
@@ -101,7 +106,7 @@ Sample/demo company configuration. These entries are placeholders.
 
 Expected current result:
 
-    176 passed
+    180 passed
 
 ## Report structure
 
