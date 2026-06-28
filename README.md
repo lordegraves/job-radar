@@ -58,20 +58,22 @@ Current implemented source types:
 - USAJobs
 - iCIMS
 - Jibe
+- Jobsyn
 - HTML
 
 Current verified live scan state:
 
-    Companies enabled: 38
-    Jobs collected: 6,457
+    Companies enabled: 39
+    Jobs collected: 6,567
     Jobs stored: 120
-    Jobs omitted: 6,337
+    Jobs omitted: 6,447
     Collector errors: 0
 
 Recently validated source additions:
 
 - Peraton - iCIMS
 - AMD - Jibe
+- Orni - Jobsyn
 - Oak Ridge National Laboratory - HTML
 
 ## Important config files
@@ -98,7 +100,7 @@ Sample/demo company configuration. These entries are placeholders.
 
 Expected current result:
 
-    160 passed
+    164 passed
 
 ## Report structure
 
