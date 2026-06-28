@@ -67,10 +67,10 @@ Current implemented source types:
 
 Current verified live scan state:
 
-    Companies enabled: 43
-    Jobs collected: 7,760
-    Jobs stored: 120
-    Jobs omitted: 7,640
+    Companies enabled: 44
+    Jobs collected: 8,159
+    Jobs stored: 122
+    Jobs omitted: 8,037
     Collector errors: 0
 
 Recently validated source additions:
@@ -81,6 +81,7 @@ Recently validated source additions:
 - Lawrence Livermore National Laboratory - SmartRecruiters
 - Berkeley Lab / NERSC - SelectMinds
 - Battelle - Phenom
+- ASRC Federal - Dayforce
 
 ## Important config files
 
@@ -106,7 +107,7 @@ Sample/demo company configuration. These entries are placeholders.
 
 Expected current result:
 
-    180 passed
+    185 passed
 
 ## Report structure
 
