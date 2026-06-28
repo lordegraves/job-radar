@@ -59,14 +59,15 @@ Current implemented source types:
 - iCIMS
 - Jibe
 - Jobsyn
+- Oracle HCM
 - HTML
 
 Current verified live scan state:
 
-    Companies enabled: 39
-    Jobs collected: 6,567
+    Companies enabled: 40
+    Jobs collected: 7,461
     Jobs stored: 120
-    Jobs omitted: 6,447
+    Jobs omitted: 7,341
     Collector errors: 0
 
 Recently validated source additions:
@@ -100,7 +101,7 @@ Sample/demo company configuration. These entries are placeholders.
 
 Expected current result:
 
-    164 passed
+    168 passed
 
 ## Report structure
 
