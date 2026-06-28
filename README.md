@@ -1,132 +1,157 @@
-﻿# Job Radar
+# Job Radar
 
 Job Radar is a local job discovery and triage tool.
 
-It scans configured company job boards, normalizes postings, stores them in SQLite, scores them against configurable preferences, and writes a Markdown report.
+It scans configured company job boards, normalizes postings, stores them in SQLite, scores them against configurable preferences, and writes Markdown, HTML, and email-preview reports.
 
-The current goal is not to apply to jobs automatically. The goal is to safely collect and rank roles from known target companies so manual review is faster and less dependent on stale job boards or missing LinkedIn results.
+The current goal is not to apply to jobs automatically. The goal is to safely collect and rank roles from known target companies so manual review is faster and less dependent on stale job boards, stale LinkedIn results, or missed company postings.
 
 ## Current capabilities
 
 - Scans configured company sources
 - Supports Greenhouse collectors
 - Supports Lever collectors
+- Supports Ashby collectors
+- Supports Workday collectors
+- Supports USAJobs collectors
+- Supports iCIMS collectors
+- Supports Jibe collectors
+- Supports HTML job-link collectors
 - Stores job postings in SQLite
 - Tracks new, seen, and changed postings
 - Scores jobs using configurable keyword and location rules
-- Separates Top Matches, Review Needed, and All Jobs
+- Classifies location status
 - Uses config-driven eligibility rules for Top Matches and Review Needed
+- Separates Top Matches, Review Needed, Northern Colorado Highlights, and All Jobs
 - Keeps All Jobs complete even when Top Matches and Review Needed are filtered
+- Keeps the full Markdown and HTML reports complete for Top Matches
+- Keeps email summaries intentionally capped for readability
 - Generates a Markdown report
+- Generates an HTML report
+- Builds a plain-text email preview during scan
 - Summarizes scanned companies
+- Summarizes source type counts
 - Summarizes location status counts
 - Adds a generated timestamp to each report
-- Summarizes source type counts
-- Builds a plain-text email preview during scan
 - Keeps generated email preview files out of git
 - Validates email settings without sending email
 - Wires the email send path behind an explicit --send-email flag
-- Keeps SMTP delivery disabled until implemented intentionally
+- Keeps SMTP delivery disabled until enabled intentionally
 - Requires email passwords to come from environment variables when email is enabled
 
-## Current live validation sources
+## Current live target sources
 
-The live validation config is:
+The primary live scan config is:
 
-```text
-config/live-test-companies.yaml
-```
+    config/target-companies.yaml
 
-Current live validation sources:
+The live settings file is:
 
-- Anthropic - Greenhouse
-- Scale AI - Greenhouse
-- Distro - Lever
+    config/live-test-settings.yaml
+
+Current implemented source types:
+
+- Greenhouse
+- Lever
+- Ashby
+- Workday
+- USAJobs
+- iCIMS
+- Jibe
+- HTML
+
+Current verified live scan state:
+
+    Companies enabled: 38
+    Jobs collected: 6,457
+    Jobs stored: 120
+    Jobs omitted: 6,337
+    Collector errors: 0
+
+Recently validated source additions:
+
+- Peraton - iCIMS
+- AMD - Jibe
+- Oak Ridge National Laboratory - HTML
 
 ## Important config files
 
-```text
-config/companies.yaml
-```
+    config/target-companies.yaml
 
-Sample/demo company configuration. These entries are placeholders.
+Primary target company configuration.
 
-```text
-config/live-test-companies.yaml
-```
+    config/live-test-settings.yaml
 
-Real live validation company configuration.
+Settings used for live validation, including the live test database path and email settings.
 
-```text
-config/live-test-settings.yaml
-```
-
-Settings used for live validation, including the live test database path.
-
-```text
-config/scoring.yaml
-```
+    config/scoring.yaml
 
 Keyword scoring, location preferences, Top Match rules, and Review Needed rules.
 
+    config/companies.yaml
+
+Sample/demo company configuration. These entries are placeholders.
+
 ## Run tests
 
-```powershell
-python -m pytest
-```
+    python -m pytest
 
 Expected current result:
 
-```text
-92 passed
-```
+    160 passed
 
 ## Report structure
 
-The Markdown report has three job sections:
+The Markdown and HTML reports include these major sections:
 
 ### Top Matches
 
 Best clean matches based on score, location, excluded title filters, and strong technical signals.
 
+The full Markdown and HTML reports show all Top Match eligible jobs.
+
+### Top Matches Quick View
+
+A capped summary view of the strongest Top Matches for fast scanning.
+
 ### Review Needed
 
 High-score roles that are not clean Top Matches but may still deserve manual review.
+
+### Northern Colorado Highlights
+
+Location-focused section for Northern Colorado and nearby strategic locations.
+
+This section avoids duplicating jobs already shown in full Top Matches.
 
 ### All Jobs
 
 Complete scored archive of collected jobs. This section stays complete even when Top Matches and Review Needed are filtered.
 
-## Run live validation
+## Run full live scan
 
-```powershell
-Remove-Item data\live_test.sqlite3 -ErrorAction SilentlyContinue
-
-python -m job_radar scan --config config/live-test-companies.yaml --settings config/live-test-settings.yaml --report reports/live-test.md
-```
+    python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports/target-email-preview.txt --send-email
 
 Expected good output:
 
-```text
-Companies enabled: 3
-Collector errors: 0
-```
+    Collector errors: 0
+    Report written: reports\target-scan.md
+    HTML report written: reports\target-scan.html
+    Email preview written: reports\target-email-preview.txt
+    Email send result: Email sending disabled by settings
+
 ## Run live validation with email preview
 
-```powershell
-Remove-Item data\live_test.sqlite3 -ErrorAction SilentlyContinue
-Remove-Item reports\live-email-preview.txt -ErrorAction SilentlyContinue
+    Remove-Item data\live_test.sqlite3 -ErrorAction SilentlyContinue
+    Remove-Item reports\target-email-preview.txt -ErrorAction SilentlyContinue
 
-python -m job_radar scan --config config/live-test-companies.yaml --settings config/live-test-settings.yaml --report reports/live-test.md --email-preview reports/live-email-preview.txt
+    python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports/target-email-preview.txt
 
-Get-Content reports\live-email-preview.txt -Raw
-```
+    Get-Content reports\target-email-preview.txt -Raw
 
-Email settings are validated from the settings file. With `email.enabled` set to `false`, `--send-email` only exercises the guarded send path and prints that email sending is disabled. No SMTP connection is made and no email is sent.
+Email settings are validated from the settings file. With email.enabled set to false, --send-email only exercises the guarded send path and prints that email sending is disabled. No SMTP connection is made and no email is sent.
 
-```powershell
-python -m job_radar scan --config config/live-test-companies.yaml --settings config/live-test-settings.yaml --report reports/live-test.md --email-preview reports/live-email-preview.txt --send-email
-```
+    python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports\target-email-preview.txt --send-email
 
 With email.enabled set to false, --send-email only exercises the guarded send path and prints that email sending is disabled.
 
@@ -134,18 +159,16 @@ With email.enabled set to false, --send-email only exercises the guarded send pa
 
 Email passwords must not be stored in YAML files.
 
-When email sending is eventually enabled, the settings file should name an environment variable that contains the SMTP password:
+When email sending is enabled, the settings file should name an environment variable that contains the SMTP password:
 
-```yaml
-email:
-  enabled: true
-  sender: "you@example.com"
-  recipients:
-    - "you@example.com"
-  smtp_host: "smtp.example.com"
-  smtp_port: 587
-  smtp_password_env: "JOB_RADAR_SMTP_PASSWORD"
-  ```
+    email:
+      enabled: true
+      sender: "you@example.com"
+      recipients:
+        - "you@example.com"
+      smtp_host: "smtp.example.com"
+      smtp_port: 587
+      smtp_password_env: "JOB_RADAR_SMTP_PASSWORD"
 
 For local testing, that environment variable can be set in the shell.
 
