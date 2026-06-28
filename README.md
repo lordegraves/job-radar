@@ -64,10 +64,10 @@ Current implemented source types:
 
 Current verified live scan state:
 
-    Companies enabled: 41
-    Jobs collected: 7,613
+    Companies enabled: 42
+    Jobs collected: 7,619
     Jobs stored: 120
-    Jobs omitted: 7,493
+    Jobs omitted: 7,499
     Collector errors: 0
 
 Recently validated source additions:
@@ -101,7 +101,7 @@ Sample/demo company configuration. These entries are placeholders.
 
 Expected current result:
 
-    172 passed
+    176 passed
 
 ## Report structure
 
