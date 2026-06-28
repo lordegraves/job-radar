@@ -334,14 +334,17 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # Dayforce - collector not implemented yet
+  # Dayforce - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: asrc_federal
     name: ASRC Federal
     source_type: dayforce
-    source_url: https://jobs.dayforcehcm.com/asrcfh/CANDIDATEPORTAL
-    enabled: false
+    source_url: https://jobs.dayforcehcm.com/asrcfh/candidateportal
+    culture_code: en-US
+    page_size: 25
+    max_pages: 20
+    enabled: true
 
   # ---------------------------------------------------------------------------
   # ADP Workforce Now - collector not implemented yet

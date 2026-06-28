@@ -13,6 +13,7 @@ from job_radar.collectors.oracle_hcm import collect_oracle_hcm_jobs
 from job_radar.collectors.smartrecruiters import collect_smartrecruiters_jobs
 from job_radar.collectors.selectminds import collect_selectminds_jobs
 from job_radar.collectors.phenom import collect_phenom_jobs
+from job_radar.collectors.dayforce import collect_dayforce_jobs
 from job_radar.models import JobPosting
 
 
@@ -57,6 +58,9 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
     
     if source_type == "phenom":
         return collect_phenom_jobs(company_config)
+
+    if source_type == "dayforce":
+        return collect_dayforce_jobs(company_config)
 
     raise CollectorError(
         f"No collector implemented for source_type={source_type} "
