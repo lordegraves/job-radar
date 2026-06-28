@@ -11,6 +11,7 @@ from job_radar.collectors.workday import collect_workday_jobs
 from job_radar.collectors.jobsyn import collect_jobsyn_jobs
 from job_radar.collectors.oracle_hcm import collect_oracle_hcm_jobs
 from job_radar.collectors.smartrecruiters import collect_smartrecruiters_jobs
+from job_radar.collectors.selectminds import collect_selectminds_jobs
 from job_radar.models import JobPosting
 
 
@@ -49,6 +50,9 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
     
     if source_type == "smartrecruiters":
         return collect_smartrecruiters_jobs(company_config)
+    
+    if source_type == "selectminds":
+        return collect_selectminds_jobs(company_config)
 
     raise CollectorError(
         f"No collector implemented for source_type={source_type} "

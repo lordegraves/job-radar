@@ -9,11 +9,11 @@
 #   icims: implemented
 #   jibe: implemented
 #   jobsyn: implemented
-#   oracle_hcm: known future source
+#   oracle_hcm: implemented
 #   dayforce: known future source
 #   adp: known future source
-#   smartrecruiters: known future source
-#   selectminds: known future source
+#   smartrecruiters: implemented
+#   selectminds: implemented
 #   phenom: known future source
 #   html: custom / generic career pages
 
@@ -313,7 +313,7 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # Oracle HCM - collector not implemented yet
+  # Oracle HCM - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: dell
@@ -354,7 +354,7 @@ companies:
     enabled: false
 
   # ---------------------------------------------------------------------------
-  # SmartRecruiters - collector not implemented yet
+  # SmartRecruiters - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: llnl
@@ -367,20 +367,20 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # SelectMinds / referrals - collector not implemented yet
+  # SelectMinds / referrals - implemented
   # ---------------------------------------------------------------------------
-
-  - company_key: lawrence_berkeley
-    name: Lawrence Berkeley National Laboratory / NERSC
-    source_type: selectminds
-    source_url: https://lbl.referrals.selectminds.com/
-    enabled: false
 
   - company_key: idaho_national_lab
     name: Idaho National Laboratory
     source_type: selectminds
     source_url: https://inl.referrals.selectminds.com/
     enabled: false
+
+  - company_key: berkeley_lab_nersc
+    name: Berkeley Lab / NERSC
+    source_type: selectminds
+    source_url: https://lbl.referrals.selectminds.com/page/nersc-careers-85
+    enabled: true
 
   # ---------------------------------------------------------------------------
   # Phenom / custom enterprise career sites - collector not implemented yet
