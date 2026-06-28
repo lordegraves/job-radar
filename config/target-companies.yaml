@@ -407,8 +407,8 @@ companies:
   - company_key: ornl
     name: Oak Ridge National Laboratory
     source_type: html
-    source_url: https://jobs.ornl.gov/
-    enabled: false
+    source_url: https://jobs.ornl.gov/go/Computational-SciencesSupercomputing-Jobs/4534300/
+    enabled: true
 
   - company_key: mbari
     name: Monterey Bay Aquarium Research Institute

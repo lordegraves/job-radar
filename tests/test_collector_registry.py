@@ -8,7 +8,7 @@ def test_collect_jobs_for_company_rejects_unimplemented_source_type() -> None:
     company_config = {
         "company_key": "future_company",
         "name": "Future Company",
-        "source_type": "html",
+        "source_type": "future_source",
         "source_url": "https://example.com/careers",
         "enabled": True,
     }

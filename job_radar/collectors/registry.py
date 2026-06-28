@@ -2,6 +2,7 @@ from typing import Any
 
 from job_radar.collectors.ashby import collect_ashby_jobs
 from job_radar.collectors.greenhouse import CollectorError, collect_greenhouse_jobs
+from job_radar.collectors.html import collect_html_jobs
 from job_radar.collectors.icims import collect_icims_jobs
 from job_radar.collectors.jibe import collect_jibe_jobs
 from job_radar.collectors.lever import collect_lever_jobs
@@ -33,6 +34,9 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
 
     if source_type == "jibe":
         return collect_jibe_jobs(company_config)
+
+    if source_type == "html":
+        return collect_html_jobs(company_config)
 
     raise CollectorError(
         f"No collector implemented for source_type={source_type} "
