@@ -357,12 +357,14 @@ companies:
   # SmartRecruiters - collector not implemented yet
   # ---------------------------------------------------------------------------
 
-  - company_key: lawrence_livermore
+  - company_key: llnl
     name: Lawrence Livermore National Laboratory
     source_type: smartrecruiters
-    source_slug: LLNL
-    source_url: https://careers.smartrecruiters.com/LLNL
-    enabled: false
+    source_url: https://api.smartrecruiters.com/v1/companies/LLNL/postings
+    company_identifier: LLNL
+    page_size: 100
+    max_pages: 3
+    enabled: true
 
   # ---------------------------------------------------------------------------
   # SelectMinds / referrals - collector not implemented yet
