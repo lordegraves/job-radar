@@ -64,18 +64,18 @@ Current implemented source types:
 
 Current verified live scan state:
 
-    Companies enabled: 40
-    Jobs collected: 7,461
+    Companies enabled: 41
+    Jobs collected: 7,613
     Jobs stored: 120
-    Jobs omitted: 7,341
+    Jobs omitted: 7,493
     Collector errors: 0
 
 Recently validated source additions:
-
-- Peraton - iCIMS
-- AMD - Jibe
-- Orni - Jobsyn
+ 
+- Sandia - Jobsyn
 - Oak Ridge National Laboratory - HTML
+- LLNL - SmartRecruiters
+- SAIC - Oracle HCM
 
 ## Important config files
 
@@ -101,7 +101,7 @@ Sample/demo company configuration. These entries are placeholders.
 
 Expected current result:
 
-    168 passed
+    172 passed
 
 ## Report structure
 
