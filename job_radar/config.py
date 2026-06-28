@@ -13,6 +13,7 @@ SUPPORTED_SOURCE_TYPES = {
     "usajobs",
     "icims",
     "jibe",
+    "jobsyn",
     "oracle_hcm",
     "dayforce",
     "adp",

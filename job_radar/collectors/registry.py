@@ -8,6 +8,7 @@ from job_radar.collectors.jibe import collect_jibe_jobs
 from job_radar.collectors.lever import collect_lever_jobs
 from job_radar.collectors.usajobs import collect_usajobs
 from job_radar.collectors.workday import collect_workday_jobs
+from job_radar.collectors.jobsyn import collect_jobsyn_jobs
 from job_radar.models import JobPosting
 
 
@@ -37,6 +38,9 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
 
     if source_type == "html":
         return collect_html_jobs(company_config)
+    
+    if source_type == "jobsyn":
+        return collect_jobsyn_jobs(company_config)
 
     raise CollectorError(
         f"No collector implemented for source_type={source_type} "

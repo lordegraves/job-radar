@@ -8,6 +8,7 @@
 #   usajobs: known future source
 #   icims: implemented
 #   jibe: implemented
+#   jobsyn: implemented
 #   oracle_hcm: known future source
 #   dayforce: known future source
 #   adp: known future source
@@ -297,6 +298,21 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
+  # Jobsyn / NLX - implemented
+  # ---------------------------------------------------------------------------
+
+  - company_key: sandia
+    name: Sandia National Laboratories
+    source_type: jobsyn
+    source_url: https://prod-search-api.jobsyn.org/api/v1/solr/search
+    x_origin: sandia.jobs
+    origin_url: https://sandia.jobs
+    referer_url: https://sandia.jobs/jobs/
+    page_size: 40
+    max_pages: 3
+    enabled: true
+
+  # ---------------------------------------------------------------------------
   # Oracle HCM - collector not implemented yet
   # ---------------------------------------------------------------------------
 
@@ -384,12 +400,6 @@ companies:
     name: Amentum
     source_type: html
     source_url: https://www.amentumcareers.com/jobs
-    enabled: false
-
-  - company_key: sandia
-    name: Sandia National Laboratories
-    source_type: html
-    source_url: https://sandia.jobs/
     enabled: false
 
   - company_key: lanl
