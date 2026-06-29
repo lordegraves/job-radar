@@ -88,6 +88,13 @@ companies:
     source_slug: tailscale
     enabled: true
 
+  - company_key: nscale
+    name: Nscale
+    source_type: greenhouse
+    source_slug: nscaleoperationsukltd
+    enabled: true
+    notes: Current public careers page points to Greenhouse EU job board.
+
   # ---------------------------------------------------------------------------
   # Lever - implemented
   # ---------------------------------------------------------------------------
@@ -149,13 +156,6 @@ companies:
     source_type: ashby
     source_slug: FireworksAI
     enabled: true
-
-  - company_key: nscale
-    name: Nscale
-    source_type: ashby
-    source_slug: nscale
-    enabled: false
-    notes: Ashby slug needs investigation; previous probe returned 404.
 
   # ---------------------------------------------------------------------------
   # Workday - implemented
