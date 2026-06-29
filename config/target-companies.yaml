@@ -359,6 +359,17 @@ companies:
     max_pages: 40
     enabled: true
 
+  - company_key: cherokee_federal
+    name: Cherokee Federal
+    source_type: oracle_hcm
+    source_url: https://ibtcjb.fa.ocs.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions
+    site_number: careers
+    referer_url: https://ibtcjb.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/careers/jobs
+    page_size: 25
+    max_pages: 20
+    enabled: true
+    notes: Federal contracting careers site uses Oracle Candidate Experience.
+
   # ---------------------------------------------------------------------------
   # Dayforce - implemented
   # ---------------------------------------------------------------------------
