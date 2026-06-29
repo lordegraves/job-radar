@@ -402,7 +402,7 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # HTML / custom career pages - collector not implemented yet
+  # HTML / custom career pages - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: jacobs
