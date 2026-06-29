@@ -17,6 +17,7 @@ SUPPORTED_SOURCE_TYPES = {
     "oracle_hcm",
     "dayforce",
     "adp",
+    "activate",
     "smartrecruiters",
     "selectminds",
     "phenom",

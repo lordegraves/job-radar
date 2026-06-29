@@ -447,6 +447,21 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
+  # Activate - implemented
+  # ---------------------------------------------------------------------------
+
+  - company_key: lanl
+    name: Los Alamos National Laboratory
+    source_type: activate
+    source_url: https://lanl.jobs/Search/SearchResults
+    source_base_url: https://lanl.jobs
+    referer_url: https://lanl.jobs/search/searchjobs
+    page_size: 25
+    max_pages: 25
+    enabled: true
+    notes: Activate job board using JSON-backed SearchResults endpoint.
+
+  # ---------------------------------------------------------------------------
   # HTML / custom career pages - implemented
   # ---------------------------------------------------------------------------
 
@@ -460,12 +475,6 @@ companies:
     name: Amentum
     source_type: html
     source_url: https://www.amentumcareers.com/jobs
-    enabled: false
-
-  - company_key: lanl
-    name: Los Alamos National Laboratory
-    source_type: html
-    source_url: https://lanl.jobs/
     enabled: false
 
   - company_key: pnnl
