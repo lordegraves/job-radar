@@ -72,14 +72,16 @@ Current implemented source types:
 - Phenom
 - Dayforce
 - ADP Workforce Now
+- Activate
+- WEKA custom
 - HTML
 
 Current verified live scan state:
 
-    Companies enabled: 48
-    Jobs collected: 8,722
-    Jobs stored: 121
-    Jobs omitted: 8,601
+    Companies enabled: 62
+    Jobs collected: 10,000
+    Jobs stored: 150
+    Jobs omitted: 9,850
     Collector errors: 0
 
 Recently validated source additions:
@@ -95,6 +97,20 @@ Recently validated source additions:
 - Idaho National Laboratory - SelectMinds
 - Nscale - Greenhouse
 - Dell Technologies - Oracle HCM
+- DDN - iCIMS
+- Ocean Infinity - Workday
+- Saildrone - Greenhouse
+- Penguin Solutions - HTML
+- Cherokee Federal - Oracle HCM
+- Fugro - Workday
+- Scripps Institution of Oceanography - HTML
+- MBARI - HTML
+- Los Alamos National Laboratory - Activate
+- Amentum - HTML
+- WEKA - custom
+- Pacific Northwest National Laboratory - Jibe
+- Voleon - Ashby
+- Jacobs - Jobsyn/NLX
 
 ## Important config files
 
