@@ -18,6 +18,7 @@ SUPPORTED_SOURCE_TYPES = {
     "dayforce",
     "adp",
     "activate",
+    "weka",
     "smartrecruiters",
     "selectminds",
     "phenom",

@@ -12,6 +12,8 @@
 #   oracle_hcm: implemented
 #   dayforce: implemented
 #   adp: implemented
+#   activate: implemented
+#   weka: implemented
 #   smartrecruiters: implemented
 #   selectminds: implemented
 #   phenom: implemented
@@ -518,8 +520,13 @@ companies:
     source_url: https://www.voleon.com/careers
     enabled: false
 
+  # ---------------------------------------------------------------------------
+  # WEKA custom careers page - implemented
+  # ---------------------------------------------------------------------------
+
   - company_key: weka
     name: WEKA
-    source_type: html
+    source_type: weka
     source_url: https://www.weka.io/company/careers/
-    enabled: false
+    enabled: true
+    notes: WEKA careers page renders mrkto-job cards with gh_jid IDs, titles, departments, and locations.
