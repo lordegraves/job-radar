@@ -166,6 +166,13 @@ companies:
     source_slug: FireworksAI
     enabled: true
 
+  - company_key: voleon
+    name: Voleon
+    source_type: ashby
+    source_slug: voleon
+    enabled: true
+    notes: Voleon careers page moved from /careers to /jobs and embeds Ashby.
+
   # ---------------------------------------------------------------------------
   # Workday - implemented
   # ---------------------------------------------------------------------------
@@ -518,12 +525,6 @@ companies:
     source_url: https://careers.penguinsolutions.com/search/?locationsearch=
     enabled: true
     notes: SuccessFactors-style careers page works with the generic HTML collector.
-
-  - company_key: voleon
-    name: Voleon
-    source_type: html
-    source_url: https://www.voleon.com/careers
-    enabled: false
 
   # ---------------------------------------------------------------------------
   # WEKA custom careers page - implemented
