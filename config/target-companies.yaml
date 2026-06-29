@@ -283,6 +283,13 @@ companies:
     source_url: https://careers-peraton.icims.com/jobs/search?ss=1&searchRelation=keyword_all&in_iframe=1
     enabled: true
 
+  - company_key: ddn
+    name: DDN
+    source_type: icims
+    source_url: https://careers-ddn.icims.com/jobs/search
+    enabled: true
+    notes: Public careers page points to iCIMS open positions.
+
   # ---------------------------------------------------------------------------
   # Jibe - implemented
   # ---------------------------------------------------------------------------
@@ -479,12 +486,6 @@ companies:
     name: Saildrone
     source_type: html
     source_url: https://www.saildrone.com/careers
-    enabled: false
-
-  - company_key: ddn
-    name: DDN
-    source_type: html
-    source_url: https://www.ddn.com/company/careers/
     enabled: false
 
   - company_key: weka
