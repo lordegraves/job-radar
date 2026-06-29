@@ -483,7 +483,8 @@ companies:
     name: Penguin Solutions
     source_type: html
     source_url: https://careers.penguinsolutions.com/search/?locationsearch=
-    enabled: false
+    enabled: true
+    notes: SuccessFactors-style careers page works with the generic HTML collector.
 
   - company_key: voleon
     name: Voleon
