@@ -24,3 +24,9 @@ probe_workday_sources.py
 # Local credentials / environment files
 .env
 *.env
+
+# Local collector research artifacts
+reports/research-*
+reports/scratch-*
+reports/probe-*
+reports/debug-*

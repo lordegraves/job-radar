@@ -354,7 +354,10 @@ companies:
     name: USRA
     source_type: adp
     source_url: https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=f03960f2-20cd-4828-9ae5-415eefc7072e&ccId=19000101_000001&lang=en_US
-    enabled: false
+    locale: en_US
+    page_size: 20
+    max_pages: 5
+    enabled: true
 
   # ---------------------------------------------------------------------------
   # SmartRecruiters - implemented
