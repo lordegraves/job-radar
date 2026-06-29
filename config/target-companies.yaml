@@ -10,8 +10,8 @@
 #   jibe: implemented
 #   jobsyn: implemented
 #   oracle_hcm: implemented
-#   dayforce: known future source
-#   adp: known future source
+#   dayforce: implemented
+#   adp: implemented
 #   smartrecruiters: implemented
 #   selectminds: implemented
 #   phenom: implemented
@@ -347,7 +347,7 @@ companies:
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # ADP Workforce Now - collector not implemented yet
+  # ADP Workforce Now - implemented
   # ---------------------------------------------------------------------------
 
   - company_key: usra

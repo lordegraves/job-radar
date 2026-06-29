@@ -16,6 +16,13 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Supports USAJobs collectors
 - Supports iCIMS collectors
 - Supports Jibe collectors
+- Supports Jobsyn collectors
+- Supports Oracle HCM collectors
+- Supports SmartRecruiters collectors
+- Supports SelectMinds collectors
+- Supports Phenom collectors
+- Supports Dayforce collectors
+- Supports ADP Workforce Now collectors
 - Supports HTML job-link collectors
 - Stores job postings in SQLite
 - Tracks new, seen, and changed postings
@@ -63,14 +70,16 @@ Current implemented source types:
 - SmartRecruiters
 - SelectMinds
 - Phenom
+- Dayforce
+- ADP Workforce Now
 - HTML
 
 Current verified live scan state:
 
-    Companies enabled: 44
-    Jobs collected: 8,159
-    Jobs stored: 122
-    Jobs omitted: 8,037
+    Companies enabled: 45
+    Jobs collected: 8,143
+    Jobs stored: 121
+    Jobs omitted: 8,022
     Collector errors: 0
 
 Recently validated source additions:
@@ -82,6 +91,7 @@ Recently validated source additions:
 - Berkeley Lab / NERSC - SelectMinds
 - Battelle - Phenom
 - ASRC Federal - Dayforce
+- USRA - ADP Workforce Now
 
 ## Important config files
 
@@ -107,7 +117,7 @@ Sample/demo company configuration. These entries are placeholders.
 
 Expected current result:
 
-    185 passed
+    191 passed
 
 ## Report structure
 
