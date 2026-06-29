@@ -255,6 +255,14 @@ companies:
     source_base_url: https://csusystem.wd12.myworkdayjobs.com/fortcollins_careers
     enabled: true
 
+  - company_key: ocean_infinity
+    name: Ocean Infinity
+    source_type: workday
+    source_url: https://wd1.myworkdaysite.com/wday/cxs/oceaninfinity/ocean_infinity_careers/jobs
+    source_base_url: https://wd1.myworkdaysite.com/recruiting/oceaninfinity/ocean_infinity_careers
+    enabled: true
+    notes: Public careers page points to Workday.
+
   # ---------------------------------------------------------------------------
   # USAJobs - implemented
   # ---------------------------------------------------------------------------
@@ -474,12 +482,6 @@ companies:
     name: Voleon
     source_type: html
     source_url: https://www.voleon.com/careers
-    enabled: false
-
-  - company_key: ocean_infinity
-    name: Ocean Infinity
-    source_type: html
-    source_url: https://oceaninfinity.com/careers/
     enabled: false
 
   - company_key: saildrone
