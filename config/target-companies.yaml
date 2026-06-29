@@ -329,6 +329,17 @@ companies:
     max_pages: 12
     enabled: true
 
+  - company_key: pnnl
+    name: Pacific Northwest National Laboratory
+    source_type: jibe
+    source_url: https://careers.pnnl.gov/api/jobs
+    referer_url: https://careers.pnnl.gov/jobs
+    job_url_template: https://careers.pnnl.gov/jobs/{slug}
+    page_size: 100
+    max_pages: 3
+    enabled: true
+    notes: PNNL public careers site uses Jibe API even though iCIMS login/connect URLs are present.
+
   # ---------------------------------------------------------------------------
   # Jobsyn / NLX - implemented
   # ---------------------------------------------------------------------------
@@ -479,12 +490,6 @@ companies:
     source_url: https://www.amentumcareers.com/jobs/search
     enabled: true
     notes: Server-rendered job search page exposes job title links with link_job_title IDs.
-
-  - company_key: pnnl
-    name: Pacific Northwest National Laboratory
-    source_type: html
-    source_url: https://careers.pnnl.gov/
-    enabled: false
 
   - company_key: ornl
     name: Oak Ridge National Laboratory
