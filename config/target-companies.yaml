@@ -319,9 +319,13 @@ companies:
   - company_key: dell
     name: Dell Technologies
     source_type: oracle_hcm
-    source_url: https://iawmqy.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/careers
-    enabled: false
-    notes: Prior Workday endpoint responded but returned total=0.
+    source_url: https://iawmqy.fa.ocs.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions
+    site_number: CX_1001
+    referer_url: https://iawmqy.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/careers/
+    page_size: 25
+    max_pages: 40
+    enabled: true
+    notes: Oracle Candidate Experience site uses siteNumber CX_1001.
 
   - company_key: saic
     name: SAIC
