@@ -362,6 +362,18 @@ companies:
     max_pages: 3
     enabled: true
 
+  - company_key: jacobs
+    name: Jacobs
+    source_type: jobsyn
+    source_url: https://prod-search-api.jobsyn.org/api/v1/solr/search
+    x_origin: jacobs.jobs
+    origin_url: https://jacobs.jobs
+    referer_url: https://jacobs.jobs/jobs/
+    page_size: 40
+    max_pages: 3
+    enabled: true
+    notes: careers.jacobs.com is WAF-blocked for plain requests; jacobs.jobs exposes a Jobsyn/NLX search shell.
+
   # ---------------------------------------------------------------------------
   # Oracle HCM - implemented
   # ---------------------------------------------------------------------------
@@ -484,12 +496,6 @@ companies:
   # ---------------------------------------------------------------------------
   # HTML / custom career pages - implemented
   # ---------------------------------------------------------------------------
-
-  - company_key: jacobs
-    name: Jacobs
-    source_type: html
-    source_url: https://careers.jacobs.com/en_US/careers
-    enabled: false
 
   - company_key: amentum
     name: Amentum
