@@ -481,10 +481,12 @@ companies:
     enabled: true
 
   - company_key: mbari
-    name: Monterey Bay Aquarium Research Institute
+    name: MBARI
     source_type: html
     source_url: https://www.mbari.org/about/careers/job-openings/
-    enabled: false
+    timeout_seconds: 90
+    enabled: true
+    notes: Job openings page uses static MBARI job-opening links and may require a longer fetch timeout.
 
   - company_key: scripps
     name: Scripps Institution of Oceanography

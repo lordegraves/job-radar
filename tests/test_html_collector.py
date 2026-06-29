@@ -9,6 +9,7 @@ from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.html import (
     _extract_location_from_url,
     _extract_source_job_id,
+    _get_timeout_seconds,
     _parse_html_jobs,
     collect_html_jobs,
 )
@@ -31,6 +32,25 @@ def _company_config() -> dict[str, Any]:
         "source_type": "html",
         "source_url": "https://jobs.ornl.gov/go/Computational-SciencesSupercomputing-Jobs/4534300/",
     }
+
+
+def test_get_timeout_seconds_uses_config_value() -> None:
+    config = _company_config()
+    config["timeout_seconds"] = 90
+
+    assert _get_timeout_seconds(config) == 90
+
+
+def test_get_timeout_seconds_defaults_for_invalid_values() -> None:
+    config = _company_config()
+
+    assert _get_timeout_seconds(config) == 30
+
+    config["timeout_seconds"] = "invalid"
+    assert _get_timeout_seconds(config) == 30
+
+    config["timeout_seconds"] = 0
+    assert _get_timeout_seconds(config) == 30
 
 
 def test_extract_source_job_id_from_successfactors_url() -> None:
@@ -193,3 +213,166 @@ def test_collect_html_jobs_wraps_request_errors(
 
     with pytest.raises(CollectorError, match="Failed to fetch HTML postings"):
         collect_html_jobs(_company_config())
+
+
+def test_parse_html_jobs_supports_mbari_job_opening_links() -> None:
+    html = """
+    <html>
+      <body>
+        <a
+          class="list-item__link"
+          href="/job-opening/marine-operations-technician/"
+        >
+          Marine Operations Technician MBARI is seeking a Marine Operations Technician
+          to ensure that complex marine and subsea systems operate smoothly.
+        </a>
+      </body>
+    </html>
+    """
+
+    postings = _parse_html_jobs(
+        company_config={
+            "company_key": "mbari",
+            "name": "MBARI",
+            "source_type": "html",
+            "source_url": "https://www.mbari.org/about/careers/job-openings/",
+        },
+        html=html,
+        source_url="https://www.mbari.org/about/careers/job-openings/",
+    )
+
+    assert len(postings) == 1
+    assert postings[0].company_key == "mbari"
+    assert postings[0].company_name == "MBARI"
+    assert postings[0].source_type == "html"
+    assert postings[0].source_job_id is None
+    assert postings[0].source_url == (
+        "https://www.mbari.org/job-opening/marine-operations-technician/"
+    )
+    assert postings[0].title == "Marine Operations Technician"
+    assert postings[0].location is None
+    assert postings[0].canonical_key is not None
+    assert postings[0].content_hash is not None
+
+
+def test_parse_html_jobs_cleans_mbari_job_opening_titles() -> None:
+    html = """
+    <html>
+      <body>
+        <a
+          class="list-item__link"
+          href="/job-opening/elementor-137960/"
+        >
+          Autonomous Systems Operations Manager The ASO Manager provides operational
+          leadership as well as personnel management for the team.
+        </a>
+      </body>
+    </html>
+    """
+
+    postings = _parse_html_jobs(
+        company_config={
+            "company_key": "mbari",
+            "name": "MBARI",
+            "source_type": "html",
+            "source_url": "https://www.mbari.org/about/careers/job-openings/",
+        },
+        html=html,
+        source_url="https://www.mbari.org/about/careers/job-openings/",
+    )
+
+    assert len(postings) == 1
+    assert postings[0].title == "Autonomous Systems Operations Manager"
+    assert postings[0].source_url == "https://www.mbari.org/job-opening/elementor-137960/"
+
+
+def test_parse_html_jobs_cleans_mbari_title_before_mbari_teaser() -> None:
+    html = """
+    <html>
+      <body>
+        <a
+          class="list-item__link"
+          href="/job-opening/rov-pilot/"
+        >
+          ROV Pilot MBARI invites candidates to apply for the ROV Pilot/Technician role.
+        </a>
+      </body>
+    </html>
+    """
+
+    postings = _parse_html_jobs(
+        company_config={
+            "company_key": "mbari",
+            "name": "MBARI",
+            "source_type": "html",
+            "source_url": "https://www.mbari.org/about/careers/job-openings/",
+        },
+        html=html,
+        source_url="https://www.mbari.org/about/careers/job-openings/",
+    )
+
+    assert len(postings) == 1
+    assert postings[0].title == "ROV Pilot"
+    assert postings[0].source_url == "https://www.mbari.org/job-opening/rov-pilot/"
+
+
+def test_parse_html_jobs_cleans_mbari_title_with_normalized_whitespace() -> None:
+    html = """
+    <html>
+      <body>
+        <a
+          class="list-item__link"
+          href="/job-opening/electronic-technician-2/"
+        >
+          Electronic Technician
+          The Monterey Bay Aquarium Research Institute (MBARI) is a nonprofit
+          oceanographic research center.
+        </a>
+      </body>
+    </html>
+    """
+
+    postings = _parse_html_jobs(
+        company_config={
+            "company_key": "mbari",
+            "name": "MBARI",
+            "source_type": "html",
+            "source_url": "https://www.mbari.org/about/careers/job-openings/",
+        },
+        html=html,
+        source_url="https://www.mbari.org/about/careers/job-openings/",
+    )
+
+    assert len(postings) == 1
+    assert postings[0].title == "Electronic Technician"
+    assert postings[0].source_url == "https://www.mbari.org/job-opening/electronic-technician-2/"
+
+
+def test_parse_html_jobs_cleans_mbari_title_before_mbari_teaser() -> None:
+    html = """
+    <html>
+      <body>
+        <a
+          class="list-item__link"
+          href="/job-opening/rov-pilot/"
+        >
+          ROV Pilot MBARI invites candidates to apply for the ROV Pilot/Technician role.
+        </a>
+      </body>
+    </html>
+    """
+
+    postings = _parse_html_jobs(
+        company_config={
+            "company_key": "mbari",
+            "name": "MBARI",
+            "source_type": "html",
+            "source_url": "https://www.mbari.org/about/careers/job-openings/",
+        },
+        html=html,
+        source_url="https://www.mbari.org/about/careers/job-openings/",
+    )
+
+    assert len(postings) == 1
+    assert postings[0].title == "ROV Pilot"
+    assert postings[0].source_url == "https://www.mbari.org/job-opening/rov-pilot/"

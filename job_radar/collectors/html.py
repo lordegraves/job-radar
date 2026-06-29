@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from html import unescape
 from html.parser import HTMLParser
 from typing import Any
@@ -14,6 +16,20 @@ from job_radar.normalize import make_canonical_key, make_content_hash
 
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_USER_AGENT = "JobRadar/0.1 local career-source scanner"
+
+
+def _get_timeout_seconds(company_config: dict[str, Any]) -> int:
+    value = company_config.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)
+
+    try:
+        timeout = int(value)
+    except (TypeError, ValueError):
+        return DEFAULT_TIMEOUT_SECONDS
+
+    if timeout <= 0:
+        return DEFAULT_TIMEOUT_SECONDS
+
+    return timeout
 
 
 class HTMLJobLinkParser(HTMLParser):
@@ -43,12 +59,17 @@ class HTMLJobLinkParser(HTMLParser):
         supported_link_classes = {
             "jobTitle-link",
             "results-list__item-title--link",
+            "list-item__link",
         }
-
         if classes.isdisjoint(supported_link_classes):
             return
 
-        if "/job/" not in href:
+        supported_path_parts = {
+            "/job/",
+            "/job-opening/",
+        }
+
+        if not any(path_part in href for path_part in supported_path_parts):
             return
 
         self._current_href = href
@@ -141,6 +162,25 @@ def _dedupe_links(links: list[tuple[str, str]]) -> list[tuple[str, str]]:
     return deduped
 
 
+def _clean_title_for_url(title: str, posting_url: str) -> str:
+    normalized_title = " ".join(title.split())
+
+    if "/job-opening/" not in posting_url:
+        return normalized_title
+
+    title_parts = re.split(
+        r"\s+(?:MBARI|The|Located|Reporting|This|Applicants)\b",
+        normalized_title,
+        maxsplit=1,
+    )
+
+    cleaned_title = title_parts[0].strip()
+    if cleaned_title:
+        return cleaned_title
+
+    return normalized_title
+
+
 def _parse_html_jobs(
     company_config: dict[str, Any],
     html: str,
@@ -154,6 +194,7 @@ def _parse_html_jobs(
     for title, posting_url in _dedupe_links(parser.job_links):
         source_job_id = _extract_source_job_id(posting_url)
         location = _extract_location_from_url(posting_url)
+        title = _clean_title_for_url(title, posting_url)
         description = None
 
         canonical_key = make_canonical_key(
@@ -192,7 +233,7 @@ def collect_html_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         response = requests.get(
             source_url,
             headers=_build_headers(),
-            timeout=DEFAULT_TIMEOUT_SECONDS,
+            timeout=_get_timeout_seconds(company_config),
         )
         response.raise_for_status()
     except requests.HTTPError as error:
