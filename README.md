@@ -76,10 +76,10 @@ Current implemented source types:
 
 Current verified live scan state:
 
-    Companies enabled: 45
-    Jobs collected: 8,143
+    Companies enabled: 46
+    Jobs collected: 8,137
     Jobs stored: 121
-    Jobs omitted: 8,022
+    Jobs omitted: 8,016
     Collector errors: 0
 
 Recently validated source additions:
@@ -92,6 +92,7 @@ Recently validated source additions:
 - Battelle - Phenom
 - ASRC Federal - Dayforce
 - USRA - ADP Workforce Now
+- Idaho National Laboratory - SelectMinds
 
 ## Important config files
 
