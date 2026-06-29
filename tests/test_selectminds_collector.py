@@ -104,6 +104,23 @@ def test_collect_selectminds_jobs_skips_missing_title(monkeypatch):
     assert jobs == []
 
 
+def test_collect_selectminds_jobs_uses_url_job_id_fallback(monkeypatch):
+    html = """
+    <p><a href="/jobs/regulatory-development-and-support-engineer-10671" class="job_link font_bold">Regulatory Development and Support Engineer</a></p>
+    <p class="jlr_description">Support regulatory development.</p>
+    """
+
+    def fake_get(url, headers, timeout):
+        return FakeResponse(html)
+
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    jobs = collect_selectminds_jobs(_config())
+
+    assert len(jobs) == 1
+    assert jobs[0].source_job_id == "10671"
+
+
 def test_collect_selectminds_jobs_wraps_request_errors(monkeypatch):
     def fake_get(url, headers, timeout):
         raise requests.RequestException("boom")

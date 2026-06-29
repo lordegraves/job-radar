@@ -380,7 +380,7 @@ companies:
     name: Idaho National Laboratory
     source_type: selectminds
     source_url: https://inl.referrals.selectminds.com/
-    enabled: false
+    enabled: true
 
   - company_key: berkeley_lab_nersc
     name: Berkeley Lab / NERSC

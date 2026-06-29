@@ -155,7 +155,7 @@ def _build_posting(
     if not title or not source_url:
         return None
 
-    source_job_id = _clean_text(job.get("source_job_id"))
+    source_job_id = _clean_text(job.get("source_job_id")) or _job_id_from_url(source_url)
     description = _build_description(job)
 
     posting = JobPosting(
@@ -212,6 +212,18 @@ def _format_label(label: str, value: str | None) -> str | None:
     if not clean_value:
         return None
     return f"{label}: {clean_value}"
+
+
+def _job_id_from_url(source_url: str) -> str | None:
+    last_part = source_url.rstrip("/").split("/")[-1]
+    if "-" not in last_part:
+        return None
+
+    candidate = last_part.rsplit("-", 1)[-1]
+    if candidate.isdigit():
+        return candidate
+
+    return None
 
 
 def _append_text(existing: str | None, text: str) -> str:
