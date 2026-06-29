@@ -489,8 +489,9 @@ companies:
   - company_key: scripps
     name: Scripps Institution of Oceanography
     source_type: html
-    source_url: https://scripps.ucsd.edu/portal/jobs
-    enabled: false
+    source_url: https://employment.ucsd.edu/jobs?keyword=scripps
+    enabled: true
+    notes: Scripps jobs are listed through UCSD employment keyword search.
 
   - company_key: penguin_solutions
     name: Penguin Solutions

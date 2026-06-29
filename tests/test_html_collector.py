@@ -106,6 +106,46 @@ def test_parse_html_jobs_dedupes_desktop_and_mobile_links() -> None:
     assert len(postings) == 1
 
 
+def test_parse_html_jobs_supports_ucsd_result_links() -> None:
+    html = """
+    <html>
+      <body>
+        <a
+          class="results-list__item-title--link"
+          href="https://employment.ucsd.edu/project-manager-dso-140214/job/CC275D737FA5D76C08BA5A3D1B1B6850"
+        >
+          Project Manager / DSO - 140214
+        </a>
+      </body>
+    </html>
+    """
+
+    postings = _parse_html_jobs(
+        company_config={
+            "company_key": "scripps",
+            "name": "Scripps Institution of Oceanography",
+            "source_type": "html",
+            "source_url": "https://employment.ucsd.edu/jobs?keyword=scripps",
+        },
+        html=html,
+        source_url="https://employment.ucsd.edu/jobs?keyword=scripps",
+    )
+
+    assert len(postings) == 1
+    assert postings[0].company_key == "scripps"
+    assert postings[0].company_name == "Scripps Institution of Oceanography"
+    assert postings[0].source_type == "html"
+    assert postings[0].source_job_id is None
+    assert postings[0].source_url == (
+        "https://employment.ucsd.edu/project-manager-dso-140214/job/"
+        "CC275D737FA5D76C08BA5A3D1B1B6850"
+    )
+    assert postings[0].title == "Project Manager / DSO - 140214"
+    assert postings[0].location is None
+    assert postings[0].canonical_key is not None
+    assert postings[0].content_hash is not None
+
+
 def test_collect_html_jobs_fetches_and_parses(monkeypatch: pytest.MonkeyPatch) -> None:
     html = """
     <html>

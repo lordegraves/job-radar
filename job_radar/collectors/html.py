@@ -40,7 +40,12 @@ class HTMLJobLinkParser(HTMLParser):
         class_value = attrs_dict.get("class") or ""
         classes = set(class_value.split())
 
-        if "jobTitle-link" not in classes:
+        supported_link_classes = {
+            "jobTitle-link",
+            "results-list__item-title--link",
+        }
+
+        if classes.isdisjoint(supported_link_classes):
             return
 
         if "/job/" not in href:
