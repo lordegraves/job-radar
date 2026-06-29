@@ -270,6 +270,14 @@ companies:
     enabled: true
     notes: Public careers page points to Workday.
 
+  - company_key: fugro
+    name: Fugro
+    source_type: workday
+    source_url: https://fugro.wd3.myworkdayjobs.com/wday/cxs/fugro/Careers/jobs
+    source_base_url: https://fugro.wd3.myworkdayjobs.com/en-US/Careers
+    enabled: true
+    notes: Public careers page references Fugro Workday Careers site.
+
   # ---------------------------------------------------------------------------
   # USAJobs - implemented
   # ---------------------------------------------------------------------------
@@ -482,12 +490,6 @@ companies:
     name: Scripps Institution of Oceanography
     source_type: html
     source_url: https://scripps.ucsd.edu/portal/jobs
-    enabled: false
-
-  - company_key: fugro
-    name: Fugro
-    source_type: html
-    source_url: https://www.fugro.com/careers/jobs
     enabled: false
 
   - company_key: penguin_solutions
