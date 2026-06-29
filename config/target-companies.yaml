@@ -95,6 +95,13 @@ companies:
     enabled: true
     notes: Current public careers page points to Greenhouse EU job board.
 
+  - company_key: saildrone
+    name: Saildrone
+    source_type: greenhouse
+    source_slug: saildroneinc
+    enabled: true
+    notes: Public careers page embeds Greenhouse board slug saildroneinc.
+
   # ---------------------------------------------------------------------------
   # Lever - implemented
   # ---------------------------------------------------------------------------
@@ -482,12 +489,6 @@ companies:
     name: Voleon
     source_type: html
     source_url: https://www.voleon.com/careers
-    enabled: false
-
-  - company_key: saildrone
-    name: Saildrone
-    source_type: html
-    source_url: https://www.saildrone.com/careers
     enabled: false
 
   - company_key: weka
