@@ -474,8 +474,9 @@ companies:
   - company_key: amentum
     name: Amentum
     source_type: html
-    source_url: https://www.amentumcareers.com/jobs
-    enabled: false
+    source_url: https://www.amentumcareers.com/jobs/search
+    enabled: true
+    notes: Server-rendered job search page exposes job title links with link_job_title IDs.
 
   - company_key: pnnl
     name: Pacific Northwest National Laboratory

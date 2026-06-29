@@ -376,3 +376,44 @@ def test_parse_html_jobs_cleans_mbari_title_before_mbari_teaser() -> None:
     assert len(postings) == 1
     assert postings[0].title == "ROV Pilot"
     assert postings[0].source_url == "https://www.mbari.org/job-opening/rov-pilot/"
+
+
+def test_parse_html_jobs_supports_amentum_job_title_ids() -> None:
+    html = """
+    <html>
+      <body>
+        <a
+          id="link_job_title_1_0_9"
+          href="https://www.amentumcareers.com/jobs/network-system-engineer-ii-arlington-virginia-united-states"
+          aria-label="Title: Network/System Engineer II"
+        >
+          Network/System Engineer II
+        </a>
+      </body>
+    </html>
+    """
+
+    postings = _parse_html_jobs(
+        company_config={
+            "company_key": "amentum",
+            "name": "Amentum",
+            "source_type": "html",
+            "source_url": "https://www.amentumcareers.com/jobs/search",
+        },
+        html=html,
+        source_url="https://www.amentumcareers.com/jobs/search",
+    )
+
+    assert len(postings) == 1
+    assert postings[0].company_key == "amentum"
+    assert postings[0].company_name == "Amentum"
+    assert postings[0].source_type == "html"
+    assert postings[0].source_job_id is None
+    assert postings[0].source_url == (
+        "https://www.amentumcareers.com/jobs/"
+        "network-system-engineer-ii-arlington-virginia-united-states"
+    )
+    assert postings[0].title == "Network/System Engineer II"
+    assert postings[0].location is None
+    assert postings[0].canonical_key is not None
+    assert postings[0].content_hash is not None

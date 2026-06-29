@@ -55,18 +55,24 @@ class HTMLJobLinkParser(HTMLParser):
 
         class_value = attrs_dict.get("class") or ""
         classes = set(class_value.split())
+        element_id = attrs_dict.get("id") or ""
 
         supported_link_classes = {
             "jobTitle-link",
             "results-list__item-title--link",
             "list-item__link",
         }
-        if classes.isdisjoint(supported_link_classes):
+
+        has_supported_class = not classes.isdisjoint(supported_link_classes)
+        has_supported_id = element_id.startswith("link_job_title_")
+
+        if not has_supported_class and not has_supported_id:
             return
 
         supported_path_parts = {
             "/job/",
             "/job-opening/",
+            "/jobs/",
         }
 
         if not any(path_part in href for path_part in supported_path_parts):
