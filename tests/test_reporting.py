@@ -1507,4 +1507,99 @@ def test_clean_apply_allows_very_strong_resume_match() -> None:
     )
 
     assert _get_recommended_action(scored_posting) == "Apply"
+
+
+def test_hiring_probability_requires_very_strong_resume_match_for_high() -> None:
+    from job_radar.reporting import _get_hiring_probability_label
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:site reliability",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Strong",
+            evidence=["Linux infrastructure", "cluster systems"],
+            gaps=[],
+        ),
+    )
+
+    assert _get_hiring_probability_label(scored_posting) == "Medium"
+
+
+def test_hiring_probability_allows_high_with_very_strong_resume_match() -> None:
+    from job_radar.reporting import _get_hiring_probability_label
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:site reliability",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Very Strong",
+            evidence=[
+                "Linux infrastructure",
+                "cluster systems",
+                "reliability engineering",
+                "distributed compute",
+            ],
+            gaps=[],
+        ),
+    )
+
+    assert _get_hiring_probability_label(scored_posting) == "High"
+
+
+def test_hiring_probability_caps_weak_resume_match_at_low() -> None:
+    from job_radar.reporting import _get_hiring_probability_label
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:site reliability",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Weak",
+            evidence=[],
+            gaps=["production Kubernetes ownership"],
+        ),
+    )
+
+    assert _get_hiring_probability_label(scored_posting) == "Low"
     

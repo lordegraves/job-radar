@@ -756,11 +756,15 @@ def _get_technical_match_label(scored_posting: ScoredPosting) -> str:
 def _get_hiring_probability_label(scored_posting: ScoredPosting) -> str:
     risks = _get_hiring_risk_flags(scored_posting)
     technical_match = _get_technical_match_label(scored_posting)
+    resume_match = _get_resume_match_label(scored_posting)
 
     if "hard location mismatch" in risks:
         return "Very Low"
 
     if "role family mismatch" in risks or "support role" in risks:
+        return "Low"
+
+    if resume_match == "Weak":
         return "Low"
 
     if (
@@ -774,6 +778,12 @@ def _get_hiring_probability_label(scored_posting: ScoredPosting) -> str:
         if technical_match in {"Very Strong", "Strong"}:
             return "Medium"
         return "Low"
+
+    if resume_match == "Medium":
+        return "Medium"
+
+    if resume_match == "Strong" and technical_match == "Very Strong":
+        return "Medium"
 
     if technical_match == "Very Strong":
         return "High"
