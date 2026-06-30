@@ -790,6 +790,7 @@ def _get_hiring_probability_label(scored_posting: ScoredPosting) -> str:
 def _get_recommended_action(scored_posting: ScoredPosting) -> str:
     hiring_probability = _get_hiring_probability_label(scored_posting)
     technical_match = _get_technical_match_label(scored_posting)
+    resume_match = _get_resume_match_label(scored_posting)
     risks = _get_hiring_risk_flags(scored_posting)
 
     if "below compensation floor" in risks:
@@ -829,7 +830,7 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
         return "Network First"
 
     if hiring_probability == "High" and technical_match == "Very Strong":
-        if risks:
+        if risks or resume_match != "Very Strong":
             return "Apply + Recruiter Message"
         return "Apply"
 

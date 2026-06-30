@@ -1442,4 +1442,69 @@ def test_below_floor_compensation_blocks_recommendation() -> None:
 
     assert _format_hiring_risk_flags(scored_posting) == "below compensation floor"
     assert _get_recommended_action(scored_posting) == "Pass"
+
+
+def test_clean_apply_requires_very_strong_resume_match() -> None:
+    from job_radar.reporting import _get_recommended_action
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:site reliability",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Strong",
+            evidence=["Linux infrastructure", "cluster systems"],
+            gaps=[],
+        ),
+    )
+
+    assert _get_recommended_action(scored_posting) == "Apply + Recruiter Message"
+
+
+def test_clean_apply_allows_very_strong_resume_match() -> None:
+    from job_radar.reporting import _get_recommended_action
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:site reliability",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Very Strong",
+            evidence=[
+                "Linux infrastructure",
+                "cluster systems",
+                "reliability engineering",
+                "distributed compute",
+            ],
+            gaps=[],
+        ),
+    )
+
+    assert _get_recommended_action(scored_posting) == "Apply"
     
