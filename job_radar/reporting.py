@@ -801,10 +801,16 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
     if "role family mismatch" in risks or "support role" in risks:
         return "Pass"
 
-    if hiring_probability == "High" and technical_match == "Very Strong":
-        if risks:
-            return "Apply + Recruiter Message"
-        return "Apply"
+    if (
+        technical_match in {"Very Strong", "Strong"}
+        and "high competition employer" in risks
+        and (
+            "software-heavy translation risk" in risks
+            or "security-domain translation risk" in risks
+            or "leadership ambiguity risk" in risks
+        )
+    ):
+        return "Network First"
 
     if (
         technical_match in {"Very Strong", "Strong"}
@@ -818,14 +824,14 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
 
     if (
         technical_match in {"Very Strong", "Strong"}
-        and "high competition employer" in risks
-        and (
-            "software-heavy translation risk" in risks
-            or "security-domain translation risk" in risks
-            or "leadership ambiguity risk" in risks
-        )
+        and "leadership ambiguity risk" in risks
     ):
         return "Network First"
+
+    if hiring_probability == "High" and technical_match == "Very Strong":
+        if risks:
+            return "Apply + Recruiter Message"
+        return "Apply"
 
     if hiring_probability == "Medium" and technical_match == "Very Strong":
         return "Apply + Recruiter Message"
@@ -835,10 +841,7 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
 
     if (
         technical_match in {"Very Strong", "Strong"}
-        and (
-            "generic remote competition" in risks
-            or "software-heavy translation risk" in risks
-        )
+        and "software-heavy translation risk" in risks
     ):
         return "Network First"
 
@@ -935,9 +938,6 @@ def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
         and _get_technical_match_label(scored_posting) != "Very Strong"
     ):
         risks.append("generic remote competition")
-
-    if _get_compensation_label(scored_posting) == "Below floor":
-        risks.append("below compensation floor")
 
     if _get_compensation_label(scored_posting) == "Below floor":
         risks.append("below compensation floor")

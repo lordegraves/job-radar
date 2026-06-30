@@ -1234,7 +1234,8 @@ def test_render_markdown_report_does_not_mark_lead_roles_as_clean_apply() -> Non
         assert f"### [{title}]" in markdown
 
     assert "- Recommended action: Apply\n" not in markdown
-    assert "- Recommended action: Apply + Recruiter Message" in markdown
+    assert "- Recommended action: Apply + Recruiter Message" not in markdown
+    assert "- Recommended action: Network First" in markdown
     assert "- Hiring risks: leadership ambiguity risk" in markdown
 
 
