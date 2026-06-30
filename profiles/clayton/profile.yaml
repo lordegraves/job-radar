@@ -1,0 +1,36 @@
+candidate:
+  name: Clayton Graves
+  compensation_floor_usd: 160000
+  preferred_base_usd: 185000
+  resume:
+    source_path: profiles/clayton/resume.md
+    normalized_text_path: profiles/clayton/resume.normalized.txt
+  core_strengths:
+    - Linux infrastructure
+    - HPC operations
+    - cluster systems
+    - datacenter operations
+    - hardware/software boundary troubleshooting
+    - reliability engineering
+    - distributed compute
+    - storage operations
+    - scripting automation
+  credible_adjacent:
+    - SRE
+    - AI infrastructure
+    - GPU infrastructure
+    - platform engineering
+    - Kubernetes operations
+  learning_or_gap:
+    - production Kubernetes ownership
+    - heavy software engineering
+    - security engineering
+    - cloud-native platform development
+  avoid:
+    - frontend
+    - full stack
+    - customer success
+    - sales engineering
+    - product management
+    - program management
+    - cleared-only roles

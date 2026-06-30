@@ -1,6 +1,7 @@
 database_path: data/live_test.sqlite3
 reports_path: reports
 logs_path: logs
+candidate_profile_path: profiles/clayton/profile.yaml
 
 retention:
   report_retention_days: 90

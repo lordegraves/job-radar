@@ -652,3 +652,50 @@ def test_build_email_html_body_escapes_html_special_characters() -> None:
     assert "Senior &lt;Linux&gt; &amp; Infrastructure Engineer" in html_body
     assert "Example &amp; AI" in html_body
     assert 'href="https://example.com/jobs?id=123&amp;source=test"' in html_body
+
+
+def test_build_email_body_includes_resume_match_fields() -> None:
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Linux Infrastructure Engineer",
+        company_name="Test Company",
+        location="Remote",
+    )
+
+    report = ScanReport(
+        generated_at="2026-06-30T12:00:00+00:00",
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        top_match_min_score=1,
+        review_needed_min_score=100,
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:linux",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                resume_match=ResumeMatchResult(
+                    label="Strong",
+                    evidence=["Linux infrastructure", "cluster systems"],
+                    gaps=["production Kubernetes ownership"],
+                ),
+            ),
+        ],
+    )
+
+    body = build_email_body(report, "reports/test.md")
+
+    assert "   Resume match: Strong" in body
+    assert "   Resume evidence: Linux infrastructure; cluster systems" in body
+    assert "   Resume gaps: production Kubernetes ownership" in body

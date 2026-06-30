@@ -2,6 +2,7 @@ import argparse
 from datetime import UTC, datetime
 from pathlib import Path
 
+from job_radar.candidate_profile import load_candidate_profile
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.config import ConfigError, load_companies, load_settings
@@ -19,6 +20,8 @@ from job_radar.reporting import (
     write_html_report,
     write_markdown_report,
 )
+from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
+from job_radar.resume_match import match_resume_to_posting
 from job_radar.scoring import (
     classify_location,
     evaluate_review_needed_eligibility,
@@ -80,6 +83,28 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _load_candidate_context(settings: dict) -> tuple[object | None, str | None]:
+    candidate_profile_path = settings.get("candidate_profile_path")
+
+    if not candidate_profile_path:
+        return None, None
+
+    candidate_profile = load_candidate_profile(candidate_profile_path)
+
+    if candidate_profile.resume is None:
+        return candidate_profile, None
+
+    resume_text = load_resume_text(candidate_profile.resume.source_path)
+
+    if candidate_profile.resume.normalized_text_path:
+        write_normalized_resume_text(
+            source_path=candidate_profile.resume.source_path,
+            normalized_text_path=candidate_profile.resume.normalized_text_path,
+        )
+
+    return candidate_profile, resume_text
+
+
 def handle_scan(
     config_path: str,
     settings_path: str,
@@ -92,6 +117,7 @@ def handle_scan(
     settings = load_settings(settings_path)
     database_path = settings["database_path"]
     scoring_config = load_scoring_config(scoring_path)
+    candidate_profile, resume_text = _load_candidate_context(settings)
 
     initialize_database(database_path)
 
@@ -165,6 +191,11 @@ def handle_scan(
                 top_match_eligible=top_match_eligible,
                 review_needed_eligible=review_needed_eligible,
                 top_match_reasons=top_match_reasons,
+                resume_match=match_resume_to_posting(
+                    posting=posting,
+                    candidate_profile=candidate_profile,
+                    resume_text=resume_text,
+                ),
             )
         )
 

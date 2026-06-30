@@ -1325,4 +1325,45 @@ def test_render_markdown_report_routes_software_security_roles_to_network_first(
         "production Kubernetes translation risk"
         in markdown
     )
+
+
+def test_render_markdown_report_includes_resume_match_fields() -> None:
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Linux Infrastructure Engineer",
+    )
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:linux",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                resume_match=ResumeMatchResult(
+                    label="Strong",
+                    evidence=["Linux infrastructure", "cluster systems"],
+                    gaps=["production Kubernetes ownership"],
+                ),
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Resume match: Strong" in markdown
+    assert "- Resume evidence: Linux infrastructure; cluster systems" in markdown
+    assert "- Resume gaps: production Kubernetes ownership" in markdown
     
