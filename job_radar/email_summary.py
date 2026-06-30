@@ -2,7 +2,14 @@ from datetime import datetime
 from html import escape
 from pathlib import Path
 
-from job_radar.reporting import ScanReport, ScoredPosting
+from job_radar.reporting import (
+    ScanReport,
+    ScoredPosting,
+    _format_hiring_risk_flags,
+    _get_hiring_probability_label,
+    _get_recommended_action,
+    _get_technical_match_label,
+)
 
 
 EMAIL_POSTINGS_LIMIT = 10
@@ -267,6 +274,10 @@ def _append_email_posting_detail(
             f"   Company: {_format_value(posting.company_name)}",
             f"   Score: {scored_posting.score}",
             f"   Location: {_format_value(posting.location)}",
+            f"   Technical match: {_get_technical_match_label(scored_posting)}",
+            f"   Hiring probability: {_get_hiring_probability_label(scored_posting)}",
+            f"   Recommended action: {_get_recommended_action(scored_posting)}",
+            f"   Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
         ]
     )
 
@@ -382,6 +393,14 @@ def _append_html_posting_detail(
             f"<li><strong>Score:</strong> {scored_posting.score}</li>",
             f"<li><strong>Location:</strong> "
             f"{escape(_format_value(posting.location))}</li>",
+            f"<li><strong>Technical match:</strong> "
+            f"{escape(_get_technical_match_label(scored_posting))}</li>",
+            f"<li><strong>Hiring probability:</strong> "
+            f"{escape(_get_hiring_probability_label(scored_posting))}</li>",
+            f"<li><strong>Recommended action:</strong> "
+            f"{escape(_get_recommended_action(scored_posting))}</li>",
+            f"<li><strong>Hiring risks:</strong> "
+            f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
             f"<li><strong>Signals:</strong> "
             f"{escape(_format_signal_summary(scored_posting.score_reasons))}</li>",
             "</ul>",

@@ -100,6 +100,7 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
                 score_reasons=[
                     "+24 title:data center",
                     "+10 body:linux",
+                    "+100 location_allowed:remote",
                 ],
                 location_status="allowed",
                 top_match_eligible=True,
@@ -130,6 +131,10 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "   Company: Anthropic" in body
     assert "   Score: 158" in body
     assert "   Location: Remote" in body
+    assert "   Technical match: Strong" in body
+    assert "   Hiring probability: Medium" in body
+    assert "   Recommended action: Tailor Resume" in body
+    assert "   Hiring risks: generic remote competition" in body
     assert "   URL:" not in body
     assert "https://boards.greenhouse.io/anthropic/jobs/123" not in body
     assert "   Why it is a top match:" in body
@@ -165,6 +170,7 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
                 score_reasons=[
                     "+24 title:data center",
                     "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
                 ],
                 location_status="allowed",
                 review_needed_eligible=True,
@@ -179,6 +185,10 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert "   Company: Anthropic" in body
     assert "   Score: 151" in body
     assert "   Location: Remote" in body
+    assert "   Technical match: Weak" in body
+    assert "   Hiring probability: Low" in body
+    assert "   Recommended action: Pass" in body
+    assert "   Hiring risks: role family mismatch; generic remote competition" in body
     assert "   URL:" not in body
     assert "https://boards.greenhouse.io/anthropic/jobs/456" not in body
     assert "   Why it needs review:" in body
@@ -186,6 +196,55 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert "      - location status: allowed" in body
     assert "   Why it scored:" not in body
     assert "   Signals: data center, infrastructure" in body
+
+
+def test_build_email_body_includes_hiring_risk_action_for_false_positive() -> None:
+    top_match = make_posting(
+        title="Forward Deployed Engineer APAC",
+        company_name="RunPod",
+        location="Remote - APAC",
+        source_url="https://jobs.ashbyhq.com/runpod/jobs/123",
+    )
+
+    report = ScanReport(
+        generated_at="2026-06-24T17:08:47+00:00",
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[top_match],
+        scored_postings=[
+            ScoredPosting(
+                posting=top_match,
+                score=153,
+                score_reasons=[
+                    "+10 body:linux",
+                    "+10 body:infrastructure",
+                    "+8 body:gpu",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+            )
+        ],
+    )
+
+    body = build_email_body(report, "reports/live-test.md")
+
+    assert "1. Forward Deployed Engineer APAC" in body
+    assert "   Company: RunPod" in body
+    assert "   Location: Remote - APAC" in body
+    assert "   Technical match: Weak" in body
+    assert "   Hiring probability: Very Low" in body
+    assert "   Recommended action: Pass" in body
+    assert (
+        "   Hiring risks: hard location mismatch; role family mismatch; "
+        "generic remote competition"
+        in body
+    )
 
 
 def test_build_email_body_handles_empty_sections() -> None:
