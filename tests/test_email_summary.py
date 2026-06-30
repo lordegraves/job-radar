@@ -34,7 +34,7 @@ def test_build_email_subject_summarizes_report() -> None:
         company_name="Anthropic",
     )
     review_needed = make_posting(
-        title="Data Center Strategic Sourcing Lead",
+        title="Senior Data Center Infrastructure Engineer",
         company_name="Anthropic",
     )
 
@@ -149,7 +149,7 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
 
 def test_build_email_body_includes_rich_review_needed_details() -> None:
     review_needed = make_posting(
-        title="Operations Sourcing Manager, Data Center",
+        title="Senior Data Center Infrastructure Engineer",
         company_name="Anthropic",
         source_url="https://boards.greenhouse.io/anthropic/jobs/456",
     )
@@ -181,14 +181,14 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     body = build_email_body(report, "reports/live-test.md")
 
     assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:" in body
-    assert "1. Operations Sourcing Manager, Data Center" in body
+    assert "1. Senior Data Center Infrastructure Engineer" in body
     assert "   Company: Anthropic" in body
     assert "   Score: 151" in body
     assert "   Location: Remote" in body
-    assert "   Technical match: Weak" in body
-    assert "   Hiring probability: Low" in body
-    assert "   Recommended action: Pass" in body
-    assert "   Hiring risks: role family mismatch; generic remote competition" in body
+    assert "   Technical match: Strong" in body
+    assert "   Hiring probability: Medium" in body
+    assert "   Recommended action: Tailor Resume" in body
+    assert "   Hiring risks: generic remote competition" in body
     assert "   URL:" not in body
     assert "https://boards.greenhouse.io/anthropic/jobs/456" not in body
     assert "   Why it needs review:" in body
@@ -234,17 +234,9 @@ def test_build_email_body_includes_hiring_risk_action_for_false_positive() -> No
 
     body = build_email_body(report, "reports/live-test.md")
 
-    assert "1. Forward Deployed Engineer APAC" in body
-    assert "   Company: RunPod" in body
-    assert "   Location: Remote - APAC" in body
-    assert "   Technical match: Weak" in body
-    assert "   Hiring probability: Very Low" in body
-    assert "   Recommended action: Pass" in body
-    assert (
-        "   Hiring risks: hard location mismatch; role family mismatch; "
-        "generic remote competition"
-        in body
-    )
+    assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
+    assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
+    assert "Forward Deployed Engineer APAC" not in body
 
 
 def test_build_email_body_handles_empty_sections() -> None:
@@ -292,14 +284,22 @@ def test_build_email_body_limits_top_matches_and_review_needed() -> None:
                 ScoredPosting(
                     posting=top_match,
                     score=200 - index,
-                    score_reasons=["+24 title:data center"],
+                    score_reasons=[
+                        "+24 title:data center",
+                        "+10 body:infrastructure",
+                        "+100 location_allowed:remote",
+                    ],
                     location_status="allowed",
                     top_match_eligible=True,
                 ),
                 ScoredPosting(
                     posting=review_needed,
                     score=150 - index,
-                    score_reasons=["+24 title:data center"],
+                    score_reasons=[
+                        "+24 title:data center",
+                        "+10 body:infrastructure",
+                        "+100 location_allowed:remote",
+                    ],
                     location_status="allowed",
                     review_needed_eligible=True,
                 ),
@@ -346,8 +346,12 @@ def test_build_email_body_handles_missing_location_and_empty_signals() -> None:
             ScoredPosting(
                 posting=top_match,
                 score=140,
-                score_reasons=[],
-                location_status="unknown",
+                score_reasons=[
+                    "+30 title:linux",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
                 top_match_eligible=True,
             ),
         ],
@@ -359,7 +363,7 @@ def test_build_email_body_handles_missing_location_and_empty_signals() -> None:
     assert "   Location: Unknown" in body
     assert "   URL:" not in body
     assert "   Why it scored:" not in body
-    assert "   Signals: None" in body
+    assert "   Signals: linux, infrastructure, remote" in body
 
 
 def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
@@ -474,7 +478,7 @@ def test_build_email_body_does_not_include_raw_posting_urls() -> None:
         source_url="https://job-boards.greenhouse.io/anthropic/jobs/123",
     )
     review_needed = make_posting(
-        title="Operations Sourcing Manager, Data Center",
+        title="Senior Data Center Infrastructure Engineer",
         company_name="Anthropic",
         source_url="https://job-boards.greenhouse.io/anthropic/jobs/456",
     )
@@ -499,7 +503,11 @@ def test_build_email_body_does_not_include_raw_posting_urls() -> None:
             ScoredPosting(
                 posting=review_needed,
                 score=151,
-                score_reasons=["+10 body:infrastructure"],
+                score_reasons=[
+                    "+24 title:data center",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
                 location_status="allowed",
                 review_needed_eligible=True,
             ),
@@ -520,7 +528,7 @@ def test_build_email_html_body_includes_clickable_posting_links() -> None:
         source_url="https://job-boards.greenhouse.io/anthropic/jobs/123",
     )
     review_needed = make_posting(
-        title="Operations Sourcing Manager, Data Center",
+        title="Senior Data Center Infrastructure Engineer",
         company_name="Anthropic",
         source_url="https://job-boards.greenhouse.io/anthropic/jobs/456",
     )
@@ -552,7 +560,11 @@ def test_build_email_html_body_includes_clickable_posting_links() -> None:
             ScoredPosting(
                 posting=review_needed,
                 score=151,
-                score_reasons=["+10 body:infrastructure"],
+                score_reasons=[
+                    "+24 title:data center",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
                 location_status="allowed",
                 review_needed_eligible=True,
             ),
@@ -567,7 +579,7 @@ def test_build_email_html_body_includes_clickable_posting_links() -> None:
 
     assert "<h1>Job Radar Report</h1>" in html_body
     assert "Data Center Design Execution Lead" in html_body
-    assert "Operations Sourcing Manager, Data Center" in html_body
+    assert "Senior Data Center Infrastructure Engineer" in html_body
     assert (
         '<a href="https://job-boards.greenhouse.io/anthropic/jobs/123">'
         "View posting</a>"

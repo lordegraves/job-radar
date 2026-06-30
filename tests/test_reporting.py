@@ -265,10 +265,12 @@ def test_render_markdown_report_flags_role_family_mismatch() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "- Technical match: Weak" in markdown
-    assert "- Hiring probability: Low" in markdown
-    assert "- Recommended action: Pass" in markdown
-    assert "- Hiring risks: role family mismatch" in markdown
+    assert "### [Engineering Manager - Product & Platform Delivery]" not in markdown
+    assert (
+        "1 scored jobs were omitted because they did not qualify as actionable "
+        "Top Match or Review Needed roles."
+        in markdown
+    )
 
 
 def test_render_markdown_report_includes_top_matches_and_omitted_jobs_summary() -> None:
@@ -320,8 +322,8 @@ def test_render_markdown_report_includes_top_matches_and_omitted_jobs_summary() 
     )
     assert "### [Account Executive]" not in markdown
     assert (
-        "1 scored jobs were omitted because they did not qualify as Top Match "
-        "or Review Needed."
+        "1 scored jobs were omitted because they did not qualify as actionable "
+        "Top Match or Review Needed roles."
         in markdown
     )
 
@@ -755,12 +757,11 @@ def test_render_markdown_report_includes_review_needed_section() -> None:
 
     assert "### [Senior Systems Engineer]" in review_needed_section
     assert "### [Senior Linux Engineer]" in review_needed_section
-    assert "### [Data Center Strategic Sourcing Lead]" in review_needed_section
+    assert "### [Data Center Strategic Sourcing Lead]" not in review_needed_section
 
     assert "### [Senior Infrastructure Engineer]" not in review_needed_section
     assert "### [Administrative Assistant]" not in review_needed_section
     assert "### [Account Executive]" not in review_needed_section
-
 
 def test_render_markdown_report_includes_generated_at() -> None:
     report = ScanReport(
@@ -1085,9 +1086,12 @@ def test_render_markdown_report_flags_remote_region_mismatch() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "- Hiring probability: Very Low" in markdown
-    assert "- Recommended action: Pass" in markdown
-    assert "- Hiring risks: hard location mismatch; role family mismatch" in markdown
+    assert "### [Forward Deployed Engineer APAC]" not in markdown
+    assert (
+        "1 scored jobs were omitted because they did not qualify as actionable "
+        "Top Match or Review Needed roles."
+        in markdown
+    )
 
 
 def test_render_markdown_report_flags_management_delivery_roles() -> None:
@@ -1121,8 +1125,10 @@ def test_render_markdown_report_flags_management_delivery_roles() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "- Technical match: Weak" in markdown
-    assert "- Hiring probability: Low" in markdown
-    assert "- Recommended action: Pass" in markdown
-    assert "- Hiring risks: role family mismatch" in markdown
+    assert "### [Frontend Engineer - User Interface]" not in markdown
+    assert (
+        "1 scored jobs were omitted because they did not qualify as actionable "
+        "Top Match or Review Needed roles."
+        in markdown
+    )
     

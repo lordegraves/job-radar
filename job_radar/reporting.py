@@ -427,6 +427,7 @@ def _get_review_needed(
         scored_posting
         for scored_posting in scored_postings
         if scored_posting.review_needed_eligible
+        and _is_actionable_posting(scored_posting)
     ]
 
 
@@ -438,8 +439,11 @@ def _append_omitted_jobs_section(
         [
             scored_posting
             for scored_posting in scored_postings
-            if not scored_posting.top_match_eligible
-            and not scored_posting.review_needed_eligible
+            if (
+                not scored_posting.top_match_eligible
+                and not scored_posting.review_needed_eligible
+            )
+            or not _is_actionable_posting(scored_posting)
         ]
     )
 
@@ -463,7 +467,7 @@ def _append_omitted_jobs_section(
         [
             (
                 f"{omitted_count} scored jobs were omitted because they did not "
-                "qualify as Top Match or Review Needed."
+                "qualify as actionable Top Match or Review Needed roles."
             ),
             "",
         ]
@@ -749,6 +753,10 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
     return "Pass"
 
 
+def _is_actionable_posting(scored_posting: ScoredPosting) -> bool:
+    return _get_recommended_action(scored_posting) != "Pass"
+
+
 def _format_hiring_risk_flags(scored_posting: ScoredPosting) -> str:
     risks = _get_hiring_risk_flags(scored_posting)
 
@@ -764,7 +772,7 @@ def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
     positive_labels = _get_positive_score_labels(scored_posting.score_reasons)
     risks: list[str] = []
 
-    if scored_posting.location_status in {"skipped", "mixed"}:
+    if scored_posting.location_status == "skipped":
         risks.append("hard location mismatch")
     elif _has_any_location_keyword(
         location_text,
@@ -784,7 +792,7 @@ def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
         ],
     ):
         risks.append("hard location mismatch")
-    elif scored_posting.location_status in {"conditional", "unknown"}:
+    elif scored_posting.location_status in {"mixed", "conditional", "unknown"}:
         risks.append("location needs confirmation")
 
     if _has_any_title_keyword(
@@ -944,6 +952,7 @@ def _get_top_matches(scored_postings: list[ScoredPosting]) -> list[ScoredPosting
         scored_posting
         for scored_posting in scored_postings
         if scored_posting.top_match_eligible
+        and _is_actionable_posting(scored_posting)
     ]
 
     return eligible_postings
@@ -1149,8 +1158,11 @@ def _append_html_omitted_jobs_section(
         [
             scored_posting
             for scored_posting in scored_postings
-            if not scored_posting.top_match_eligible
-            and not scored_posting.review_needed_eligible
+            if (
+                not scored_posting.top_match_eligible
+                and not scored_posting.review_needed_eligible
+            )
+            or not _is_actionable_posting(scored_posting)
         ]
     )
 
@@ -1163,7 +1175,7 @@ def _append_html_omitted_jobs_section(
     lines.append(
         "<p>"
         f"{omitted_count} scored jobs were omitted because they did not "
-        "qualify as Top Match or Review Needed."
+        "qualify as actionable Top Match or Review Needed roles."
         "</p>"
     )
 
