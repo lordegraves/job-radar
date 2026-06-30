@@ -2,7 +2,7 @@ import argparse
 from datetime import UTC, datetime
 from pathlib import Path
 
-from job_radar.candidate_profile import load_candidate_profile
+from job_radar.candidate_profile import CandidateProfile, load_candidate_profile
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import evaluate_compensation
@@ -21,6 +21,7 @@ from job_radar.reporting import (
     write_html_report,
     write_markdown_report,
 )
+from job_radar.normalize import clean_text
 from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
 from job_radar.resume_match import match_resume_to_posting
 from job_radar.scoring import (
@@ -104,6 +105,66 @@ def _load_candidate_context(settings: dict) -> tuple[object | None, str | None]:
         )
 
     return candidate_profile, resume_text
+
+
+def _find_profile_avoid_matches(
+    candidate_profile: CandidateProfile | None,
+    posting: object,
+) -> list[str]:
+    if candidate_profile is None:
+        return []
+
+    posting_text = clean_text(
+        " ".join(
+            [
+                getattr(posting, "title", "") or "",
+                getattr(posting, "description", "") or "",
+            ]
+        )
+    ).lower()
+
+    matches: list[str] = []
+
+    for avoid_term in candidate_profile.avoid:
+        normalized_avoid = clean_text(avoid_term.replace("-", " ")).lower()
+
+        if not normalized_avoid:
+            continue
+
+        if normalized_avoid == "cleared only roles":
+            if _has_cleared_only_signal(posting_text):
+                matches.append(avoid_term)
+            continue
+
+        if normalized_avoid in posting_text:
+            matches.append(avoid_term)
+
+    return _dedupe_preserving_order(matches)
+
+
+def _has_cleared_only_signal(posting_text: str) -> bool:
+    clearance_only_markers = [
+        "active secret",
+        "active top secret",
+        "top secret",
+        "ts sci",
+        "ts/sci",
+        "polygraph",
+        "active clearance",
+        "security clearance required",
+    ]
+
+    return any(marker in posting_text for marker in clearance_only_markers)
+
+
+def _dedupe_preserving_order(values: list[str]) -> list[str]:
+    deduped_values: list[str] = []
+
+    for value in values:
+        if value not in deduped_values:
+            deduped_values.append(value)
+
+    return deduped_values
 
 
 def handle_scan(
@@ -204,6 +265,10 @@ def handle_scan(
                         if candidate_profile is not None
                         else None
                     ),
+                ),
+                profile_avoid_matches=_find_profile_avoid_matches(
+                    candidate_profile=candidate_profile,
+                    posting=posting,
                 ),
             )
         )

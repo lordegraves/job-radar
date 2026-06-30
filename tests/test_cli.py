@@ -1,7 +1,8 @@
 import sqlite3
 from pathlib import Path
 
-from job_radar.cli import handle_scan
+from job_radar.candidate_profile import CandidateProfile
+from job_radar.cli import _find_profile_avoid_matches, handle_scan
 from job_radar.email_sender import EmailSendResult
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -322,3 +323,81 @@ top_matches:
     assert "View posting" in captured_email_call["html_body"]
     assert f"HTML report written: {html_report_file}" in output
     assert "Email send result: Email sent" in output
+
+
+def test_find_profile_avoid_matches_detects_plain_avoid_terms() -> None:
+    profile = CandidateProfile(
+        name="Clayton Graves",
+        compensation_floor_usd=160000,
+        preferred_base_usd=185000,
+        resume=None,
+        core_strengths=[],
+        credible_adjacent=[],
+        learning_or_gap=[],
+        avoid=["frontend", "product management"],
+    )
+
+    posting = JobPosting(
+        company_key="test",
+        company_name="Test Company",
+        source_type="greenhouse",
+        source_url="https://example.com/job",
+        title="Senior Frontend Engineer",
+        location="Remote",
+        description="Build product management tooling.",
+    )
+
+    assert _find_profile_avoid_matches(profile, posting) == [
+        "frontend",
+        "product management",
+    ]
+
+
+def test_find_profile_avoid_matches_detects_cleared_only_roles() -> None:
+    profile = CandidateProfile(
+        name="Clayton Graves",
+        compensation_floor_usd=160000,
+        preferred_base_usd=185000,
+        resume=None,
+        core_strengths=[],
+        credible_adjacent=[],
+        learning_or_gap=[],
+        avoid=["cleared-only roles"],
+    )
+
+    posting = JobPosting(
+        company_key="test",
+        company_name="Test Company",
+        source_type="greenhouse",
+        source_url="https://example.com/job",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description="Active Top Secret clearance and polygraph required.",
+    )
+
+    assert _find_profile_avoid_matches(profile, posting) == ["cleared-only roles"]
+
+
+def test_find_profile_avoid_matches_ignores_non_matching_terms() -> None:
+    profile = CandidateProfile(
+        name="Clayton Graves",
+        compensation_floor_usd=160000,
+        preferred_base_usd=185000,
+        resume=None,
+        core_strengths=[],
+        credible_adjacent=[],
+        learning_or_gap=[],
+        avoid=["frontend", "customer success", "cleared-only roles"],
+    )
+
+    posting = JobPosting(
+        company_key="test",
+        company_name="Test Company",
+        source_type="greenhouse",
+        source_url="https://example.com/job",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description="Build Linux infrastructure and cluster systems.",
+    )
+
+    assert _find_profile_avoid_matches(profile, posting) == []

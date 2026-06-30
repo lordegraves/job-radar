@@ -33,6 +33,7 @@ class ScoredPosting:
     review_needed_eligible: bool = False
     resume_match: ResumeMatchResult | None = None
     compensation: CompensationResult | None = None
+    profile_avoid_matches: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -812,6 +813,9 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
     if "role family mismatch" in risks or "support role" in risks:
         return "Pass"
 
+    if any(risk.startswith("profile avoid match: ") for risk in risks):
+        return "Pass"
+
     if (
         technical_match in {"Very Strong", "Strong"}
         and "high competition employer" in risks
@@ -952,6 +956,9 @@ def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
 
     if _get_compensation_label(scored_posting) == "Below floor":
         risks.append("below compensation floor")
+
+    for avoid_match in scored_posting.profile_avoid_matches or []:
+        risks.append(f"profile avoid match: {avoid_match}")
 
     return _dedupe_preserving_order(risks)
 

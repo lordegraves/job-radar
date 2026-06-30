@@ -1602,4 +1602,85 @@ def test_hiring_probability_caps_weak_resume_match_at_low() -> None:
     )
 
     assert _get_hiring_probability_label(scored_posting) == "Low"
+
+
+def test_profile_avoid_match_blocks_recommendation() -> None:
+    from job_radar.reporting import _format_hiring_risk_flags
+    from job_radar.reporting import _get_recommended_action
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Frontend Engineer",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Very Strong",
+            evidence=[
+                "Linux infrastructure",
+                "cluster systems",
+                "reliability engineering",
+                "distributed compute",
+            ],
+            gaps=[],
+        ),
+        profile_avoid_matches=["frontend"],
+    )
+
+    hiring_risks = _format_hiring_risk_flags(scored_posting)
+
+    assert "role family mismatch" in hiring_risks
+    assert "profile avoid match: frontend" in hiring_risks
+    assert _get_recommended_action(scored_posting) == "Pass"
+
+
+def test_profile_avoid_match_blocks_even_without_existing_role_family_mismatch() -> None:
+    from job_radar.reporting import _format_hiring_risk_flags
+    from job_radar.reporting import _get_recommended_action
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Very Strong",
+            evidence=[
+                "Linux infrastructure",
+                "cluster systems",
+                "reliability engineering",
+                "distributed compute",
+            ],
+            gaps=[],
+        ),
+        profile_avoid_matches=["product management"],
+    )
+
+    assert _format_hiring_risk_flags(scored_posting) == (
+        "profile avoid match: product management"
+    )
+    assert _get_recommended_action(scored_posting) == "Pass"
     
