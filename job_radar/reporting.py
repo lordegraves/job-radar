@@ -545,6 +545,10 @@ def _append_scored_posting(
         [
             f"- Why this matched: "
             f"{_format_match_summary(scored_posting.score_reasons)}",
+            f"- Technical match: {_get_technical_match_label(scored_posting)}",
+            f"- Hiring probability: {_get_hiring_probability_label(scored_posting)}",
+            f"- Recommended action: {_get_recommended_action(scored_posting)}",
+            f"- Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
             f"- Score reasons: {_format_score_reasons(scored_posting.score_reasons)}",
             f"- Location status: {scored_posting.location_status}",
             f"- Company: {posting.company_name}",
@@ -617,6 +621,263 @@ def _format_score_reasons(score_reasons: list[str]) -> str:
         return "None"
 
     return ", ".join(score_reasons)
+
+
+def _get_technical_match_label(scored_posting: ScoredPosting) -> str:
+    title_text = _get_title_text(scored_posting)
+    positive_labels = _get_positive_score_labels(scored_posting.score_reasons)
+
+    if _has_any_title_keyword(
+        title_text,
+        [
+            "frontend",
+            "full stack",
+            "product manager",
+            "program manager",
+            "project manager",
+            "account manager",
+            "business development",
+            "developer advocate",
+            "compliance",
+            "facilities",
+            "sourcing",
+            "engineering manager",
+            "technical program manager",
+            "technical project manager",
+            "technical product manager",
+            "product",
+            "partnership",
+            "delivery lead",
+            "enterprise applications",
+            "forward deployed",
+        ],
+    ):
+        return "Weak"
+
+    strong_signal_count = _count_matching_labels(
+        positive_labels,
+        [
+            "hpc",
+            "linux",
+            "slurm",
+            "gpu",
+            "cluster",
+            "datacenter",
+            "data center",
+            "infrastructure",
+            "site reliability",
+            "sre",
+            "storage",
+            "hardware",
+        ],
+    )
+
+    if strong_signal_count >= 4:
+        return "Very Strong"
+
+    if strong_signal_count >= 2:
+        return "Strong"
+
+    if strong_signal_count >= 1:
+        return "Moderate"
+
+    return "Weak"
+
+
+def _get_hiring_probability_label(scored_posting: ScoredPosting) -> str:
+    risks = _get_hiring_risk_flags(scored_posting)
+    technical_match = _get_technical_match_label(scored_posting)
+
+    if "hard location mismatch" in risks:
+        return "Very Low"
+
+    if "role family mismatch" in risks or "support role" in risks:
+        return "Low"
+
+    if (
+        "software-heavy translation risk" in risks
+        or "generic remote competition" in risks
+        or "production Kubernetes translation risk" in risks
+    ):
+        if technical_match in {"Very Strong", "Strong"}:
+            return "Medium"
+        return "Low"
+
+    if technical_match == "Very Strong":
+        return "High"
+
+    if technical_match == "Strong":
+        return "Medium"
+
+    if technical_match == "Moderate":
+        return "Low"
+
+    return "Very Low"
+
+
+def _get_recommended_action(scored_posting: ScoredPosting) -> str:
+    hiring_probability = _get_hiring_probability_label(scored_posting)
+    technical_match = _get_technical_match_label(scored_posting)
+    risks = _get_hiring_risk_flags(scored_posting)
+
+    if "hard location mismatch" in risks:
+        return "Pass"
+
+    if "role family mismatch" in risks or "support role" in risks:
+        return "Pass"
+
+    if hiring_probability in {"High", "Medium"} and technical_match == "Very Strong":
+        if risks:
+            return "Apply + Recruiter Message"
+        return "Apply"
+
+    if hiring_probability == "Medium" and technical_match == "Strong":
+        return "Tailor Resume"
+
+    if (
+        technical_match in {"Very Strong", "Strong"}
+        and (
+            "generic remote competition" in risks
+            or "software-heavy translation risk" in risks
+        )
+    ):
+        return "Network First"
+
+    if hiring_probability == "Low":
+        return "Hold"
+
+    return "Pass"
+
+
+def _format_hiring_risk_flags(scored_posting: ScoredPosting) -> str:
+    risks = _get_hiring_risk_flags(scored_posting)
+
+    if not risks:
+        return "None"
+
+    return "; ".join(risks)
+
+
+def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
+    title_text = _get_title_text(scored_posting)
+    location_text = (scored_posting.posting.location or "").lower()
+    positive_labels = _get_positive_score_labels(scored_posting.score_reasons)
+    risks: list[str] = []
+
+    if scored_posting.location_status in {"skipped", "mixed"}:
+        risks.append("hard location mismatch")
+    elif _has_any_location_keyword(
+        location_text,
+        [
+            "apac",
+            "emea",
+            "europe",
+            "eu",
+            "netherlands",
+            "amsterdam",
+            "germany",
+            "france",
+            "uk",
+            "united kingdom",
+            "singapore",
+            "australia",
+        ],
+    ):
+        risks.append("hard location mismatch")
+    elif scored_posting.location_status in {"conditional", "unknown"}:
+        risks.append("location needs confirmation")
+
+    if _has_any_title_keyword(
+        title_text,
+        [
+            "frontend",
+            "full stack",
+            "product manager",
+            "program manager",
+            "project manager",
+            "account manager",
+            "business development",
+            "developer advocate",
+            "compliance",
+            "sourcing",
+            "engineering manager",
+            "technical program manager",
+            "technical project manager",
+            "technical product manager",
+            "product",
+            "partnership",
+            "delivery lead",
+            "facilities",
+            "enterprise applications",
+            "forward deployed",
+        ],
+    ):
+        risks.append("role family mismatch")
+
+    if _has_any_title_keyword(title_text, ["support", "technical support", "analyst"]):
+        risks.append("support role")
+
+    if _has_any_title_keyword(
+        title_text,
+        ["software engineer", "frontend", "full stack", "platform engineer"],
+    ):
+        risks.append("software-heavy translation risk")
+
+    if "kubernetes" in positive_labels or "k8s" in positive_labels:
+        risks.append("production Kubernetes translation risk")
+
+    if (
+        scored_posting.location_status == "allowed"
+        and "remote" in positive_labels
+        and _get_technical_match_label(scored_posting) != "Very Strong"
+    ):
+        risks.append("generic remote competition")
+
+    return _dedupe_preserving_order(risks)
+
+
+def _get_title_text(scored_posting: ScoredPosting) -> str:
+    return (scored_posting.posting.title or "").lower()
+
+
+def _get_positive_score_labels(score_reasons: list[str]) -> list[str]:
+    labels: list[str] = []
+
+    for reason in score_reasons:
+        if not reason.startswith("+"):
+            continue
+
+        if ":" not in reason:
+            continue
+
+        label = reason.split(":", maxsplit=1)[1].strip().lower()
+
+        if label:
+            labels.append(label)
+
+    return _dedupe_preserving_order(labels)
+
+
+def _has_any_title_keyword(title_text: str, keywords: list[str]) -> bool:
+    return any(keyword in title_text for keyword in keywords)
+
+
+def _has_any_location_keyword(location_text: str, keywords: list[str]) -> bool:
+    return any(keyword in location_text for keyword in keywords)
+
+
+def _count_matching_labels(labels: list[str], keywords: list[str]) -> int:
+    return sum(1 for keyword in keywords if keyword in labels)
+
+
+def _dedupe_preserving_order(values: list[str]) -> list[str]:
+    deduped_values: list[str] = []
+
+    for value in values:
+        if value not in deduped_values:
+            deduped_values.append(value)
+
+    return deduped_values
 
 
 def _format_markdown_decision_explanation(
@@ -973,6 +1234,14 @@ def _append_html_scored_posting(
         [
             f"<li><strong>Why this matched:</strong> "
             f"{escape(_format_match_summary(scored_posting.score_reasons))}</li>",
+            f"<li><strong>Technical match:</strong> "
+            f"{escape(_get_technical_match_label(scored_posting))}</li>",
+            f"<li><strong>Hiring probability:</strong> "
+            f"{escape(_get_hiring_probability_label(scored_posting))}</li>",
+            f"<li><strong>Recommended action:</strong> "
+            f"{escape(_get_recommended_action(scored_posting))}</li>",
+            f"<li><strong>Hiring risks:</strong> "
+            f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
             f"<li><strong>Score reasons:</strong> "
             f"{escape(_format_score_reasons(scored_posting.score_reasons))}</li>",
             f"<li><strong>Location status:</strong> "

@@ -186,6 +186,91 @@ def test_render_markdown_report_includes_score_reasons_and_location_status() -> 
     assert "- Location status: allowed" in markdown
 
 
+def test_render_markdown_report_includes_match_quality_action_and_hiring_risks() -> None:
+    posting = make_posting(title="Senior Software Engineer, Infrastructure Security")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=200,
+                score_reasons=[
+                    "+30 title:infrastructure",
+                    "+8 body:kubernetes",
+                    "+8 body:gpu",
+                    "+7 body:hardware",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=[
+                    "score 200 meets top-match threshold 120",
+                    "location status is acceptable: allowed",
+                    "strong signal matched: title:infrastructure",
+                ],
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Technical match: Strong" in markdown
+    assert "- Hiring probability: Medium" in markdown
+    assert "- Recommended action: Tailor Resume" in markdown
+    assert (
+        "- Hiring risks: software-heavy translation risk; "
+        "production Kubernetes translation risk; generic remote competition"
+        in markdown
+    )
+
+
+def test_render_markdown_report_flags_role_family_mismatch() -> None:
+    posting = make_posting(title="Frontend Engineer - User Interface")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=170,
+                score_reasons=[
+                    "+10 body:linux",
+                    "+10 body:infrastructure",
+                    "+8 body:gpu",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=[
+                    "score 170 meets top-match threshold 120",
+                    "location status is acceptable: allowed",
+                    "strong signal matched: body:linux",
+                ],
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Technical match: Weak" in markdown
+    assert "- Hiring probability: Low" in markdown
+    assert "- Recommended action: Pass" in markdown
+    assert "- Hiring risks: role family mismatch" in markdown
+
+
 def test_render_markdown_report_includes_top_matches_and_omitted_jobs_summary() -> None:
     high_score_posting = make_posting(title="Senior Kubernetes Platform Engineer")
     low_score_posting = make_posting(title="Account Executive")
@@ -957,3 +1042,87 @@ def test_render_markdown_report_explains_review_needed_cards() -> None:
         "systems, remote"
         in markdown
     )
+
+
+def test_render_markdown_report_flags_remote_region_mismatch() -> None:
+    posting = JobPosting(
+        company_key="example_ai",
+        company_name="Example AI",
+        source_type="greenhouse",
+        source_job_id="123",
+        source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+        title="Forward Deployed Engineer APAC",
+        location="Remote - APAC",
+        description="Build Linux infrastructure.",
+        canonical_key="example_ai:forward-deployed-engineer-apac:remote-apac",
+        content_hash="hash",
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=153,
+                score_reasons=[
+                    "+10 body:linux",
+                    "+10 body:infrastructure",
+                    "+8 body:gpu",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Hiring probability: Very Low" in markdown
+    assert "- Recommended action: Pass" in markdown
+    assert "- Hiring risks: hard location mismatch; role family mismatch" in markdown
+
+
+def test_render_markdown_report_flags_management_delivery_roles() -> None:
+    posting = make_posting(title="Engineering Manager - Product & Platform Delivery")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=168,
+                score_reasons=[
+                    "+10 body:linux",
+                    "+10 body:infrastructure",
+                    "+8 body:kubernetes",
+                    "+8 body:gpu",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Technical match: Weak" in markdown
+    assert "- Hiring probability: Low" in markdown
+    assert "- Recommended action: Pass" in markdown
+    assert "- Hiring risks: role family mismatch" in markdown
+    
