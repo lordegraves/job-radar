@@ -141,8 +141,12 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "   Location: Remote" in body
     assert "   Technical match: Strong" in body
     assert "   Hiring probability: Medium" in body
-    assert "   Recommended action: Tailor Resume" in body
-    assert "   Hiring risks: generic remote competition" in body
+    assert "   Recommended action: Network First" in body
+    assert (
+        "   Hiring risks: high competition employer; "
+        "leadership ambiguity risk; generic remote competition"
+        in body
+    )
     assert "   URL:" not in body
     assert "https://boards.greenhouse.io/anthropic/jobs/123" not in body
     assert "   Why it is a top match:" in body
@@ -196,7 +200,10 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert "   Technical match: Strong" in body
     assert "   Hiring probability: Medium" in body
     assert "   Recommended action: Tailor Resume" in body
-    assert "   Hiring risks: generic remote competition" in body
+    assert (
+        "   Hiring risks: high competition employer; generic remote competition"
+        in body
+    )
     assert "   URL:" not in body
     assert "https://boards.greenhouse.io/anthropic/jobs/456" not in body
     assert "   Why it needs review:" in body

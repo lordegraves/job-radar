@@ -620,6 +620,51 @@ def _format_match_summary(score_reasons: list[str]) -> str:
     return ", ".join(labels)
 
 
+HIGH_COMPETITION_COMPANY_KEYWORDS = [
+    "openai",
+    "anthropic",
+    "nvidia",
+    "meta",
+    "google",
+    "microsoft",
+    "apple",
+    "netflix",
+    "databricks",
+]
+
+
+ROLE_FAMILY_MISMATCH_TITLE_KEYWORDS = [
+    "frontend",
+    "full stack",
+    "product manager",
+    "program manager",
+    "project manager",
+    "account manager",
+    "business development",
+    "developer advocate",
+    "compliance",
+    "facilities",
+    "sourcing",
+    "engineering manager",
+    "technical program manager",
+    "technical project manager",
+    "technical product manager",
+    "product",
+    "partnership",
+    "delivery lead",
+    "enterprise applications",
+    "forward deployed",
+    "director",
+    "gtm",
+    "go-to-market",
+    "sales engineer",
+    "customer success",
+    "project executive",
+    "incident manager",
+    "field services manager",
+]
+
+
 def _format_score_reasons(score_reasons: list[str]) -> str:
     if not score_reasons:
         return "None"
@@ -631,31 +676,7 @@ def _get_technical_match_label(scored_posting: ScoredPosting) -> str:
     title_text = _get_title_text(scored_posting)
     positive_labels = _get_positive_score_labels(scored_posting.score_reasons)
 
-    if _has_any_title_keyword(
-        title_text,
-        [
-            "frontend",
-            "full stack",
-            "product manager",
-            "program manager",
-            "project manager",
-            "account manager",
-            "business development",
-            "developer advocate",
-            "compliance",
-            "facilities",
-            "sourcing",
-            "engineering manager",
-            "technical program manager",
-            "technical project manager",
-            "technical product manager",
-            "product",
-            "partnership",
-            "delivery lead",
-            "enterprise applications",
-            "forward deployed",
-        ],
-    ):
+    if _has_any_title_keyword(title_text, ROLE_FAMILY_MISMATCH_TITLE_KEYWORDS):
         return "Weak"
 
     strong_signal_count = _count_matching_labels(
@@ -702,6 +723,9 @@ def _get_hiring_probability_label(scored_posting: ScoredPosting) -> str:
         "software-heavy translation risk" in risks
         or "generic remote competition" in risks
         or "production Kubernetes translation risk" in risks
+        or "leadership ambiguity risk" in risks
+        or "security-domain translation risk" in risks
+        or "high competition employer" in risks
     ):
         if technical_match in {"Very Strong", "Strong"}:
             return "Medium"
@@ -730,10 +754,34 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
     if "role family mismatch" in risks or "support role" in risks:
         return "Pass"
 
-    if hiring_probability in {"High", "Medium"} and technical_match == "Very Strong":
+    if hiring_probability == "High" and technical_match == "Very Strong":
         if risks:
             return "Apply + Recruiter Message"
         return "Apply"
+
+    if (
+        technical_match in {"Very Strong", "Strong"}
+        and "software-heavy translation risk" in risks
+        and (
+            "production Kubernetes translation risk" in risks
+            or "security-domain translation risk" in risks
+        )
+    ):
+        return "Network First"
+
+    if (
+        technical_match in {"Very Strong", "Strong"}
+        and "high competition employer" in risks
+        and (
+            "software-heavy translation risk" in risks
+            or "security-domain translation risk" in risks
+            or "leadership ambiguity risk" in risks
+        )
+    ):
+        return "Network First"
+
+    if hiring_probability == "Medium" and technical_match == "Very Strong":
+        return "Apply + Recruiter Message"
 
     if hiring_probability == "Medium" and technical_match == "Strong":
         return "Tailor Resume"
@@ -768,6 +816,7 @@ def _format_hiring_risk_flags(scored_posting: ScoredPosting) -> str:
 
 def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
     title_text = _get_title_text(scored_posting)
+    company_text = (scored_posting.posting.company_name or "").lower()
     location_text = (scored_posting.posting.location or "").lower()
     positive_labels = _get_positive_score_labels(scored_posting.score_reasons)
     risks: list[str] = []
@@ -795,35 +844,34 @@ def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
     elif scored_posting.location_status in {"mixed", "conditional", "unknown"}:
         risks.append("location needs confirmation")
 
-    if _has_any_title_keyword(
-        title_text,
-        [
-            "frontend",
-            "full stack",
-            "product manager",
-            "program manager",
-            "project manager",
-            "account manager",
-            "business development",
-            "developer advocate",
-            "compliance",
-            "sourcing",
-            "engineering manager",
-            "technical program manager",
-            "technical project manager",
-            "technical product manager",
-            "product",
-            "partnership",
-            "delivery lead",
-            "facilities",
-            "enterprise applications",
-            "forward deployed",
-        ],
-    ):
+    if _has_any_title_keyword(title_text, ROLE_FAMILY_MISMATCH_TITLE_KEYWORDS):
         risks.append("role family mismatch")
+
+    if any(
+        keyword in company_text for keyword in HIGH_COMPETITION_COMPANY_KEYWORDS
+    ):
+        risks.append("high competition employer")
 
     if _has_any_title_keyword(title_text, ["support", "technical support", "analyst"]):
         risks.append("support role")
+
+    if _has_any_title_keyword(title_text, ["architect"]) and not _has_any_title_keyword(
+        title_text,
+        ["engineer", "administrator", "operations", "sre", "site reliability"],
+    ):
+        risks.append("role family mismatch")
+
+    if _has_any_title_keyword(title_text, ["manager"]):
+        risks.append("role family mismatch")
+
+    if _has_any_title_keyword(title_text, ["lead"]):
+        risks.append("leadership ambiguity risk")
+
+    if _has_any_title_keyword(
+        title_text,
+        ["security engineer", "infrastructure security"],
+    ):
+        risks.append("security-domain translation risk")
 
     if _has_any_title_keyword(
         title_text,

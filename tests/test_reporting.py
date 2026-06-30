@@ -223,9 +223,10 @@ def test_render_markdown_report_includes_match_quality_action_and_hiring_risks()
 
     assert "- Technical match: Strong" in markdown
     assert "- Hiring probability: Medium" in markdown
-    assert "- Recommended action: Tailor Resume" in markdown
+    assert "- Recommended action: Network First" in markdown
     assert (
-        "- Hiring risks: software-heavy translation risk; "
+        "- Hiring risks: security-domain translation risk; "
+        "software-heavy translation risk; "
         "production Kubernetes translation risk; generic remote competition"
         in markdown
     )
@@ -1125,10 +1126,203 @@ def test_render_markdown_report_flags_management_delivery_roles() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "### [Frontend Engineer - User Interface]" not in markdown
+    assert "### [Engineering Manager - Product & Platform Delivery]" not in markdown
     assert (
         "1 scored jobs were omitted because they did not qualify as actionable "
         "Top Match or Review Needed roles."
+        in markdown
+    )
+    
+
+def test_render_markdown_report_filters_business_and_strategy_false_positives() -> None:
+    false_positive_titles = [
+        "Director, GTM - Physical AI",
+        "Senior Sales Engineer - Token Factory",
+        "Commercial Customer Success Manager",
+        "Project Executive",
+        "GPU Cluster Architect",
+        "Manager, HPC Storage Engineer",
+        "Senior Incident Manager",
+        "Field Services Manager - Mission Critical",
+    ]
+
+    scored_postings: list[ScoredPosting] = []
+
+    for index, title in enumerate(false_positive_titles):
+        posting = make_posting(title=title)
+        scored_postings.append(
+            ScoredPosting(
+                posting=posting,
+                score=168,
+                score_reasons=[
+                    "+10 body:linux",
+                    "+10 body:infrastructure",
+                    "+8 body:kubernetes",
+                    "+8 body:gpu",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+            )
+        )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=len(false_positive_titles),
+        jobs_new=len(false_positive_titles),
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[scored_posting.posting for scored_posting in scored_postings],
+        scored_postings=scored_postings,
+    )
+
+    markdown = render_markdown_report(report)
+
+    for title in false_positive_titles:
+        assert f"### [{title}]" not in markdown
+
+    assert (
+        f"{len(false_positive_titles)} scored jobs were omitted because they did not "
+        "qualify as actionable Top Match or Review Needed roles."
+        in markdown
+    )
+
+
+def test_render_markdown_report_does_not_mark_lead_roles_as_clean_apply() -> None:
+    lead_titles = [
+        "Lead Software Systems Engineer - GPU Performance",
+        "Data Center Design Execution Lead",
+    ]
+
+    scored_postings: list[ScoredPosting] = []
+
+    for index, title in enumerate(lead_titles):
+        posting = make_posting(title=title)
+        scored_postings.append(
+            ScoredPosting(
+                posting=posting,
+                score=168,
+                score_reasons=[
+                    "+10 body:linux",
+                    "+10 body:infrastructure",
+                    "+8 body:gpu",
+                    "+8 body:cluster",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+            )
+        )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=len(lead_titles),
+        jobs_new=len(lead_titles),
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[scored_posting.posting for scored_posting in scored_postings],
+        scored_postings=scored_postings,
+    )
+
+    markdown = render_markdown_report(report)
+
+    for title in lead_titles:
+        assert f"### [{title}]" in markdown
+
+    assert "- Recommended action: Apply\n" not in markdown
+    assert "- Recommended action: Apply + Recruiter Message" in markdown
+    assert "- Hiring risks: leadership ambiguity risk" in markdown
+
+
+def test_render_markdown_report_marks_high_competition_employers_as_risky() -> None:
+    posting = make_posting(
+        title="Hardware Operations Engineer",
+        company_name="OpenAI",
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=168,
+                score_reasons=[
+                    "+10 body:linux",
+                    "+10 body:infrastructure",
+                    "+8 body:gpu",
+                    "+8 body:cluster",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "### [Hardware Operations Engineer]" in markdown
+    assert "- Technical match: Very Strong" in markdown
+    assert "- Hiring probability: Medium" in markdown
+    assert "- Recommended action: Apply + Recruiter Message" in markdown
+    assert "- Hiring risks: high competition employer" in markdown
+    assert "- Recommended action: Apply\n" not in markdown
+
+
+def test_render_markdown_report_routes_software_security_roles_to_network_first() -> None:
+    posting = make_posting(
+        title="Software Engineer, Infrastructure Security",
+        company_name="OpenAI",
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=168,
+                score_reasons=[
+                    "+10 body:linux",
+                    "+10 body:infrastructure",
+                    "+8 body:kubernetes",
+                    "+8 body:gpu",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "### [Software Engineer, Infrastructure Security]" in markdown
+    assert "- Technical match: Strong" in markdown
+    assert "- Hiring probability: Medium" in markdown
+    assert "- Recommended action: Network First" in markdown
+    assert (
+        "- Hiring risks: high competition employer; "
+        "security-domain translation risk; "
+        "software-heavy translation risk; "
+        "production Kubernetes translation risk"
         in markdown
     )
     
