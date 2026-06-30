@@ -216,6 +216,10 @@ def _format_optional_count_line(label: str, count: int | None) -> str:
     return f"{label}: {count}"
 
 
+def _is_email_actionable_posting(scored_posting: ScoredPosting) -> bool:
+    return _get_recommended_action(scored_posting) not in {"Hold", "Pass"}
+
+
 def _get_top_matches(
     scored_postings: list[ScoredPosting] | None,
 ) -> list[ScoredPosting]:
@@ -226,7 +230,7 @@ def _get_top_matches(
         scored_posting
         for scored_posting in scored_postings
         if scored_posting.top_match_eligible
-        and _get_recommended_action(scored_posting) != "Pass"
+        and _is_email_actionable_posting(scored_posting)
     ][:EMAIL_POSTINGS_LIMIT]
 
 
@@ -240,7 +244,7 @@ def _get_review_needed(
         scored_posting
         for scored_posting in scored_postings
         if scored_posting.review_needed_eligible
-        and _get_recommended_action(scored_posting) != "Pass"
+        and _is_email_actionable_posting(scored_posting)
     ][:EMAIL_POSTINGS_LIMIT]
 
 

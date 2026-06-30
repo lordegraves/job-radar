@@ -51,14 +51,22 @@ def test_build_email_subject_summarizes_report() -> None:
             ScoredPosting(
                 posting=top_match,
                 score=158,
-                score_reasons=["+24 title:data center"],
+                score_reasons=[
+                    "+24 title:data center",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
                 location_status="allowed",
                 top_match_eligible=True,
             ),
             ScoredPosting(
                 posting=review_needed,
                 score=159,
-                score_reasons=["+24 title:data center"],
+                score_reasons=[
+                    "+24 title:data center",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
                 location_status="allowed",
                 review_needed_eligible=True,
             ),
@@ -385,7 +393,11 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
             ScoredPosting(
                 posting=top_match,
                 score=158,
-                score_reasons=["+24 title:data center"],
+                score_reasons=[
+                    "+24 title:data center",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
                 location_status="allowed",
                 top_match_eligible=True,
             ),
@@ -548,7 +560,11 @@ def test_build_email_html_body_includes_clickable_posting_links() -> None:
             ScoredPosting(
                 posting=top_match,
                 score=158,
-                score_reasons=["+24 title:data center"],
+                score_reasons=[
+                    "+24 title:data center",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
                 location_status="allowed",
                 top_match_eligible=True,
                 top_match_reasons=[
@@ -613,7 +629,11 @@ def test_build_email_html_body_escapes_html_special_characters() -> None:
             ScoredPosting(
                 posting=top_match,
                 score=140,
-                score_reasons=["+10 body:linux"],
+                score_reasons=[
+                    "+10 body:linux",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
                 location_status="allowed",
                 top_match_eligible=True,
             ),
