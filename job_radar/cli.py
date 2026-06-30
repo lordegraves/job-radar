@@ -5,6 +5,7 @@ from pathlib import Path
 from job_radar.candidate_profile import load_candidate_profile
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
+from job_radar.compensation import evaluate_compensation
 from job_radar.config import ConfigError, load_companies, load_settings
 from job_radar.email_sender import send_email_report
 from job_radar.email_summary import (
@@ -195,6 +196,14 @@ def handle_scan(
                     posting=posting,
                     candidate_profile=candidate_profile,
                     resume_text=resume_text,
+                ),
+                compensation=evaluate_compensation(
+                    salary_text=posting.salary_text,
+                    compensation_floor_usd=(
+                        candidate_profile.compensation_floor_usd
+                        if candidate_profile is not None
+                        else None
+                    ),
                 ),
             )
         )

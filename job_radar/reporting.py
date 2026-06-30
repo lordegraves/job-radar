@@ -3,6 +3,7 @@ from datetime import datetime
 from html import escape
 from pathlib import Path
 
+from job_radar.compensation import CompensationResult
 from job_radar.models import JobPosting
 from job_radar.resume_match import ResumeMatchResult
 
@@ -31,6 +32,7 @@ class ScoredPosting:
     top_match_reasons: list[str] | None = None
     review_needed_eligible: bool = False
     resume_match: ResumeMatchResult | None = None
+    compensation: CompensationResult | None = None
 
 
 @dataclass(frozen=True)
@@ -555,6 +557,8 @@ def _append_scored_posting(
             f"- Resume match: {_get_resume_match_label(scored_posting)}",
             f"- Resume evidence: {_format_resume_evidence(scored_posting)}",
             f"- Resume gaps: {_format_resume_gaps(scored_posting)}",
+            f"- Compensation: {_get_compensation_label(scored_posting)}",
+            f"- Compensation range: {_get_compensation_range_label(scored_posting)}",
             f"- Hiring probability: {_get_hiring_probability_label(scored_posting)}",
             f"- Recommended action: {_get_recommended_action(scored_posting)}",
             f"- Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
@@ -675,6 +679,20 @@ def _format_score_reasons(score_reasons: list[str]) -> str:
         return "None"
 
     return ", ".join(score_reasons)
+
+
+def _get_compensation_label(scored_posting: ScoredPosting) -> str:
+    if scored_posting.compensation is None:
+        return "Unknown"
+
+    return scored_posting.compensation.label
+
+
+def _get_compensation_range_label(scored_posting: ScoredPosting) -> str:
+    if scored_posting.compensation is None:
+        return "Unknown"
+
+    return scored_posting.compensation.range_label
 
 
 def _get_resume_match_label(scored_posting: ScoredPosting) -> str:

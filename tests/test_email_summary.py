@@ -699,3 +699,50 @@ def test_build_email_body_includes_resume_match_fields() -> None:
     assert "   Resume match: Strong" in body
     assert "   Resume evidence: Linux infrastructure; cluster systems" in body
     assert "   Resume gaps: production Kubernetes ownership" in body
+
+
+def test_build_email_body_includes_compensation_fields() -> None:
+    from job_radar.compensation import CompensationResult
+
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        company_name="Test Company",
+        location="Remote",
+    )
+
+    report = ScanReport(
+        generated_at="2026-06-30T12:00:00+00:00",
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        top_match_min_score=1,
+        review_needed_min_score=100,
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:infrastructure",
+                    "+10 body:linux",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                compensation=CompensationResult(
+                    label="Meets floor",
+                    range_label="$180,000 - $220,000",
+                    min_usd=180000,
+                    max_usd=220000,
+                ),
+            ),
+        ],
+    )
+
+    body = build_email_body(report, "reports/test.md")
+
+    assert "   Compensation: Meets floor" in body
+    assert "   Compensation range: $180,000 - $220,000" in body

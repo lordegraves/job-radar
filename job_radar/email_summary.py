@@ -8,6 +8,8 @@ from job_radar.reporting import (
     _format_hiring_risk_flags,
     _format_resume_evidence,
     _format_resume_gaps,
+    _get_compensation_label,
+    _get_compensation_range_label,
     _get_hiring_probability_label,
     _get_recommended_action,
     _get_resume_match_label,
@@ -287,6 +289,8 @@ def _append_email_posting_detail(
             f"   Resume match: {_get_resume_match_label(scored_posting)}",
             f"   Resume evidence: {_format_resume_evidence(scored_posting)}",
             f"   Resume gaps: {_format_resume_gaps(scored_posting)}",
+            f"   Compensation: {_get_compensation_label(scored_posting)}",
+            f"   Compensation range: {_get_compensation_range_label(scored_posting)}",
             f"   Hiring probability: {_get_hiring_probability_label(scored_posting)}",
             f"   Recommended action: {_get_recommended_action(scored_posting)}",
             f"   Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
@@ -413,6 +417,10 @@ def _append_html_posting_detail(
             f"{escape(_format_resume_evidence(scored_posting))}</li>",
             f"<li><strong>Resume gaps:</strong> "
             f"{escape(_format_resume_gaps(scored_posting))}</li>",
+            f"<li><strong>Compensation:</strong> "
+            f"{escape(_get_compensation_label(scored_posting))}</li>",
+            f"<li><strong>Compensation range:</strong> "
+            f"{escape(_get_compensation_range_label(scored_posting))}</li>",
             f"<li><strong>Hiring probability:</strong> "
             f"{escape(_get_hiring_probability_label(scored_posting))}</li>",
             f"<li><strong>Recommended action:</strong> "
