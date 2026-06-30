@@ -16,7 +16,11 @@ def make_profile() -> CandidateProfile:
             "datacenter operations",
         ],
         credible_adjacent=["SRE", "GPU infrastructure"],
-        learning_or_gap=["production Kubernetes ownership"],
+        learning_or_gap=[
+            "production Kubernetes ownership",
+            "security engineering",
+            "heavy software engineering",
+        ],
         avoid=["frontend"],
     )
 
@@ -70,6 +74,37 @@ def test_match_resume_to_posting_reports_gap() -> None:
     assert result.label == "Medium"
     assert result.evidence == ["Linux infrastructure", "SRE"]
     assert result.gaps == ["production Kubernetes ownership"]
+
+
+def test_match_resume_to_posting_does_not_report_security_gap_for_adjacent_role() -> None:
+    posting = make_posting(
+        title="Senior Platform Engineer",
+        description=(
+            "Operate Linux infrastructure and partner with security engineering "
+            "teams on infrastructure security improvements."
+        ),
+    )
+    resume_text = "Linux infrastructure and platform operations experience."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Medium"
+    assert result.evidence == ["Linux infrastructure"]
+    assert result.gaps == []
+
+
+def test_match_resume_to_posting_reports_security_gap_for_security_focused_role() -> None:
+    posting = make_posting(
+        title="Infrastructure Security Engineer",
+        description="Own Linux infrastructure and security engineering programs.",
+    )
+    resume_text = "Linux infrastructure and platform operations experience."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Medium"
+    assert result.evidence == ["Linux infrastructure"]
+    assert result.gaps == ["security engineering"]
 
 
 def test_match_resume_to_posting_returns_unknown_without_profile() -> None:
