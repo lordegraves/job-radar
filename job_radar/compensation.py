@@ -24,32 +24,17 @@ def evaluate_compensation(
 
     range_label = _format_range_label(parsed_min=parsed_min, parsed_max=parsed_max)
 
-    if compensation_floor_usd is None:
-        return CompensationResult(
-            label="Needs confirmation",
-            range_label=range_label,
-            min_usd=parsed_min,
-            max_usd=parsed_max,
-        )
-
-    if parsed_max is not None and parsed_max < compensation_floor_usd:
-        return CompensationResult(
-            label="Below floor",
-            range_label=range_label,
-            min_usd=parsed_min,
-            max_usd=parsed_max,
-        )
-
-    if parsed_min is not None and parsed_min >= compensation_floor_usd:
-        return CompensationResult(
-            label="Meets floor",
-            range_label=range_label,
-            min_usd=parsed_min,
-            max_usd=parsed_max,
-        )
+    if compensation_floor_usd is not None:
+        if parsed_max is not None and parsed_max < compensation_floor_usd:
+            return CompensationResult(
+                label="Below floor",
+                range_label=range_label,
+                min_usd=parsed_min,
+                max_usd=parsed_max,
+            )
 
     return CompensationResult(
-        label="Needs confirmation",
+        label="Meets floor",
         range_label=range_label,
         min_usd=parsed_min,
         max_usd=parsed_max,

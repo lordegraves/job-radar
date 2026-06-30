@@ -792,6 +792,9 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
     technical_match = _get_technical_match_label(scored_posting)
     risks = _get_hiring_risk_flags(scored_posting)
 
+    if "below compensation floor" in risks:
+        return "Pass"
+
     if "hard location mismatch" in risks:
         return "Pass"
 
@@ -932,6 +935,12 @@ def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
         and _get_technical_match_label(scored_posting) != "Very Strong"
     ):
         risks.append("generic remote competition")
+
+    if _get_compensation_label(scored_posting) == "Below floor":
+        risks.append("below compensation floor")
+
+    if _get_compensation_label(scored_posting) == "Below floor":
+        risks.append("below compensation floor")
 
     return _dedupe_preserving_order(risks)
 

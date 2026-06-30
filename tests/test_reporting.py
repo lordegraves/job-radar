@@ -1408,4 +1408,37 @@ def test_render_markdown_report_includes_compensation_fields() -> None:
 
     assert "- Compensation: Meets floor" in markdown
     assert "- Compensation range: $180,000 - $220,000" in markdown
+
+
+def test_below_floor_compensation_blocks_recommendation() -> None:
+    from job_radar.compensation import CompensationResult
+    from job_radar.reporting import _format_hiring_risk_flags
+    from job_radar.reporting import _get_recommended_action
+
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        compensation=CompensationResult(
+            label="Below floor",
+            range_label="$100,000 - $140,000",
+            min_usd=100000,
+            max_usd=140000,
+        ),
+    )
+
+    assert _format_hiring_risk_flags(scored_posting) == "below compensation floor"
+    assert _get_recommended_action(scored_posting) == "Pass"
     

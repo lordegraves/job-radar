@@ -40,10 +40,10 @@ def test_evaluate_compensation_below_floor_when_max_is_below_floor() -> None:
     assert result.max_usd == 105420
 
 
-def test_evaluate_compensation_needs_confirmation_when_range_overlaps_floor() -> None:
+def test_evaluate_compensation_meets_floor_when_range_overlaps_floor() -> None:
     result = evaluate_compensation("USD $126,490.00/Yr. | USD $180,700.00/Yr.", 160000)
 
-    assert result.label == "Needs confirmation"
+    assert result.label == "Meets floor"
     assert result.range_label == "$126,490 - $180,700"
     assert result.min_usd == 126490
     assert result.max_usd == 180700
