@@ -329,6 +329,94 @@ def test_render_markdown_report_includes_top_matches_and_omitted_jobs_summary() 
     )
 
 
+def test_render_markdown_report_includes_omitted_reason_summary() -> None:
+    from job_radar.compensation import CompensationResult
+
+    below_floor_posting = make_posting(title="Senior Infrastructure Engineer")
+    frontend_posting = make_posting(title="Frontend Engineer")
+    hold_posting = make_posting(title="Linux Engineer")
+    not_top_review_posting = make_posting(title="Senior Site Reliability Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=4,
+        jobs_new=4,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[
+            below_floor_posting,
+            frontend_posting,
+            hold_posting,
+            not_top_review_posting,
+        ],
+        scored_postings=[
+            ScoredPosting(
+                posting=below_floor_posting,
+                score=180,
+                score_reasons=[
+                    "+30 title:infrastructure",
+                    "+10 body:linux",
+                    "+8 body:cluster",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                compensation=CompensationResult(
+                    label="Below floor",
+                    range_label="$120,000 - $150,000",
+                    min_usd=120000,
+                    max_usd=150000,
+                ),
+            ),
+            ScoredPosting(
+                posting=frontend_posting,
+                score=180,
+                score_reasons=[
+                    "+10 body:linux",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+            ),
+            ScoredPosting(
+                posting=hold_posting,
+                score=80,
+                score_reasons=[
+                    "+10 body:linux",
+                ],
+                location_status="allowed",
+                top_match_eligible=False,
+                review_needed_eligible=False,
+            ),
+            ScoredPosting(
+                posting=not_top_review_posting,
+                score=180,
+                score_reasons=[
+                    "+30 title:site reliability",
+                    "+10 body:linux",
+                    "+8 body:cluster",
+                    "+8 body:gpu",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=False,
+                review_needed_eligible=False,
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "## Omitted Jobs" in markdown
+    assert "- Omitted reason summary:" in markdown
+    assert "  - pass: below compensation floor: 1" in markdown
+    assert "  - pass: role family mismatch: 1" in markdown
+    assert "  - hold: low hiring probability: 1" in markdown
+    assert "  - not top/review eligible: Apply + Recruiter Message: 1" in markdown
+
+
 def test_top_matches_only_includes_allowed_locations_without_negative_title_matches() -> None:
     allowed_posting = make_posting(title="Senior Infrastructure Engineer")
     skipped_posting = make_posting(title="Senior Kubernetes Engineer")

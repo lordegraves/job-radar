@@ -461,17 +461,7 @@ def _append_omitted_jobs_section(
     lines: list[str],
     scored_postings: list[ScoredPosting],
 ) -> None:
-    omitted_count = len(
-        [
-            scored_posting
-            for scored_posting in scored_postings
-            if (
-                not scored_posting.top_match_eligible
-                and not scored_posting.review_needed_eligible
-            )
-            or not _is_actionable_posting(scored_posting)
-        ]
-    )
+    omitted_postings = _get_omitted_postings(scored_postings)
 
     lines.extend(
         [
@@ -480,7 +470,7 @@ def _append_omitted_jobs_section(
         ]
     )
 
-    if omitted_count == 0:
+    if not omitted_postings:
         lines.extend(
             [
                 "No scored jobs were omitted from the detailed report.",
@@ -492,12 +482,80 @@ def _append_omitted_jobs_section(
     lines.extend(
         [
             (
-                f"{omitted_count} scored jobs were omitted because they did not "
-                "qualify as actionable Top Match or Review Needed roles."
+                f"{len(omitted_postings)} scored jobs were omitted because they "
+                "did not qualify as actionable Top Match or Review Needed roles."
             ),
             "",
         ]
     )
+
+    omitted_reason_counts = _get_omitted_reason_summary_counts(omitted_postings)
+
+    if not omitted_reason_counts:
+        return
+
+    lines.extend(
+        [
+            "- Omitted reason summary:",
+        ]
+    )
+
+    for reason in sorted(omitted_reason_counts):
+        lines.append(f"  - {reason}: {omitted_reason_counts[reason]}")
+
+    lines.append("")
+
+
+def _get_omitted_postings(
+    scored_postings: list[ScoredPosting],
+) -> list[ScoredPosting]:
+    return [
+        scored_posting
+        for scored_posting in scored_postings
+        if (
+            not scored_posting.top_match_eligible
+            and not scored_posting.review_needed_eligible
+        )
+        or not _is_actionable_posting(scored_posting)
+    ]
+
+
+def _get_omitted_reason_summary_counts(
+    scored_postings: list[ScoredPosting],
+) -> dict[str, int]:
+    omitted_reason_counts: dict[str, int] = {}
+
+    for scored_posting in scored_postings:
+        recommended_action = _get_recommended_action(scored_posting)
+
+        if recommended_action == "Pass":
+            risks = _get_hiring_risk_flags(scored_posting)
+
+            if risks:
+                for risk in risks:
+                    reason = f"pass: {risk}"
+                    omitted_reason_counts[reason] = (
+                        omitted_reason_counts.get(reason, 0) + 1
+                    )
+                continue
+
+            reason = "pass: weak fit"
+
+        elif recommended_action == "Hold":
+            reason = "hold: low hiring probability"
+
+        elif (
+            not scored_posting.top_match_eligible
+            and not scored_posting.review_needed_eligible
+        ):
+            reason = f"not top/review eligible: {recommended_action}"
+
+        else:
+            reason = f"omitted: {recommended_action}"
+
+        omitted_reason_counts[reason] = omitted_reason_counts.get(reason, 0) + 1
+
+    return omitted_reason_counts
 
 
 def _append_unscored_jobs_section(
@@ -1381,30 +1439,33 @@ def _append_html_omitted_jobs_section(
     lines: list[str],
     scored_postings: list[ScoredPosting],
 ) -> None:
-    omitted_count = len(
-        [
-            scored_posting
-            for scored_posting in scored_postings
-            if (
-                not scored_posting.top_match_eligible
-                and not scored_posting.review_needed_eligible
-            )
-            or not _is_actionable_posting(scored_posting)
-        ]
-    )
+    omitted_postings = _get_omitted_postings(scored_postings)
 
     lines.append("<h2>Omitted Jobs</h2>")
 
-    if omitted_count == 0:
+    if not omitted_postings:
         lines.append("<p>No scored jobs were omitted from the detailed report.</p>")
         return
 
     lines.append(
         "<p>"
-        f"{omitted_count} scored jobs were omitted because they did not "
+        f"{len(omitted_postings)} scored jobs were omitted because they did not "
         "qualify as actionable Top Match or Review Needed roles."
         "</p>"
     )
+
+    omitted_reason_counts = _get_omitted_reason_summary_counts(omitted_postings)
+
+    if not omitted_reason_counts:
+        return
+
+    lines.append("<p><strong>Omitted reason summary:</strong></p>")
+    lines.append("<ul>")
+
+    for reason in sorted(omitted_reason_counts):
+        lines.append(f"<li>{escape(reason)}: {omitted_reason_counts[reason]}</li>")
+
+    lines.append("</ul>")
 
 
 def _append_html_unscored_jobs_section(
