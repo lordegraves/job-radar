@@ -25,6 +25,7 @@ from job_radar.normalize import clean_text
 from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
 from job_radar.resume_match import match_resume_to_posting
 from job_radar.scoring import (
+    ScoringConfigError,
     classify_location,
     evaluate_review_needed_eligibility,
     evaluate_top_match_eligibility,
@@ -32,6 +33,7 @@ from job_radar.scoring import (
     score_posting,
 )
 from job_radar.storage import initialize_database, upsert_job_posting
+from job_radar.validation import validate_configuration
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan_parser.add_argument(
         "--config",
         required=True,
-        help="Path to companies.yaml",
+        help="Path to company config YAML",
     )
     scan_parser.add_argument(
         "--settings",
@@ -75,6 +77,36 @@ def build_parser() -> argparse.ArgumentParser:
         "--scoring",
         default="config/scoring.yaml",
         help="Path to scoring YAML file",
+    )
+
+    validate_parser = subparsers.add_parser(
+        "validate",
+        help="Validate configuration without scanning job sources",
+    )
+    validate_parser.add_argument(
+        "--config",
+        required=True,
+        help="Path to companies.yaml",
+    )
+    validate_parser.add_argument(
+        "--settings",
+        default="config/settings.yaml",
+        help="Path to settings.yaml",
+    )
+    validate_parser.add_argument(
+        "--scoring",
+        default="config/scoring.yaml",
+        help="Path to scoring YAML file",
+    )
+    validate_parser.add_argument(
+        "--report",
+        default=None,
+        help="Optional report path to validate output directory access",
+    )
+    validate_parser.add_argument(
+        "--email-preview",
+        default=None,
+        help="Optional email preview path to validate output directory access",
     )
 
     subparsers.add_parser(
@@ -365,6 +397,27 @@ def handle_scan(
         print(f"Email send result: {email_send_result.message}")
 
 
+def handle_validate(
+    config_path: str,
+    settings_path: str,
+    scoring_path: str,
+    report_path: str | None = None,
+    email_preview_path: str | None = None,
+) -> None:
+    result = validate_configuration(
+        config_path=config_path,
+        settings_path=settings_path,
+        scoring_path=scoring_path,
+        report_path=report_path,
+        email_preview_path=email_preview_path,
+    )
+
+    print("Configuration validation passed")
+
+    for check in result.checks:
+        print(f"- {check}")
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
@@ -381,11 +434,21 @@ def main() -> None:
             )
             return
 
+        if args.command == "validate":
+            handle_validate(
+                config_path=args.config,
+                settings_path=args.settings,
+                scoring_path=args.scoring,
+                report_path=args.report,
+                email_preview_path=args.email_preview,
+            )
+            return
+
         if args.command == "init-db":
             settings = load_settings()
             db_path = initialize_database(settings["database_path"])
             print(f"Database initialized: {db_path}")
             return
 
-    except ConfigError as error:
+    except (ConfigError, ScoringConfigError) as error:
         parser.exit(status=1, message=f"Config error: {error}\n")
