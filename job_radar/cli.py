@@ -14,6 +14,7 @@ from job_radar.email_summary import (
     build_email_subject,
     write_email_preview,
 )
+from job_radar.job_history import load_job_history_workbook
 from job_radar.reporting import (
     ScanError,
     ScanReport,
@@ -32,7 +33,11 @@ from job_radar.scoring import (
     load_scoring_config,
     score_posting,
 )
-from job_radar.storage import initialize_database, upsert_job_posting
+from job_radar.storage import (
+    initialize_database,
+    upsert_job_history_record,
+    upsert_job_posting,
+)
 from job_radar.validation import validate_configuration
 
 
@@ -107,6 +112,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--email-preview",
         default=None,
         help="Optional email preview path to validate output directory access",
+    )
+
+    import_history_parser = subparsers.add_parser(
+        "import-history",
+        help="Import job history from the tracking workbook",
+    )
+    import_history_parser.add_argument(
+        "--workbook",
+        required=True,
+        help="Path to job-history.xlsx",
+    )
+    import_history_parser.add_argument(
+        "--settings",
+        default="config/settings.yaml",
+        help="Path to settings.yaml",
     )
 
     subparsers.add_parser(
@@ -397,6 +417,36 @@ def handle_scan(
         print(f"Email send result: {email_send_result.message}")
 
 
+def handle_import_history(
+    workbook_path: str,
+    settings_path: str,
+) -> None:
+    settings = load_settings(settings_path)
+    database_path = settings["database_path"]
+    initialize_database(database_path)
+
+    import_result = load_job_history_workbook(workbook_path)
+
+    imported_count = 0
+    updated_count = 0
+
+    for record in import_result.records:
+        upsert_result = upsert_job_history_record(database_path, record)
+
+        if upsert_result == "new":
+            imported_count += 1
+        elif upsert_result == "updated":
+            updated_count += 1
+
+    print("Application history import complete")
+    print(f"Workbook: {workbook_path}")
+    print(f"Database: {database_path}")
+    print(f"Rows read: {import_result.rows_read}")
+    print(f"Rows imported: {imported_count}")
+    print(f"Rows updated: {updated_count}")
+    print(f"Rows skipped: {import_result.rows_skipped}")
+
+
 def handle_validate(
     config_path: str,
     settings_path: str,
@@ -441,6 +491,13 @@ def main() -> None:
                 scoring_path=args.scoring,
                 report_path=args.report,
                 email_preview_path=args.email_preview,
+            )
+            return
+
+        if args.command == "import-history":
+            handle_import_history(
+                workbook_path=args.workbook,
+                settings_path=args.settings,
             )
             return
 

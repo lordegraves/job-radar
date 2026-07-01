@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 
+from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
 
 
@@ -102,6 +103,45 @@ ON job_postings(source_type, source_job_id);
 
 CREATE INDEX IF NOT EXISTS idx_job_postings_source_url
 ON job_postings(source_url);
+
+CREATE TABLE IF NOT EXISTS job_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    history_type TEXT NOT NULL,
+    company TEXT NOT NULL,
+    role TEXT NOT NULL,
+    source TEXT,
+    ats_platform TEXT,
+    work_arrangement TEXT,
+    location TEXT,
+    comp_range TEXT,
+    event_date TEXT,
+    status TEXT,
+    outcome_category TEXT,
+    recruiter_contact TEXT,
+    technical_match TEXT,
+    hiring_probability TEXT,
+    skills_signals TEXT,
+    primary_blocker TEXT,
+    secondary_blocker TEXT,
+    revisit TEXT,
+    include_in_job_radar INTEGER NOT NULL DEFAULT 1,
+    import_key TEXT NOT NULL UNIQUE,
+    notes TEXT,
+    imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_history_history_type
+ON job_history(history_type);
+
+CREATE INDEX IF NOT EXISTS idx_job_history_company
+ON job_history(company);
+
+CREATE INDEX IF NOT EXISTS idx_job_history_outcome_category
+ON job_history(outcome_category);
+
+CREATE INDEX IF NOT EXISTS idx_job_history_primary_blocker
+ON job_history(primary_blocker);
 """
 
 
@@ -260,3 +300,108 @@ def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
 
         return "seen"
 
+
+def upsert_job_history_record(
+    database_path: str | Path,
+    record: JobHistoryRecord,
+) -> str:
+    db_path = Path(database_path)
+
+    with sqlite3.connect(db_path) as connection:
+        existing = connection.execute(
+            """
+            SELECT id
+            FROM job_history
+            WHERE import_key = ?
+            """,
+            (record.import_key,),
+        ).fetchone()
+
+        values = (
+            record.history_type,
+            record.company,
+            record.role,
+            record.source,
+            record.ats_platform,
+            record.work_arrangement,
+            record.location,
+            record.comp_range,
+            record.event_date,
+            record.status,
+            record.outcome_category,
+            record.recruiter_contact,
+            record.technical_match,
+            record.hiring_probability,
+            record.skills_signals,
+            record.primary_blocker,
+            record.secondary_blocker,
+            record.revisit,
+            1 if record.include_in_job_radar else 0,
+            record.import_key,
+            record.notes,
+        )
+
+        if existing is None:
+            connection.execute(
+                """
+                INSERT INTO job_history (
+                    history_type,
+                    company,
+                    role,
+                    source,
+                    ats_platform,
+                    work_arrangement,
+                    location,
+                    comp_range,
+                    event_date,
+                    status,
+                    outcome_category,
+                    recruiter_contact,
+                    technical_match,
+                    hiring_probability,
+                    skills_signals,
+                    primary_blocker,
+                    secondary_blocker,
+                    revisit,
+                    include_in_job_radar,
+                    import_key,
+                    notes
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                values,
+            )
+
+            return "new"
+
+        connection.execute(
+            """
+            UPDATE job_history
+            SET
+                history_type = ?,
+                company = ?,
+                role = ?,
+                source = ?,
+                ats_platform = ?,
+                work_arrangement = ?,
+                location = ?,
+                comp_range = ?,
+                event_date = ?,
+                status = ?,
+                outcome_category = ?,
+                recruiter_contact = ?,
+                technical_match = ?,
+                hiring_probability = ?,
+                skills_signals = ?,
+                primary_blocker = ?,
+                secondary_blocker = ?,
+                revisit = ?,
+                include_in_job_radar = ?,
+                notes = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE import_key = ?
+            """,
+            values[:-2] + (record.notes, record.import_key),
+        )
+
+        return "updated"
