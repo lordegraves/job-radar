@@ -128,3 +128,4 @@ def test_build_posting_history_context_returns_empty_list_without_match() -> Non
     record = make_history_record(role="Frontend Engineer")
 
     assert build_posting_history_context(posting, [record]) == []
+    
