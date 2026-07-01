@@ -64,6 +64,8 @@ def test_find_history_matches_exact_company_and_meaningful_title_overlap() -> No
     assert len(matches) == 1
     assert matches[0].record == record
     assert matches[0].matched_tokens == ("infrastructure",)
+    assert matches[0].risk_level == "caution"
+    assert matches[0].risk_reasons == ("prior_no_interview_despite_strong_match",)
 
 
 def test_find_history_matches_ignores_same_company_with_weak_role_overlap() -> None:
@@ -128,4 +130,34 @@ def test_build_posting_history_context_returns_empty_list_without_match() -> Non
     record = make_history_record(role="Frontend Engineer")
 
     assert build_posting_history_context(posting, [record]) == []
-    
+
+
+def test_find_history_matches_marks_skipped_blocker_for_review() -> None:
+    posting = make_posting()
+    record = make_history_record(
+        history_type="Reviewed",
+        outcome_category="Skipped / Avoid",
+        technical_match="Very Strong",
+        primary_blocker="Production Kubernetes",
+    )
+
+    matches = find_history_matches(posting, [record])
+
+    assert len(matches) == 1
+    assert matches[0].risk_level == "blocker_review"
+    assert matches[0].risk_reasons == ("prior_blocker:kubernetes_production",)
+
+
+def test_find_history_matches_marks_prior_similar_role_as_neutral() -> None:
+    posting = make_posting()
+    record = make_history_record(
+        outcome_category="Reviewed",
+        technical_match="Unknown",
+        primary_blocker=None,
+    )
+
+    matches = find_history_matches(posting, [record])
+
+    assert len(matches) == 1
+    assert matches[0].risk_level == "neutral"
+    assert matches[0].risk_reasons == ("prior_similar_role",)

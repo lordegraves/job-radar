@@ -44,6 +44,8 @@ _MEANINGFUL_ROLE_TOKENS = {
 class HistoryMatch:
     record: JobHistoryRecord
     matched_tokens: tuple[str, ...]
+    risk_level: str
+    risk_reasons: tuple[str, ...]
 
 
 def build_posting_history_context(
@@ -86,14 +88,48 @@ def find_history_matches(
         if not matched_tokens:
             continue
 
+        risk_level, risk_reasons = _classify_history_risk(record)
+
         matches.append(
             HistoryMatch(
                 record=record,
                 matched_tokens=matched_tokens,
+                risk_level=risk_level,
+                risk_reasons=risk_reasons,
             )
         )
 
     return matches[:limit]
+
+
+def _classify_history_risk(record: JobHistoryRecord) -> tuple[str, tuple[str, ...]]:
+    outcome = _clean_label(record.outcome_category)
+    technical_match = _clean_label(record.technical_match)
+    blocker = _clean_label(record.primary_blocker)
+
+    reasons: list[str] = []
+
+    if outcome == "No Interview":
+        if technical_match in {"Strong", "Very Strong"}:
+            reasons.append("prior_no_interview_despite_strong_match")
+        else:
+            reasons.append("prior_no_interview")
+
+        return "caution", tuple(reasons)
+
+    if outcome == "Skipped / Avoid":
+        if blocker != "Unknown":
+            reasons.append(f"prior_blocker:{_risk_token(blocker)}")
+        else:
+            reasons.append("prior_skipped_similar_role")
+
+        return "blocker_review", tuple(reasons)
+
+    if blocker != "Unknown":
+        reasons.append(f"prior_blocker:{_risk_token(blocker)}")
+        return "caution", tuple(reasons)
+
+    return "neutral", ("prior_similar_role",)
 
 
 def _format_history_match(match: HistoryMatch) -> str:
@@ -153,6 +189,10 @@ def _normalize_text(value: str | None) -> str:
         return ""
 
     return " ".join(_tokenize(value))
+
+
+def _risk_token(value: str) -> str:
+    return "_".join(sorted(_tokenize(value)))
 
 
 def _clean_label(value: str | None) -> str:
