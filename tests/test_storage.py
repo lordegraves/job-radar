@@ -1,7 +1,12 @@
 import sqlite3
 from pathlib import Path
 
-from job_radar.storage import initialize_database, upsert_job_posting
+from job_radar.job_history import JobHistoryRecord
+from job_radar.storage import (
+    initialize_database,
+    upsert_job_history_record,
+    upsert_job_posting,
+)
 from job_radar.models import JobPosting
 
 
@@ -40,6 +45,7 @@ def test_initialize_database_creates_expected_tables(tmp_path: Path) -> None:
         "scan_runs",
         "scan_errors",
         "job_seen_events",
+        "job_history",
     ]
 
     for table_name in expected_tables:
@@ -274,3 +280,91 @@ def test_upsert_job_posting_tracks_changed_count_when_content_changes(
 
     assert count_rows(database_path, "job_postings") == 2
     assert count_rows(database_path, "job_status") == 2
+
+
+
+def make_job_history_record(
+    company: str = "Example AI",
+    role: str = "Senior Infrastructure Engineer",
+    status: str = "Rejected - No Interview",
+    notes: str = "Form rejection.",
+) -> JobHistoryRecord:
+    return JobHistoryRecord(
+        history_type="pipeline",
+        company=company,
+        role=role,
+        source="LinkedIn",
+        ats_platform="Greenhouse",
+        work_arrangement="Remote",
+        location="Remote",
+        comp_range="$160k-$200k",
+        event_date="2026-06-01",
+        status=status,
+        outcome_category="Rejected No Interview",
+        recruiter_contact="Unknown",
+        technical_match="Very Strong",
+        hiring_probability="Low",
+        skills_signals="Linux, HPC, Infrastructure",
+        primary_blocker="Generic Remote Competition",
+        secondary_blocker=None,
+        revisit="No",
+        include_in_job_radar=True,
+        import_key="pipeline:example-ai:senior-infrastructure-engineer",
+        notes=notes,
+    )
+
+
+def get_job_history_row(database_path: Path) -> sqlite3.Row:
+    with sqlite3.connect(database_path) as connection:
+        connection.row_factory = sqlite3.Row
+        row = connection.execute(
+            """
+            SELECT *
+            FROM job_history
+            WHERE import_key = ?
+            """,
+            ("pipeline:example-ai:senior-infrastructure-engineer",),
+        ).fetchone()
+
+        assert row is not None
+        return row
+
+
+def test_upsert_job_history_record_inserts_new_record(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    result = upsert_job_history_record(database_path, make_job_history_record())
+    row = get_job_history_row(database_path)
+
+    assert result == "new"
+    assert count_rows(database_path, "job_history") == 1
+    assert row["history_type"] == "pipeline"
+    assert row["company"] == "Example AI"
+    assert row["role"] == "Senior Infrastructure Engineer"
+    assert row["technical_match"] == "Very Strong"
+    assert row["include_in_job_radar"] == 1
+
+
+def test_upsert_job_history_record_updates_existing_record(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    first_result = upsert_job_history_record(
+        database_path,
+        make_job_history_record(notes="Original note."),
+    )
+    second_result = upsert_job_history_record(
+        database_path,
+        make_job_history_record(
+            status="Rejected - After Interview",
+            notes="Updated after recruiter screen.",
+        ),
+    )
+    row = get_job_history_row(database_path)
+
+    assert first_result == "new"
+    assert second_result == "updated"
+    assert count_rows(database_path, "job_history") == 1
+    assert row["status"] == "Rejected - After Interview"
+    assert row["notes"] == "Updated after recruiter screen."

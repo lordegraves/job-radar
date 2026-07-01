@@ -1,8 +1,11 @@
 import sqlite3
 from pathlib import Path
 
+from openpyxl import Workbook
+
 from job_radar.candidate_profile import CandidateProfile
-from job_radar.cli import _find_profile_avoid_matches, handle_scan
+from job_radar.cli import _find_profile_avoid_matches, handle_import_history, handle_scan
+from job_radar.job_history import EXPECTED_HEADERS
 from job_radar.email_sender import EmailSendResult
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -12,6 +15,124 @@ def count_job_posting_rows(database_file: Path) -> int:
     with sqlite3.connect(database_file) as connection:
         cursor = connection.execute("SELECT COUNT(*) FROM job_postings")
         return int(cursor.fetchone()[0])
+    
+
+
+def count_job_history_rows(database_file: Path) -> int:
+    with sqlite3.connect(database_file) as connection:
+        cursor = connection.execute("SELECT COUNT(*) FROM job_history")
+        return int(cursor.fetchone()[0])
+
+
+def write_cli_history_workbook(workbook_path: Path) -> None:
+    workbook = Workbook()
+    pipeline_sheet = workbook.active
+    pipeline_sheet.title = "Pipeline Import"
+    reviewed_sheet = workbook.create_sheet("Reviewed Import")
+
+    pipeline_sheet.append(EXPECTED_HEADERS)
+    reviewed_sheet.append(EXPECTED_HEADERS)
+
+    pipeline_sheet.append(
+        [
+            "pipeline",
+            "Example AI",
+            "Senior Infrastructure Engineer",
+            "LinkedIn",
+            "Greenhouse",
+            "Remote",
+            "Remote",
+            "$160k-$200k",
+            "2026-06-01",
+            "Rejected - No Interview",
+            "Rejected No Interview",
+            "Unknown",
+            "Very Strong",
+            "Low",
+            "Linux, HPC, Infrastructure",
+            "Generic Remote Competition",
+            None,
+            "No",
+            "Yes",
+            "pipeline:example-ai:senior-infrastructure-engineer",
+            "Form rejection.",
+        ]
+    )
+
+    reviewed_sheet.append(
+        [
+            "reviewed",
+            "SkipCo",
+            "Frontend Engineer",
+            "LinkedIn",
+            "Greenhouse",
+            "Remote",
+            "Remote",
+            "$150k-$180k",
+            "2026-06-02",
+            "Skipped",
+            "Skipped",
+            None,
+            "Weak",
+            "Very Low",
+            "Frontend",
+            "Role Family Mismatch",
+            None,
+            "No",
+            "Yes",
+            "reviewed:skipco:frontend-engineer",
+            "Not an infrastructure role.",
+        ]
+    )
+
+    workbook.save(workbook_path)
+
+
+
+def test_handle_import_history_imports_workbook_rows(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    workbook_file = tmp_path / "job-history.xlsx"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_cli_history_workbook(workbook_file)
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    handle_import_history(
+        workbook_path=str(workbook_file),
+        settings_path=str(settings_file),
+    )
+
+    output = capsys.readouterr().out
+
+    assert database_file.exists()
+    assert count_job_history_rows(database_file) == 2
+
+    assert "Application history import complete" in output
+    assert f"Workbook: {workbook_file}" in output
+    assert f"Database: {database_file}" in output
+    assert "Rows read: 2" in output
+    assert "Rows imported: 2" in output
+    assert "Rows updated: 0" in output
+    assert "Rows skipped: 0" in output
 
 
 def test_handle_scan_collects_stores_scores_and_reports_jobs(
