@@ -1277,6 +1277,11 @@ def test_render_markdown_report_marks_high_competition_employers_as_risky() -> N
     assert "- Technical match: Very Strong" in markdown
     assert "- Hiring probability: Medium" in markdown
     assert "- Recommended action: Apply + Recruiter Message" in markdown
+    assert (
+        "- Action rationale: Apply with recruiter positioning: this role is "
+        "strong, but needs positioning around high competition employer."
+        in markdown
+    )
     assert "- Hiring risks: high competition employer" in markdown
     assert "- Recommended action: Apply\n" not in markdown
 
@@ -1319,6 +1324,15 @@ def test_render_markdown_report_routes_software_security_roles_to_network_first(
     assert "- Technical match: Strong" in markdown
     assert "- Hiring probability: Medium" in markdown
     assert "- Recommended action: Network First" in markdown
+    assert (
+        "- Action rationale: Network first: this role has useful technical "
+        "signal, but direct apply is weaker because of "
+        in markdown
+    )
+    assert "high competition employer" in markdown
+    assert "security-domain translation risk" in markdown
+    assert "software-heavy translation risk" in markdown
+    assert "production Kubernetes translation risk" in markdown
     assert (
         "- Hiring risks: high competition employer; "
         "security-domain translation risk; "
@@ -1409,6 +1423,59 @@ def test_render_markdown_report_includes_compensation_fields() -> None:
 
     assert "- Compensation: Meets floor" in markdown
     assert "- Compensation range: $180,000 - $220,000" in markdown
+
+
+def test_render_markdown_report_includes_clean_apply_action_rationale() -> None:
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:site reliability",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Very Strong",
+            evidence=[
+                "Linux infrastructure",
+                "cluster systems",
+                "reliability engineering",
+                "distributed compute",
+            ],
+            gaps=[],
+        ),
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[scored_posting],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Recommended action: Apply" in markdown
+    assert (
+        "- Action rationale: Clean apply: very strong technical match, very "
+        "strong resume match, high hiring probability, and no hiring risks."
+        in markdown
+    )
+    assert "- Hiring risks: None" in markdown
 
 
 def test_below_floor_compensation_blocks_recommendation() -> None:

@@ -562,6 +562,7 @@ def _append_scored_posting(
             f"- Compensation range: {_get_compensation_range_label(scored_posting)}",
             f"- Hiring probability: {_get_hiring_probability_label(scored_posting)}",
             f"- Recommended action: {_get_recommended_action(scored_posting)}",
+            f"- Action rationale: {_get_action_rationale(scored_posting)}",
             f"- Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
             f"- Score reasons: {_format_score_reasons(scored_posting.score_reasons)}",
             f"- Location status: {scored_posting.location_status}",
@@ -864,6 +865,66 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
         return "Hold"
 
     return "Pass"
+
+
+def _get_action_rationale(scored_posting: ScoredPosting) -> str:
+    recommended_action = _get_recommended_action(scored_posting)
+    hiring_probability = _get_hiring_probability_label(scored_posting)
+    technical_match = _get_technical_match_label(scored_posting)
+    resume_match = _get_resume_match_label(scored_posting)
+    risks = _get_hiring_risk_flags(scored_posting)
+
+    if recommended_action == "Apply":
+        return (
+            "Clean apply: very strong technical match, very strong resume match, "
+            "high hiring probability, and no hiring risks."
+        )
+
+    if recommended_action == "Apply + Recruiter Message":
+        if risks:
+            return (
+                "Apply with recruiter positioning: this role is strong, but needs "
+                f"positioning around {', '.join(risks)}."
+            )
+
+        return (
+            "Apply with recruiter positioning: this role is promising, but the "
+            f"resume match is {resume_match.lower()} and should be framed clearly."
+        )
+
+    if recommended_action == "Network First":
+        if risks:
+            return (
+                "Network first: this role has useful technical signal, but direct "
+                f"apply is weaker because of {', '.join(risks)}."
+            )
+
+        return (
+            "Network first: this role has some alignment, but the match is not "
+            "strong enough for a direct apply-first approach."
+        )
+
+    if recommended_action == "Tailor Resume":
+        return (
+            "Tailor resume: the role is worth reviewing, but the current resume "
+            f"match is {resume_match.lower()} and hiring probability is "
+            f"{hiring_probability.lower()}."
+        )
+
+    if recommended_action == "Hold":
+        return (
+            "Hold: the role has limited hiring probability right now and should "
+            "not take priority over stronger matches."
+        )
+
+    if risks:
+        return f"Pass: blocked by {', '.join(risks)}."
+
+    return (
+        "Pass: technical match is "
+        f"{technical_match.lower()} and hiring probability is "
+        f"{hiring_probability.lower()}."
+    )
 
 
 def _is_actionable_posting(scored_posting: ScoredPosting) -> bool:
@@ -1371,6 +1432,8 @@ def _append_html_scored_posting(
             f"{escape(_get_hiring_probability_label(scored_posting))}</li>",
             f"<li><strong>Recommended action:</strong> "
             f"{escape(_get_recommended_action(scored_posting))}</li>",
+            f"<li><strong>Action rationale:</strong> "
+            f"{escape(_get_action_rationale(scored_posting))}</li>",
             f"<li><strong>Hiring risks:</strong> "
             f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
             f"<li><strong>Score reasons:</strong> "

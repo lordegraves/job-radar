@@ -143,6 +143,12 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "   Hiring probability: Medium" in body
     assert "   Recommended action: Network First" in body
     assert (
+        "   Action rationale: Network first: this role has useful technical "
+        "signal, but direct apply is weaker because of high competition "
+        "employer, leadership ambiguity risk, generic remote competition."
+        in body
+    )
+    assert (
         "   Hiring risks: high competition employer; "
         "leadership ambiguity risk; generic remote competition"
         in body
@@ -200,6 +206,12 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert "   Technical match: Strong" in body
     assert "   Hiring probability: Medium" in body
     assert "   Recommended action: Tailor Resume" in body
+    assert (
+        "   Action rationale: Tailor resume: the role is worth reviewing, "
+        "but the current resume match is unknown and hiring probability is "
+        "medium."
+        in body
+    )
     assert (
         "   Hiring risks: high competition employer; generic remote competition"
         in body

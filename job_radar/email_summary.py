@@ -8,6 +8,7 @@ from job_radar.reporting import (
     _format_hiring_risk_flags,
     _format_resume_evidence,
     _format_resume_gaps,
+    _get_action_rationale,
     _get_compensation_label,
     _get_compensation_range_label,
     _get_hiring_probability_label,
@@ -293,6 +294,7 @@ def _append_email_posting_detail(
             f"   Compensation range: {_get_compensation_range_label(scored_posting)}",
             f"   Hiring probability: {_get_hiring_probability_label(scored_posting)}",
             f"   Recommended action: {_get_recommended_action(scored_posting)}",
+            f"   Action rationale: {_get_action_rationale(scored_posting)}",
             f"   Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
         ]
     )
@@ -425,6 +427,8 @@ def _append_html_posting_detail(
             f"{escape(_get_hiring_probability_label(scored_posting))}</li>",
             f"<li><strong>Recommended action:</strong> "
             f"{escape(_get_recommended_action(scored_posting))}</li>",
+            f"<li><strong>Action rationale:</strong> "
+            f"{escape(_get_action_rationale(scored_posting))}</li>",
             f"<li><strong>Hiring risks:</strong> "
             f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
             f"<li><strong>Signals:</strong> "
