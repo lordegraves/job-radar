@@ -134,6 +134,13 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "Collector errors: 0" in body
     assert "Top match score threshold: 120" in body
     assert "Review-needed score threshold: 100" in body
+    assert "Recommendation summary:" in body
+    assert "  - Apply: 0" in body
+    assert "  - Apply + Recruiter Message: 0" in body
+    assert "  - Network First: 1" in body
+    assert "  - Tailor Resume: 0" in body
+    assert "  - Hold: 0" in body
+    assert "  - Pass: 0" in body
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:" in body
     assert "1. Data Center Design Execution Lead" in body
     assert "   Company: Anthropic" in body

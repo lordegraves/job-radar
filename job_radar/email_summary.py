@@ -12,6 +12,7 @@ from job_radar.reporting import (
     _get_compensation_label,
     _get_compensation_range_label,
     _get_hiring_probability_label,
+    _get_recommendation_summary_counts,
     _get_recommended_action,
     _get_resume_match_label,
     _get_technical_match_label,
@@ -61,9 +62,18 @@ def build_email_body(
             label="Review-needed score threshold",
             threshold=report.review_needed_min_score,
         ),
-        "",
-        f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:",
     ]
+
+    if report.scored_postings is not None:
+        _append_email_recommendation_summary(lines, report.scored_postings)
+
+
+    lines.extend(
+        [
+            "",
+            f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:",
+        ]
+    )
 
     _append_email_posting_lines(
         lines=lines,
@@ -129,8 +139,12 @@ def build_email_html_body(
         f"{_format_optional_count(report.top_match_min_score)}</li>",
         f"<li><strong>Review-needed score threshold:</strong> "
         f"{_format_optional_count(report.review_needed_min_score)}</li>",
-        "</ul>",
     ]
+
+    if report.scored_postings is not None:
+        _append_email_html_recommendation_summary(lines, report.scored_postings)
+
+    lines.append("</ul>")
 
     _append_html_posting_section(
         lines=lines,
@@ -318,6 +332,21 @@ def _append_email_posting_detail(
     )
 
 
+def _append_email_recommendation_summary(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    recommendation_counts = _get_recommendation_summary_counts(scored_postings)
+
+    if not recommendation_counts:
+        return
+
+    lines.append("Recommendation summary:")
+
+    for recommendation, count in recommendation_counts.items():
+        lines.append(f"  - {recommendation}: {count}")
+
+
 def _get_top_match_reasons(scored_posting: ScoredPosting) -> list[str]:
     if scored_posting.top_match_reasons:
         return scored_posting.top_match_reasons
@@ -372,6 +401,23 @@ def _format_signal_summary(score_reasons: list[str]) -> str:
         return "None"
 
     return ", ".join(labels)
+
+
+def _append_email_html_recommendation_summary(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    recommendation_counts = _get_recommendation_summary_counts(scored_postings)
+
+    if not recommendation_counts:
+        return
+
+    lines.append("<li><strong>Recommendation summary:</strong><ul>")
+
+    for recommendation, count in recommendation_counts.items():
+        lines.append(f"<li>{escape(recommendation)}: {count}</li>")
+
+    lines.append("</ul></li>")
 
 
 def _append_html_posting_section(

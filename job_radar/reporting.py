@@ -102,6 +102,7 @@ def render_markdown_report(report: ScanReport) -> str:
 
     if report.scored_postings is not None:
         _append_location_status_summary(lines, report.scored_postings)
+        _append_recommendation_summary(lines, report.scored_postings)
 
     lines.append("")
 
@@ -199,6 +200,11 @@ def render_html_report(report: ScanReport) -> str:
 
     if report.scored_postings is not None:
         _append_html_location_status_summary(lines, report.scored_postings)
+        _append_html_count_summary(
+            lines=lines,
+            heading="Recommendation summary",
+            counts=_get_recommendation_summary_counts(report.scored_postings),
+        )
 
     lines.append("</ul>")
 
@@ -308,6 +314,21 @@ def _append_location_status_summary(
     for location_status in sorted(status_counts):
         if location_status not in preferred_order:
             lines.append(f"  - {location_status}: {status_counts[location_status]}")
+
+
+def _append_recommendation_summary(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    recommendation_counts = _get_recommendation_summary_counts(scored_postings)
+
+    if not recommendation_counts:
+        return
+
+    lines.append("- Recommendation summary:")
+
+    for recommendation in _RECOMMENDATION_SUMMARY_ORDER:
+        lines.append(f"  - {recommendation}: {recommendation_counts[recommendation]}")
 
 
 def _append_collector_errors(
@@ -674,6 +695,32 @@ ROLE_FAMILY_MISMATCH_TITLE_KEYWORDS = [
     "incident manager",
     "field services manager",
 ]
+
+
+_RECOMMENDATION_SUMMARY_ORDER = [
+    "Apply",
+    "Apply + Recruiter Message",
+    "Network First",
+    "Tailor Resume",
+    "Hold",
+    "Pass",
+]
+
+
+def _get_recommendation_summary_counts(
+    scored_postings: list[ScoredPosting],
+) -> dict[str, int]:
+    recommendation_counts = {
+        recommendation: 0 for recommendation in _RECOMMENDATION_SUMMARY_ORDER
+    }
+
+    for scored_posting in scored_postings:
+        recommended_action = _get_recommended_action(scored_posting)
+        recommendation_counts[recommended_action] = (
+            recommendation_counts.get(recommended_action, 0) + 1
+        )
+
+    return recommendation_counts
 
 
 def _format_score_reasons(score_reasons: list[str]) -> str:
