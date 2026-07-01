@@ -232,6 +232,86 @@ def test_render_markdown_report_includes_match_quality_action_and_hiring_risks()
     )
 
 
+def test_render_markdown_report_includes_history_context() -> None:
+    posting = make_posting(title="Senior Linux Infrastructure Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:linux",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=[
+                    "score 140 meets top-match threshold 1",
+                    "location status is acceptable: allowed",
+                    "strong signal matched: title:linux",
+                ],
+                history_context=[
+                    "Similar prior roles had strong technical match but low response",
+                    "Strong / No Interview: 6",
+                ],
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert (
+        "- History context: Similar prior roles had strong technical match but "
+        "low response; Strong / No Interview: 6"
+        in markdown
+    )
+
+
+def test_render_markdown_report_uses_none_when_history_context_is_missing() -> None:
+    posting = make_posting(title="Senior Linux Infrastructure Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:linux",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=[
+                    "score 140 meets top-match threshold 1",
+                    "location status is acceptable: allowed",
+                    "strong signal matched: title:linux",
+                ],
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- History context: None" in markdown
+
+
 def test_render_markdown_report_flags_role_family_mismatch() -> None:
     posting = make_posting(title="Frontend Engineer - User Interface")
 
@@ -1010,6 +1090,50 @@ def test_render_html_report_escapes_html_special_characters() -> None:
 
     assert "Senior &lt;Linux&gt; &amp; Infrastructure Engineer" in html
     assert "Example &amp; AI" in html
+
+
+def test_render_html_report_includes_history_context() -> None:
+    posting = make_posting(title="Senior Linux Infrastructure Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:linux",
+                    "+10 body:infrastructure",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=[
+                    "score 140 meets top-match threshold 1",
+                    "location status is acceptable: allowed",
+                    "strong signal matched: title:linux",
+                ],
+                history_context=[
+                    "Strong / No Interview: 6",
+                    "Very Strong / No Interview: 3",
+                ],
+            )
+        ],
+    )
+
+    html = render_html_report(report)
+
+    assert (
+        "<li><strong>History context:</strong> "
+        "Strong / No Interview: 6; Very Strong / No Interview: 3</li>"
+        in html
+    )
 
 
 def test_write_html_report_writes_file(tmp_path: Path) -> None:

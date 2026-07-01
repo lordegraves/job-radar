@@ -51,6 +51,7 @@ class ScoredPosting:
     resume_match: ResumeMatchResult | None = None
     compensation: CompensationResult | None = None
     profile_avoid_matches: list[str] | None = None
+    history_context: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -660,6 +661,7 @@ def _append_scored_posting(
             f"- Recommended action: {_get_recommended_action(scored_posting)}",
             f"- Action rationale: {_get_action_rationale(scored_posting)}",
             f"- Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
+            f"- History context: {_format_history_context(scored_posting)}",
             f"- Score reasons: {_format_score_reasons(scored_posting.score_reasons)}",
             f"- Location status: {scored_posting.location_status}",
             f"- Company: {posting.company_name}",
@@ -701,6 +703,13 @@ def _append_posting(lines: list[str], posting: JobPosting) -> None:
             "",
         ]
     )
+
+
+def _format_history_context(scored_posting: ScoredPosting) -> str:
+    if not scored_posting.history_context:
+        return "None"
+
+    return "; ".join(scored_posting.history_context)
 
 
 def _format_match_summary(score_reasons: list[str]) -> str:
@@ -1098,6 +1107,8 @@ def _append_html_scored_posting(
             f"{escape(_get_action_rationale(scored_posting))}</li>",
             f"<li><strong>Hiring risks:</strong> "
             f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
+            f"<li><strong>History context:</strong> "
+            f"{escape(_format_history_context(scored_posting))}</li>",
             f"<li><strong>Score reasons:</strong> "
             f"{escape(_format_score_reasons(scored_posting.score_reasons))}</li>",
             f"<li><strong>Location status:</strong> "
