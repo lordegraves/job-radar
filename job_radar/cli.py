@@ -337,7 +337,6 @@ def handle_scan(
                     candidate_profile=candidate_profile,
                     posting=posting,
                 ),
-                history_context=history_context,
             )
         )
 
@@ -364,7 +363,6 @@ def handle_scan(
             jobs_changed += 1
 
     report = ScanReport(
-        generated_at=datetime.now(UTC).isoformat(timespec="seconds"),
         companies_enabled=len(companies),
         jobs_collected=total_jobs,
         jobs_new=jobs_new,
@@ -372,11 +370,13 @@ def handle_scan(
         jobs_changed=jobs_changed,
         collector_errors=collector_errors,
         postings=collected_postings,
-        scored_postings=scored_postings,
+        scored_postings=relevant_scored_postings,
+        generated_at=datetime.now(UTC).isoformat(),
         top_match_min_score=scoring_config["top_matches"]["min_score"],
         review_needed_min_score=scoring_config["review_needed"]["min_score"],
         jobs_stored=jobs_stored,
         jobs_omitted=jobs_omitted,
+        history_context=history_context,
     )
 
     written_report_path = write_markdown_report(report_path, report)
@@ -506,7 +506,7 @@ def main() -> None:
                 report_path=args.report,
                 scoring_path=args.scoring,
                 email_preview_path=args.email_preview,
-                send_email=args.send_email
+                send_email=args.send_email,
             )
             return
 

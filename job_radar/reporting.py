@@ -77,6 +77,7 @@ class ScanReport:
     review_needed_min_score: int | None = None
     jobs_stored: int | None = None
     jobs_omitted: int | None = None
+    history_context: list[str] | None = None
 
 
 def render_markdown_report(report: ScanReport) -> str:
@@ -121,6 +122,8 @@ def render_markdown_report(report: ScanReport) -> str:
     if report.scored_postings is not None:
         _append_location_status_summary(lines, report.scored_postings)
         _append_recommendation_summary(lines, report.scored_postings)
+
+    _append_history_context_summary(lines, report.history_context)
 
     lines.append("")
 
@@ -223,6 +226,8 @@ def render_html_report(report: ScanReport) -> str:
             heading="Recommendation summary",
             counts=_get_recommendation_summary_counts(report.scored_postings),
         )
+
+    _append_html_history_context_summary(lines, report.history_context)
 
     lines.append("</ul>")
 
@@ -347,6 +352,19 @@ def _append_recommendation_summary(
 
     for recommendation in _RECOMMENDATION_SUMMARY_ORDER:
         lines.append(f"  - {recommendation}: {recommendation_counts[recommendation]}")
+
+
+def _append_history_context_summary(
+    lines: list[str],
+    history_context: list[str] | None,
+) -> None:
+    if not history_context:
+        return
+
+    lines.append("- Job history context:")
+
+    for context_item in history_context:
+        lines.append(f"  - {context_item}")
 
 
 def _append_collector_errors(
@@ -889,6 +907,21 @@ def _append_html_location_status_summary(
                 f"<li>{escape(location_status)}: "
                 f"{status_counts[location_status]}</li>"
             )
+
+    lines.append("</ul></li>")
+
+
+def _append_html_history_context_summary(
+    lines: list[str],
+    history_context: list[str] | None,
+) -> None:
+    if not history_context:
+        return
+
+    lines.append("<li><strong>Job history context:</strong><ul>")
+
+    for context_item in history_context:
+        lines.append(f"<li>{escape(context_item)}</li>")
 
     lines.append("</ul></li>")
 

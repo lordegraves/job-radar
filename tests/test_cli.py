@@ -430,16 +430,20 @@ top_matches:
     capsys.readouterr()
     report_text = report_file.read_text(encoding="utf-8")
 
-    assert "- History context: Imported history: 1 records" in report_text
+    assert "- Job history context:" in report_text
+    assert "  - Imported history: 1 records (1 pipeline, 0 reviewed)" in report_text
     assert (
-        "Prior applications show technical match alone has not guaranteed "
+        "  - Prior applications show technical match alone has not guaranteed "
         "interviews (1 no-interview outcomes)"
         in report_text
     )
-    assert "Strong technical matches with no interview: Strong / No Interview: 1" in (
-        report_text
+    assert (
+        "  - Strong technical matches with no interview: "
+        "Strong / No Interview: 1"
+        in report_text
     )
-    assert "Common prior blockers: Compensation: 1" in report_text
+    assert "  - Common prior blockers: Compensation: 1" in report_text
+    assert "- History context: Imported history: 1 records" not in report_text
 
 
 def test_handle_scan_passes_html_report_attachment_to_email_sender(
