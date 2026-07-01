@@ -449,6 +449,10 @@ top_matches:
         "No Interview despite Strong technical match"
         in report_text
     )
+    assert (
+        "- History risk: caution: prior_no_interview_despite_strong_match"
+        in report_text
+    )
 
 
 def test_handle_scan_passes_html_report_attachment_to_email_sender(

@@ -15,7 +15,11 @@ from job_radar.email_summary import (
     write_email_preview,
 )
 from job_radar.history_context import build_history_context
-from job_radar.history_match import build_posting_history_context
+from job_radar.history_match import (
+    find_history_matches,
+    format_history_matches,
+    summarize_history_risk,
+)
 from job_radar.history_summary import build_history_summary, format_history_summary
 from job_radar.job_history import load_job_history_workbook
 from job_radar.reporting import (
@@ -314,6 +318,14 @@ def handle_scan(
             scoring_config=scoring_config,
         )
 
+        history_matches = find_history_matches(
+            posting=posting,
+            history_records=history_records,
+        )
+        history_risk_level, history_risk_reasons = summarize_history_risk(
+            history_matches
+        )
+
         scored_postings.append(
             ScoredPosting(
                 posting=posting,
@@ -340,10 +352,9 @@ def handle_scan(
                     candidate_profile=candidate_profile,
                     posting=posting,
                 ),
-                history_context=build_posting_history_context(
-                    posting=posting,
-                    history_records=history_records,
-                ),
+                history_context=format_history_matches(history_matches),
+                history_risk_level=history_risk_level,
+                history_risk_reasons=history_risk_reasons,
             )
         )
 

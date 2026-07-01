@@ -59,7 +59,38 @@ def build_posting_history_context(
         limit=limit,
     )
 
+    return format_history_matches(matches)
+
+
+def format_history_matches(matches: list[HistoryMatch]) -> list[str]:
     return [_format_history_match(match) for match in matches]
+
+
+def summarize_history_risk(
+    matches: list[HistoryMatch],
+) -> tuple[str | None, list[str]]:
+    if not matches:
+        return None, []
+
+    risk_priority = {
+        "blocker_review": 3,
+        "caution": 2,
+        "neutral": 1,
+    }
+
+    risk_level = max(
+        (match.risk_level for match in matches),
+        key=lambda item: risk_priority.get(item, 0),
+    )
+
+    risk_reasons: list[str] = []
+
+    for match in matches:
+        for reason in match.risk_reasons:
+            if reason not in risk_reasons:
+                risk_reasons.append(reason)
+
+    return risk_level, risk_reasons
 
 
 def find_history_matches(

@@ -1,4 +1,8 @@
-from job_radar.history_match import build_posting_history_context, find_history_matches
+from job_radar.history_match import (
+    build_posting_history_context,
+    find_history_matches,
+    summarize_history_risk,
+)
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
 
@@ -29,6 +33,7 @@ def make_history_record(
     technical_match: str = "Strong",
     primary_blocker: str | None = None,
     include_in_job_radar: bool = True,
+    import_key: str = "pipeline:example-ai:senior-infrastructure-engineer",
 ) -> JobHistoryRecord:
     return JobHistoryRecord(
         history_type=history_type,
@@ -50,7 +55,7 @@ def make_history_record(
         secondary_blocker=None,
         revisit="No",
         include_in_job_radar=include_in_job_radar,
-        import_key="pipeline:example-ai:senior-infrastructure-engineer",
+        import_key=import_key,
         notes="Form rejection.",
     )
 
@@ -161,3 +166,28 @@ def test_find_history_matches_marks_prior_similar_role_as_neutral() -> None:
     assert len(matches) == 1
     assert matches[0].risk_level == "neutral"
     assert matches[0].risk_reasons == ("prior_similar_role",)
+
+
+def test_summarize_history_risk_returns_highest_risk_and_unique_reasons() -> None:
+    posting = make_posting()
+    caution_record = make_history_record(
+        outcome_category="No Interview",
+        technical_match="Strong",
+    )
+    blocker_record = make_history_record(
+        history_type="Reviewed",
+        outcome_category="Skipped / Avoid",
+        technical_match="Very Strong",
+        primary_blocker="Production Kubernetes",
+        import_key="reviewed:example-ai:senior-infrastructure-engineer",
+    )
+
+    matches = find_history_matches(posting, [caution_record, blocker_record])
+
+    risk_level, risk_reasons = summarize_history_risk(matches)
+
+    assert risk_level == "blocker_review"
+    assert risk_reasons == [
+        "prior_no_interview_despite_strong_match",
+        "prior_blocker:kubernetes_production",
+    ]

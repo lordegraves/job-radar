@@ -52,6 +52,8 @@ class ScoredPosting:
     compensation: CompensationResult | None = None
     profile_avoid_matches: list[str] | None = None
     history_context: list[str] | None = None
+    history_risk_level: str | None = None
+    history_risk_reasons: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -680,6 +682,16 @@ def _append_scored_posting(
             f"- Action rationale: {_get_action_rationale(scored_posting)}",
             f"- Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
             f"- History context: {_format_history_context(scored_posting)}",
+        ]
+    )
+
+    history_risk = _format_history_risk(scored_posting)
+
+    if history_risk != "None":
+        lines.append(f"- History risk: {history_risk}")
+
+    lines.extend(
+        [
             f"- Score reasons: {_format_score_reasons(scored_posting.score_reasons)}",
             f"- Location status: {_format_location_status(scored_posting)}",
             f"- Company: {posting.company_name}",
@@ -728,6 +740,18 @@ def _format_history_context(scored_posting: ScoredPosting) -> str:
         return "None"
 
     return "; ".join(scored_posting.history_context)
+
+
+def _format_history_risk(scored_posting: ScoredPosting) -> str:
+    if not scored_posting.history_risk_level:
+        return "None"
+
+    risk_reasons = scored_posting.history_risk_reasons or []
+
+    if not risk_reasons:
+        return scored_posting.history_risk_level
+
+    return f"{scored_posting.history_risk_level}: {', '.join(risk_reasons)}"
 
 
 def _format_location_status(scored_posting: ScoredPosting) -> str:
@@ -1170,6 +1194,18 @@ def _append_html_scored_posting(
             f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
             f"<li><strong>History context:</strong> "
             f"{escape(_format_history_context(scored_posting))}</li>",
+        ]
+    )
+
+    history_risk = _format_history_risk(scored_posting)
+
+    if history_risk != "None":
+        lines.append(
+            f"<li><strong>History risk:</strong> {escape(history_risk)}</li>"
+        )
+
+    lines.extend(
+        [
             f"<li><strong>Score reasons:</strong> "
             f"{escape(_format_score_reasons(scored_posting.score_reasons))}</li>",
             f"<li><strong>Location status:</strong> "
