@@ -405,3 +405,69 @@ def upsert_job_history_record(
         )
 
         return "updated"
+
+
+def fetch_included_job_history_records(
+    database_path: str | Path,
+) -> list[JobHistoryRecord]:
+    db_path = Path(database_path)
+
+    with sqlite3.connect(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+
+        rows = connection.execute(
+            """
+            SELECT
+                history_type,
+                company,
+                role,
+                source,
+                ats_platform,
+                work_arrangement,
+                location,
+                comp_range,
+                event_date,
+                status,
+                outcome_category,
+                recruiter_contact,
+                technical_match,
+                hiring_probability,
+                skills_signals,
+                primary_blocker,
+                secondary_blocker,
+                revisit,
+                include_in_job_radar,
+                import_key,
+                notes
+            FROM job_history
+            WHERE include_in_job_radar = 1
+            ORDER BY event_date DESC, company ASC, role ASC
+            """
+        ).fetchall()
+
+    return [
+        JobHistoryRecord(
+            history_type=row["history_type"],
+            company=row["company"],
+            role=row["role"],
+            source=row["source"],
+            ats_platform=row["ats_platform"],
+            work_arrangement=row["work_arrangement"],
+            location=row["location"],
+            comp_range=row["comp_range"],
+            event_date=row["event_date"],
+            status=row["status"],
+            outcome_category=row["outcome_category"],
+            recruiter_contact=row["recruiter_contact"],
+            technical_match=row["technical_match"],
+            hiring_probability=row["hiring_probability"],
+            skills_signals=row["skills_signals"],
+            primary_blocker=row["primary_blocker"],
+            secondary_blocker=row["secondary_blocker"],
+            revisit=row["revisit"],
+            include_in_job_radar=bool(row["include_in_job_radar"]),
+            import_key=row["import_key"],
+            notes=row["notes"],
+        )
+        for row in rows
+    ]

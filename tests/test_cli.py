@@ -444,6 +444,11 @@ top_matches:
     )
     assert "  - Common prior blockers: Compensation: 1" in report_text
     assert "- History context: Imported history: 1 records" not in report_text
+    assert (
+        "- History context: Prior similar application at Example AI ended "
+        "No Interview despite Strong technical match"
+        in report_text
+    )
 
 
 def test_handle_scan_passes_html_report_attachment_to_email_sender(

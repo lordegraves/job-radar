@@ -15,6 +15,7 @@ from job_radar.email_summary import (
     write_email_preview,
 )
 from job_radar.history_context import build_history_context
+from job_radar.history_match import build_posting_history_context
 from job_radar.history_summary import build_history_summary, format_history_summary
 from job_radar.job_history import load_job_history_workbook
 from job_radar.reporting import (
@@ -36,6 +37,7 @@ from job_radar.scoring import (
     score_posting,
 )
 from job_radar.storage import (
+    fetch_included_job_history_records,
     initialize_database,
     upsert_job_history_record,
     upsert_job_posting,
@@ -289,6 +291,7 @@ def handle_scan(
 
     history_summary = build_history_summary(database_path)
     history_context = build_history_context(history_summary)
+    history_records = fetch_included_job_history_records(database_path)
 
     scored_postings = []
 
@@ -336,6 +339,10 @@ def handle_scan(
                 profile_avoid_matches=_find_profile_avoid_matches(
                     candidate_profile=candidate_profile,
                     posting=posting,
+                ),
+                history_context=build_posting_history_context(
+                    posting=posting,
+                    history_records=history_records,
                 ),
             )
         )

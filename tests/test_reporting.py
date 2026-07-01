@@ -183,7 +183,7 @@ def test_render_markdown_report_includes_score_reasons_and_location_status() -> 
         "+100 location_allowed:remote"
         in markdown
     )
-    assert "- Location status: allowed" in markdown
+    assert "- Location status: allowed (remote)" in markdown
 
 
 def test_render_markdown_report_includes_match_quality_action_and_hiring_risks() -> None:
@@ -715,6 +715,42 @@ def test_render_markdown_report_includes_human_readable_match_summary() -> None:
         in markdown
     )
     assert "- Score reasons:" in markdown
+
+
+def test_render_markdown_report_includes_location_reason_in_status() -> None:
+    posting = make_posting(
+        title="Data Center Hardware Engineer",
+        company_name="AMD",
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=121,
+                score_reasons=[
+                    "+8 body:data center",
+                    "+7 body:hardware",
+                    "+6 body:systems",
+                    "+100 location_allowed:fort collins",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Location status: allowed (fort collins)" in markdown
 
 
 def test_render_markdown_report_includes_location_status_summary() -> None:
