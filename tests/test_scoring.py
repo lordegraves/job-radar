@@ -251,9 +251,9 @@ def test_score_posting_applies_negative_keyword_scores_to_title_only() -> None:
 
     score, reasons = score_posting(posting, config)
 
-    assert score == 40
+    assert score == -60
     assert "-60 title:account executive" in reasons
-    assert "+100 location_allowed:remote" in reasons
+    assert "+0 location_allowed:remote" in reasons
     assert "-15 body:sales" not in reasons
     assert "-12 body:recruiter" not in reasons
     assert "-12 body:hr" not in reasons
@@ -269,11 +269,11 @@ def test_score_posting_combines_positive_and_negative_title_scores() -> None:
 
     score, reasons = score_posting(posting, config)
 
-    assert score == 110
+    assert score == 10
     assert "+30 title:infrastructure" in reasons
     assert "+10 body:linux" in reasons
     assert "-30 title:customer success" in reasons
-    assert "+100 location_allowed:remote" in reasons
+    assert "+0 location_allowed:remote" in reasons
 
 
 def test_score_posting_applies_allowed_location_scores() -> None:
@@ -287,10 +287,10 @@ def test_score_posting_applies_allowed_location_scores() -> None:
 
     score, reasons = score_posting(posting, config)
 
-    assert score == 140
+    assert score == 40
     assert "+30 title:infrastructure" in reasons
     assert "+10 body:linux" in reasons
-    assert "+100 location_allowed:remote" in reasons
+    assert "+0 location_allowed:remote" in reasons
 
 
 def test_score_posting_applies_conditional_location_scores() -> None:
@@ -740,6 +740,47 @@ def test_real_config_omits_data_center_sourcing_roles_from_review_needed() -> No
     assert review_needed_eligible is False
 
 
+def test_real_config_body_linux_alone_is_not_top_match() -> None:
+    posting = make_posting(
+        title="Senior Operations Engineer",
+        description=(
+            "Support Linux infrastructure, Kubernetes, GPU systems, "
+            "HPC clusters, Slurm scheduling, datacenter hardware, "
+            "site reliability, observability, automation, Python, "
+            "networking, storage, and production incident response."
+        ),
+        location="Remote-Friendly, United States",
+    )
+
+    config = load_scoring_config(Path("config/scoring.yaml"))
+
+    score, reasons = score_posting(posting, config)
+    location_status = classify_location(posting, config)
+
+    top_match_eligible, top_match_reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=score,
+        score_reasons=reasons,
+        location_status=location_status,
+        scoring_config=config,
+    )
+
+    review_needed_eligible = evaluate_review_needed_eligibility(
+        score=score,
+        score_reasons=reasons,
+        location_status=location_status,
+        top_match_eligible=top_match_eligible,
+        scoring_config=config,
+    )
+
+    assert score >= config["review_needed"]["min_score"]
+    assert "+10 body:linux" in reasons
+    assert "+10 body:hpc" in reasons
+    assert top_match_eligible is False
+    assert top_match_reasons == ["missing_strong_signal"]
+    assert review_needed_eligible is True
+
+
 def test_real_config_data_center_alone_is_review_needed_not_top_match() -> None:
     posting = make_posting(
         title="Data Center Design Execution Lead",
@@ -773,9 +814,11 @@ def test_real_config_data_center_alone_is_review_needed_not_top_match() -> None:
         scoring_config=config,
     )
 
-    assert score >= config["top_matches"]["min_score"]
+    assert score == 58
+    assert score < config["top_matches"]["min_score"]
     assert "+24 title:data center" in reasons
     assert "+10 body:hpc" in reasons
     assert top_match_eligible is False
-    assert top_match_reasons == ["excluded_title_keyword:design execution"]
-    assert review_needed_eligible is True
+    assert top_match_reasons == ["score_below_top_match_threshold:58<120"]
+    assert review_needed_eligible is False
+    

@@ -681,7 +681,7 @@ def _append_scored_posting(
             f"- Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
             f"- History context: {_format_history_context(scored_posting)}",
             f"- Score reasons: {_format_score_reasons(scored_posting.score_reasons)}",
-            f"- Location status: {scored_posting.location_status}",
+            f"- Location status: {_format_location_status(scored_posting)}",
             f"- Company: {posting.company_name}",
             f"- Source: {posting.source_type}",
             f"- Location: {posting.location or 'Unknown'}",
@@ -728,6 +728,34 @@ def _format_history_context(scored_posting: ScoredPosting) -> str:
         return "None"
 
     return "; ".join(scored_posting.history_context)
+
+
+def _format_location_status(scored_posting: ScoredPosting) -> str:
+    location_status = scored_posting.location_status or "unknown"
+    location_labels = _extract_location_reason_labels(scored_posting.score_reasons)
+
+    if not location_labels:
+        return location_status
+
+    return f"{location_status} ({', '.join(location_labels)})"
+
+
+def _extract_location_reason_labels(score_reasons: list[str]) -> list[str]:
+    labels: list[str] = []
+
+    for reason in score_reasons:
+        if "location_" not in reason:
+            continue
+
+        if ":" not in reason:
+            continue
+
+        label = reason.split(":", maxsplit=1)[1].strip()
+
+        if label and label not in labels:
+            labels.append(label)
+
+    return labels
 
 
 def _format_match_summary(score_reasons: list[str]) -> str:
@@ -1145,7 +1173,7 @@ def _append_html_scored_posting(
             f"<li><strong>Score reasons:</strong> "
             f"{escape(_format_score_reasons(scored_posting.score_reasons))}</li>",
             f"<li><strong>Location status:</strong> "
-            f"{escape(scored_posting.location_status)}</li>",
+            f"{escape(_format_location_status(scored_posting))}</li>",
             f"<li><strong>Company:</strong> "
             f"{escape(posting.company_name)}</li>",
             f"<li><strong>Source:</strong> {escape(posting.source_type)}</li>",

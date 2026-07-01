@@ -106,13 +106,10 @@ top_matches:
     - title:cluster
     - title:reliability
     - title:sre
-    - body:hpc
-    - body:slurm
-    - body:gpu
-    - body:kubernetes
-    - body:linux
-    - body:infrastructure
-    - body:hardware
+    - title:hpc
+    - title:platform
+    - title:systems
+    - title:site reliability
 
 review_needed:
   min_score: 100

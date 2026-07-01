@@ -311,11 +311,11 @@ top_matches:
         in report_text
     )
 
-    assert "- Score: 140" in report_text
+    assert "- Score: 40" in report_text
     assert "+30 title:infrastructure" in report_text
     assert "+10 body:linux" in report_text
-    assert "+100 location_allowed:remote" in report_text
-    assert "- Location status: allowed" in report_text
+    assert "+0 location_allowed:remote" in report_text
+    assert "- Location status: allowed (remote)" in report_text
 
     assert "- Company: Example AI" in report_text
     assert "- Source: greenhouse" in report_text

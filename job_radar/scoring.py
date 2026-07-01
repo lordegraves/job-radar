@@ -221,10 +221,9 @@ def _score_location(
     score = 0
     reasons: list[str] = []
 
-    for keyword, points in location_preferences["allowed"].items():
+    for keyword in location_preferences["allowed"]:
         if keyword in location_text:
-            score += points
-            reasons.append(f"+{points} location_allowed:{keyword}")
+            reasons.append(f"+0 location_allowed:{keyword}")
 
     for keyword, points in location_preferences["conditional"].items():
         if keyword in location_text:
