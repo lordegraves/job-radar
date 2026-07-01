@@ -14,6 +14,7 @@ from job_radar.email_summary import (
     build_email_subject,
     write_email_preview,
 )
+from job_radar.history_summary import build_history_summary, format_history_summary
 from job_radar.job_history import load_job_history_workbook
 from job_radar.reporting import (
     ScanError,
@@ -124,6 +125,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to job-history.xlsx",
     )
     import_history_parser.add_argument(
+        "--settings",
+        default="config/settings.yaml",
+        help="Path to settings.yaml",
+    )
+
+    history_summary_parser = subparsers.add_parser(
+        "history-summary",
+        help="Summarize imported job history",
+    )
+    history_summary_parser.add_argument(
         "--settings",
         default="config/settings.yaml",
         help="Path to settings.yaml",
@@ -447,6 +458,16 @@ def handle_import_history(
     print(f"Rows skipped: {import_result.rows_skipped}")
 
 
+def handle_history_summary(settings_path: str) -> None:
+    settings = load_settings(settings_path)
+    database_path = settings["database_path"]
+    initialize_database(database_path)
+
+    summary = build_history_summary(database_path)
+
+    print(format_history_summary(summary), end="")
+
+
 def handle_validate(
     config_path: str,
     settings_path: str,
@@ -499,6 +520,10 @@ def main() -> None:
                 workbook_path=args.workbook,
                 settings_path=args.settings,
             )
+            return
+
+        if args.command == "history-summary":
+            handle_history_summary(settings_path=args.settings)
             return
 
         if args.command == "init-db":
