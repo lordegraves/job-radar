@@ -276,56 +276,111 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
     risks = _get_hiring_risk_flags(scored_posting)
 
     if recommended_action == "Apply":
-        return (
-            "Clean apply: very strong technical match, very strong resume match, "
-            "high hiring probability, and no hiring risks."
+        return _append_history_rationale(
+            scored_posting,
+            (
+                "Clean apply: very strong technical match, very strong resume match, "
+                "high hiring probability, and no hiring risks."
+            ),
         )
 
     if recommended_action == "Apply + Recruiter Message":
         if risks:
-            return (
-                "Apply with recruiter positioning: this role is strong, but needs "
-                f"positioning around {', '.join(risks)}."
+            return _append_history_rationale(
+                scored_posting,
+                (
+                    "Apply with recruiter positioning: this role is strong, but needs "
+                    f"positioning around {', '.join(risks)}."
+                ),
             )
 
-        return (
-            "Apply with recruiter positioning: this role is promising, but the "
-            f"resume match is {resume_match.lower()} and should be framed clearly."
+        return _append_history_rationale(
+            scored_posting,
+            (
+                "Apply with recruiter positioning: this role is promising, but the "
+                f"resume match is {resume_match.lower()} and should be framed clearly."
+            ),
         )
 
     if recommended_action == "Network First":
         if risks:
-            return (
-                "Network first: this role has useful technical signal, but direct "
-                f"apply is weaker because of {', '.join(risks)}."
+            return _append_history_rationale(
+                scored_posting,
+                (
+                    "Network first: this role has useful technical signal, but direct "
+                    f"apply is weaker because of {', '.join(risks)}."
+                ),
             )
 
-        return (
-            "Network first: this role has some alignment, but the match is not "
-            "strong enough for a direct apply-first approach."
+        return _append_history_rationale(
+            scored_posting,
+            (
+                "Network first: this role has some alignment, but the match is not "
+                "strong enough for a direct apply-first approach."
+            ),
         )
 
     if recommended_action == "Tailor Resume":
-        return (
-            "Tailor resume: the role is worth reviewing, but the current resume "
-            f"match is {resume_match.lower()} and hiring probability is "
-            f"{hiring_probability.lower()}."
+        return _append_history_rationale(
+            scored_posting,
+            (
+                "Tailor resume: the role is worth reviewing, but the current resume "
+                f"match is {resume_match.lower()} and hiring probability is "
+                f"{hiring_probability.lower()}."
+            ),
         )
 
     if recommended_action == "Hold":
-        return (
-            "Hold: the role has limited hiring probability right now and should "
-            "not take priority over stronger matches."
+        return _append_history_rationale(
+            scored_posting,
+            (
+                "Hold: the role has limited hiring probability right now and should "
+                "not take priority over stronger matches."
+            ),
         )
 
     if risks:
-        return f"Pass: blocked by {', '.join(risks)}."
+        return _append_history_rationale(
+            scored_posting,
+            f"Pass: blocked by {', '.join(risks)}.",
+        )
 
-    return (
-        "Pass: technical match is "
-        f"{technical_match.lower()} and hiring probability is "
-        f"{hiring_probability.lower()}."
+    return _append_history_rationale(
+        scored_posting,
+        (
+            "Pass: technical match is "
+            f"{technical_match.lower()} and hiring probability is "
+            f"{hiring_probability.lower()}."
+        ),
     )
+
+
+def _append_history_rationale(
+    scored_posting: ScoredPosting,
+    rationale: str,
+) -> str:
+    history_note = _format_history_rationale_note(scored_posting)
+
+    if history_note is None:
+        return rationale
+
+    return f"{rationale} {history_note}"
+
+
+def _format_history_rationale_note(scored_posting: ScoredPosting) -> str | None:
+    if scored_posting.history_risk_level == "blocker_review":
+        return (
+            "Review prior history before applying because a similar role had "
+            "a prior blocker."
+        )
+
+    if scored_posting.history_risk_level == "caution":
+        return (
+            "Use caution because prior similar applications did not convert "
+            "despite strong technical alignment."
+        )
+
+    return None
 
 
 def _is_actionable_posting(scored_posting: ScoredPosting) -> bool:

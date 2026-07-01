@@ -1726,6 +1726,70 @@ def test_render_markdown_report_includes_clean_apply_action_rationale() -> None:
     assert "- Hiring risks: None" in markdown
 
 
+def test_clean_apply_rationale_includes_history_caution_without_changing_action() -> None:
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+        company_name="Example AI",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:site reliability",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Very Strong",
+            evidence=[
+                "Linux infrastructure",
+                "cluster systems",
+                "reliability engineering",
+                "distributed compute",
+            ],
+            gaps=[],
+        ),
+        history_context=[
+            (
+                "Prior similar application at Example AI ended "
+                "No Interview despite Strong technical match"
+            )
+        ],
+        history_risk_level="caution",
+        history_risk_reasons=["prior_no_interview_despite_strong_match"],
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[scored_posting],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Recommended action: Apply" in markdown
+    assert "- History risk: caution: prior_no_interview_despite_strong_match" in markdown
+    assert (
+        "- Action rationale: Clean apply: very strong technical match, very "
+        "strong resume match, high hiring probability, and no hiring risks. "
+        "Use caution because prior similar applications did not convert "
+        "despite strong technical alignment."
+        in markdown
+    )
+
+
 def test_below_floor_compensation_blocks_recommendation() -> None:
     from job_radar.compensation import CompensationResult
     from job_radar.reporting import _format_hiring_risk_flags
