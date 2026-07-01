@@ -126,7 +126,7 @@ Settings used for live validation, including the live test database path and ema
 
 Keyword scoring, location preferences, Top Match rules, and Review Needed rules.
 
-    config/companies.yaml
+    config/demo-companies.yaml
 
 Sample/demo company configuration. These entries are placeholders.
 

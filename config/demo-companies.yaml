@@ -2,7 +2,7 @@
 # These entries are placeholders, not real live scan targets.
 #
 # For live validation, use:
-#   config/live-test-companies.yaml
+#   config/target-companies.yaml
 
 companies:
   - company_key: example_ai

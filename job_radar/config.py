@@ -53,7 +53,7 @@ def load_companies(path: str | Path) -> list[dict[str, Any]]:
 
     companies = data.get("companies")
     if companies is None:
-        raise ConfigError("companies.yaml must contain a top-level 'companies' list")
+        raise ConfigError("company config must contain a top-level 'companies' list")
 
     if not isinstance(companies, list):
         raise ConfigError("'companies' must be a list")
