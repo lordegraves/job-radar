@@ -31,3 +31,5 @@ reports/scratch-*
 reports/probe-*
 reports/debug-*
 data/job-history.xlsx
+
+data/*.xlsx
