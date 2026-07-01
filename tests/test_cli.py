@@ -5,7 +5,8 @@ from openpyxl import Workbook
 
 from job_radar.candidate_profile import CandidateProfile
 from job_radar.cli import _find_profile_avoid_matches, handle_import_history, handle_scan
-from job_radar.job_history import EXPECTED_HEADERS
+from job_radar.job_history import EXPECTED_HEADERS, JobHistoryRecord
+from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.email_sender import EmailSendResult
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -22,6 +23,37 @@ def count_job_history_rows(database_file: Path) -> int:
     with sqlite3.connect(database_file) as connection:
         cursor = connection.execute("SELECT COUNT(*) FROM job_history")
         return int(cursor.fetchone()[0])
+
+
+def make_cli_history_record(
+    import_key: str,
+    technical_match: str,
+    outcome_category: str,
+    primary_blocker: str | None = None,
+) -> JobHistoryRecord:
+    return JobHistoryRecord(
+        history_type="Pipeline",
+        company="Example AI",
+        role="Senior Infrastructure Engineer",
+        source="LinkedIn",
+        ats_platform="Greenhouse",
+        work_arrangement="Remote",
+        location="Remote",
+        comp_range="$160k-$200k",
+        event_date="2026-06-01",
+        status="Rejected - No Interview",
+        outcome_category=outcome_category,
+        recruiter_contact="Unknown",
+        technical_match=technical_match,
+        hiring_probability="Low",
+        skills_signals="Linux, HPC, Infrastructure",
+        primary_blocker=primary_blocker,
+        secondary_blocker=None,
+        revisit="No",
+        include_in_job_radar=True,
+        import_key=import_key,
+        notes="Form rejection.",
+    )
 
 
 def write_cli_history_workbook(workbook_path: Path) -> None:
@@ -290,6 +322,124 @@ top_matches:
     assert "- Location: Remote" in report_text
     assert "- URL: https://boards.greenhouse.io/exampleai/jobs/123" in report_text
     assert "- Canonical key: `example-ai:senior-infrastructure-engineer:remote`" in report_text
+
+
+def test_handle_scan_adds_history_context_to_report(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    config_file = tmp_path / "companies.yaml"
+    settings_file = tmp_path / "settings.yaml"
+    scoring_file = tmp_path / "scoring.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    report_file = tmp_path / "today.md"
+
+    config_file.write_text(
+        """
+companies:
+  - company_key: example_ai
+    name: Example AI
+    source_type: greenhouse
+    source_slug: exampleai
+    enabled: true
+""",
+        encoding="utf-8",
+    )
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    scoring_file.write_text(
+        """
+positive_keywords:
+  infrastructure: 10
+  linux: 10
+
+negative_keywords:
+  sales: -10
+
+location_preferences:
+  allowed:
+    remote: 100
+  conditional: {}
+  skipped: {}
+
+top_matches:
+  min_score: 1
+  excluded_title_keywords: []
+  strong_signals:
+    - title:infrastructure
+""",
+        encoding="utf-8",
+    )
+
+    initialize_database(database_file)
+    upsert_job_history_record(
+        database_file,
+        make_cli_history_record(
+            import_key="pipeline:example-ai:senior-infrastructure-engineer",
+            technical_match="Strong",
+            outcome_category="No Interview",
+            primary_blocker="Compensation",
+        ),
+    )
+
+    fake_posting = JobPosting(
+        company_key="example_ai",
+        company_name="Example AI",
+        source_type="greenhouse",
+        source_job_id="123",
+        source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description="Build Linux infrastructure.",
+        canonical_key="example-ai:senior-infrastructure-engineer:remote",
+        content_hash="hash-linux-infrastructure",
+    )
+
+    def fake_collect_jobs_for_company(company_config):
+        return [fake_posting]
+
+    monkeypatch.setattr(
+        "job_radar.cli.collect_jobs_for_company",
+        fake_collect_jobs_for_company,
+    )
+
+    handle_scan(
+        config_path=str(config_file),
+        settings_path=str(settings_file),
+        report_path=str(report_file),
+        scoring_path=str(scoring_file),
+    )
+
+    capsys.readouterr()
+    report_text = report_file.read_text(encoding="utf-8")
+
+    assert "- History context: Imported history: 1 records" in report_text
+    assert (
+        "Prior applications show technical match alone has not guaranteed "
+        "interviews (1 no-interview outcomes)"
+        in report_text
+    )
+    assert "Strong technical matches with no interview: Strong / No Interview: 1" in (
+        report_text
+    )
+    assert "Common prior blockers: Compensation: 1" in report_text
 
 
 def test_handle_scan_passes_html_report_attachment_to_email_sender(

@@ -14,6 +14,7 @@ from job_radar.email_summary import (
     build_email_subject,
     write_email_preview,
 )
+from job_radar.history_context import build_history_context
 from job_radar.history_summary import build_history_summary, format_history_summary
 from job_radar.job_history import load_job_history_workbook
 from job_radar.reporting import (
@@ -286,6 +287,9 @@ def handle_scan(
         collected_postings.extend(postings)
         print(f"  collected_jobs={len(postings)}")
 
+    history_summary = build_history_summary(database_path)
+    history_context = build_history_context(history_summary)
+
     scored_postings = []
 
     for posting in collected_postings:
@@ -333,6 +337,7 @@ def handle_scan(
                     candidate_profile=candidate_profile,
                     posting=posting,
                 ),
+                history_context=history_context,
             )
         )
 
