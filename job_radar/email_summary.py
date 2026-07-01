@@ -2,9 +2,7 @@ from datetime import datetime
 from html import escape
 from pathlib import Path
 
-from job_radar.reporting import (
-    ScanReport,
-    ScoredPosting,
+from job_radar.recommendations import (
     _format_hiring_risk_flags,
     _format_resume_evidence,
     _format_resume_gaps,
@@ -17,6 +15,7 @@ from job_radar.reporting import (
     _get_resume_match_label,
     _get_technical_match_label,
 )
+from job_radar.reporting import ScanReport, ScoredPosting
 
 
 EMAIL_POSTINGS_LIMIT = 10
