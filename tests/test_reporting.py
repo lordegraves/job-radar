@@ -16,13 +16,14 @@ def make_posting(
     title: str = "Senior Infrastructure Engineer",
     company_name: str = "Example AI",
     source_type: str = "greenhouse",
+    source_url: str = "https://boards.greenhouse.io/exampleai/jobs/123",
 ) -> JobPosting:
     return JobPosting(
         company_key="example_ai",
         company_name=company_name,
         source_type=source_type,
         source_job_id="123",
-        source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+        source_url=source_url,
         title=title,
         location="Remote",
         description="Build Linux infrastructure.",
@@ -2101,6 +2102,62 @@ def test_blocker_review_history_marks_posting_as_previously_reviewed() -> None:
     )
     assert "## Top Matches\n\nNo top matches found." in markdown
     assert "## Passed / Not Recommended" in markdown
+
+
+def test_recommendation_summary_counts_omitted_history_actions() -> None:
+    apply_posting = make_posting(
+        title="Senior Site Reliability Engineer",
+        source_url="https://example.com/jobs/apply",
+    )
+    track_status_posting = make_posting(
+        title="Site Reliability Engineer",
+        source_url="https://example.com/jobs/track",
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=2,
+        jobs_new=0,
+        jobs_seen=2,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[apply_posting, track_status_posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=apply_posting,
+                score=140,
+                score_reasons=[
+                    "+30 title:site reliability",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+            ),
+        ],
+        omitted_scored_postings=[
+            ScoredPosting(
+                posting=track_status_posting,
+                score=110,
+                score_reasons=[
+                    "+30 title:site reliability",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                history_risk_level="track_status",
+                history_risk_reasons=["already_applied"],
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "  - Track Status: 1" in markdown
+    assert "- Recommended action: Track Status" in markdown
+    assert (
+        "- Why not recommended: Prior application history matches this role; "
+        "track status instead of treating it as a fresh apply target."
+        in markdown
+    )
 
 
 def test_below_floor_compensation_blocks_recommendation() -> None:

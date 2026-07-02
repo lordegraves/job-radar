@@ -123,9 +123,10 @@ def render_markdown_report(report: ScanReport) -> str:
     _append_source_type_summary(lines, report.postings)
 
     if report.scored_postings is not None:
+        report_scored_postings = _get_report_scored_postings(report)
         _append_work_arrangement_summary(lines, report.scored_postings)
-        _append_recommendation_summary(lines, report.scored_postings)
-        _append_history_risk_summary(lines, report.scored_postings)
+        _append_recommendation_summary(lines, report_scored_postings)
+        _append_history_risk_summary(lines, report_scored_postings)
 
     _append_history_context_summary(lines, report.history_context)
 
@@ -234,16 +235,17 @@ def render_html_report(report: ScanReport) -> str:
     )
 
     if report.scored_postings is not None:
+        report_scored_postings = _get_report_scored_postings(report)
         _append_html_work_arrangement_summary(lines, report.scored_postings)
         _append_html_count_summary(
             lines=lines,
             heading="Recommendation summary",
-            counts=_get_recommendation_summary_counts(report.scored_postings),
+            counts=_get_recommendation_summary_counts(report_scored_postings),
         )
         _append_html_count_summary(
             lines=lines,
             heading="History risk summary",
-            counts=_get_history_risk_summary_counts(report.scored_postings),
+            counts=_get_history_risk_summary_counts(report_scored_postings),
         )
 
     _append_html_history_context_summary(lines, report.history_context)
@@ -409,6 +411,15 @@ def _get_ordered_work_arrangements(
             ordered_arrangements.append(work_arrangement)
 
     return ordered_arrangements
+
+
+def _get_report_scored_postings(report: ScanReport) -> list[ScoredPosting]:
+    report_scored_postings = list(report.scored_postings or [])
+    report_scored_postings.extend(report.omitted_scored_postings or [])
+
+    return report_scored_postings
+
+
 
 
 def _append_recommendation_summary(
@@ -776,6 +787,12 @@ def _get_omitted_posting_review_score(scored_posting: ScoredPosting) -> int:
 def _format_pass_reason(scored_posting: ScoredPosting) -> str:
     recommended_action = _get_recommended_action(scored_posting)
     risks = _get_hiring_risk_flags(scored_posting)
+
+    if recommended_action == "Track Status":
+        return (
+            "Prior application history matches this role; track status instead "
+            "of treating it as a fresh apply target."
+        )
 
     if recommended_action == "Pass":
         if "below compensation floor" in risks:
