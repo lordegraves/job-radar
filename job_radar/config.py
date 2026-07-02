@@ -109,6 +109,14 @@ def load_settings(path: str | Path = "config/settings.yaml") -> dict[str, Any]:
     if not isinstance(data["retention"], dict):
         raise ConfigError("settings.yaml retention section must be a mapping")
 
+    job_history_workbook_path = data.get("job_history_workbook_path")
+
+    if job_history_workbook_path is not None and not isinstance(
+        job_history_workbook_path,
+        str,
+    ):
+        raise ConfigError("settings.yaml job_history_workbook_path must be a string")
+
     email_settings = data.get("email", {})
     data["email"] = _validate_email_settings(email_settings)
 

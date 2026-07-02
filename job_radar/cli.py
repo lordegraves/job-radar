@@ -238,6 +238,45 @@ def _dedupe_preserving_order(values: list[str]) -> list[str]:
     return deduped_values
 
 
+def _import_job_history_for_scan(
+    *,
+    settings: dict,
+    database_path: str,
+) -> None:
+    workbook_path = settings.get("job_history_workbook_path")
+
+    if not workbook_path:
+        return
+
+    if not Path(workbook_path).exists():
+        print("Application history import skipped")
+        print(f"Workbook: {workbook_path}")
+        print("Reason: workbook file does not exist; using existing database history")
+        print()
+        return
+
+    import_result = load_job_history_workbook(workbook_path)
+
+    imported_count = 0
+    updated_count = 0
+
+    for record in import_result.records:
+        upsert_result = upsert_job_history_record(database_path, record)
+
+        if upsert_result == "new":
+            imported_count += 1
+        elif upsert_result == "updated":
+            updated_count += 1
+
+    print("Application history import complete")
+    print(f"Workbook: {workbook_path}")
+    print(f"Rows read: {import_result.rows_read}")
+    print(f"Rows imported: {imported_count}")
+    print(f"Rows updated: {updated_count}")
+    print(f"Rows skipped: {import_result.rows_skipped}")
+    print()
+
+
 def handle_scan(
     config_path: str,
     settings_path: str,
@@ -253,6 +292,11 @@ def handle_scan(
     candidate_profile, resume_text = _load_candidate_context(settings)
 
     initialize_database(database_path)
+
+    _import_job_history_for_scan(
+        settings=settings,
+        database_path=database_path,
+    )
 
     print("Scan requested")
     print(f"Config: {config_path}")

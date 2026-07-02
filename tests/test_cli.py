@@ -31,6 +31,27 @@ def count_job_history_rows(database_file: Path) -> int:
         return int(cursor.fetchone()[0])
 
 
+def fetch_job_history_status(
+    database_file: Path,
+    import_key: str,
+) -> str | None:
+    with sqlite3.connect(database_file) as connection:
+        cursor = connection.execute(
+            """
+            SELECT status
+            FROM job_history
+            WHERE import_key = ?
+            """,
+            (import_key,),
+        )
+        row = cursor.fetchone()
+
+    if row is None:
+        return None
+
+    return str(row[0])
+
+
 def make_cli_history_record(
     import_key: str,
     technical_match: str,
@@ -73,7 +94,7 @@ def write_cli_history_workbook(workbook_path: Path) -> None:
 
     pipeline_sheet.append(
         [
-            "pipeline",
+            "Pipeline",
             "Example AI",
             "Senior Infrastructure Engineer",
             "LinkedIn",
@@ -83,7 +104,7 @@ def write_cli_history_workbook(workbook_path: Path) -> None:
             "$160k-$200k",
             "2026-06-01",
             "Rejected - No Interview",
-            "Rejected No Interview",
+            "No Interview",
             "Unknown",
             "Very Strong",
             "Low",
@@ -99,7 +120,7 @@ def write_cli_history_workbook(workbook_path: Path) -> None:
 
     reviewed_sheet.append(
         [
-            "reviewed",
+            "Reviewed",
             "SkipCo",
             "Frontend Engineer",
             "LinkedIn",
@@ -462,6 +483,241 @@ top_matches:
         "- History risk: caution: prior_no_interview_despite_strong_match"
         in report_text
     )
+
+
+def test_handle_scan_imports_configured_history_workbook_before_report(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    config_file = tmp_path / "companies.yaml"
+    settings_file = tmp_path / "settings.yaml"
+    scoring_file = tmp_path / "scoring.yaml"
+    workbook_file = tmp_path / "job-history.xlsx"
+    database_file = tmp_path / "job_radar.sqlite3"
+    report_file = tmp_path / "today.md"
+
+    write_cli_history_workbook(workbook_file)
+
+    config_file.write_text(
+        """
+companies:
+  - company_key: example_ai
+    name: Example AI
+    source_type: greenhouse
+    source_slug: exampleai
+    enabled: true
+""",
+        encoding="utf-8",
+    )
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+job_history_workbook_path: {workbook_file}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    scoring_file.write_text(
+        """
+positive_keywords:
+  infrastructure: 10
+  linux: 10
+
+negative_keywords:
+  sales: -10
+
+location_preferences:
+  allowed:
+    remote: 100
+  conditional: {}
+  skipped: {}
+
+top_matches:
+  min_score: 1
+  excluded_title_keywords: []
+  strong_signals:
+    - title:infrastructure
+""",
+        encoding="utf-8",
+    )
+
+    fake_posting = JobPosting(
+        company_key="example_ai",
+        company_name="Example AI",
+        source_type="greenhouse",
+        source_job_id="123",
+        source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description="Build Linux infrastructure.",
+        canonical_key="example-ai:senior-infrastructure-engineer:remote",
+        content_hash="hash-linux-infrastructure",
+    )
+
+    def fake_collect_jobs_for_company(company_config):
+        return [fake_posting]
+
+    monkeypatch.setattr(
+        "job_radar.cli.collect_jobs_for_company",
+        fake_collect_jobs_for_company,
+    )
+
+    handle_scan(
+        config_path=str(config_file),
+        settings_path=str(settings_file),
+        report_path=str(report_file),
+        scoring_path=str(scoring_file),
+    )
+
+    output = capsys.readouterr().out
+    report_text = report_file.read_text(encoding="utf-8")
+
+    assert count_job_history_rows(database_file) == 2
+    assert fetch_job_history_status(
+        database_file,
+        "pipeline:example-ai:senior-infrastructure-engineer",
+    ) == "Rejected - No Interview"
+
+    assert "Application history import complete" in output
+    assert f"Workbook: {workbook_file}" in output
+    assert "Rows read: 2" in output
+    assert "Rows imported: 2" in output
+    assert "Rows updated: 0" in output
+    assert "Rows skipped: 0" in output
+
+    assert "- Job history context:" in report_text
+    assert "  - Imported history: 2 records (1 pipeline, 1 reviewed)" in report_text
+    assert (
+        "  - Prior applications show technical match alone has not guaranteed "
+        "interviews (1 no-interview outcomes)"
+        in report_text
+    )
+    assert (
+        "  - Strong technical matches with no interview: "
+        "Very Strong / No Interview: 1"
+        in report_text
+    )
+    assert "  - Common prior blockers: Generic Remote Competition: 1" in report_text
+
+
+def test_handle_scan_warns_and_continues_when_configured_history_workbook_is_missing(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    config_file = tmp_path / "companies.yaml"
+    settings_file = tmp_path / "settings.yaml"
+    scoring_file = tmp_path / "scoring.yaml"
+    workbook_file = tmp_path / "missing-job-history.xlsx"
+    database_file = tmp_path / "job_radar.sqlite3"
+    report_file = tmp_path / "today.md"
+
+    config_file.write_text(
+        """
+companies:
+  - company_key: example_ai
+    name: Example AI
+    source_type: greenhouse
+    source_slug: exampleai
+    enabled: true
+""",
+        encoding="utf-8",
+    )
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+job_history_workbook_path: {workbook_file}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    scoring_file.write_text(
+        """
+positive_keywords:
+  infrastructure: 10
+  linux: 10
+
+negative_keywords:
+  sales: -10
+
+location_preferences:
+  allowed:
+    remote: 100
+  conditional: {}
+  skipped: {}
+
+top_matches:
+  min_score: 1
+  excluded_title_keywords: []
+  strong_signals:
+    - title:infrastructure
+""",
+        encoding="utf-8",
+    )
+
+    fake_posting = JobPosting(
+        company_key="example_ai",
+        company_name="Example AI",
+        source_type="greenhouse",
+        source_job_id="123",
+        source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description="Build Linux infrastructure.",
+        canonical_key="example-ai:senior-infrastructure-engineer:remote",
+        content_hash="hash-linux-infrastructure",
+    )
+
+    def fake_collect_jobs_for_company(company_config):
+        return [fake_posting]
+
+    monkeypatch.setattr(
+        "job_radar.cli.collect_jobs_for_company",
+        fake_collect_jobs_for_company,
+    )
+
+    handle_scan(
+        config_path=str(config_file),
+        settings_path=str(settings_file),
+        report_path=str(report_file),
+        scoring_path=str(scoring_file),
+    )
+
+    output = capsys.readouterr().out
+
+    assert database_file.exists()
+    assert report_file.exists()
+    assert count_job_history_rows(database_file) == 0
+    assert count_scan_run_rows(database_file) == 1
+
+    assert "Application history import skipped" in output
+    assert f"Workbook: {workbook_file}" in output
+    assert "Reason: workbook file does not exist; using existing database history" in output
+    assert "Scan summary:" in output
+    assert "Actionable jobs stored: 1" in output
 
 
 def test_handle_scan_passes_html_report_attachment_to_email_sender(
