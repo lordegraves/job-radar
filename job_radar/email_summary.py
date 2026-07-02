@@ -354,19 +354,94 @@ def _append_email_recommendation_summary(
 
 def _get_top_match_reasons(scored_posting: ScoredPosting) -> list[str]:
     if scored_posting.top_match_reasons:
-        return scored_posting.top_match_reasons
+        return _format_email_reason_lines(scored_posting.top_match_reasons)
 
     return [
-        "marked eligible by top-match scoring rules",
-        f"work arrangement: {_format_email_work_arrangement(scored_posting)}",
+        "Score and match signals make this a strong candidate.",
+        _format_email_work_arrangement_reason(scored_posting),
     ]
 
 
 def _get_review_needed_reasons(scored_posting: ScoredPosting) -> list[str]:
     return [
-        "marked eligible by review-needed scoring rules",
-        f"work arrangement: {_format_email_work_arrangement(scored_posting)}",
+        "Strong technical signals, but review before applying.",
+        _format_email_work_arrangement_reason(scored_posting),
     ]
+
+
+def _format_email_reason_lines(reasons: list[str]) -> list[str]:
+    formatted_reasons: list[str] = []
+
+    for reason in reasons:
+        formatted_reason = _format_email_reason(reason)
+
+        if formatted_reason not in formatted_reasons:
+            formatted_reasons.append(formatted_reason)
+
+    return formatted_reasons
+
+
+def _format_email_reason(reason: str) -> str:
+    if reason.startswith("score ") and " meets top-match threshold " in reason:
+        return "Score meets the top-match threshold."
+
+    if reason.startswith("location fit is acceptable"):
+        return "Work arrangement fits your preferences."
+
+    if reason.startswith("strong signal matched:"):
+        signal = reason.split(":", maxsplit=1)[1].strip()
+        signal_label = _format_signal_label(signal)
+        return f"Strong match signal: {signal_label}."
+
+    if reason == "marked eligible by top-match scoring rules":
+        return "Score and match signals make this a strong candidate."
+
+    if reason == "marked eligible by review-needed scoring rules":
+        return "Strong technical signals, but review before applying."
+
+    if reason.startswith("work arrangement:"):
+        return _format_work_arrangement_label(
+            reason.split(":", maxsplit=1)[1].strip()
+        )
+
+    return reason
+
+
+def _format_email_work_arrangement_reason(scored_posting: ScoredPosting) -> str:
+    return _format_work_arrangement_label(
+        _format_email_work_arrangement(scored_posting)
+    )
+
+
+def _format_work_arrangement_label(work_arrangement: str) -> str:
+    if work_arrangement == "remote":
+        return "Remote role fits your preferences."
+
+    if work_arrangement == "not location eligible":
+        return "Work arrangement does not fit your preferences."
+
+    if work_arrangement == "needs confirmation":
+        return "Work arrangement needs confirmation."
+
+    if work_arrangement == "unknown":
+        return "Work arrangement is unknown."
+
+    return f"Work arrangement: {work_arrangement}."
+
+
+def _format_signal_label(signal: str) -> str:
+    if ":" not in signal:
+        return signal
+
+    signal_source, signal_value = signal.split(":", maxsplit=1)
+
+    if signal_source == "title":
+        return f"title matches {signal_value}"
+
+    if signal_source == "body":
+        return f"description mentions {signal_value}"
+
+    return signal_value
 
 
 def _append_reason_lines(

@@ -240,8 +240,10 @@ email:
 
 def test_load_settings_rejects_enabled_email_without_password_env(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings_file = tmp_path / "settings.yaml"
+    monkeypatch.delenv("JOB_RADAR_SMTP_PASSWORD", raising=False)
     settings_file.write_text(
         """
 database_path: data/job_radar.sqlite3
@@ -284,6 +286,7 @@ def test_load_settings_rejects_enabled_email_without_sender(
     monkeypatch.setenv("JOB_RADAR_SMTP_PASSWORD", "not-a-real-password")
 
     settings_file = tmp_path / "settings.yaml"
+    monkeypatch.delenv("JOB_RADAR_SMTP_PASSWORD", raising=False)
     settings_file.write_text(
         """
 database_path: data/job_radar.sqlite3

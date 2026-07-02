@@ -1626,8 +1626,8 @@ def test_render_markdown_report_marks_high_competition_employers_as_risky() -> N
     assert "- Hiring probability: Medium" in markdown
     assert "- Recommended action: Apply + Recruiter Message" in markdown
     assert (
-        "- Action rationale: Apply with recruiter positioning: this role is "
-        "strong, but needs positioning around high competition employer."
+        "- Action rationale: Apply with recruiter outreach. Strong fit, but "
+        "frame the high-competition employer clearly."
         in markdown
     )
     assert "- Hiring risks: high competition employer" in markdown
@@ -1673,8 +1673,8 @@ def test_render_markdown_report_routes_software_security_roles_to_network_first(
     assert "- Hiring probability: Medium" in markdown
     assert "- Recommended action: Network First" in markdown
     assert (
-        "- Action rationale: Network first: this role has useful technical "
-        "signal, but direct apply is weaker because of "
+        "- Action rationale: Network first. Useful technical signal, but direct "
+        "apply is weaker because of "
         in markdown
     )
     assert "high competition employer" in markdown

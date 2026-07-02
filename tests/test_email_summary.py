@@ -150,9 +150,9 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "   Hiring probability: Medium" in body
     assert "   Recommended action: Network First" in body
     assert (
-        "   Action rationale: Network first: this role has useful technical "
-        "signal, but direct apply is weaker because of high competition "
-        "employer, leadership ambiguity risk, generic remote competition."
+        "   Action rationale: Network first. Useful technical signal, but direct "
+        "apply is weaker because of the high-competition employer, the leadership "
+        "expectations, remote-role competition."
         in body
     )
     assert (
@@ -226,8 +226,8 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert "   URL:" not in body
     assert "https://boards.greenhouse.io/anthropic/jobs/456" not in body
     assert "   Why it needs review:" in body
-    assert "      - marked eligible by review-needed scoring rules" in body
-    assert "      - work arrangement: remote" in body
+    assert "      - Strong technical signals, but review before applying." in body
+    assert "      - Remote role fits your preferences." in body
     assert "      - location status:" not in body
     assert "   Why it scored:" not in body
     assert "   Signals: data center, infrastructure" in body
@@ -596,8 +596,8 @@ def test_build_email_html_body_includes_clickable_posting_links() -> None:
                 top_match_eligible=True,
                 top_match_reasons=[
                     "score 158 meets top-match threshold 120",
-                    "location fit is acceptable: allowed",
-                    "strong signal matched: body:infrastructure",
+                    "Work arrangement fits your preferences.",
+                    "Strong match signal: description mentions infrastructure.",
                 ],
             ),
             ScoredPosting(

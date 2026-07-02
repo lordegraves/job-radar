@@ -268,6 +268,34 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
     return "Pass"
 
 
+def _format_risk_summary(risks: list[str]) -> str:
+    readable_risks = [_format_risk_label(risk) for risk in risks]
+
+    return ", ".join(readable_risks)
+
+
+def _format_risk_label(risk: str) -> str:
+    if risk == "production Kubernetes translation risk":
+        return "how your infrastructure background translates to production Kubernetes"
+
+    if risk == "software-heavy translation risk":
+        return "the software-heavy parts of the role"
+
+    if risk == "security-domain translation risk":
+        return "the security-domain parts of the role"
+
+    if risk == "high competition employer":
+        return "the high-competition employer"
+
+    if risk == "generic remote competition":
+        return "remote-role competition"
+
+    if risk == "leadership ambiguity risk":
+        return "the leadership expectations"
+
+    return risk
+
+
 def _get_action_rationale(scored_posting: ScoredPosting) -> str:
     recommended_action = _get_recommended_action(scored_posting)
     hiring_probability = _get_hiring_probability_label(scored_posting)
@@ -289,16 +317,16 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
             return _append_history_rationale(
                 scored_posting,
                 (
-                    "Apply with recruiter positioning: this role is strong, but needs "
-                    f"positioning around {', '.join(risks)}."
+                    "Apply with recruiter outreach. Strong fit, but frame "
+                    f"{_format_risk_summary(risks)} clearly."
                 ),
             )
 
         return _append_history_rationale(
             scored_posting,
             (
-                "Apply with recruiter positioning: this role is promising, but the "
-                f"resume match is {resume_match.lower()} and should be framed clearly."
+                "Apply with recruiter outreach. Promising role, but review the resume "
+                f"match because it is currently {resume_match.lower()}."
             ),
         )
 
@@ -307,8 +335,8 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
             return _append_history_rationale(
                 scored_posting,
                 (
-                    "Network first: this role has useful technical signal, but direct "
-                    f"apply is weaker because of {', '.join(risks)}."
+                    "Network first. Useful technical signal, but direct apply is weaker "
+                    f"because of {_format_risk_summary(risks)}."
                 ),
             )
 
