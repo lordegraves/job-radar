@@ -22,6 +22,8 @@ SUPPORTED_SOURCE_TYPES = {
     "smartrecruiters",
     "selectminds",
     "phenom",
+    "rippling",
+    "schoolspring",
     "html",
 }
 

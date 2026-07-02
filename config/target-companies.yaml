@@ -17,6 +17,8 @@
 #   smartrecruiters: implemented
 #   selectminds: implemented
 #   phenom: implemented
+#   rippling: implemented
+#   schoolspring: implemented
 #   html: custom / generic career pages
 
 companies:
@@ -492,6 +494,29 @@ companies:
     max_pages: 25
     enabled: true
     notes: Activate job board using JSON-backed SearchResults endpoint.
+
+  # ---------------------------------------------------------------------------
+  # SchoolSpring / PowerSchool - implemented
+  # ---------------------------------------------------------------------------
+
+  - company_key: poudre_school_district
+    name: Poudre School District
+    source_type: schoolspring
+    domain_name: psdschools.schoolspring.com
+    page_size: 20
+    enabled: true
+    notes: Local/contact-aware source. PSD careers page links to SchoolSpring job board.
+
+  # ---------------------------------------------------------------------------
+  # Rippling - implemented
+  # ---------------------------------------------------------------------------
+
+  - company_key: cbts
+    name: CBTS
+    source_type: rippling
+    source_slug: cbts
+    enabled: true
+    notes: Contact-aware source. Public CBTS careers page links to Rippling ATS at ats.rippling.com/cbts/jobs.
 
   # ---------------------------------------------------------------------------
   # HTML / custom career pages - implemented

@@ -13,6 +13,8 @@ from job_radar.collectors.oracle_hcm import collect_oracle_hcm_jobs
 from job_radar.collectors.smartrecruiters import collect_smartrecruiters_jobs
 from job_radar.collectors.selectminds import collect_selectminds_jobs
 from job_radar.collectors.phenom import collect_phenom_jobs
+from job_radar.collectors.rippling import collect_rippling_jobs
+from job_radar.collectors.schoolspring import collect_schoolspring_jobs
 from job_radar.collectors.dayforce import collect_dayforce_jobs
 from job_radar.collectors.adp import collect_adp_jobs
 from job_radar.collectors.activate import collect_activate_jobs
@@ -61,6 +63,12 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
     
     if source_type == "phenom":
         return collect_phenom_jobs(company_config)
+
+    if source_type == "rippling":
+        return collect_rippling_jobs(company_config)
+
+    if source_type == "schoolspring":
+        return collect_schoolspring_jobs(company_config)
 
     if source_type == "dayforce":
         return collect_dayforce_jobs(company_config)
