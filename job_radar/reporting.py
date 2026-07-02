@@ -531,9 +531,14 @@ def _append_scored_sections(
     scored_postings: list[ScoredPosting],
     omitted_scored_postings: list[ScoredPosting] | None = None,
 ) -> None:
-    _append_top_matches_section(lines, scored_postings)
-    _append_northern_colorado_highlights_section(lines, scored_postings)
-    _append_review_needed_section(lines, scored_postings)
+    report_scored_postings = list(scored_postings)
+
+    if omitted_scored_postings is not None:
+        report_scored_postings.extend(omitted_scored_postings)
+
+    _append_top_matches_section(lines, report_scored_postings)
+    _append_northern_colorado_highlights_section(lines, report_scored_postings)
+    _append_review_needed_section(lines, report_scored_postings)
     _append_omitted_jobs_section(
         lines,
         scored_postings=(
@@ -627,14 +632,31 @@ def _append_review_needed_section(
         _append_scored_posting(lines, scored_posting)
 
 
+def _is_top_match_report_posting(scored_posting: ScoredPosting) -> bool:
+    return (
+        scored_posting.top_match_eligible
+        and _is_actionable_posting(scored_posting)
+        and _get_recommended_action(scored_posting) != "Track Status"
+    )
+
+
+def _is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
+    if not _is_actionable_posting(scored_posting):
+        return False
+
+    if _get_recommended_action(scored_posting) == "Track Status":
+        return True
+
+    return scored_posting.review_needed_eligible
+
+
 def _get_review_needed(
     scored_postings: list[ScoredPosting],
 ) -> list[ScoredPosting]:
     return [
         scored_posting
         for scored_posting in scored_postings
-        if scored_posting.review_needed_eligible
-        and _is_actionable_posting(scored_posting)
+        if _is_review_needed_report_posting(scored_posting)
     ]
 
 
@@ -715,11 +737,8 @@ def _get_omitted_postings(
     return [
         scored_posting
         for scored_posting in scored_postings
-        if (
-            not scored_posting.top_match_eligible
-            and not scored_posting.review_needed_eligible
-        )
-        or not _is_actionable_posting(scored_posting)
+        if not _is_top_match_report_posting(scored_posting)
+        and not _is_review_needed_report_posting(scored_posting)
     ]
 
 
@@ -1147,6 +1166,13 @@ def _format_html_decision_explanation(
 def _format_decision_explanation(
     scored_posting: ScoredPosting,
 ) -> tuple[str, str] | None:
+    if _get_recommended_action(scored_posting) == "Track Status":
+        return (
+            "Why it needs review",
+            "Prior application history matches this role, so track status "
+            "instead of treating it as a fresh apply target.",
+        )
+
     if scored_posting.top_match_eligible:
         if scored_posting.top_match_reasons:
             return (
@@ -1195,8 +1221,7 @@ def _get_top_matches(scored_postings: list[ScoredPosting]) -> list[ScoredPosting
     eligible_postings = [
         scored_posting
         for scored_posting in scored_postings
-        if scored_posting.top_match_eligible
-        and _is_actionable_posting(scored_posting)
+        if _is_top_match_report_posting(scored_posting)
     ]
 
     return eligible_postings

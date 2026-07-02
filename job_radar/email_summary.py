@@ -23,8 +23,9 @@ EMAIL_POSTINGS_LIMIT = 10
 
 def build_email_subject(report: ScanReport) -> str:
     report_date = _get_report_date(report.generated_at)
-    top_matches = _get_top_matches(report.scored_postings)
-    review_needed = _get_review_needed(report.scored_postings)
+    email_scored_postings = _get_email_summary_scored_postings(report)
+    top_matches = _get_top_matches(email_scored_postings)
+    review_needed = _get_review_needed(email_scored_postings)
 
     return (
         f"Job Radar Report - {report_date} - "
@@ -40,8 +41,9 @@ def build_email_body(
     report_path: str | Path,
     include_report_path: bool = True,
 ) -> str:
-    top_matches = _get_top_matches(report.scored_postings)
-    review_needed = _get_review_needed(report.scored_postings)
+    email_scored_postings = _get_email_summary_scored_postings(report)
+    top_matches = _get_top_matches(email_scored_postings)
+    review_needed = _get_review_needed(email_scored_postings)
 
     lines: list[str] = [
         f"Generated at: {_format_generated_at(report.generated_at)}",
@@ -257,6 +259,24 @@ def _is_email_actionable_posting(scored_posting: ScoredPosting) -> bool:
     return _get_recommended_action(scored_posting) not in {"Hold", "Pass"}
 
 
+def _is_email_top_match_posting(scored_posting: ScoredPosting) -> bool:
+    return (
+        scored_posting.top_match_eligible
+        and _is_email_actionable_posting(scored_posting)
+        and _get_recommended_action(scored_posting) != "Track Status"
+    )
+
+
+def _is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
+    if not _is_email_actionable_posting(scored_posting):
+        return False
+
+    if _get_recommended_action(scored_posting) == "Track Status":
+        return True
+
+    return scored_posting.review_needed_eligible
+
+
 def _get_top_matches(
     scored_postings: list[ScoredPosting] | None,
 ) -> list[ScoredPosting]:
@@ -266,8 +286,7 @@ def _get_top_matches(
     return [
         scored_posting
         for scored_posting in scored_postings
-        if scored_posting.top_match_eligible
-        and _is_email_actionable_posting(scored_posting)
+        if _is_email_top_match_posting(scored_posting)
     ][:EMAIL_POSTINGS_LIMIT]
 
 
@@ -280,8 +299,7 @@ def _get_review_needed(
     return [
         scored_posting
         for scored_posting in scored_postings
-        if scored_posting.review_needed_eligible
-        and _is_email_actionable_posting(scored_posting)
+        if _is_email_review_needed_posting(scored_posting)
     ][:EMAIL_POSTINGS_LIMIT]
 
 
@@ -375,6 +393,15 @@ def _get_top_match_reasons(scored_posting: ScoredPosting) -> list[str]:
 
 
 def _get_review_needed_reasons(scored_posting: ScoredPosting) -> list[str]:
+    if _get_recommended_action(scored_posting) == "Track Status":
+        return [
+            (
+                "Prior application history matches this role, so track status "
+                "instead of treating it as a fresh apply target."
+            ),
+            _format_email_work_arrangement_reason(scored_posting),
+        ]
+
     return [
         "Strong technical signals, but review before applying.",
         _format_email_work_arrangement_reason(scored_posting),

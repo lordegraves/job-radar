@@ -2152,12 +2152,14 @@ def test_recommendation_summary_counts_omitted_history_actions() -> None:
     markdown = render_markdown_report(report)
 
     assert "  - Track Status: 1" in markdown
+    assert "## Review Needed" in markdown
     assert "- Recommended action: Track Status" in markdown
     assert (
-        "- Why not recommended: Prior application history matches this role; "
-        "track status instead of treating it as a fresh apply target."
+        "- Why it needs review: Prior application history matches this role, "
+        "so track status instead of treating it as a fresh apply target."
         in markdown
     )
+    assert "- Why not recommended: Prior application history matches this role;" not in markdown
 
 
 def test_below_floor_compensation_blocks_recommendation() -> None:
