@@ -33,6 +33,18 @@ def evaluate_compensation(
                 max_usd=parsed_max,
             )
 
+        if (
+            parsed_min is not None
+            and parsed_max is not None
+            and parsed_min < compensation_floor_usd <= parsed_max
+        ):
+            return CompensationResult(
+                label="Partial range meets floor",
+                range_label=range_label,
+                min_usd=parsed_min,
+                max_usd=parsed_max,
+            )
+
     return CompensationResult(
         label="Meets floor",
         range_label=range_label,
