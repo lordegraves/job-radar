@@ -352,14 +352,14 @@ def _get_top_match_reasons(scored_posting: ScoredPosting) -> list[str]:
 
     return [
         "marked eligible by top-match scoring rules",
-        f"location status: {scored_posting.location_status or 'unknown'}",
+        f"work arrangement: {_format_email_work_arrangement(scored_posting)}",
     ]
 
 
 def _get_review_needed_reasons(scored_posting: ScoredPosting) -> list[str]:
     return [
         "marked eligible by review-needed scoring rules",
-        f"location status: {scored_posting.location_status or 'unknown'}",
+        f"work arrangement: {_format_email_work_arrangement(scored_posting)}",
     ]
 
 
@@ -530,6 +530,28 @@ def _format_optional_count(count: int | None) -> str:
         return "Unknown"
 
     return str(count)
+
+
+def _format_email_work_arrangement(scored_posting: ScoredPosting) -> str:
+    for reason in scored_posting.score_reasons:
+        if "location_" not in reason:
+            continue
+
+        if ":" not in reason:
+            continue
+
+        label = reason.split(":", maxsplit=1)[1].strip()
+
+        if label:
+            return label
+
+    if scored_posting.location_status in {"mixed", "conditional", "unknown"}:
+        return "needs confirmation"
+
+    if scored_posting.location_status == "skipped":
+        return "not location eligible"
+
+    return "unknown"
 
 
 def _format_value(value: str | None) -> str:

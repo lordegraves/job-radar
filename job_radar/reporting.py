@@ -122,7 +122,7 @@ def render_markdown_report(report: ScanReport) -> str:
     _append_source_type_summary(lines, report.postings)
 
     if report.scored_postings is not None:
-        _append_location_status_summary(lines, report.scored_postings)
+        _append_work_arrangement_summary(lines, report.scored_postings)
         _append_recommendation_summary(lines, report.scored_postings)
         _append_history_risk_summary(lines, report.scored_postings)
 
@@ -223,7 +223,7 @@ def render_html_report(report: ScanReport) -> str:
     )
 
     if report.scored_postings is not None:
-        _append_html_location_status_summary(lines, report.scored_postings)
+        _append_html_work_arrangement_summary(lines, report.scored_postings)
         _append_html_count_summary(
             lines=lines,
             heading="Recommendation summary",
@@ -314,37 +314,63 @@ def _append_source_type_summary(
         lines.append(f"  - {source_type}: {source_type_counts[source_type]}")
 
 
-def _append_location_status_summary(
+def _append_work_arrangement_summary(
     lines: list[str],
     scored_postings: list[ScoredPosting],
 ) -> None:
     if not scored_postings:
         return
 
-    status_counts: dict[str, int] = {}
+    work_arrangement_counts = _get_work_arrangement_summary_counts(scored_postings)
+
+    if not work_arrangement_counts:
+        return
+
+    lines.append("- Work arrangements:")
+
+    for work_arrangement in _get_ordered_work_arrangements(work_arrangement_counts):
+        lines.append(
+            f"  - {work_arrangement}: {work_arrangement_counts[work_arrangement]}"
+        )
+
+
+def _get_work_arrangement_summary_counts(
+    scored_postings: list[ScoredPosting],
+) -> dict[str, int]:
+    work_arrangement_counts: dict[str, int] = {}
 
     for scored_posting in scored_postings:
-        location_status = scored_posting.location_status or "unknown"
-        status_counts[location_status] = status_counts.get(location_status, 0) + 1
+        work_arrangement = _format_work_arrangement(scored_posting)
+        work_arrangement_counts[work_arrangement] = (
+            work_arrangement_counts.get(work_arrangement, 0) + 1
+        )
 
+    return work_arrangement_counts
+
+
+def _get_ordered_work_arrangements(
+    work_arrangement_counts: dict[str, int],
+) -> list[str]:
     preferred_order = [
-        "allowed",
-        "allowed_with_travel",
-        "mixed",
-        "conditional",
-        "skipped",
+        "remote",
+        "hybrid",
+        "onsite",
+        "needs confirmation",
+        "not location eligible",
         "unknown",
     ]
 
-    lines.append("- Location statuses:")
+    ordered_arrangements = [
+        work_arrangement
+        for work_arrangement in preferred_order
+        if work_arrangement in work_arrangement_counts
+    ]
 
-    for location_status in preferred_order:
-        if location_status in status_counts:
-            lines.append(f"  - {location_status}: {status_counts[location_status]}")
+    for work_arrangement in sorted(work_arrangement_counts):
+        if work_arrangement not in ordered_arrangements:
+            ordered_arrangements.append(work_arrangement)
 
-    for location_status in sorted(status_counts):
-        if location_status not in preferred_order:
-            lines.append(f"  - {location_status}: {status_counts[location_status]}")
+    return ordered_arrangements
 
 
 def _append_recommendation_summary(
@@ -700,7 +726,7 @@ def _append_top_matches_quick_view(
                 f"[{posting.title}]({posting.source_url})",
                 f"  - Company: {posting.company_name}",
                 f"  - Location: {location}",
-                f"  - Status: {scored_posting.location_status}",
+                f"  - Work arrangement: {_format_work_arrangement(scored_posting)}",
             ]
         )
 
@@ -752,7 +778,7 @@ def _append_scored_posting(
     lines.extend(
         [
             f"- Score reasons: {_format_score_reasons(scored_posting.score_reasons)}",
-            f"- Location status: {_format_location_status(scored_posting)}",
+            f"- Work arrangement: {_format_work_arrangement(scored_posting)}",
             f"- Company: {posting.company_name}",
             f"- Source: {posting.source_type}",
             f"- Location: {posting.location or 'Unknown'}",
@@ -813,14 +839,19 @@ def _format_history_risk(scored_posting: ScoredPosting) -> str:
     return f"{scored_posting.history_risk_level}: {', '.join(risk_reasons)}"
 
 
-def _format_location_status(scored_posting: ScoredPosting) -> str:
-    location_status = scored_posting.location_status or "unknown"
+def _format_work_arrangement(scored_posting: ScoredPosting) -> str:
     location_labels = _extract_location_reason_labels(scored_posting.score_reasons)
 
-    if not location_labels:
-        return location_status
+    if location_labels:
+        return ", ".join(location_labels)
 
-    return f"{location_status} ({', '.join(location_labels)})"
+    if scored_posting.location_status in {"mixed", "conditional", "unknown"}:
+        return "needs confirmation"
+
+    if scored_posting.location_status == "skipped":
+        return "not location eligible"
+
+    return "unknown"
 
 
 def _extract_location_reason_labels(score_reasons: list[str]) -> list[str]:
@@ -981,45 +1012,15 @@ def _append_html_count_summary(
     lines.append("</ul></li>")
 
 
-def _append_html_location_status_summary(
+def _append_html_work_arrangement_summary(
     lines: list[str],
     scored_postings: list[ScoredPosting],
 ) -> None:
-    if not scored_postings:
-        return
-
-    status_counts: dict[str, int] = {}
-
-    for scored_posting in scored_postings:
-        location_status = scored_posting.location_status or "unknown"
-        status_counts[location_status] = status_counts.get(location_status, 0) + 1
-
-    preferred_order = [
-        "allowed",
-        "allowed_with_travel",
-        "mixed",
-        "conditional",
-        "skipped",
-        "unknown",
-    ]
-
-    lines.append("<li><strong>Location statuses:</strong><ul>")
-
-    for location_status in preferred_order:
-        if location_status in status_counts:
-            lines.append(
-                f"<li>{escape(location_status)}: "
-                f"{status_counts[location_status]}</li>"
-            )
-
-    for location_status in sorted(status_counts):
-        if location_status not in preferred_order:
-            lines.append(
-                f"<li>{escape(location_status)}: "
-                f"{status_counts[location_status]}</li>"
-            )
-
-    lines.append("</ul></li>")
+    _append_html_count_summary(
+        lines=lines,
+        heading="Work arrangements",
+        counts=_get_work_arrangement_summary_counts(scored_postings),
+    )
 
 
 def _append_html_history_context_summary(
@@ -1100,7 +1101,8 @@ def _append_html_top_matches_section(
             f"{escape(posting.title)}</a>"
             f"<br>Company: {escape(posting.company_name)}"
             f"<br>Location: {escape(posting.location or 'Unknown')}"
-            f"<br>Status: {escape(scored_posting.location_status)}"
+            f"<br>Work arrangement: "
+            f"{escape(_format_work_arrangement(scored_posting))}"
             "</li>"
         )
 
@@ -1267,8 +1269,8 @@ def _append_html_scored_posting(
         [
             f"<li><strong>Score reasons:</strong> "
             f"{escape(_format_score_reasons(scored_posting.score_reasons))}</li>",
-            f"<li><strong>Location status:</strong> "
-            f"{escape(_format_location_status(scored_posting))}</li>",
+            f"<li><strong>Work arrangement:</strong> "
+            f"{escape(_format_work_arrangement(scored_posting))}</li>",
             f"<li><strong>Company:</strong> "
             f"{escape(posting.company_name)}</li>",
             f"<li><strong>Source:</strong> {escape(posting.source_type)}</li>",

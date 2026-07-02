@@ -367,7 +367,7 @@ def evaluate_top_match_eligibility(
 
     return True, [
         f"score {score} meets top-match threshold {min_score}",
-        f"location status is acceptable: {location_status}",
+        f"location fit is acceptable: {location_status}",
         f"strong signal matched: {strong_signal}",
     ]
 

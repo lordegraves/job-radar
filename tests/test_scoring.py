@@ -436,7 +436,7 @@ def test_evaluate_top_match_eligibility_returns_true_for_allowed_strong_match() 
     assert eligible is True
     assert reasons == [
         "score 140 meets top-match threshold 100",
-        "location status is acceptable: allowed",
+        "location fit is acceptable: allowed",
         "strong signal matched: title:infrastructure",
     ]
 
@@ -588,7 +588,7 @@ def test_evaluate_top_match_eligibility_allows_limited_travel() -> None:
     assert eligible is True
     assert reasons == [
         "score 140 meets top-match threshold 100",
-        "location status is acceptable: allowed_with_travel",
+        "location fit is acceptable: allowed_with_travel",
         "strong signal matched: title:infrastructure",
     ]
 
@@ -821,4 +821,3 @@ def test_real_config_data_center_alone_is_review_needed_not_top_match() -> None:
     assert top_match_eligible is False
     assert top_match_reasons == ["score_below_top_match_threshold:58<120"]
     assert review_needed_eligible is False
-    

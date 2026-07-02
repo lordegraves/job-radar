@@ -144,7 +144,7 @@ def test_write_markdown_report_writes_file(tmp_path: Path) -> None:
     assert "# Job Radar Report" in report_path.read_text(encoding="utf-8")
 
 
-def test_render_markdown_report_includes_score_reasons_and_location_status() -> None:
+def test_render_markdown_report_includes_score_reasons_and_work_arrangement() -> None:
     posting = make_posting(title="Senior Linux Infrastructure Engineer")
 
     report = ScanReport(
@@ -168,7 +168,7 @@ def test_render_markdown_report_includes_score_reasons_and_location_status() -> 
                 top_match_eligible=True,
                 top_match_reasons=[
                     "score 140 meets top-match threshold 1",
-                    "location status is acceptable: allowed",
+                    "location fit is acceptable: allowed",
                     "strong signal matched: title:linux",
                 ],
             )
@@ -183,7 +183,8 @@ def test_render_markdown_report_includes_score_reasons_and_location_status() -> 
         "+100 location_allowed:remote"
         in markdown
     )
-    assert "- Location status: allowed (remote)" in markdown
+    assert "- Work arrangement: remote" in markdown
+    assert "- Location status:" not in markdown
 
 
 def test_render_markdown_report_includes_match_quality_action_and_hiring_risks() -> None:
@@ -212,7 +213,7 @@ def test_render_markdown_report_includes_match_quality_action_and_hiring_risks()
                 top_match_eligible=True,
                 top_match_reasons=[
                     "score 200 meets top-match threshold 120",
-                    "location status is acceptable: allowed",
+                    "location fit is acceptable: allowed",
                     "strong signal matched: title:infrastructure",
                 ],
             )
@@ -256,7 +257,7 @@ def test_render_markdown_report_includes_history_context() -> None:
                 top_match_eligible=True,
                 top_match_reasons=[
                     "score 140 meets top-match threshold 1",
-                    "location status is acceptable: allowed",
+                    "location fit is acceptable: allowed",
                     "strong signal matched: title:linux",
                 ],
                 history_context=[
@@ -300,7 +301,7 @@ def test_render_markdown_report_uses_none_when_history_context_is_missing() -> N
                 top_match_eligible=True,
                 top_match_reasons=[
                     "score 140 meets top-match threshold 1",
-                    "location status is acceptable: allowed",
+                    "location fit is acceptable: allowed",
                     "strong signal matched: title:linux",
                 ],
             )
@@ -337,7 +338,7 @@ def test_render_markdown_report_flags_role_family_mismatch() -> None:
                 top_match_eligible=True,
                 top_match_reasons=[
                     "score 170 meets top-match threshold 120",
-                    "location status is acceptable: allowed",
+                    "location fit is acceptable: allowed",
                     "strong signal matched: body:linux",
                 ],
             )
@@ -377,7 +378,7 @@ def test_render_markdown_report_includes_top_matches_and_omitted_jobs_summary() 
                 top_match_eligible=True,
                 top_match_reasons=[
                     "score 100 meets top-match threshold 1",
-                    "location status is acceptable: allowed",
+                    "location fit is acceptable: allowed",
                     "strong signal matched: title:kubernetes",
                 ],
             ),
@@ -700,7 +701,7 @@ def test_render_markdown_report_includes_human_readable_match_summary() -> None:
                 top_match_eligible=True,
                 top_match_reasons=[
                     "score 158 meets top-match threshold 1",
-                    "location status is acceptable: allowed",
+                    "location fit is acceptable: allowed",
                     "strong signal matched: body:infrastructure",
                 ],
             )
@@ -750,10 +751,11 @@ def test_render_markdown_report_includes_location_reason_in_status() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "- Location status: allowed (fort collins)" in markdown
+    assert "- Work arrangement: fort collins" in markdown
+    assert "- Location status:" not in markdown
 
 
-def test_render_markdown_report_includes_location_status_summary() -> None:
+def test_render_markdown_report_includes_work_arrangement_summary() -> None:
     allowed_posting = make_posting(title="Senior Infrastructure Engineer")
     mixed_posting = make_posting(title="Senior Systems Engineer")
     unknown_posting = make_posting(title="Research Engineer")
@@ -799,10 +801,10 @@ def test_render_markdown_report_includes_location_status_summary() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "- Location statuses:" in markdown
-    assert "  - allowed: 1" in markdown
-    assert "  - mixed: 1" in markdown
-    assert "  - unknown: 1" in markdown
+    assert "- Work arrangements:" in markdown
+    assert "  - remote: 2" in markdown
+    assert "  - needs confirmation: 1" in markdown
+    assert "- Location statuses:" not in markdown
 
 
 def test_render_markdown_report_includes_history_risk_summary() -> None:
@@ -1208,7 +1210,7 @@ def test_render_html_report_includes_history_context() -> None:
                 top_match_eligible=True,
                 top_match_reasons=[
                     "score 140 meets top-match threshold 1",
-                    "location status is acceptable: allowed",
+                    "location fit is acceptable: allowed",
                     "strong signal matched: title:linux",
                 ],
                 history_context=[
@@ -1317,7 +1319,7 @@ def test_render_html_report_explains_top_match_and_review_needed_cards() -> None
                 top_match_eligible=True,
                 top_match_reasons=[
                     "score 140 meets top-match threshold 1",
-                    "location status is acceptable: allowed",
+                    "location fit is acceptable: allowed",
                     "strong signal matched: title:linux",
                 ],
             ),
@@ -1339,7 +1341,7 @@ def test_render_html_report_explains_top_match_and_review_needed_cards() -> None
 
     assert "<strong>Why it is a top match:</strong>" in html
     assert "score 140 meets top-match threshold 1" in html
-    assert "location status is acceptable: allowed" in html
+    assert "location fit is acceptable: allowed" in html
     assert "strong signal matched: title:linux" in html
 
     assert "<strong>Why it needs review:</strong>" in html
