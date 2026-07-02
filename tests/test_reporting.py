@@ -144,7 +144,7 @@ def test_write_markdown_report_writes_file(tmp_path: Path) -> None:
     assert "# Job Radar Report" in report_path.read_text(encoding="utf-8")
 
 
-def test_render_markdown_report_includes_score_reasons_and_work_arrangement() -> None:
+def test_render_markdown_report_includes_match_summary_and_work_arrangement() -> None:
     posting = make_posting(title="Senior Linux Infrastructure Engineer")
 
     report = ScanReport(
@@ -178,11 +178,8 @@ def test_render_markdown_report_includes_score_reasons_and_work_arrangement() ->
     markdown = render_markdown_report(report)
 
     assert "- Score: 140" in markdown
-    assert (
-        "- Score reasons: +30 title:linux, +10 body:infrastructure, "
-        "+100 location_allowed:remote"
-        in markdown
-    )
+    assert "- Why this matched: linux, infrastructure, remote" in markdown
+    assert "- Score reasons:" not in markdown
     assert "- Work arrangement: remote" in markdown
     assert "- Location status:" not in markdown
 
@@ -715,7 +712,7 @@ def test_render_markdown_report_includes_human_readable_match_summary() -> None:
         "systems, remote"
         in markdown
     )
-    assert "- Score reasons:" in markdown
+    assert "- Score reasons:" not in markdown
 
 
 def test_render_markdown_report_includes_location_reason_in_status() -> None:

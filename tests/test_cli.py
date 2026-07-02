@@ -312,9 +312,11 @@ top_matches:
     )
 
     assert "- Score: 40" in report_text
-    assert "+30 title:infrastructure" in report_text
-    assert "+10 body:linux" in report_text
-    assert "+0 location_allowed:remote" in report_text
+    assert "- Why this matched: infrastructure, linux, remote" in report_text
+    assert "- Score reasons:" not in report_text
+    assert "+30 title:infrastructure" not in report_text
+    assert "+10 body:linux" not in report_text
+    assert "+0 location_allowed:remote" not in report_text
     assert "- Work arrangement: remote" in report_text
     assert "- Location status:" not in report_text
 

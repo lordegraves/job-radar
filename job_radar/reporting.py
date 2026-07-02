@@ -11,7 +11,6 @@ from job_radar.recommendations import (
     _format_hiring_risk_flags,
     _format_resume_evidence,
     _format_resume_gaps,
-    _format_score_reasons,
     _get_action_rationale,
     _get_compensation_label,
     _get_compensation_range_label,
@@ -777,7 +776,6 @@ def _append_scored_posting(
 
     lines.extend(
         [
-            f"- Score reasons: {_format_score_reasons(scored_posting.score_reasons)}",
             f"- Work arrangement: {_format_work_arrangement(scored_posting)}",
             f"- Company: {posting.company_name}",
             f"- Source: {posting.source_type}",
@@ -1267,8 +1265,6 @@ def _append_html_scored_posting(
 
     lines.extend(
         [
-            f"<li><strong>Score reasons:</strong> "
-            f"{escape(_format_score_reasons(scored_posting.score_reasons))}</li>",
             f"<li><strong>Work arrangement:</strong> "
             f"{escape(_format_work_arrangement(scored_posting))}</li>",
             f"<li><strong>Company:</strong> "

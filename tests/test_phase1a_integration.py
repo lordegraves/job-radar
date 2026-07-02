@@ -146,9 +146,11 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     )
 
     assert "- Score: 40" in first_report
-    assert "+30 title:infrastructure" in first_report
-    assert "+10 body:linux" in first_report
-    assert "+0 location_allowed:remote" in first_report
+    assert "- Why this matched: infrastructure, linux, remote" in first_report
+    assert "- Score reasons:" not in first_report
+    assert "+30 title:infrastructure" not in first_report
+    assert "+10 body:linux" not in first_report
+    assert "+0 location_allowed:remote" not in first_report
     assert "- Work arrangement: remote" in first_report
     assert "- Location status:" not in first_report
 
@@ -183,8 +185,10 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     )
 
     assert "- Score: 40" in second_report
-    assert "+30 title:infrastructure" in second_report
-    assert "+10 body:linux" in second_report
-    assert "+0 location_allowed:remote" in second_report
+    assert "- Why this matched: infrastructure, linux, remote" in second_report
+    assert "- Score reasons:" not in second_report
+    assert "+30 title:infrastructure" not in second_report
+    assert "+10 body:linux" not in second_report
+    assert "+0 location_allowed:remote" not in second_report
     assert "- Work arrangement: remote" in second_report
     assert "- Location status:" not in second_report
