@@ -6,7 +6,8 @@ Set-Location "C:\dev\job-radar"
 
 python -m job_radar scan `
     --config config/target-companies.yaml `
-    --settings config/live-test-settings.yaml `
+    --settings config/local-gmail-settings.yaml `
     --scoring config/scoring.yaml `
     --report reports/target-scan.md `
-    --email-preview reports/target-email-preview.txt
+    --email-preview reports/target-email-preview.txt `
+    --send-email
