@@ -461,6 +461,7 @@ def _get_ordered_history_risk_levels(
     history_risk_counts: dict[str, int],
 ) -> list[str]:
     preferred_order = [
+        "track_status",
         "blocker_review",
         "caution",
         "neutral",
@@ -796,6 +797,9 @@ def _format_pass_reason(scored_posting: ScoredPosting) -> str:
             return "Risk flags make this a poor apply target."
 
         return "Score and match signals are too weak for this scan."
+
+    if recommended_action == "Previously Reviewed":
+        return "Already reviewed in prior history; revisit only if something changed."
 
     if recommended_action == "Hold":
         return "Not strong enough to act on now."

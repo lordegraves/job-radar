@@ -73,6 +73,7 @@ def summarize_history_risk(
         return None, []
 
     risk_priority = {
+        "track_status": 4,
         "blocker_review": 3,
         "caution": 2,
         "neutral": 1,
@@ -134,11 +135,15 @@ def find_history_matches(
 
 
 def _classify_history_risk(record: JobHistoryRecord) -> tuple[str, tuple[str, ...]]:
+    status = _clean_label(record.status)
     outcome = _clean_label(record.outcome_category)
     technical_match = _clean_label(record.technical_match)
     prior_signal = _clean_label(record.primary_blocker)
 
     reasons: list[str] = []
+
+    if _is_applied_status(status):
+        return "track_status", ("already_applied",)
 
     if outcome == "No Interview":
         if technical_match in {"Strong", "Very Strong"}:
@@ -162,6 +167,9 @@ def _classify_history_risk(record: JobHistoryRecord) -> tuple[str, tuple[str, ..
     if prior_signal != "Unknown":
         reasons.append(_format_prior_signal_risk_reason(prior_signal))
         return "caution", tuple(reasons)
+
+    if _is_rejected_status(status):
+        return "caution", ("prior_rejected",)
 
     return "neutral", ("prior_similar_role",)
 
@@ -197,6 +205,22 @@ def _format_history_match(match: HistoryMatch) -> str:
         )
 
     return f"Prior similar role at {record.company}; outcome: {outcome}"
+
+
+def _is_applied_status(value: str) -> bool:
+    normalized_value = value.lower()
+
+    return normalized_value == "applied" or normalized_value.startswith("applied ")
+
+
+def _is_rejected_status(value: str) -> bool:
+    normalized_value = value.lower()
+
+    return (
+        normalized_value == "rejected"
+        or normalized_value.startswith("rejected ")
+        or normalized_value.startswith("rejected -")
+    )
 
 
 def _is_prior_risk_signal(value: str) -> bool:

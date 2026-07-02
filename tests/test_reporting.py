@@ -2028,15 +2028,79 @@ def test_clean_apply_rationale_includes_history_caution_without_changing_action(
 
     markdown = render_markdown_report(report)
 
-    assert "- Recommended action: Apply" in markdown
+    assert "- Recommended action: Track Status" in markdown
     assert "- History risk: caution: prior_no_interview_despite_strong_match" in markdown
     assert (
-        "- Action rationale: Clean apply: very strong technical match, very "
-        "strong resume match, high hiring probability, and no hiring risks. "
-        "Use caution because prior similar applications did not convert "
-        "despite strong technical alignment."
+        "- Action rationale: Track status: prior application history matches "
+        "this role, so do not treat it as a fresh apply target. Check the prior "
+        "application, outcome, and whether the posting materially changed."
         in markdown
     )
+
+
+def test_blocker_review_history_marks_posting_as_previously_reviewed() -> None:
+    from job_radar.reporting import (
+        ScanReport,
+        ScoredPosting,
+        _get_recommended_action,
+        render_markdown_report,
+    )
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+    )
+
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        review_needed_eligible=False,
+        resume_match=ResumeMatchResult(
+            label="Very Strong",
+            evidence=["Linux", "HPC", "Infrastructure"],
+            gaps=[],
+        ),
+        history_context=[
+            (
+                "Previously reviewed and skipped similar role at Example AI; "
+                "prior blocker: Role Family Mismatch"
+            )
+        ],
+        history_risk_level="blocker_review",
+        history_risk_reasons=["prior_blocker:family_mismatch_role"],
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=0,
+        jobs_seen=1,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[scored_posting],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert _get_recommended_action(scored_posting) == "Previously Reviewed"
+    assert "- Recommended action: Previously Reviewed" in markdown
+    assert (
+        "- Why not recommended: Already reviewed in prior history; revisit only "
+        "if something changed."
+        in markdown
+    )
+    assert "## Top Matches\n\nNo top matches found." in markdown
+    assert "## Passed / Not Recommended" in markdown
 
 
 def test_below_floor_compensation_blocks_recommendation() -> None:

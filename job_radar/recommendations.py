@@ -56,6 +56,8 @@ _RECOMMENDATION_SUMMARY_ORDER = [
     "Apply + Recruiter Message",
     "Network First",
     "Tailor Resume",
+    "Track Status",
+    "Previously Reviewed",
     "Hold",
     "Pass",
 ]
@@ -218,6 +220,11 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
     if any(risk.startswith("profile avoid match: ") for risk in risks):
         return "Pass"
 
+    history_action = _get_history_recommended_action(scored_posting)
+
+    if history_action is not None:
+        return history_action
+
     if (
         technical_match in {"Very Strong", "Strong"}
         and "high competition employer" in risks
@@ -266,6 +273,28 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
         return "Hold"
 
     return "Pass"
+
+
+def _get_history_recommended_action(scored_posting: ScoredPosting) -> str | None:
+    history_reasons = set(scored_posting.history_risk_reasons or [])
+
+    if "already_applied" in history_reasons:
+        return "Track Status"
+
+    if (
+        "prior_no_interview_despite_strong_match" in history_reasons
+        or "prior_no_interview" in history_reasons
+        or "prior_rejected" in history_reasons
+    ):
+        return "Track Status"
+
+    if scored_posting.history_risk_level == "blocker_review":
+        return "Previously Reviewed"
+
+    if "prior_skipped_similar_role" in history_reasons:
+        return "Previously Reviewed"
+
+    return None
 
 
 def _format_risk_summary(risks: list[str]) -> str:
@@ -358,6 +387,19 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
             ),
         )
 
+    if recommended_action == "Track Status":
+        return (
+            "Track status: prior application history matches this role, so do not "
+            "treat it as a fresh apply target. Check the prior application, outcome, "
+            "and whether the posting materially changed."
+        )
+
+    if recommended_action == "Previously Reviewed":
+        return (
+            "Previously reviewed: similar role history already exists. Revisit only "
+            "if the scope, location, compensation, or posting details materially changed."
+        )
+
     if recommended_action == "Hold":
         return _append_history_rationale(
             scored_posting,
@@ -399,20 +441,22 @@ def _format_history_rationale_note(scored_posting: ScoredPosting) -> str | None:
     if scored_posting.history_risk_level == "blocker_review":
         return (
             "Review prior history before applying because a similar role had "
-            "a prior blocker."
+            "a prior history signal."
         )
 
     if scored_posting.history_risk_level == "caution":
         return (
-            "Use caution because prior similar applications did not convert "
-            "despite strong technical alignment."
+            "Use caution because prior similar application history adds risk."
         )
 
     return None
 
 
 def _is_actionable_posting(scored_posting: ScoredPosting) -> bool:
-    return _get_recommended_action(scored_posting) != "Pass"
+    return _get_recommended_action(scored_posting) not in {
+        "Pass",
+        "Previously Reviewed",
+    }
 
 
 def _format_hiring_risk_flags(scored_posting: ScoredPosting) -> str:

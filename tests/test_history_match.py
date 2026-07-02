@@ -29,8 +29,9 @@ def make_history_record(
     company: str = "Example AI",
     role: str = "Senior Infrastructure Engineer",
     history_type: str = "Pipeline",
-    outcome_category: str = "No Interview",
-    technical_match: str = "Strong",
+    status: str | None = "Rejected - No Interview",
+    outcome_category: str | None = "No Interview",
+    technical_match: str | None = "Very Strong",
     primary_blocker: str | None = None,
     include_in_job_radar: bool = True,
     import_key: str = "pipeline:example-ai:senior-infrastructure-engineer",
@@ -45,7 +46,7 @@ def make_history_record(
         location="Remote",
         comp_range="$160k-$200k",
         event_date="2026-06-01",
-        status="Rejected - No Interview",
+        status=status,
         outcome_category=outcome_category,
         recruiter_contact="Unknown",
         technical_match=technical_match,
@@ -156,6 +157,7 @@ def test_find_history_matches_marks_skipped_blocker_for_review() -> None:
 def test_find_history_matches_marks_prior_similar_role_as_neutral() -> None:
     posting = make_posting()
     record = make_history_record(
+        status="Reviewed",
         outcome_category="Reviewed",
         technical_match="Unknown",
         primary_blocker=None,
@@ -191,3 +193,49 @@ def test_summarize_history_risk_returns_highest_risk_and_unique_reasons() -> Non
         "prior_no_interview_despite_strong_match",
         "prior_blocker:kubernetes_production",
     ]
+
+
+def test_applied_history_record_tracks_status_instead_of_fresh_apply() -> None:
+    from job_radar.history_match import find_history_matches, summarize_history_risk
+    from job_radar.job_history import JobHistoryRecord
+    from job_radar.models import JobPosting
+
+    posting = JobPosting(
+        company_key="example_ai",
+        company_name="Example AI",
+        source_type="greenhouse",
+        source_url="https://example.com/jobs/123",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description="Build Linux infrastructure.",
+    )
+
+    record = JobHistoryRecord(
+        history_type="Pipeline",
+        company="Example AI",
+        role="Senior Infrastructure Engineer",
+        source="Greenhouse",
+        ats_platform="Greenhouse",
+        work_arrangement="Remote",
+        location="Remote",
+        comp_range="$160k-$200k",
+        event_date="2026-07-01",
+        status="Applied",
+        outcome_category=None,
+        recruiter_contact=None,
+        technical_match="Very Strong",
+        hiring_probability="Medium",
+        skills_signals="Linux, HPC, Infrastructure",
+        primary_blocker=None,
+        secondary_blocker=None,
+        revisit="Yes",
+        include_in_job_radar=True,
+        import_key="pipeline:example-ai:senior-infrastructure-engineer",
+        notes="Applied already.",
+    )
+
+    matches = find_history_matches(posting, [record])
+    risk_level, risk_reasons = summarize_history_risk(matches)
+
+    assert risk_level == "track_status"
+    assert risk_reasons == ["already_applied"]
