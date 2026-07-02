@@ -302,7 +302,7 @@ top_matches:
     assert "- Review-needed score threshold: 100" in report_text
 
     assert "## Top Matches" in report_text
-    assert "## Omitted Jobs" in report_text
+    assert "## Passed / Not Recommended" in report_text
     assert "## All Jobs" not in report_text
     assert (
         "### [Senior Infrastructure Engineer]"
@@ -316,7 +316,7 @@ top_matches:
     assert "+30 title:infrastructure" not in report_text
     assert "+10 body:linux" not in report_text
     assert "+0 location_allowed:remote" not in report_text
-    assert "- Work arrangement: remote" in report_text
+    assert "- Work location fit: remote" in report_text
     assert "- Location status:" not in report_text
 
     assert "- Company: Example AI" in report_text

@@ -180,7 +180,7 @@ def test_render_markdown_report_includes_match_summary_and_work_arrangement() ->
     assert "- Score: 140" in markdown
     assert "- Why this matched: linux, infrastructure, remote" in markdown
     assert "- Score reasons:" not in markdown
-    assert "- Work arrangement: remote" in markdown
+    assert "- Work location fit: remote" in markdown
     assert "- Location status:" not in markdown
 
 
@@ -346,8 +346,8 @@ def test_render_markdown_report_flags_role_family_mismatch() -> None:
 
     assert "### [Engineering Manager - Product & Platform Delivery]" not in markdown
     assert (
-        "1 scored jobs were omitted because they did not qualify as actionable "
-        "Top Match or Review Needed roles."
+        "1 scored jobs were not recommended for apply/review based on fit, "
+        "location, compensation, or hiring-risk signals."
         in markdown
     )
 
@@ -391,18 +391,23 @@ def test_render_markdown_report_includes_top_matches_and_omitted_jobs_summary() 
     markdown = render_markdown_report(report)
 
     assert "## Top Matches" in markdown
-    assert "## Omitted Jobs" in markdown
+    assert "## Passed / Not Recommended" in markdown
     assert "## All Jobs" not in markdown
-    assert markdown.index("## Top Matches") < markdown.index("## Omitted Jobs")
+    assert markdown.index("## Top Matches") < markdown.index(
+        "## Passed / Not Recommended"
+    )
+    top_matches_section = markdown.split("## Northern Colorado Highlights")[0]
+
     assert (
         "### [Senior Kubernetes Platform Engineer]"
         "(https://boards.greenhouse.io/exampleai/jobs/123)"
-        in markdown
+        in top_matches_section
     )
-    assert "### [Account Executive]" not in markdown
+    assert "### [Account Executive]" not in top_matches_section
+    assert "#### [Account Executive]" in markdown
     assert (
-        "1 scored jobs were omitted because they did not qualify as actionable "
-        "Top Match or Review Needed roles."
+        "1 scored jobs were not recommended for apply/review based on fit, "
+        "location, compensation, or hiring-risk signals."
         in markdown
     )
 
@@ -487,12 +492,45 @@ def test_render_markdown_report_includes_omitted_reason_summary() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "## Omitted Jobs" in markdown
-    assert "- Omitted reason summary:" in markdown
-    assert "  - pass: below compensation floor: 1" in markdown
-    assert "  - pass: role family mismatch: 1" in markdown
-    assert "  - hold: low hiring probability: 1" in markdown
-    assert "  - not top/review eligible: Apply + Recruiter Message: 1" in markdown
+    assert "## Passed / Not Recommended" in markdown
+    assert "- Pass reason summary:" in markdown
+    assert "  - Below compensation floor: 1" in markdown
+    assert "  - Role family mismatch: 1" in markdown
+    assert "  - Low hiring probability: 1" in markdown
+    assert "  - Below Top Match / Review Needed threshold: 1" in markdown
+
+
+def test_render_markdown_report_includes_passed_job_details() -> None:
+    passed_posting = make_posting(title="Account Executive")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[passed_posting],
+        scored_postings=[],
+        omitted_scored_postings=[
+            ScoredPosting(
+                posting=passed_posting,
+                score=-60,
+                score_reasons=["-60 title:account executive"],
+                location_status="allowed",
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "## Passed / Not Recommended" in markdown
+    assert "#### [Account Executive]" in markdown
+    assert "- Company: Example AI" in markdown
+    assert "- Score: -60" in markdown
+    assert "- Recommended action: Pass" in markdown
+    assert "- Why not recommended:" in markdown
+    assert "- URL: https://boards.greenhouse.io/exampleai/jobs/123" in markdown
 
 
 def test_top_matches_only_includes_allowed_locations_without_negative_title_matches() -> None:
@@ -548,9 +586,16 @@ def test_top_matches_only_includes_allowed_locations_without_negative_title_matc
     assert "### [Senior Kubernetes Engineer]" not in top_matches_section
     assert "### [Recruiting Coordinator]" not in top_matches_section
 
-    assert "### [Senior Kubernetes Engineer]" not in markdown
-    assert "### [Recruiting Coordinator]" not in markdown
-    assert "## Omitted Jobs" in markdown
+    review_needed_section = markdown.split("## Review Needed")[1].split(
+        "## Passed / Not Recommended"
+    )[0]
+    passed_section = markdown.split("## Passed / Not Recommended")[1]
+
+    assert "### [Senior Kubernetes Engineer]" not in review_needed_section
+    assert "### [Recruiting Coordinator]" not in review_needed_section
+    assert "#### [Senior Kubernetes Engineer]" in passed_section
+    assert "#### [Recruiting Coordinator]" in passed_section
+    assert "## Passed / Not Recommended" in markdown
 
 def test_top_matches_excludes_business_roles_even_when_location_is_allowed() -> None:
     technical_posting = make_posting(title="Senior Infrastructure Engineer")
@@ -621,10 +666,18 @@ def test_top_matches_excludes_business_roles_even_when_location_is_allowed() -> 
     assert "### [Staff Software Engineer, People Products]" not in top_matches_section
     assert "### [Data Center Strategic Sourcing Lead]" not in top_matches_section
 
-    assert "### [Head of FX & Risk]" not in markdown
-    assert "### [Staff Software Engineer, People Products]" not in markdown
-    assert "### [Data Center Strategic Sourcing Lead]" not in markdown
-    assert "## Omitted Jobs" in markdown
+    review_needed_section = markdown.split("## Review Needed")[1].split(
+        "## Passed / Not Recommended"
+    )[0]
+    passed_section = markdown.split("## Passed / Not Recommended")[1]
+
+    assert "### [Head of FX & Risk]" not in review_needed_section
+    assert "### [Staff Software Engineer, People Products]" not in review_needed_section
+    assert "### [Data Center Strategic Sourcing Lead]" not in review_needed_section
+    assert "#### [Head of FX & Risk]" in passed_section
+    assert "#### [Staff Software Engineer, People Products]" in passed_section
+    assert "#### [Data Center Strategic Sourcing Lead]" in passed_section
+    assert "## Passed / Not Recommended" in markdown
 
 def test_top_matches_requires_strong_technical_signal() -> None:
     weak_posting = make_posting(title="Research Operations, External Artifacts")
@@ -665,10 +718,12 @@ def test_top_matches_requires_strong_technical_signal() -> None:
     markdown = render_markdown_report(report)
     top_matches_section = markdown.split("## Review Needed")[0]
 
+    passed_section = markdown.split("## Passed / Not Recommended")[1]
+
     assert "### [Senior Kubernetes Platform Engineer]" in top_matches_section
     assert "### [Research Operations, External Artifacts]" not in top_matches_section
-    assert "### [Research Operations, External Artifacts]" not in markdown
-    assert "## Omitted Jobs" in markdown
+    assert "#### [Research Operations, External Artifacts]" in passed_section
+    assert "## Passed / Not Recommended" in markdown
 
 
 def test_render_markdown_report_includes_human_readable_match_summary() -> None:
@@ -748,7 +803,7 @@ def test_render_markdown_report_includes_location_reason_in_status() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "- Work arrangement: fort collins" in markdown
+    assert "- Work location fit: fort collins" in markdown
     assert "- Location status:" not in markdown
 
 
@@ -798,9 +853,9 @@ def test_render_markdown_report_includes_work_arrangement_summary() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "- Work arrangements:" in markdown
-    assert "  - remote: 2" in markdown
-    assert "  - needs confirmation: 1" in markdown
+    assert "- Work location fit:" in markdown
+    assert "  - Remote-friendly: 2" in markdown
+    assert "  - Needs location confirmation: 1" in markdown
     assert "- Location statuses:" not in markdown
 
 
@@ -1007,13 +1062,13 @@ def test_render_markdown_report_includes_review_needed_section() -> None:
 
     assert "## Top Matches" in markdown
     assert "## Review Needed" in markdown
-    assert "## Omitted Jobs" in markdown
+    assert "## Passed / Not Recommended" in markdown
     assert "## All Jobs" not in markdown
 
     assert markdown.index("## Top Matches") < markdown.index("## Review Needed")
-    assert markdown.index("## Review Needed") < markdown.index("## Omitted Jobs")
+    assert markdown.index("## Review Needed") < markdown.index("## Passed / Not Recommended")
 
-    review_needed_section = markdown.split("## Review Needed")[1].split("## Omitted Jobs")[0]
+    review_needed_section = markdown.split("## Review Needed")[1].split("## Passed / Not Recommended")[0]
 
     assert "### [Senior Systems Engineer]" in review_needed_section
     assert "### [Senior Linux Engineer]" in review_needed_section
@@ -1150,7 +1205,7 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
         "Data Center Design Execution Lead</a>"
         in html
     )
-    assert "<h2>Omitted Jobs</h2>" in html
+    assert "<h2>Passed / Not Recommended</h2>" in html
 
     assert "<style>" in html
     assert 'class="summary"' in html
@@ -1159,6 +1214,38 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     assert "<strong>Posting:</strong>" in html
     assert "View posting</a>" in html
     assert "<strong>URL:</strong>" not in html
+
+
+def test_render_html_report_includes_passed_job_details() -> None:
+    passed_posting = make_posting(title="Account Executive")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[passed_posting],
+        scored_postings=[],
+        omitted_scored_postings=[
+            ScoredPosting(
+                posting=passed_posting,
+                score=-60,
+                score_reasons=["-60 title:account executive"],
+                location_status="allowed",
+            ),
+        ],
+    )
+
+    html = render_html_report(report)
+
+    assert "<h2>Passed / Not Recommended</h2>" in html
+    assert "Account Executive" in html
+    assert "<strong>Score:</strong> -60" in html
+    assert "<strong>Recommended action:</strong> Pass" in html
+    assert "<strong>Why not recommended:</strong>" in html
+    assert "View posting</a>" in html
 
 
 def test_render_html_report_escapes_html_special_characters() -> None:
@@ -1435,10 +1522,15 @@ def test_render_markdown_report_flags_remote_region_mismatch() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "### [Forward Deployed Engineer APAC]" not in markdown
+    passed_section = markdown.split("## Passed / Not Recommended")[1]
+
+    assert "### [Forward Deployed Engineer APAC]" not in markdown.split(
+        "## Passed / Not Recommended"
+    )[0]
+    assert "#### [Forward Deployed Engineer APAC]" in passed_section
     assert (
-        "1 scored jobs were omitted because they did not qualify as actionable "
-        "Top Match or Review Needed roles."
+        "1 scored jobs were not recommended for apply/review based on fit, "
+        "location, compensation, or hiring-risk signals."
         in markdown
     )
 
@@ -1474,13 +1566,17 @@ def test_render_markdown_report_flags_management_delivery_roles() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "### [Engineering Manager - Product & Platform Delivery]" not in markdown
+    passed_section = markdown.split("## Passed / Not Recommended")[1]
+
+    assert "### [Engineering Manager - Product & Platform Delivery]" not in markdown.split(
+        "## Passed / Not Recommended"
+    )[0]
+    assert "#### [Engineering Manager - Product & Platform Delivery]" in passed_section
     assert (
-        "1 scored jobs were omitted because they did not qualify as actionable "
-        "Top Match or Review Needed roles."
+        "1 scored jobs were not recommended for apply/review based on fit, "
+        "location, compensation, or hiring-risk signals."
         in markdown
     )
-    
 
 def test_render_markdown_report_filters_business_and_strategy_false_positives() -> None:
     false_positive_titles = [
@@ -1528,12 +1624,17 @@ def test_render_markdown_report_filters_business_and_strategy_false_positives() 
 
     markdown = render_markdown_report(report)
 
+    passed_section = markdown.split("## Passed / Not Recommended")[1]
+    report_before_passed_section = markdown.split("## Passed / Not Recommended")[0]
+
     for title in false_positive_titles:
-        assert f"### [{title}]" not in markdown
+        assert f"### [{title}]" not in report_before_passed_section
+        assert f"#### [{title}]" in passed_section
 
     assert (
-        f"{len(false_positive_titles)} scored jobs were omitted because they did not "
-        "qualify as actionable Top Match or Review Needed roles."
+        f"{len(false_positive_titles)} scored jobs were not recommended for "
+        "apply/review based on fit, location, compensation, or hiring-risk "
+        "signals."
         in markdown
     )
 

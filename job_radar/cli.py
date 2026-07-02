@@ -366,6 +366,17 @@ def handle_scan(
         if scored_posting.top_match_eligible or scored_posting.review_needed_eligible
     ]
 
+    relevant_source_urls = {
+        scored_posting.posting.source_url
+        for scored_posting in relevant_scored_postings
+    }
+
+    omitted_scored_postings = [
+        scored_posting
+        for scored_posting in scored_postings
+        if scored_posting.posting.source_url not in relevant_source_urls
+    ]
+
     jobs_stored = 0
     jobs_omitted = total_jobs - len(relevant_scored_postings)
 
@@ -389,6 +400,7 @@ def handle_scan(
         collector_errors=collector_errors,
         postings=collected_postings,
         scored_postings=relevant_scored_postings,
+        omitted_scored_postings=omitted_scored_postings,
         generated_at=datetime.now(UTC).isoformat(),
         top_match_min_score=scoring_config["top_matches"]["min_score"],
         review_needed_min_score=scoring_config["review_needed"]["min_score"],

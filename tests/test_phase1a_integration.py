@@ -137,7 +137,7 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "- Actionable jobs stored: 1" in first_report
     assert "- Jobs not actionable: 0" in first_report
     assert "## Top Matches" in first_report
-    assert "## Omitted Jobs" in first_report
+    assert "## Passed / Not Recommended" in first_report
     assert "## All Jobs" not in first_report
     assert (
         "### [Senior Infrastructure Engineer]"
@@ -151,7 +151,7 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "+30 title:infrastructure" not in first_report
     assert "+10 body:linux" not in first_report
     assert "+0 location_allowed:remote" not in first_report
-    assert "- Work arrangement: remote" in first_report
+    assert "- Work location fit: remote" in first_report
     assert "- Location status:" not in first_report
 
     handle_scan(
@@ -175,7 +175,7 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "- Actionable jobs stored: 1" in second_report
     assert "- Jobs not actionable: 0" in second_report
     assert "## Top Matches" in second_report
-    assert "## Omitted Jobs" in second_report
+    assert "## Passed / Not Recommended" in second_report
     assert "## All Jobs" not in second_report
     assert (
         "### [Senior Infrastructure Engineer]"
@@ -189,5 +189,5 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "+30 title:infrastructure" not in second_report
     assert "+10 body:linux" not in second_report
     assert "+0 location_allowed:remote" not in second_report
-    assert "- Work arrangement: remote" in second_report
+    assert "- Work location fit: remote" in second_report
     assert "- Location status:" not in second_report

@@ -26,6 +26,7 @@ from job_radar.recommendations import (
 
 TOP_MATCHES_QUICK_VIEW_LIMIT = 10
 NORTHERN_COLORADO_HIGHLIGHTS_LIMIT = 10
+PASSED_JOBS_REPORT_LIMIT = 25
 NORTHERN_COLORADO_LOCATION_KEYWORDS = (
     "fort collins",
     "loveland",
@@ -73,6 +74,7 @@ class ScanReport:
     collector_errors: list[ScanError]
     postings: list[JobPosting]
     scored_postings: list[ScoredPosting] | None = None
+    omitted_scored_postings: list[ScoredPosting] | None = None
     generated_at: str | None = None
     top_match_min_score: int | None = None
     review_needed_min_score: int | None = None
@@ -133,7 +135,11 @@ def render_markdown_report(report: ScanReport) -> str:
         _append_collector_errors(lines, report.collector_errors)
 
     if report.scored_postings is not None:
-        _append_scored_sections(lines, report.scored_postings)
+        _append_scored_sections(
+            lines,
+            scored_postings=report.scored_postings,
+            omitted_scored_postings=report.omitted_scored_postings,
+        )
     else:
         _append_unscored_jobs_section(lines, report.postings)
 
@@ -248,7 +254,11 @@ def render_html_report(report: ScanReport) -> str:
         _append_html_collector_errors(lines, report.collector_errors)
 
     if report.scored_postings is not None:
-        _append_html_scored_sections(lines, report.scored_postings)
+        _append_html_scored_sections(
+            lines,
+            scored_postings=report.scored_postings,
+            omitted_scored_postings=report.omitted_scored_postings,
+        )
     else:
         _append_html_unscored_jobs_section(lines, report.postings)
 
@@ -331,11 +341,12 @@ def _append_work_arrangement_summary(
     if not work_arrangement_counts:
         return
 
-    lines.append("- Work arrangements:")
+    lines.append("- Work location fit:")
 
     for work_arrangement in _get_ordered_work_arrangements(work_arrangement_counts):
         lines.append(
-            f"  - {work_arrangement}: {work_arrangement_counts[work_arrangement]}"
+            f"  - {_format_work_arrangement_summary_label(work_arrangement)}: "
+            f"{work_arrangement_counts[work_arrangement]}"
         )
 
 
@@ -351,6 +362,28 @@ def _get_work_arrangement_summary_counts(
         )
 
     return work_arrangement_counts
+
+
+def _format_work_arrangement_summary_label(work_arrangement: str) -> str:
+    if work_arrangement == "remote":
+        return "Remote-friendly"
+
+    if work_arrangement == "hybrid":
+        return "Hybrid"
+
+    if work_arrangement == "onsite":
+        return "Onsite"
+
+    if work_arrangement == "needs confirmation":
+        return "Needs location confirmation"
+
+    if work_arrangement == "not location eligible":
+        return "Not location eligible"
+
+    if work_arrangement == "unknown":
+        return "Unknown location fit"
+
+    return work_arrangement
 
 
 def _get_ordered_work_arrangements(
@@ -484,11 +517,19 @@ def _append_collector_errors(
 def _append_scored_sections(
     lines: list[str],
     scored_postings: list[ScoredPosting],
+    omitted_scored_postings: list[ScoredPosting] | None = None,
 ) -> None:
     _append_top_matches_section(lines, scored_postings)
     _append_northern_colorado_highlights_section(lines, scored_postings)
     _append_review_needed_section(lines, scored_postings)
-    _append_omitted_jobs_section(lines, scored_postings)
+    _append_omitted_jobs_section(
+        lines,
+        scored_postings=(
+            omitted_scored_postings
+            if omitted_scored_postings is not None
+            else scored_postings
+        ),
+    )
 
 
 def _append_top_matches_section(
@@ -593,7 +634,7 @@ def _append_omitted_jobs_section(
 
     lines.extend(
         [
-            "## Omitted Jobs",
+            "## Passed / Not Recommended",
             "",
         ]
     )
@@ -601,7 +642,7 @@ def _append_omitted_jobs_section(
     if not omitted_postings:
         lines.extend(
             [
-                "No scored jobs were omitted from the detailed report.",
+                "No passed jobs to show.",
                 "",
             ]
         )
@@ -610,8 +651,9 @@ def _append_omitted_jobs_section(
     lines.extend(
         [
             (
-                f"{len(omitted_postings)} scored jobs were omitted because they "
-                "did not qualify as actionable Top Match or Review Needed roles."
+                f"{len(omitted_postings)} scored jobs were not recommended for "
+                "apply/review based on fit, location, compensation, or hiring-risk "
+                "signals."
             ),
             "",
         ]
@@ -619,19 +661,34 @@ def _append_omitted_jobs_section(
 
     omitted_reason_counts = _get_omitted_reason_summary_counts(omitted_postings)
 
-    if not omitted_reason_counts:
-        return
+    if omitted_reason_counts:
+        lines.append("- Pass reason summary:")
+
+        for reason in sorted(omitted_reason_counts):
+            lines.append(f"  - {reason}: {omitted_reason_counts[reason]}")
+
+        lines.append("")
 
     lines.extend(
         [
-            "- Omitted reason summary:",
+            f"### Passed jobs, up to {PASSED_JOBS_REPORT_LIMIT}",
+            "",
         ]
     )
 
-    for reason in sorted(omitted_reason_counts):
-        lines.append(f"  - {reason}: {omitted_reason_counts[reason]}")
+    for scored_posting in omitted_postings[:PASSED_JOBS_REPORT_LIMIT]:
+        _append_passed_posting(lines, scored_posting)
 
-    lines.append("")
+    if len(omitted_postings) > PASSED_JOBS_REPORT_LIMIT:
+        lines.extend(
+            [
+                (
+                    f"{len(omitted_postings) - PASSED_JOBS_REPORT_LIMIT} additional "
+                    "passed jobs were hidden from this report to keep the file readable."
+                ),
+                "",
+            ]
+        )
 
 
 def _get_omitted_postings(
@@ -648,6 +705,71 @@ def _get_omitted_postings(
     ]
 
 
+def _format_pass_reason(scored_posting: ScoredPosting) -> str:
+    recommended_action = _get_recommended_action(scored_posting)
+    risks = _get_hiring_risk_flags(scored_posting)
+
+    if recommended_action == "Pass":
+        if "below compensation floor" in risks:
+            return "Compensation appears below your current floor."
+
+        if "role family mismatch" in risks:
+            return "Role family does not match your target infrastructure/SRE profile."
+
+        if "not location eligible" in risks:
+            return "Location does not fit your remote/Northern Colorado preferences."
+
+        if "software-heavy translation risk" in risks:
+            return "Role appears too software-heavy for the current target profile."
+
+        if "security-domain translation risk" in risks:
+            return "Role leans too far into security-domain work."
+
+        if risks:
+            return "Risk flags make this a poor apply target."
+
+        return "Score and match signals are too weak for this scan."
+
+    if recommended_action == "Hold":
+        return "Not strong enough to act on now."
+
+    if (
+        not scored_posting.top_match_eligible
+        and not scored_posting.review_needed_eligible
+    ):
+        return "Did not meet the Top Match or Review Needed thresholds."
+
+    return "Not actionable enough for the detailed apply/review sections."
+
+
+def _format_pass_summary_reason(risk: str) -> str:
+    if risk == "below compensation floor":
+        return "Below compensation floor"
+
+    if risk == "role family mismatch":
+        return "Role family mismatch"
+
+    if risk == "not location eligible":
+        return "Not location eligible"
+
+    if risk == "software-heavy translation risk":
+        return "Software-heavy mismatch"
+
+    if risk == "security-domain translation risk":
+        return "Security-domain mismatch"
+
+    if risk == "production Kubernetes translation risk":
+        return "Kubernetes translation risk"
+
+    if risk == "high competition employer":
+        return "High-competition employer"
+
+    if risk == "generic remote competition":
+        return "Generic remote competition"
+
+    return risk
+
+
 def _get_omitted_reason_summary_counts(
     scored_postings: list[ScoredPosting],
 ) -> dict[str, int]:
@@ -661,29 +783,51 @@ def _get_omitted_reason_summary_counts(
 
             if risks:
                 for risk in risks:
-                    reason = f"pass: {risk}"
+                    reason = _format_pass_summary_reason(risk)
                     omitted_reason_counts[reason] = (
                         omitted_reason_counts.get(reason, 0) + 1
                     )
                 continue
 
-            reason = "pass: weak fit"
+            reason = "Weak fit"
 
         elif recommended_action == "Hold":
-            reason = "hold: low hiring probability"
+            reason = "Low hiring probability"
 
         elif (
             not scored_posting.top_match_eligible
             and not scored_posting.review_needed_eligible
         ):
-            reason = f"not top/review eligible: {recommended_action}"
+            reason = "Below Top Match / Review Needed threshold"
 
         else:
-            reason = f"omitted: {recommended_action}"
+            reason = f"Not actionable: {recommended_action}"
 
         omitted_reason_counts[reason] = omitted_reason_counts.get(reason, 0) + 1
 
     return omitted_reason_counts
+
+
+def _append_passed_posting(
+    lines: list[str],
+    scored_posting: ScoredPosting,
+) -> None:
+    posting = scored_posting.posting
+
+    lines.extend(
+        [
+            f"#### [{posting.title}]({posting.source_url})",
+            "",
+            f"- Company: {posting.company_name}",
+            f"- Score: {scored_posting.score}",
+            f"- Location: {posting.location or 'Unknown'}",
+            f"- Recommended action: {_get_recommended_action(scored_posting)}",
+            f"- Why not recommended: {_format_pass_reason(scored_posting)}",
+            f"- Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
+            f"- URL: {posting.source_url}",
+            "",
+        ]
+    )
 
 
 def _append_unscored_jobs_section(
@@ -731,7 +875,7 @@ def _append_top_matches_quick_view(
                 f"[{posting.title}]({posting.source_url})",
                 f"  - Company: {posting.company_name}",
                 f"  - Location: {location}",
-                f"  - Work arrangement: {_format_work_arrangement(scored_posting)}",
+                f"  - Work location fit: {_format_work_arrangement(scored_posting)}",
             ]
         )
 
@@ -782,7 +926,7 @@ def _append_scored_posting(
 
     lines.extend(
         [
-            f"- Work arrangement: {_format_work_arrangement(scored_posting)}",
+            f"- Work location fit: {_format_work_arrangement(scored_posting)}",
             f"- Company: {posting.company_name}",
             f"- Source: {posting.source_type}",
             f"- Location: {posting.location or 'Unknown'}",
@@ -1011,7 +1155,12 @@ def _append_html_count_summary(
     lines.append(f"<li><strong>{escape(heading)}:</strong><ul>")
 
     for label in sorted(counts):
-        lines.append(f"<li>{escape(label)}: {counts[label]}</li>")
+        display_label = label
+
+        if heading == "Work location fit":
+            display_label = _format_work_arrangement_summary_label(label)
+
+        lines.append(f"<li>{escape(display_label)}: {counts[label]}</li>")
 
     lines.append("</ul></li>")
 
@@ -1022,7 +1171,7 @@ def _append_html_work_arrangement_summary(
 ) -> None:
     _append_html_count_summary(
         lines=lines,
-        heading="Work arrangements",
+        heading="Work location fit",
         counts=_get_work_arrangement_summary_counts(scored_postings),
     )
 
@@ -1068,11 +1217,19 @@ def _append_html_collector_errors(
 def _append_html_scored_sections(
     lines: list[str],
     scored_postings: list[ScoredPosting],
+    omitted_scored_postings: list[ScoredPosting] | None = None,
 ) -> None:
     _append_html_top_matches_section(lines, scored_postings)
     _append_html_northern_colorado_highlights_section(lines, scored_postings)
     _append_html_review_needed_section(lines, scored_postings)
-    _append_html_omitted_jobs_section(lines, scored_postings)
+    _append_html_omitted_jobs_section(
+        lines,
+        scored_postings=(
+            omitted_scored_postings
+            if omitted_scored_postings is not None
+            else scored_postings
+        ),
+    )
 
 
 def _append_html_top_matches_section(
@@ -1105,7 +1262,7 @@ def _append_html_top_matches_section(
             f"{escape(posting.title)}</a>"
             f"<br>Company: {escape(posting.company_name)}"
             f"<br>Location: {escape(posting.location or 'Unknown')}"
-            f"<br>Work arrangement: "
+            f"<br>Work location fit: "
             f"{escape(_format_work_arrangement(scored_posting))}"
             "</li>"
         )
@@ -1154,31 +1311,76 @@ def _append_html_omitted_jobs_section(
 ) -> None:
     omitted_postings = _get_omitted_postings(scored_postings)
 
-    lines.append("<h2>Omitted Jobs</h2>")
+    lines.append("<h2>Passed / Not Recommended</h2>")
 
     if not omitted_postings:
-        lines.append("<p>No scored jobs were omitted from the detailed report.</p>")
+        lines.append("<p>No passed jobs to show.</p>")
         return
 
     lines.append(
         "<p>"
-        f"{len(omitted_postings)} scored jobs were omitted because they did not "
-        "qualify as actionable Top Match or Review Needed roles."
+        f"{len(omitted_postings)} scored jobs were not recommended for "
+        "apply/review based on fit, location, compensation, or hiring-risk "
+        "signals."
         "</p>"
     )
 
     omitted_reason_counts = _get_omitted_reason_summary_counts(omitted_postings)
 
-    if not omitted_reason_counts:
-        return
+    if omitted_reason_counts:
+        lines.append("<p><strong>Pass reason summary:</strong></p>")
+        lines.append("<ul>")
 
-    lines.append("<p><strong>Omitted reason summary:</strong></p>")
-    lines.append("<ul>")
+        for reason in sorted(omitted_reason_counts):
+            lines.append(
+                f"<li>{escape(reason)}: {omitted_reason_counts[reason]}</li>"
+            )
 
-    for reason in sorted(omitted_reason_counts):
-        lines.append(f"<li>{escape(reason)}: {omitted_reason_counts[reason]}</li>")
+        lines.append("</ul>")
 
-    lines.append("</ul>")
+    lines.append(f"<h3>Passed jobs, up to {PASSED_JOBS_REPORT_LIMIT}</h3>")
+
+    for scored_posting in omitted_postings[:PASSED_JOBS_REPORT_LIMIT]:
+        _append_html_passed_posting(lines, scored_posting)
+
+    if len(omitted_postings) > PASSED_JOBS_REPORT_LIMIT:
+        lines.append(
+            "<p>"
+            f"{len(omitted_postings) - PASSED_JOBS_REPORT_LIMIT} additional "
+            "passed jobs were hidden from this report to keep the file readable."
+            "</p>"
+        )
+
+
+def _append_html_passed_posting(
+    lines: list[str],
+    scored_posting: ScoredPosting,
+) -> None:
+    posting = scored_posting.posting
+
+    lines.extend(
+        [
+            '<section class="job-card">',
+            f'<h3><a href="{escape(posting.source_url, quote=True)}">'
+            f"{escape(posting.title)}</a></h3>",
+            "<ul>",
+            f"<li><strong>Company:</strong> {escape(posting.company_name)}</li>",
+            f"<li><strong>Score:</strong> {scored_posting.score}</li>",
+            f"<li><strong>Location:</strong> "
+            f"{escape(posting.location or 'Unknown')}</li>",
+            f"<li><strong>Recommended action:</strong> "
+            f"{escape(_get_recommended_action(scored_posting))}</li>",
+            f"<li><strong>Why not recommended:</strong> "
+            f"{escape(_format_pass_reason(scored_posting))}</li>",
+            f"<li><strong>Hiring risks:</strong> "
+            f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
+            f"<li><strong>Posting:</strong> "
+            f'<a href="{escape(posting.source_url, quote=True)}">'
+            "View posting</a></li>",
+            "</ul>",
+            "</section>",
+        ]
+    )
 
 
 def _append_html_unscored_jobs_section(
@@ -1271,7 +1473,7 @@ def _append_html_scored_posting(
 
     lines.extend(
         [
-            f"<li><strong>Work arrangement:</strong> "
+            f"<li><strong>Work location fit:</strong> "
             f"{escape(_format_work_arrangement(scored_posting))}</li>",
             f"<li><strong>Company:</strong> "
             f"{escape(posting.company_name)}</li>",
