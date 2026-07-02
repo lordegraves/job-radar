@@ -53,15 +53,24 @@ CREATE TABLE IF NOT EXISTS job_status (
 
 CREATE TABLE IF NOT EXISTS scan_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     finished_at TEXT,
-    status TEXT NOT NULL DEFAULT 'running',
+    status TEXT NOT NULL DEFAULT 'completed',
     companies_requested INTEGER NOT NULL DEFAULT 0,
     companies_scanned INTEGER NOT NULL DEFAULT 0,
+    companies_enabled INTEGER NOT NULL DEFAULT 0,
     jobs_found INTEGER NOT NULL DEFAULT 0,
+    jobs_collected INTEGER NOT NULL DEFAULT 0,
+    actionable_jobs_stored INTEGER NOT NULL DEFAULT 0,
+    jobs_not_actionable INTEGER NOT NULL DEFAULT 0,
     jobs_new INTEGER NOT NULL DEFAULT 0,
+    jobs_seen INTEGER NOT NULL DEFAULT 0,
     jobs_changed INTEGER NOT NULL DEFAULT 0,
-    errors_count INTEGER NOT NULL DEFAULT 0
+    collector_errors INTEGER NOT NULL DEFAULT 0,
+    errors_count INTEGER NOT NULL DEFAULT 0,
+    top_matches_count INTEGER NOT NULL DEFAULT 0,
+    review_needed_count INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS scan_errors (
@@ -151,8 +160,101 @@ def initialize_database(database_path: str | Path) -> Path:
 
     with sqlite3.connect(db_path) as connection:
         connection.executescript(SCHEMA_SQL)
+        _migrate_scan_runs_table(connection)
 
     return db_path
+
+
+def _migrate_scan_runs_table(connection: sqlite3.Connection) -> None:
+    existing_columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(scan_runs)").fetchall()
+    }
+
+    required_columns = {
+        "generated_at": "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        "companies_enabled": "INTEGER NOT NULL DEFAULT 0",
+        "jobs_collected": "INTEGER NOT NULL DEFAULT 0",
+        "actionable_jobs_stored": "INTEGER NOT NULL DEFAULT 0",
+        "jobs_not_actionable": "INTEGER NOT NULL DEFAULT 0",
+        "jobs_seen": "INTEGER NOT NULL DEFAULT 0",
+        "collector_errors": "INTEGER NOT NULL DEFAULT 0",
+        "top_matches_count": "INTEGER NOT NULL DEFAULT 0",
+        "review_needed_count": "INTEGER NOT NULL DEFAULT 0",
+    }
+
+    for column_name, column_definition in required_columns.items():
+        if column_name in existing_columns:
+            continue
+
+        connection.execute(
+            f"ALTER TABLE scan_runs ADD COLUMN {column_name} {column_definition}"
+        )
+
+
+def record_scan_run(
+    database_path: str | Path,
+    *,
+    generated_at: str,
+    companies_enabled: int,
+    jobs_collected: int,
+    actionable_jobs_stored: int,
+    jobs_not_actionable: int,
+    jobs_new: int,
+    jobs_seen: int,
+    jobs_changed: int,
+    collector_errors: int,
+    top_matches_count: int,
+    review_needed_count: int,
+) -> int:
+    db_path = Path(database_path)
+
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO scan_runs (
+                generated_at,
+                finished_at,
+                status,
+                companies_requested,
+                companies_scanned,
+                companies_enabled,
+                jobs_found,
+                jobs_collected,
+                actionable_jobs_stored,
+                jobs_not_actionable,
+                jobs_new,
+                jobs_seen,
+                jobs_changed,
+                collector_errors,
+                errors_count,
+                top_matches_count,
+                review_needed_count
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                generated_at,
+                generated_at,
+                "completed",
+                companies_enabled,
+                companies_enabled,
+                companies_enabled,
+                jobs_collected,
+                jobs_collected,
+                actionable_jobs_stored,
+                jobs_not_actionable,
+                jobs_new,
+                jobs_seen,
+                jobs_changed,
+                collector_errors,
+                collector_errors,
+                top_matches_count,
+                review_needed_count,
+            ),
+        )
+
+        return int(cursor.lastrowid)
 
 
 def _find_existing_job(

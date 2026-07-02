@@ -43,6 +43,7 @@ from job_radar.scoring import (
 from job_radar.storage import (
     fetch_included_job_history_records,
     initialize_database,
+    record_scan_run,
     upsert_job_history_record,
     upsert_job_posting,
 )
@@ -391,6 +392,8 @@ def handle_scan(
         elif result == "changed":
             jobs_changed += 1
 
+    generated_at = datetime.now(UTC).isoformat()
+
     report = ScanReport(
         companies_enabled=len(companies),
         jobs_collected=total_jobs,
@@ -401,12 +404,35 @@ def handle_scan(
         postings=collected_postings,
         scored_postings=relevant_scored_postings,
         omitted_scored_postings=omitted_scored_postings,
-        generated_at=datetime.now(UTC).isoformat(),
+        generated_at=generated_at,
         top_match_min_score=scoring_config["top_matches"]["min_score"],
         review_needed_min_score=scoring_config["review_needed"]["min_score"],
         jobs_stored=jobs_stored,
         jobs_omitted=jobs_omitted,
         history_context=history_context,
+    )
+
+    record_scan_run(
+        database_path=database_path,
+        generated_at=generated_at,
+        companies_enabled=len(companies),
+        jobs_collected=total_jobs,
+        actionable_jobs_stored=jobs_stored,
+        jobs_not_actionable=jobs_omitted,
+        jobs_new=jobs_new,
+        jobs_seen=jobs_seen,
+        jobs_changed=jobs_changed,
+        collector_errors=len(collector_errors),
+        top_matches_count=sum(
+            1
+            for scored_posting in relevant_scored_postings
+            if scored_posting.top_match_eligible
+        ),
+        review_needed_count=sum(
+            1
+            for scored_posting in relevant_scored_postings
+            if scored_posting.review_needed_eligible
+        ),
     )
 
     written_report_path = write_markdown_report(report_path, report)

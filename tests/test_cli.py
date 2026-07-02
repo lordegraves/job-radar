@@ -16,6 +16,12 @@ def count_job_posting_rows(database_file: Path) -> int:
     with sqlite3.connect(database_file) as connection:
         cursor = connection.execute("SELECT COUNT(*) FROM job_postings")
         return int(cursor.fetchone()[0])
+
+
+def count_scan_run_rows(database_file: Path) -> int:
+    with sqlite3.connect(database_file) as connection:
+        cursor = connection.execute("SELECT COUNT(*) FROM scan_runs")
+        return int(cursor.fetchone()[0])
     
 
 
@@ -279,6 +285,7 @@ top_matches:
     assert report_file.exists()
     assert html_report_file.exists()
     assert count_job_posting_rows(database_file) == 1
+    assert count_scan_run_rows(database_file) == 1
 
     assert "Scan requested" in output
     assert "Companies enabled: 1" in output

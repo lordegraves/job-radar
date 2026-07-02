@@ -4,6 +4,7 @@ from pathlib import Path
 from job_radar.job_history import JobHistoryRecord
 from job_radar.storage import (
     initialize_database,
+    record_scan_run,
     upsert_job_history_record,
     upsert_job_posting,
 )
@@ -61,6 +62,48 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
     assert database_path.exists()
     assert table_exists(database_path, "companies")
 
+
+def test_record_scan_run_inserts_scan_summary(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    scan_run_id = record_scan_run(
+        database_path=database_path,
+        generated_at="2026-07-02T14:00:00+00:00",
+        companies_enabled=62,
+        jobs_collected=9833,
+        actionable_jobs_stored=10,
+        jobs_not_actionable=9823,
+        jobs_new=1,
+        jobs_seen=8,
+        jobs_changed=1,
+        collector_errors=1,
+        top_matches_count=3,
+        review_needed_count=7,
+    )
+
+    row = get_scan_run_row(database_path)
+
+    assert scan_run_id == 1
+    assert count_rows(database_path, "scan_runs") == 1
+    assert row["generated_at"] == "2026-07-02T14:00:00+00:00"
+    assert row["finished_at"] == "2026-07-02T14:00:00+00:00"
+    assert row["status"] == "completed"
+    assert row["companies_requested"] == 62
+    assert row["companies_scanned"] == 62
+    assert row["companies_enabled"] == 62
+    assert row["jobs_found"] == 9833
+    assert row["jobs_collected"] == 9833
+    assert row["actionable_jobs_stored"] == 10
+    assert row["jobs_not_actionable"] == 9823
+    assert row["jobs_new"] == 1
+    assert row["jobs_seen"] == 8
+    assert row["jobs_changed"] == 1
+    assert row["collector_errors"] == 1
+    assert row["errors_count"] == 1
+    assert row["top_matches_count"] == 3
+    assert row["review_needed_count"] == 7
+
 def make_posting(description: str = "Build Linux infrastructure.") -> JobPosting:
     return JobPosting(
         company_key="example_ai",
@@ -80,6 +123,15 @@ def count_rows(database_path: Path, table_name: str) -> int:
     with sqlite3.connect(database_path) as connection:
         cursor = connection.execute(f"SELECT COUNT(*) FROM {table_name}")
         return int(cursor.fetchone()[0])
+
+
+def get_scan_run_row(database_path: Path) -> sqlite3.Row:
+    with sqlite3.connect(database_path) as connection:
+        connection.row_factory = sqlite3.Row
+        row = connection.execute("SELECT * FROM scan_runs").fetchone()
+
+        assert row is not None
+        return row
 
 
 def get_job_row(database_path: Path) -> sqlite3.Row:
