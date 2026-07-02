@@ -126,16 +126,16 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
 
     assert database_file.exists()
     assert "Jobs collected: 1" in first_output
-    assert "Jobs stored: 1" in first_output
-    assert "Jobs omitted: 0" in first_output
+    assert "Actionable jobs stored: 1" in first_output
+    assert "Jobs not actionable: 0" in first_output
     assert "Jobs new: 1" in first_output
     assert "Jobs seen: 0" in first_output
     assert "Jobs changed: 0" in first_output
 
     assert "- New jobs: 1" in first_report
     assert "- Seen jobs: 0" in first_report
-    assert "- Jobs stored: 1" in first_report
-    assert "- Jobs omitted: 0" in first_report
+    assert "- Actionable jobs stored: 1" in first_report
+    assert "- Jobs not actionable: 0" in first_report
     assert "## Top Matches" in first_report
     assert "## Omitted Jobs" in first_report
     assert "## All Jobs" not in first_report
@@ -165,16 +165,15 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     second_report = report_file.read_text(encoding="utf-8")
 
     assert "Jobs collected: 1" in second_output
-    assert "Jobs stored: 1" in second_output
-    assert "Jobs omitted: 0" in second_output
+    assert "Actionable jobs stored: 1" in second_output
+    assert "Jobs not actionable: 0" in second_output
     assert "Jobs new: 0" in second_output
     assert "Jobs seen: 1" in second_output
     assert "Jobs changed: 0" in second_output
-
     assert "- New jobs: 0" in second_report
     assert "- Seen jobs: 1" in second_report
-    assert "- Jobs stored: 1" in second_report
-    assert "- Jobs omitted: 0" in second_report
+    assert "- Actionable jobs stored: 1" in second_report
+    assert "- Jobs not actionable: 0" in second_report
     assert "## Top Matches" in second_report
     assert "## Omitted Jobs" in second_report
     assert "## All Jobs" not in second_report

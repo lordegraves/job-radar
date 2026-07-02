@@ -1088,8 +1088,8 @@ def test_render_markdown_report_includes_stored_and_omitted_counts() -> None:
 
     markdown = render_markdown_report(report)
 
-    assert "- Jobs stored: 3" in markdown
-    assert "- Jobs omitted: 7" in markdown
+    assert "- Actionable jobs stored: 3" in markdown
+    assert "- Jobs not actionable: 7" in markdown
 
 
 def test_render_markdown_report_keeps_unparseable_generated_at_value() -> None:
@@ -1142,8 +1142,8 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
 
     assert "<h1>Job Radar Report</h1>" in html
     assert "<strong>Generated at:</strong> 2026-06-24 12:34 UTC" in html
-    assert "<strong>Jobs stored:</strong> 1" in html
-    assert "<strong>Jobs omitted:</strong> 0" in html
+    assert "<strong>Actionable jobs stored:</strong> 1" in html
+    assert "<strong>Jobs not actionable:</strong> 0" in html
     assert "Data Center Design Execution Lead" in html
     assert (
         '<a href="https://boards.greenhouse.io/exampleai/jobs/123">'

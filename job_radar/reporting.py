@@ -104,10 +104,10 @@ def render_markdown_report(report: ScanReport) -> str:
     )
 
     if report.jobs_stored is not None:
-        lines.append(f"- Jobs stored: {report.jobs_stored}")
+        lines.append(f"- Actionable jobs stored: {report.jobs_stored}")
 
     if report.jobs_omitted is not None:
-        lines.append(f"- Jobs omitted: {report.jobs_omitted}")
+        lines.append(f"- Jobs not actionable: {report.jobs_omitted}")
 
     if report.top_match_min_score is not None:
         lines.append(f"- Top match score threshold: {report.top_match_min_score}")
@@ -193,10 +193,16 @@ def render_html_report(report: ScanReport) -> str:
     )
 
     if report.jobs_stored is not None:
-        lines.append(f"<li><strong>Jobs stored:</strong> {report.jobs_stored}</li>")
+        lines.append(
+            f"<li><strong>Actionable jobs stored:</strong> "
+            f"{report.jobs_stored}</li>"
+        )
 
     if report.jobs_omitted is not None:
-        lines.append(f"<li><strong>Jobs omitted:</strong> {report.jobs_omitted}</li>")
+        lines.append(
+            f"<li><strong>Jobs not actionable:</strong> "
+            f"{report.jobs_omitted}</li>"
+        )
 
     if report.top_match_min_score is not None:
         lines.append(

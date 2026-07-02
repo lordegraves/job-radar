@@ -47,8 +47,14 @@ def build_email_body(
         f"Generated at: {_format_generated_at(report.generated_at)}",
         f"Companies enabled: {report.companies_enabled}",
         f"Jobs collected: {report.jobs_collected}",
-        _format_optional_count_line("Jobs stored", report.jobs_stored),
-        _format_optional_count_line("Jobs omitted", report.jobs_omitted),
+        _format_optional_count_line(
+            "Actionable jobs stored",
+            report.jobs_stored,
+        ),
+        _format_optional_count_line(
+            "Jobs not actionable",
+            report.jobs_omitted,
+        ),
         f"New jobs: {report.jobs_new}",
         f"Seen jobs: {report.jobs_seen}",
         f"Changed jobs: {report.jobs_changed}",
@@ -126,9 +132,9 @@ def build_email_html_body(
         f"{escape(_format_generated_at(report.generated_at))}</li>",
         f"<li><strong>Companies enabled:</strong> {report.companies_enabled}</li>",
         f"<li><strong>Jobs collected:</strong> {report.jobs_collected}</li>",
-        f"<li><strong>Jobs stored:</strong> "
+        f"<li><strong>Actionable jobs stored:</strong> "
         f"{_format_optional_count(report.jobs_stored)}</li>",
-        f"<li><strong>Jobs omitted:</strong> "
+        f"<li><strong>Jobs not actionable:</strong> "
         f"{_format_optional_count(report.jobs_omitted)}</li>",
         f"<li><strong>New jobs:</strong> {report.jobs_new}</li>",
         f"<li><strong>Seen jobs:</strong> {report.jobs_seen}</li>",

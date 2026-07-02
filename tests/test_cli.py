@@ -283,18 +283,17 @@ top_matches:
     assert "Scan requested" in output
     assert "Companies enabled: 1" in output
     assert "Jobs collected: 1" in output
-    assert "Jobs stored: 1" in output
-    assert "Jobs omitted: 0" in output
+    assert "Actionable jobs stored: 1" in output
+    assert "Jobs not actionable: 0" in output
     assert "Jobs new: 1" in output
     assert "Jobs seen: 0" in output
     assert "Jobs changed: 0" in output
     assert "Collector errors: 0" in output
-
     assert "# Job Radar Report" in report_text
     assert "- Companies enabled: 1" in report_text
     assert "- Jobs collected: 1" in report_text
-    assert "- Jobs stored: 1" in report_text
-    assert "- Jobs omitted: 0" in report_text
+    assert "- Actionable jobs stored: 1" in report_text
+    assert "- Jobs not actionable: 0" in report_text
     assert "- New jobs: 1" in report_text
     assert "- Seen jobs: 0" in report_text
     assert "- Changed jobs: 0" in report_text
