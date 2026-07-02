@@ -493,7 +493,8 @@ def test_render_markdown_report_includes_omitted_reason_summary() -> None:
     markdown = render_markdown_report(report)
 
     assert "## Passed / Not Recommended" in markdown
-    assert "- Pass reason summary:" in markdown
+    assert "- Risk / pass signal summary:" in markdown
+    assert "  - One job may appear in more than one signal count." in markdown
     assert "  - Below compensation floor: 1" in markdown
     assert "  - Role family mismatch: 1" in markdown
     assert "  - Low hiring probability: 1" in markdown
@@ -525,6 +526,7 @@ def test_render_markdown_report_includes_passed_job_details() -> None:
     markdown = render_markdown_report(report)
 
     assert "## Passed / Not Recommended" in markdown
+    assert "### Passed jobs most worth reviewing, up to 25" in markdown
     assert "#### [Account Executive]" in markdown
     assert "- Company: Example AI" in markdown
     assert "- Score: -60" in markdown
@@ -1216,6 +1218,49 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     assert "<strong>URL:</strong>" not in html
 
 
+def test_render_markdown_report_orders_passed_jobs_by_review_value() -> None:
+    weak_business_posting = make_posting(title="Account Executive")
+    blocked_infra_posting = make_posting(title="Senior Infrastructure Engineer APAC")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=2,
+        jobs_new=2,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[weak_business_posting, blocked_infra_posting],
+        scored_postings=[],
+        omitted_scored_postings=[
+            ScoredPosting(
+                posting=weak_business_posting,
+                score=50,
+                score_reasons=[
+                    "-60 title:account executive",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+            ),
+            ScoredPosting(
+                posting=blocked_infra_posting,
+                score=40,
+                score_reasons=[
+                    "+30 title:infrastructure",
+                    "+10 body:linux",
+                    "-100 location_skipped:apac",
+                ],
+                location_status="skipped",
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert markdown.index("#### [Senior Infrastructure Engineer APAC]") < markdown.index(
+        "#### [Account Executive]"
+    )
+
+
 def test_render_html_report_includes_passed_job_details() -> None:
     passed_posting = make_posting(title="Account Executive")
 
@@ -1241,6 +1286,9 @@ def test_render_html_report_includes_passed_job_details() -> None:
     html = render_html_report(report)
 
     assert "<h2>Passed / Not Recommended</h2>" in html
+    assert "<strong>Risk / pass signal summary:</strong>" in html
+    assert "One job may appear in more than one signal count." in html
+    assert "Passed jobs most worth reviewing, up to 25" in html
     assert "Account Executive" in html
     assert "<strong>Score:</strong> -60" in html
     assert "<strong>Recommended action:</strong> Pass" in html

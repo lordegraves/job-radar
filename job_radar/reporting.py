@@ -631,6 +631,7 @@ def _append_omitted_jobs_section(
     scored_postings: list[ScoredPosting],
 ) -> None:
     omitted_postings = _get_omitted_postings(scored_postings)
+    ordered_omitted_postings = _get_ordered_omitted_postings(omitted_postings)
 
     lines.extend(
         [
@@ -662,7 +663,12 @@ def _append_omitted_jobs_section(
     omitted_reason_counts = _get_omitted_reason_summary_counts(omitted_postings)
 
     if omitted_reason_counts:
-        lines.append("- Pass reason summary:")
+        lines.extend(
+            [
+                "- Risk / pass signal summary:",
+                "  - One job may appear in more than one signal count.",
+            ]
+        )
 
         for reason in sorted(omitted_reason_counts):
             lines.append(f"  - {reason}: {omitted_reason_counts[reason]}")
@@ -671,12 +677,12 @@ def _append_omitted_jobs_section(
 
     lines.extend(
         [
-            f"### Passed jobs, up to {PASSED_JOBS_REPORT_LIMIT}",
+            f"### Passed jobs most worth reviewing, up to {PASSED_JOBS_REPORT_LIMIT}",
             "",
         ]
     )
 
-    for scored_posting in omitted_postings[:PASSED_JOBS_REPORT_LIMIT]:
+    for scored_posting in ordered_omitted_postings[:PASSED_JOBS_REPORT_LIMIT]:
         _append_passed_posting(lines, scored_posting)
 
     if len(omitted_postings) > PASSED_JOBS_REPORT_LIMIT:
@@ -703,6 +709,67 @@ def _get_omitted_postings(
         )
         or not _is_actionable_posting(scored_posting)
     ]
+
+
+def _get_ordered_omitted_postings(
+    scored_postings: list[ScoredPosting],
+) -> list[ScoredPosting]:
+    return sorted(
+        scored_postings,
+        key=_get_omitted_posting_review_priority,
+        reverse=True,
+    )
+
+
+def _get_omitted_posting_review_priority(scored_posting: ScoredPosting) -> tuple[int, int]:
+    return (
+        _get_omitted_posting_review_score(scored_posting),
+        scored_posting.score,
+    )
+
+
+def _get_omitted_posting_review_score(scored_posting: ScoredPosting) -> int:
+    risks = _get_hiring_risk_flags(scored_posting)
+    technical_match = _get_technical_match_label(scored_posting)
+    recommended_action = _get_recommended_action(scored_posting)
+
+    review_score = scored_posting.score
+
+    if technical_match == "Very Strong":
+        review_score += 50
+    elif technical_match == "Strong":
+        review_score += 35
+    elif technical_match == "Moderate":
+        review_score += 15
+
+    if recommended_action != "Pass":
+        review_score += 25
+
+    if "below compensation floor" in risks:
+        review_score += 15
+
+    if "hard location mismatch" in risks or "not location eligible" in risks:
+        review_score += 10
+
+    if "location needs confirmation" in risks:
+        review_score += 5
+
+    if "role family mismatch" in risks:
+        review_score -= 100
+
+    if "support role" in risks:
+        review_score -= 80
+
+    if any(risk.startswith("profile avoid match:") for risk in risks):
+        review_score -= 80
+
+    if "software-heavy translation risk" in risks:
+        review_score -= 20
+
+    if "security-domain translation risk" in risks:
+        review_score -= 20
+
+    return review_score
 
 
 def _format_pass_reason(scored_posting: ScoredPosting) -> str:
@@ -1310,6 +1377,7 @@ def _append_html_omitted_jobs_section(
     scored_postings: list[ScoredPosting],
 ) -> None:
     omitted_postings = _get_omitted_postings(scored_postings)
+    ordered_omitted_postings = _get_ordered_omitted_postings(omitted_postings)
 
     lines.append("<h2>Passed / Not Recommended</h2>")
 
@@ -1328,7 +1396,10 @@ def _append_html_omitted_jobs_section(
     omitted_reason_counts = _get_omitted_reason_summary_counts(omitted_postings)
 
     if omitted_reason_counts:
-        lines.append("<p><strong>Pass reason summary:</strong></p>")
+        lines.append("<p><strong>Risk / pass signal summary:</strong></p>")
+        lines.append(
+            "<p>One job may appear in more than one signal count.</p>"
+        )
         lines.append("<ul>")
 
         for reason in sorted(omitted_reason_counts):
@@ -1338,9 +1409,12 @@ def _append_html_omitted_jobs_section(
 
         lines.append("</ul>")
 
-    lines.append(f"<h3>Passed jobs, up to {PASSED_JOBS_REPORT_LIMIT}</h3>")
+    lines.append(
+        f"<h3>Passed jobs most worth reviewing, up to "
+        f"{PASSED_JOBS_REPORT_LIMIT}</h3>"
+    )
 
-    for scored_posting in omitted_postings[:PASSED_JOBS_REPORT_LIMIT]:
+    for scored_posting in ordered_omitted_postings[:PASSED_JOBS_REPORT_LIMIT]:
         _append_html_passed_posting(lines, scored_posting)
 
     if len(omitted_postings) > PASSED_JOBS_REPORT_LIMIT:
