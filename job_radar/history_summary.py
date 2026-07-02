@@ -42,7 +42,7 @@ def format_history_summary(summary: HistorySummary) -> str:
 
     _append_count_section(lines, "History types", summary.history_type_counts)
     _append_count_section(lines, "Outcome categories", summary.outcome_category_counts)
-    _append_count_section(lines, "Top blockers", summary.primary_blocker_counts)
+    _append_count_section(lines, "Top history signals", summary.primary_blocker_counts)
     _append_count_section(
         lines,
         "Technical match vs outcome",

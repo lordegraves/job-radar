@@ -472,7 +472,7 @@ top_matches:
         "Strong / No Interview: 1"
         in report_text
     )
-    assert "  - Common prior blockers: Compensation: 1" in report_text
+    assert "  - Common prior history signals: Compensation: 1" in report_text
     assert "- History context: Imported history: 1 records" not in report_text
     assert (
         "- History context: Prior similar application at Example AI ended "
@@ -609,7 +609,7 @@ top_matches:
         "Very Strong / No Interview: 1"
         in report_text
     )
-    assert "  - Common prior blockers: Generic Remote Competition: 1" in report_text
+    assert "  - Common prior history signals: Generic Remote Competition: 1" in report_text
 
 
 def test_handle_scan_warns_and_continues_when_configured_history_workbook_is_missing(

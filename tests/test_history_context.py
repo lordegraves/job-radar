@@ -52,5 +52,5 @@ def test_build_history_context_summarizes_prior_outcomes_and_blockers() -> None:
             "Strong technical matches with no interview: "
             "Very Strong / No Interview: 3, Strong / No Interview: 6"
         ),
-        "Common prior blockers: Compensation: 3, Production Kubernetes: 2, Travel: 1",
+        "Common prior history signals: Compensation: 3, Production Kubernetes: 2, Travel: 1",
     ]

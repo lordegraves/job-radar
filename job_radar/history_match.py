@@ -136,7 +136,7 @@ def find_history_matches(
 def _classify_history_risk(record: JobHistoryRecord) -> tuple[str, tuple[str, ...]]:
     outcome = _clean_label(record.outcome_category)
     technical_match = _clean_label(record.technical_match)
-    blocker = _clean_label(record.primary_blocker)
+    prior_signal = _clean_label(record.primary_blocker)
 
     reasons: list[str] = []
 
@@ -149,15 +149,18 @@ def _classify_history_risk(record: JobHistoryRecord) -> tuple[str, tuple[str, ..
         return "caution", tuple(reasons)
 
     if outcome == "Skipped / Avoid":
-        if blocker != "Unknown":
-            reasons.append(f"prior_blocker:{_risk_token(blocker)}")
+        if prior_signal != "Unknown":
+            reasons.append(_format_prior_signal_risk_reason(prior_signal))
         else:
             reasons.append("prior_skipped_similar_role")
 
+        if _is_prior_risk_signal(prior_signal):
+            return "caution", tuple(reasons)
+
         return "blocker_review", tuple(reasons)
 
-    if blocker != "Unknown":
-        reasons.append(f"prior_blocker:{_risk_token(blocker)}")
+    if prior_signal != "Unknown":
+        reasons.append(_format_prior_signal_risk_reason(prior_signal))
         return "caution", tuple(reasons)
 
     return "neutral", ("prior_similar_role",)
@@ -167,7 +170,7 @@ def _format_history_match(match: HistoryMatch) -> str:
     record = match.record
     outcome = _clean_label(record.outcome_category)
     technical_match = _clean_label(record.technical_match)
-    blocker = _clean_label(record.primary_blocker)
+    prior_signal = _clean_label(record.primary_blocker)
 
     if outcome == "No Interview":
         if technical_match != "Unknown":
@@ -179,21 +182,41 @@ def _format_history_match(match: HistoryMatch) -> str:
         return f"Prior similar application at {record.company} ended No Interview"
 
     if outcome == "Skipped / Avoid":
-        if blocker != "Unknown":
+        if prior_signal != "Unknown":
             return (
                 f"Previously reviewed and skipped similar role at {record.company}; "
-                f"prior blocker: {blocker}"
+                f"{_format_prior_signal_label(prior_signal)}"
             )
 
         return f"Previously reviewed and skipped similar role at {record.company}"
 
-    if blocker != "Unknown":
+    if prior_signal != "Unknown":
         return (
             f"Prior similar role at {record.company}; outcome: {outcome}; "
-            f"prior blocker: {blocker}"
+            f"{_format_prior_signal_label(prior_signal)}"
         )
 
     return f"Prior similar role at {record.company}; outcome: {outcome}"
+
+
+def _is_prior_risk_signal(value: str) -> bool:
+    return value.lower() in {
+        "generic remote competition",
+    }
+
+
+def _format_prior_signal_risk_reason(value: str) -> str:
+    if _is_prior_risk_signal(value):
+        return f"prior_risk_signal:{_risk_token(value)}"
+
+    return f"prior_blocker:{_risk_token(value)}"
+
+
+def _format_prior_signal_label(value: str) -> str:
+    if _is_prior_risk_signal(value):
+        return f"prior risk signal: {value}"
+
+    return f"prior blocker: {value}"
 
 
 def _meaningful_role_tokens(value: str | None) -> set[str]:

@@ -43,10 +43,10 @@ def build_history_context(summary: HistorySummary) -> list[str]:
     if technical_no_interview_context is not None:
         context.append(technical_no_interview_context)
 
-    blocker_context = _build_blocker_context(summary)
+    prior_signal_context = _build_prior_signal_context(summary)
 
-    if blocker_context is not None:
-        context.append(blocker_context)
+    if prior_signal_context is not None:
+        context.append(prior_signal_context)
 
     return context
 
@@ -71,21 +71,21 @@ def _build_technical_no_interview_context(
     )
 
 
-def _build_blocker_context(summary: HistorySummary) -> str | None:
-    useful_blockers = {
-        blocker: count
-        for blocker, count in summary.primary_blocker_counts.items()
-        if blocker != "Unknown" and count > 0
+def _build_prior_signal_context(summary: HistorySummary) -> str | None:
+    useful_prior_signals = {
+        prior_signal: count
+        for prior_signal, count in summary.primary_blocker_counts.items()
+        if prior_signal != "Unknown" and count > 0
     }
 
-    if not useful_blockers:
+    if not useful_prior_signals:
         return None
 
-    top_blockers = sorted(
-        useful_blockers.items(),
+    top_prior_signals = sorted(
+        useful_prior_signals.items(),
         key=lambda item: (-item[1], item[0]),
     )[:3]
 
-    return "Common prior blockers: " + ", ".join(
-        f"{blocker}: {count}" for blocker, count in top_blockers
+    return "Common prior history signals: " + ", ".join(
+        f"{prior_signal}: {count}" for prior_signal, count in top_prior_signals
     )
