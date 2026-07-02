@@ -124,8 +124,9 @@ def render_markdown_report(report: ScanReport) -> str:
 
     if report.scored_postings is not None:
         report_scored_postings = _get_report_scored_postings(report)
+        surfaced_scored_postings = _get_surfaced_recommendation_postings(report)
         _append_work_arrangement_summary(lines, report.scored_postings)
-        _append_recommendation_summary(lines, report_scored_postings)
+        _append_recommendation_summary(lines, surfaced_scored_postings)
         _append_history_risk_summary(lines, report_scored_postings)
 
     _append_history_context_summary(lines, report.history_context)
@@ -236,18 +237,18 @@ def render_html_report(report: ScanReport) -> str:
 
     if report.scored_postings is not None:
         report_scored_postings = _get_report_scored_postings(report)
+        surfaced_scored_postings = _get_surfaced_recommendation_postings(report)
         _append_html_work_arrangement_summary(lines, report.scored_postings)
         _append_html_count_summary(
             lines=lines,
             heading="Recommendation summary",
-            counts=_get_recommendation_summary_counts(report_scored_postings),
+            counts=_get_recommendation_summary_counts(surfaced_scored_postings),
         )
         _append_html_count_summary(
             lines=lines,
             heading="History risk summary",
             counts=_get_history_risk_summary_counts(report_scored_postings),
         )
-
     _append_html_history_context_summary(lines, report.history_context)
 
     lines.append("</ul>")
@@ -420,6 +421,44 @@ def _get_report_scored_postings(report: ScanReport) -> list[ScoredPosting]:
     return report_scored_postings
 
 
+def _get_surfaced_recommendation_postings(report: ScanReport) -> list[ScoredPosting]:
+    scored_postings = list(report.scored_postings or [])
+    report_scored_postings = _get_report_scored_postings(report)
+    surfaced_postings: list[ScoredPosting] = []
+
+    surfaced_postings.extend(_get_top_matches(scored_postings))
+    surfaced_postings.extend(_get_northern_colorado_highlights(scored_postings))
+    surfaced_postings.extend(_get_review_needed(report_scored_postings))
+    surfaced_postings.extend(
+        scored_posting
+        for scored_posting in report_scored_postings
+        if _get_recommended_action(scored_posting) == "Track Status"
+    )
+
+    return _dedupe_scored_postings(surfaced_postings)
+
+
+def _dedupe_scored_postings(
+    scored_postings: list[ScoredPosting],
+) -> list[ScoredPosting]:
+    seen_keys: set[str] = set()
+    deduped_postings: list[ScoredPosting] = []
+
+    for scored_posting in scored_postings:
+        posting = scored_posting.posting
+        dedupe_key = (
+            posting.source_url
+            or posting.canonical_key
+            or f"{posting.company_key}:{posting.title}:{posting.location}"
+        )
+
+        if dedupe_key in seen_keys:
+            continue
+
+        seen_keys.add(dedupe_key)
+        deduped_postings.append(scored_posting)
+
+    return deduped_postings
 
 
 def _append_recommendation_summary(
