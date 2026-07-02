@@ -70,8 +70,10 @@ def build_email_body(
     ]
 
     if report.scored_postings is not None:
-        _append_email_recommendation_summary(lines, report.scored_postings)
-
+        _append_email_recommendation_summary(
+            lines,
+            _get_email_summary_scored_postings(report),
+        )
 
     lines.extend(
         [
@@ -147,7 +149,10 @@ def build_email_html_body(
     ]
 
     if report.scored_postings is not None:
-        _append_email_html_recommendation_summary(lines, report.scored_postings)
+        _append_email_html_recommendation_summary(
+            lines,
+            _get_email_summary_scored_postings(report),
+        )
 
     lines.append("</ul>")
 
@@ -239,6 +244,13 @@ def _format_optional_count_line(label: str, count: int | None) -> str:
         return f"{label}: Unknown"
 
     return f"{label}: {count}"
+
+
+def _get_email_summary_scored_postings(report: ScanReport) -> list[ScoredPosting]:
+    summary_scored_postings = list(report.scored_postings or [])
+    summary_scored_postings.extend(report.omitted_scored_postings or [])
+
+    return summary_scored_postings
 
 
 def _is_email_actionable_posting(scored_posting: ScoredPosting) -> bool:
