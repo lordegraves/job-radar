@@ -805,6 +805,62 @@ def test_render_markdown_report_includes_location_status_summary() -> None:
     assert "  - unknown: 1" in markdown
 
 
+def test_render_markdown_report_includes_history_risk_summary() -> None:
+    caution_posting = make_posting(
+        title="Senior Site Reliability Engineer",
+        company_name="Example AI",
+    )
+    blocker_posting = make_posting(
+        title="Senior Kubernetes Platform Engineer",
+        company_name="Example AI",
+    )
+    no_history_posting = make_posting(
+        title="Senior Linux Infrastructure Engineer",
+        company_name="Example AI",
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=3,
+        jobs_new=3,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[caution_posting, blocker_posting, no_history_posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=caution_posting,
+                score=140,
+                score_reasons=["+30 title:site reliability"],
+                location_status="allowed",
+                history_risk_level="caution",
+                history_risk_reasons=["prior_no_interview_despite_strong_match"],
+            ),
+            ScoredPosting(
+                posting=blocker_posting,
+                score=140,
+                score_reasons=["+24 title:kubernetes"],
+                location_status="allowed",
+                history_risk_level="blocker_review",
+                history_risk_reasons=["prior_blocker:kubernetes_production"],
+            ),
+            ScoredPosting(
+                posting=no_history_posting,
+                score=140,
+                score_reasons=["+30 title:linux"],
+                location_status="allowed",
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- History risk summary:" in markdown
+    assert "  - blocker_review: 1" in markdown
+    assert "  - caution: 1" in markdown
+    assert "  - neutral:" not in markdown
+
+
 def test_render_markdown_report_includes_companies_scanned_summary() -> None:
     anthropic_posting = make_posting(
         company_name="Anthropic",
@@ -1170,6 +1226,51 @@ def test_render_html_report_includes_history_context() -> None:
         "Strong / No Interview: 6; Very Strong / No Interview: 3</li>"
         in html
     )
+
+
+def test_render_html_report_includes_history_risk_summary() -> None:
+    caution_posting = make_posting(
+        title="Senior Site Reliability Engineer",
+        company_name="Example AI",
+    )
+    blocker_posting = make_posting(
+        title="Senior Kubernetes Platform Engineer",
+        company_name="Example AI",
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=2,
+        jobs_new=2,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[caution_posting, blocker_posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=caution_posting,
+                score=140,
+                score_reasons=["+30 title:site reliability"],
+                location_status="allowed",
+                history_risk_level="caution",
+                history_risk_reasons=["prior_no_interview_despite_strong_match"],
+            ),
+            ScoredPosting(
+                posting=blocker_posting,
+                score=140,
+                score_reasons=["+24 title:kubernetes"],
+                location_status="allowed",
+                history_risk_level="blocker_review",
+                history_risk_reasons=["prior_blocker:kubernetes_production"],
+            ),
+        ],
+    )
+
+    html = render_html_report(report)
+
+    assert "<strong>History risk summary:</strong>" in html
+    assert "<li>blocker_review: 1</li>" in html
+    assert "<li>caution: 1</li>" in html
 
 
 def test_write_html_report_writes_file(tmp_path: Path) -> None:

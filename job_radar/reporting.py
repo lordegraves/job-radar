@@ -124,6 +124,7 @@ def render_markdown_report(report: ScanReport) -> str:
     if report.scored_postings is not None:
         _append_location_status_summary(lines, report.scored_postings)
         _append_recommendation_summary(lines, report.scored_postings)
+        _append_history_risk_summary(lines, report.scored_postings)
 
     _append_history_context_summary(lines, report.history_context)
 
@@ -227,6 +228,11 @@ def render_html_report(report: ScanReport) -> str:
             lines=lines,
             heading="Recommendation summary",
             counts=_get_recommendation_summary_counts(report.scored_postings),
+        )
+        _append_html_count_summary(
+            lines=lines,
+            heading="History risk summary",
+            counts=_get_history_risk_summary_counts(report.scored_postings),
         )
 
     _append_html_history_context_summary(lines, report.history_context)
@@ -354,6 +360,59 @@ def _append_recommendation_summary(
 
     for recommendation in _RECOMMENDATION_SUMMARY_ORDER:
         lines.append(f"  - {recommendation}: {recommendation_counts[recommendation]}")
+
+
+def _append_history_risk_summary(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    history_risk_counts = _get_history_risk_summary_counts(scored_postings)
+
+    if not history_risk_counts:
+        return
+
+    lines.append("- History risk summary:")
+
+    for risk_level in _get_ordered_history_risk_levels(history_risk_counts):
+        lines.append(f"  - {risk_level}: {history_risk_counts[risk_level]}")
+
+
+def _get_history_risk_summary_counts(
+    scored_postings: list[ScoredPosting],
+) -> dict[str, int]:
+    history_risk_counts: dict[str, int] = {}
+
+    for scored_posting in scored_postings:
+        risk_level = scored_posting.history_risk_level
+
+        if not risk_level:
+            continue
+
+        history_risk_counts[risk_level] = history_risk_counts.get(risk_level, 0) + 1
+
+    return history_risk_counts
+
+
+def _get_ordered_history_risk_levels(
+    history_risk_counts: dict[str, int],
+) -> list[str]:
+    preferred_order = [
+        "blocker_review",
+        "caution",
+        "neutral",
+    ]
+
+    ordered_levels = [
+        risk_level
+        for risk_level in preferred_order
+        if risk_level in history_risk_counts
+    ]
+
+    for risk_level in sorted(history_risk_counts):
+        if risk_level not in ordered_levels:
+            ordered_levels.append(risk_level)
+
+    return ordered_levels
 
 
 def _append_history_context_summary(
