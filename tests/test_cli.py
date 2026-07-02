@@ -463,8 +463,8 @@ top_matches:
     assert "- Job history context:" in report_text
     assert "  - Imported history: 1 records (1 pipeline, 0 reviewed)" in report_text
     assert (
-        "  - Prior applications show technical match alone has not guaranteed "
-        "interviews (1 no-interview outcomes)"
+        "  - Strong technical alignment has not always led to interviews "
+        "in prior applications (1 no-interview outcomes)"
         in report_text
     )
     assert (
@@ -600,8 +600,8 @@ top_matches:
     assert "- Job history context:" in report_text
     assert "  - Imported history: 2 records (1 pipeline, 1 reviewed)" in report_text
     assert (
-        "  - Prior applications show technical match alone has not guaranteed "
-        "interviews (1 no-interview outcomes)"
+        "  - Strong technical alignment has not always led to interviews "
+        "in prior applications (1 no-interview outcomes)"
         in report_text
     )
     assert (

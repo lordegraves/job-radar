@@ -43,8 +43,8 @@ def test_build_history_context_summarizes_prior_outcomes_and_blockers() -> None:
     assert context == [
         "Imported history: 70 records (55 pipeline, 15 reviewed)",
         (
-            "Prior applications show technical match alone has not guaranteed "
-            "interviews (11 no-interview outcomes)"
+            "Strong technical alignment has not always led to interviews "
+            "in prior applications (11 no-interview outcomes)"
         ),
         "Prior interview rejections recorded: 1",
         "Prior reviewed roles skipped or avoided: 15",

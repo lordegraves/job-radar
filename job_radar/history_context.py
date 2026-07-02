@@ -24,8 +24,8 @@ def build_history_context(summary: HistorySummary) -> list[str]:
 
     if no_interview_count > 0:
         context.append(
-            "Prior applications show technical match alone has not guaranteed "
-            f"interviews ({no_interview_count} no-interview outcomes)"
+            "Strong technical alignment has not always led to interviews "
+            f"in prior applications ({no_interview_count} no-interview outcomes)"
         )
 
     if interview_rejection_count > 0:
