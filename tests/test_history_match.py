@@ -272,3 +272,49 @@ def test_find_history_matches_prefers_exact_job_radar_id() -> None:
     assert matches[0].risk_reasons == ("already_applied",)
 
 
+def test_fuzzy_applied_history_with_weak_title_match_does_not_track_status() -> None:
+    posting = make_posting(
+        company_name="Example AI",
+        title="Senior Infrastructure Engineer",
+    )
+
+    record = make_history_record(
+        company="Example AI",
+        role="Infrastructure Operations Engineer",
+        status="Applied",
+        outcome_category="Pending / In Progress",
+        import_key="pipeline:example-ai:infrastructure-operations-engineer",
+    )
+
+    matches = find_history_matches(posting, [record])
+    risk_level, risk_reasons = summarize_history_risk(matches)
+
+    assert len(matches) == 1
+    assert matches[0].matched_tokens == ("infrastructure",)
+    assert risk_level == "neutral"
+    assert risk_reasons == ["prior_similar_role"]
+
+
+def test_fuzzy_applied_history_with_strong_title_match_tracks_status() -> None:
+    posting = make_posting(
+        company_name="Example AI",
+        title="Site Reliability Engineer",
+    )
+
+    record = make_history_record(
+        company="Example AI",
+        role="Senior Site Reliability Engineer",
+        status="Applied",
+        outcome_category="Pending / In Progress",
+        import_key="pipeline:example-ai:senior-site-reliability-engineer",
+    )
+
+    matches = find_history_matches(posting, [record])
+    risk_level, risk_reasons = summarize_history_risk(matches)
+
+    assert len(matches) == 1
+    assert matches[0].matched_tokens == ("reliability", "site")
+    assert risk_level == "track_status"
+    assert risk_reasons == ["already_applied"]
+
+

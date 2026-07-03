@@ -99,12 +99,6 @@ def find_history_matches(
     history_records: list[JobHistoryRecord],
     limit: int = 3,
 ) -> list[HistoryMatch]:
-    posting_company = _normalize_text(posting.company_name)
-    posting_tokens = _meaningful_role_tokens(posting.title)
-
-    if not posting_company or not posting_tokens:
-        return []
-
     exact_id_matches = _find_exact_job_radar_id_matches(
         posting=posting,
         history_records=history_records,
@@ -112,6 +106,12 @@ def find_history_matches(
 
     if exact_id_matches:
         return exact_id_matches[:limit]
+
+    posting_company = _normalize_text(posting.company_name)
+    posting_tokens = _meaningful_role_tokens(posting.title)
+
+    if not posting_company or not posting_tokens:
+        return []
 
     matches: list[HistoryMatch] = []
 
@@ -128,7 +128,14 @@ def find_history_matches(
         if not matched_tokens:
             continue
 
-        risk_level, risk_reasons = _classify_history_risk(record)
+        risk_level, risk_reasons = _classify_history_risk(
+            record,
+            allow_track_status=_is_strong_fuzzy_title_match(
+                posting_title=posting.title,
+                record_role=record.role,
+                matched_tokens=matched_tokens,
+            ),
+        )
 
         matches.append(
             HistoryMatch(
@@ -156,7 +163,10 @@ def _find_exact_job_radar_id_matches(
         if record.import_key != expected_import_key:
             continue
 
-        risk_level, risk_reasons = _classify_history_risk(record)
+        risk_level, risk_reasons = _classify_history_risk(
+            record,
+            allow_track_status=True,
+        )
 
         matches.append(
             HistoryMatch(
@@ -170,7 +180,10 @@ def _find_exact_job_radar_id_matches(
     return matches
 
 
-def _classify_history_risk(record: JobHistoryRecord) -> tuple[str, tuple[str, ...]]:
+def _classify_history_risk(
+    record: JobHistoryRecord,
+    allow_track_status: bool = True,
+) -> tuple[str, tuple[str, ...]]:
     status = _clean_label(record.status)
     outcome = _clean_label(record.outcome_category)
     technical_match = _clean_label(record.technical_match)
@@ -178,7 +191,7 @@ def _classify_history_risk(record: JobHistoryRecord) -> tuple[str, tuple[str, ..
 
     reasons: list[str] = []
 
-    if _is_applied_status(status):
+    if _is_applied_status(status) and allow_track_status:
         return "track_status", ("already_applied",)
 
     if outcome == "No Interview":
@@ -277,6 +290,28 @@ def _format_prior_signal_label(value: str) -> str:
         return f"prior risk signal: {value}"
 
     return f"prior blocker: {value}"
+
+
+def _is_strong_fuzzy_title_match(
+    *,
+    posting_title: str | None,
+    record_role: str | None,
+    matched_tokens: tuple[str, ...],
+) -> bool:
+    if _normalize_text(posting_title) == _normalize_text(record_role):
+        return True
+
+    if len(matched_tokens) < 2:
+        return False
+
+    posting_tokens = _meaningful_role_tokens(posting_title)
+    record_tokens = _meaningful_role_tokens(record_role)
+
+    return (
+        posting_tokens == record_tokens
+        or posting_tokens.issubset(record_tokens)
+        or record_tokens.issubset(posting_tokens)
+    )
 
 
 def _meaningful_role_tokens(value: str | None) -> set[str]:
