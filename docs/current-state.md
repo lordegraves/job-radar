@@ -1,0 +1,251 @@
+# Job Radar Current State
+
+Last updated: 2026-07-03
+
+## Purpose
+
+Job Radar is a local job discovery and triage tool.
+
+Its purpose is to safely scan known target company job boards, normalize postings, store them in SQLite, score them against Clayton's job preferences, and generate reports that make manual review faster.
+
+Job Radar does not apply to jobs automatically. It does not contact employers. It does not broadly crawl the internet.
+
+## Current scan coverage
+
+The primary live scan configuration is:
+
+    config/target-companies.yaml
+
+The current live settings file is:
+
+    config/live-test-settings.yaml
+
+Current verified live scan state:
+
+    Companies enabled: 62
+    Jobs collected: 10,000
+    Jobs stored: 150
+    Jobs omitted: 9,850
+    Collector errors: 0
+
+Implemented source types include:
+
+- Greenhouse
+- Lever
+- Ashby
+- Workday
+- USAJobs
+- iCIMS
+- Jibe
+- Jobsyn
+- Oracle HCM
+- SmartRecruiters
+- SelectMinds
+- Phenom
+- Dayforce
+- ADP Workforce Now
+- Activate
+- WEKA custom
+- HTML job-link collectors
+
+## Current storage behavior
+
+Job Radar stores normalized job postings in SQLite.
+
+It tracks:
+
+- New jobs
+- Seen jobs
+- Changed jobs
+- Stored/actionable jobs
+- Omitted/not-actionable jobs
+- Imported job/application history
+
+SQLite is the current system of record for scans and imported history.
+
+## Current scoring behavior
+
+Job Radar uses config-driven scoring from:
+
+    config/scoring.yaml
+
+Current scoring includes:
+
+- Positive keyword scoring
+- Negative keyword scoring
+- Location preference scoring
+- Top Match eligibility rules
+- Review Needed eligibility rules
+- Compensation floor handling
+- Profile avoid matching
+- Resume/profile match signals
+- Hiring probability labels
+- Hiring risk flags
+
+Top Matches are reserved for clean, high-confidence roles with strong fit signals.
+
+Production Kubernetes-primary roles are demoted out of Top Matches unless there is strong infrastructure counterevidence. They may still appear under Review Needed when otherwise relevant.
+
+Generic Remote Competition is a risk signal only. It must not block or reject a role by itself.
+
+## Current report behavior
+
+Job Radar generates:
+
+- Markdown report
+- HTML report
+- Plain-text email preview
+
+Reports include:
+
+- Summary
+- Companies scanned
+- Source type counts
+- Work location fit
+- Recommendation summary
+- History risk summary
+- Omitted jobs audit
+- Top Matches
+- Top Matches Quick View
+- Northern Colorado Highlights
+- Review Needed
+- Passed / Not Recommended
+
+The full Markdown and HTML reports keep detailed review information.
+
+The email preview is intentionally capped for readability.
+
+Passed / Not Recommended includes audit details so large scans explain why most collected jobs did not surface as Top Match or Review Needed.
+
+## Current history behavior
+
+Job Radar imports application and review history from a local Excel workbook.
+
+The simplified Job Log format uses:
+
+- Job Radar ID
+- Date
+- Company
+- Role
+- Posting URL
+- Lead Source
+- Decision
+- Outcome
+- Recruiter/Contact
+- Notes
+- Include In Job Radar
+
+Job Radar ID is the preferred durable history key when present.
+
+Rows without Job Radar ID are allowed for LinkedIn, referral, recruiter, company-site, and manual leads.
+
+Posting URL is fallback evidence when available.
+
+The workbook is treated as a human job log, not the app's internal schema.
+
+Job Radar reads the workbook during manual history import and configured scans. It does not write IDs or enrichment data back to the workbook.
+
+## Current email behavior
+
+Email delivery is guarded behind explicit configuration and an explicit scan flag.
+
+Email behavior:
+
+- Email settings are validated without sending by default.
+- SMTP delivery is disabled until intentionally enabled.
+- `--send-email` is required to exercise the send path.
+- Passwords must come from environment variables.
+- No SMTP password should be stored in YAML.
+- With email disabled, `--send-email` prints that sending is disabled.
+
+## Current project principles
+
+- Configured-company scanning only
+- No broad crawling
+- No automatic job applications
+- No employer outreach
+- Local SQLite system of record
+- Rules-based scoring before LLM integration
+- Safe manual review first
+- No regression
+- Forward progress only
+- Spreadsheet import is current intake, not the final product
+
+## Completed milestones
+
+Completed so far:
+
+- Project scaffold
+- Greenhouse collector
+- Lever collector
+- Ashby collector
+- Workday collector
+- USAJobs collector
+- iCIMS collector
+- Jibe collector
+- Jobsyn collector
+- Oracle HCM collector
+- SmartRecruiters collector
+- SelectMinds collector
+- Phenom collector
+- Dayforce collector
+- ADP Workforce Now collector
+- Activate collector support
+- WEKA custom collector
+- HTML job-link collector
+- SQLite storage
+- Scan/report pipeline
+- Markdown reports
+- HTML reports
+- Email preview
+- Guarded email send path
+- Location classification
+- Recommendation sections
+- Review Needed section
+- Top Match eligibility
+- Northern Colorado Highlights
+- History import
+- Simplified Job Log import
+- History context summary
+- Track Status routing
+- Production Kubernetes Top Match demotion
+- Omitted jobs audit summary
+
+## Known limitations
+
+Current limitations:
+
+- Job Radar still depends on the spreadsheet for application history intake.
+- Job Radar does not yet provide an app-native UI for tracking applications.
+- Job Radar does not write enriched IDs or metadata back to the spreadsheet.
+- Report scoring is still rules-based and may need calibration from real outcomes.
+- Source coverage is broad enough for current use, but individual collectors may still need maintenance if ATS pages change.
+- The email report is intentionally limited and does not include every detail from the full Markdown/HTML reports.
+- Kubernetes deployment is not complete.
+- LLM integration is not implemented yet.
+
+## Remaining milestones before complete-enough
+
+Remaining high-priority milestones:
+
+1. Run a fresh live scan and review the new omitted jobs audit.
+2. Calibrate scoring based on whether omitted jobs are truly bad fits.
+3. Add a short omitted-jobs review workflow if the audit shows hidden good roles.
+4. Finalize daily scheduled scan behavior.
+5. Finalize email delivery settings.
+6. Deploy Job Radar onto the k3s cluster.
+7. Add operational runbook documentation.
+8. Add recovery/troubleshooting documentation.
+9. Decide whether app-native tracking replaces spreadsheet intake.
+10. Add LLM-assisted review only after rules-based behavior is stable.
+
+## Not in scope right now
+
+Do not work on these unless explicitly requested:
+
+- New source expansion
+- Broad scoring rewrite
+- App-native UI
+- Spreadsheet write-back
+- LLM integration
+- Employer/contact automation
