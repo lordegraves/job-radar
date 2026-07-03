@@ -5,7 +5,7 @@ from openpyxl import Workbook
 
 from job_radar.candidate_profile import CandidateProfile
 from job_radar.cli import _find_profile_avoid_matches, handle_import_history, handle_scan
-from job_radar.job_history import EXPECTED_HEADERS, JobHistoryRecord
+from job_radar.job_history import EXPECTED_HEADERS, SIMPLIFIED_HEADERS, JobHistoryRecord
 from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.email_sender import EmailSendResult
 from job_radar.models import JobPosting
@@ -147,6 +147,43 @@ def write_cli_history_workbook(workbook_path: Path) -> None:
     workbook.save(workbook_path)
 
 
+def write_cli_simplified_history_workbook(workbook_path: Path) -> None:
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Job Log"
+    worksheet.append(SIMPLIFIED_HEADERS)
+    worksheet.append(
+        [
+            "jr-example-ai-001",
+            "2026-07-03",
+            "Example AI",
+            "Senior Infrastructure Engineer",
+            "https://example.com/jobs/123",
+            "Job Radar",
+            "Applied",
+            None,
+            "Jane Recruiter",
+            "Applied from simplified Job Log.",
+            "Yes",
+        ]
+    )
+    worksheet.append(
+        [
+            None,
+            "2026-07-03",
+            "ManualCo",
+            "Principal SRE",
+            "https://example.com/manual-lead",
+            "LinkedIn",
+            "Interested",
+            None,
+            None,
+            "Manual lead from LinkedIn.",
+            "Yes",
+        ]
+    )
+    workbook.save(workbook_path)
+
 
 def test_handle_import_history_imports_workbook_rows(
     tmp_path: Path,
@@ -184,6 +221,61 @@ retention:
 
     assert database_file.exists()
     assert count_job_history_rows(database_file) == 2
+
+    assert "Application history import complete" in output
+    assert f"Workbook: {workbook_file}" in output
+    assert f"Database: {database_file}" in output
+    assert "Rows read: 2" in output
+    assert "Rows imported: 2" in output
+    assert "Rows updated: 0" in output
+    assert "Rows skipped: 0" in output
+
+
+def test_handle_import_history_imports_simplified_workbook_rows(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    workbook_file = tmp_path / "job-history.xlsx"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_cli_simplified_history_workbook(workbook_file)
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    handle_import_history(
+        workbook_path=str(workbook_file),
+        settings_path=str(settings_file),
+    )
+
+    output = capsys.readouterr().out
+
+    assert database_file.exists()
+    assert count_job_history_rows(database_file) == 2
+
+    assert fetch_job_history_status(
+        database_file,
+        "job-radar-id:jr-example-ai-001",
+    ) == "Applied"
+    assert fetch_job_history_status(
+        database_file,
+        "posting-url:https://example.com/manual-lead",
+    ) == "Interested"
 
     assert "Application history import complete" in output
     assert f"Workbook: {workbook_file}" in output

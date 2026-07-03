@@ -45,6 +45,10 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Wires the email send path behind an explicit --send-email flag
 - Keeps SMTP delivery disabled until enabled intentionally
 - Requires email passwords to come from environment variables when email is enabled
+- Imports job/application history from a tracking workbook
+- Supports the simplified Job Log spreadsheet format
+- Treats Job Radar ID as the preferred history identity when present
+- Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
 
 ## Current live target sources
 
@@ -130,13 +134,47 @@ Keyword scoring, location preferences, Top Match rules, and Review Needed rules.
 
 Sample/demo company configuration. These entries are placeholders.
 
+## Job history import
+
+Job Radar can import application and review history from a local Excel workbook.
+
+The current simplified Job Log format uses these columns:
+
+    Job Radar ID
+    Date
+    Company
+    Role
+    Posting URL
+    Lead Source
+    Decision
+    Outcome
+    Recruiter/Contact
+    Notes
+    Include In Job Radar
+
+The simplified workbook is treated as a human job log, not as the app's internal schema.
+
+Job Radar owns source/ATS details, scoring, blockers, risks, matching, and report placement. The workbook records what happened, what was decided, where the lead came from, and any human notes.
+
+Job Radar ID is used as the preferred durable history key when present. Rows without a Job Radar ID are still allowed for LinkedIn, referral, recruiter, company-site, and other manual leads. Posting URL is used as fallback evidence when available.
+
+Job Radar reads the workbook during history import and configured scans. It does not write IDs or enrichment data back to the workbook.
+
+Import history manually:
+
+    python -m job_radar import-history --workbook data/job-history.xlsx --settings config/settings.yaml
+
+Summarize imported history:
+
+    python -m job_radar history-summary --settings config/settings.yaml
+
 ## Run tests
 
     python -m pytest
 
 Expected current result:
 
-    191 passed
+    315 passed
 
 ## Report structure
 

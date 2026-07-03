@@ -11,6 +11,7 @@ from job_radar.normalize import clean_text
 
 PIPELINE_SHEET_NAME = "Pipeline Import"
 REVIEWED_SHEET_NAME = "Reviewed Import"
+SIMPLIFIED_SHEET_NAME = "Job Log"
 
 EXPECTED_HEADERS = [
     "History Type",
@@ -34,6 +35,20 @@ EXPECTED_HEADERS = [
     "Include In Job Radar",
     "Import Key",
     "Notes",
+]
+
+SIMPLIFIED_HEADERS = [
+    "Job Radar ID",
+    "Date",
+    "Company",
+    "Role",
+    "Posting URL",
+    "Lead Source",
+    "Decision",
+    "Outcome",
+    "Recruiter/Contact",
+    "Notes",
+    "Include In Job Radar",
 ]
 
 
@@ -60,6 +75,9 @@ class JobHistoryRecord:
     include_in_job_radar: bool
     import_key: str
     notes: str | None
+    job_radar_id: str | None = None
+    posting_url: str | None = None
+    lead_source: str | None = None
 
 
 @dataclass(frozen=True)
@@ -78,6 +96,30 @@ def load_job_history_workbook(path: str | Path) -> JobHistoryImportResult:
 
     workbook = load_workbook(workbook_path, data_only=True)
 
+    if _has_old_history_schema(workbook):
+        return _load_old_history_workbook(workbook)
+
+    simplified_sheet = _find_simplified_history_sheet(workbook)
+
+    if simplified_sheet is not None:
+        records, rows_read, rows_skipped = _load_simplified_history_sheet(
+            simplified_sheet,
+            simplified_sheet.title,
+        )
+
+        return JobHistoryImportResult(
+            rows_read=rows_read,
+            rows_imported=len(records),
+            rows_skipped=rows_skipped,
+            records=records,
+        )
+
+    raise ConfigError(
+        "Job history workbook does not match the old import schema or simplified Job Log schema"
+    )
+
+
+def _load_old_history_workbook(workbook: Any) -> JobHistoryImportResult:
     records: list[JobHistoryRecord] = []
     rows_read = 0
     rows_skipped = 0
@@ -101,6 +143,42 @@ def load_job_history_workbook(path: str | Path) -> JobHistoryImportResult:
         rows_skipped=rows_skipped,
         records=records,
     )
+
+
+def _has_old_history_schema(workbook: Any) -> bool:
+    if not (
+        PIPELINE_SHEET_NAME in workbook.sheetnames
+        or REVIEWED_SHEET_NAME in workbook.sheetnames
+    ):
+        return False
+
+    for sheet_name in [PIPELINE_SHEET_NAME, REVIEWED_SHEET_NAME]:
+        if sheet_name not in workbook.sheetnames:
+            continue
+
+        headers = [_cell_to_text(cell.value) for cell in workbook[sheet_name][1]]
+
+        if headers[: len(SIMPLIFIED_HEADERS)] == SIMPLIFIED_HEADERS:
+            return False
+
+    return True
+
+
+def _find_simplified_history_sheet(workbook: Any) -> Any | None:
+    candidate_sheet_names = [
+        sheet_name
+        for sheet_name in [SIMPLIFIED_SHEET_NAME, *workbook.sheetnames]
+        if sheet_name in workbook.sheetnames
+    ]
+
+    for sheet_name in candidate_sheet_names:
+        worksheet = workbook[sheet_name]
+        headers = [_cell_to_text(cell.value) for cell in worksheet[1]]
+
+        if headers[: len(SIMPLIFIED_HEADERS)] == SIMPLIFIED_HEADERS:
+            return worksheet
+
+    return None
 
 
 def _load_history_sheet(
@@ -136,12 +214,50 @@ def _load_history_sheet(
             rows_skipped += 1
             continue
 
-        records.append(_build_record(values, sheet_name, row_number))
+        records.append(_build_old_record(values, sheet_name, row_number))
 
     return records, rows_read, rows_skipped
 
 
-def _build_record(
+def _load_simplified_history_sheet(
+    worksheet: Any,
+    sheet_name: str,
+) -> tuple[list[JobHistoryRecord], int, int]:
+    headers = [_cell_to_text(cell.value) for cell in worksheet[1]]
+
+    if headers[: len(SIMPLIFIED_HEADERS)] != SIMPLIFIED_HEADERS:
+        raise ConfigError(
+            f"{sheet_name} headers do not match expected simplified Job Log schema"
+        )
+
+    records: list[JobHistoryRecord] = []
+    rows_read = 0
+    rows_skipped = 0
+
+    for row_number, row in enumerate(
+        worksheet.iter_rows(min_row=2, max_col=len(SIMPLIFIED_HEADERS)),
+        start=2,
+    ):
+        values = {
+            header: _cell_to_text(cell.value)
+            for header, cell in zip(SIMPLIFIED_HEADERS, row)
+        }
+
+        if _is_blank_row(values):
+            continue
+
+        rows_read += 1
+
+        if _is_excluded(values["Include In Job Radar"]):
+            rows_skipped += 1
+            continue
+
+        records.append(_build_simplified_record(values, sheet_name, row_number))
+
+    return records, rows_read, rows_skipped
+
+
+def _build_old_record(
     values: dict[str, str | None],
     sheet_name: str,
     row_number: int,
@@ -174,6 +290,104 @@ def _build_record(
         import_key=import_key,
         notes=values["Notes"],
     )
+
+
+def _build_simplified_record(
+    values: dict[str, str | None],
+    sheet_name: str,
+    row_number: int,
+) -> JobHistoryRecord:
+    company = _required_value(values["Company"], sheet_name, row_number, "Company")
+    role = _required_value(values["Role"], sheet_name, row_number, "Role")
+    job_radar_id = values["Job Radar ID"]
+    posting_url = values["Posting URL"]
+    lead_source = values["Lead Source"]
+    decision = values["Decision"]
+    outcome = values["Outcome"]
+
+    # The simplified workbook is a human job log. The app owns ATS/source
+    # details, scoring, blockers, and risks, so those fields stay empty here.
+    return JobHistoryRecord(
+        history_type=_infer_history_type(decision=decision, outcome=outcome),
+        company=company,
+        role=role,
+        source=lead_source,
+        ats_platform=None,
+        work_arrangement=None,
+        location=None,
+        comp_range=None,
+        event_date=_normalize_event_date(values["Date"]),
+        status=decision,
+        outcome_category=outcome,
+        recruiter_contact=values["Recruiter/Contact"],
+        technical_match=None,
+        hiring_probability=None,
+        skills_signals=None,
+        primary_blocker=None,
+        secondary_blocker=None,
+        revisit=None,
+        include_in_job_radar=True,
+        import_key=_build_simplified_import_key(
+            job_radar_id=job_radar_id,
+            posting_url=posting_url,
+            company=company,
+            role=role,
+            event_date=_normalize_event_date(values["Date"]),
+            sheet_name=sheet_name,
+            row_number=row_number,
+        ),
+        notes=values["Notes"],
+        job_radar_id=job_radar_id,
+        posting_url=posting_url,
+        lead_source=lead_source,
+    )
+
+
+def _build_simplified_import_key(
+    *,
+    job_radar_id: str | None,
+    posting_url: str | None,
+    company: str,
+    role: str,
+    event_date: str | None,
+    sheet_name: str,
+    row_number: int,
+) -> str:
+    # Job Radar ID is the durable bridge when the row came from a report.
+    if job_radar_id is not None:
+        return f"job-radar-id:{_key_token(job_radar_id)}"
+
+    # URLs are evidence, not a perfect long-term identity, but they are the
+    # safest fallback for manual/external rows before app-native tracking exists.
+    if posting_url is not None:
+        return f"posting-url:{_key_token(posting_url)}"
+
+    fallback_parts = [
+        "manual",
+        _key_token(company),
+        _key_token(role),
+        _key_token(event_date or "unknown-date"),
+        _key_token(sheet_name),
+        f"row-{row_number}",
+    ]
+
+    return ":".join(fallback_parts)
+
+
+def _infer_history_type(
+    *,
+    decision: str | None,
+    outcome: str | None,
+) -> str:
+    combined_value = clean_text(" ".join([decision or "", outcome or ""])).lower()
+
+    if any(
+        marker in combined_value
+        for marker in ["skip", "skipped", "avoid", "reviewed"]
+    ):
+        return "Reviewed"
+
+    return "Pipeline"
 
 
 def _required_value(
@@ -224,3 +438,7 @@ def _is_blank_row(values: dict[str, str | None]) -> bool:
 
 def _is_excluded(value: str | None) -> bool:
     return value is not None and value.lower() == "no"
+
+
+def _key_token(value: str) -> str:
+    return "-".join(clean_text(value).lower().split())

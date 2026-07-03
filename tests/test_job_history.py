@@ -4,7 +4,11 @@ import pytest
 from openpyxl import Workbook
 
 from job_radar.config import ConfigError
-from job_radar.job_history import EXPECTED_HEADERS, load_job_history_workbook
+from job_radar.job_history import (
+    EXPECTED_HEADERS,
+    SIMPLIFIED_HEADERS,
+    load_job_history_workbook,
+)
 
 
 def write_history_workbook(
@@ -30,6 +34,51 @@ def write_history_workbook(
         reviewed_sheet.append(row)
 
     workbook.save(workbook_path)
+
+
+def write_simplified_history_workbook(
+    workbook_path: Path,
+    rows: list[list[object]],
+    sheet_name: str = "Job Log",
+    headers: list[str] | None = None,
+) -> None:
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = sheet_name
+    worksheet.append(headers or SIMPLIFIED_HEADERS)
+
+    for row in rows:
+        worksheet.append(row)
+
+    workbook.save(workbook_path)
+
+
+def make_simplified_history_row(
+    job_radar_id: str | None = "jr-example-ai-001",
+    event_date: str = "2026-07-03",
+    company: str = "Example AI",
+    role: str = "Senior Infrastructure Engineer",
+    posting_url: str | None = "https://example.com/jobs/123",
+    lead_source: str = "Job Radar",
+    decision: str = "Applied",
+    outcome: str | None = None,
+    recruiter_contact: str | None = "Jane Recruiter",
+    notes: str | None = "Applied from Job Radar report.",
+    include_in_job_radar: str = "Yes",
+) -> list[object]:
+    return [
+        job_radar_id,
+        event_date,
+        company,
+        role,
+        posting_url,
+        lead_source,
+        decision,
+        outcome,
+        recruiter_contact,
+        notes,
+        include_in_job_radar,
+    ]
 
 
 def make_history_row(
@@ -183,7 +232,9 @@ def test_load_job_history_workbook_requires_expected_headers(tmp_path: Path) -> 
         load_job_history_workbook(workbook_path)
 
 
-def test_load_job_history_workbook_requires_import_key(tmp_path: Path) -> None:
+def test_load_job_history_workbook_requires_import_key_for_old_schema(
+    tmp_path: Path,
+) -> None:
     workbook_path = tmp_path / "job-history.xlsx"
     row = make_history_row()
     row[19] = None
@@ -195,6 +246,176 @@ def test_load_job_history_workbook_requires_import_key(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ConfigError, match="missing Import Key"):
+        load_job_history_workbook(workbook_path)
+
+
+def test_load_job_history_workbook_reads_simplified_job_log_rows(
+    tmp_path: Path,
+) -> None:
+    workbook_path = tmp_path / "job-history.xlsx"
+
+    write_simplified_history_workbook(
+        workbook_path=workbook_path,
+        rows=[make_simplified_history_row()],
+    )
+
+    result = load_job_history_workbook(workbook_path)
+
+    assert result.rows_read == 1
+    assert result.rows_imported == 1
+    assert result.rows_skipped == 0
+    assert len(result.records) == 1
+
+    record = result.records[0]
+
+    assert record.history_type == "Pipeline"
+    assert record.company == "Example AI"
+    assert record.role == "Senior Infrastructure Engineer"
+    assert record.source == "Job Radar"
+    assert record.lead_source == "Job Radar"
+    assert record.ats_platform is None
+    assert record.event_date == "2026-07-03"
+    assert record.status == "Applied"
+    assert record.outcome_category is None
+    assert record.recruiter_contact == "Jane Recruiter"
+    assert record.primary_blocker is None
+    assert record.secondary_blocker is None
+    assert record.import_key == "job-radar-id:jr-example-ai-001"
+    assert record.job_radar_id == "jr-example-ai-001"
+    assert record.posting_url == "https://example.com/jobs/123"
+    assert record.notes == "Applied from Job Radar report."
+
+
+def test_load_job_history_workbook_accepts_simplified_headers_on_pipeline_import_sheet(
+    tmp_path: Path,
+) -> None:
+    workbook_path = tmp_path / "job-history.xlsx"
+
+    write_simplified_history_workbook(
+        workbook_path=workbook_path,
+        rows=[make_simplified_history_row()],
+        sheet_name="Pipeline Import",
+    )
+
+    result = load_job_history_workbook(workbook_path)
+
+    assert result.rows_read == 1
+    assert result.rows_imported == 1
+    assert result.rows_skipped == 0
+    assert result.records[0].import_key == "job-radar-id:jr-example-ai-001"
+
+
+def test_load_job_history_workbook_allows_simplified_rows_without_job_radar_id(
+    tmp_path: Path,
+) -> None:
+    workbook_path = tmp_path / "job-history.xlsx"
+
+    write_simplified_history_workbook(
+        workbook_path=workbook_path,
+        rows=[
+            make_simplified_history_row(
+                job_radar_id=None,
+                posting_url="https://example.com/manual-lead",
+                lead_source="LinkedIn",
+                decision="Interested",
+                notes="Manual lead from LinkedIn.",
+            )
+        ],
+    )
+
+    result = load_job_history_workbook(workbook_path)
+
+    assert result.rows_read == 1
+    assert result.rows_imported == 1
+    assert result.rows_skipped == 0
+
+    record = result.records[0]
+
+    assert record.job_radar_id is None
+    assert record.source == "LinkedIn"
+    assert record.lead_source == "LinkedIn"
+    assert record.posting_url == "https://example.com/manual-lead"
+    assert record.import_key == "posting-url:https://example.com/manual-lead"
+
+
+def test_load_job_history_workbook_generates_manual_key_without_id_or_url(
+    tmp_path: Path,
+) -> None:
+    workbook_path = tmp_path / "job-history.xlsx"
+
+    write_simplified_history_workbook(
+        workbook_path=workbook_path,
+        rows=[
+            make_simplified_history_row(
+                job_radar_id=None,
+                posting_url=None,
+                company="ManualCo",
+                role="Principal SRE",
+                lead_source="Referral",
+                decision="Interested",
+            )
+        ],
+    )
+
+    result = load_job_history_workbook(workbook_path)
+
+    record = result.records[0]
+
+    assert record.import_key == "manual:manualco:principal-sre:2026-07-03:job-log:row-2"
+
+
+def test_load_job_history_workbook_skips_simplified_rows_excluded_from_job_radar(
+    tmp_path: Path,
+) -> None:
+    workbook_path = tmp_path / "job-history.xlsx"
+
+    write_simplified_history_workbook(
+        workbook_path=workbook_path,
+        rows=[
+            make_simplified_history_row(
+                include_in_job_radar="No",
+            )
+        ],
+    )
+
+    result = load_job_history_workbook(workbook_path)
+
+    assert result.rows_read == 1
+    assert result.rows_imported == 0
+    assert result.rows_skipped == 1
+    assert result.records == []
+
+
+def test_load_job_history_workbook_requires_company_and_role_for_simplified_rows(
+    tmp_path: Path,
+) -> None:
+    workbook_path = tmp_path / "job-history.xlsx"
+
+    write_simplified_history_workbook(
+        workbook_path=workbook_path,
+        rows=[
+            make_simplified_history_row(
+                company="",
+            )
+        ],
+    )
+
+    with pytest.raises(ConfigError, match="missing Company"):
+        load_job_history_workbook(workbook_path)
+
+
+def test_load_job_history_workbook_requires_simplified_headers(tmp_path: Path) -> None:
+    workbook_path = tmp_path / "job-history.xlsx"
+    bad_headers = SIMPLIFIED_HEADERS.copy()
+    bad_headers[0] = "Wrong Header"
+
+    write_simplified_history_workbook(
+        workbook_path=workbook_path,
+        rows=[],
+        headers=bad_headers,
+    )
+
+    with pytest.raises(ConfigError, match="does not match"):
         load_job_history_workbook(workbook_path)
 
 
