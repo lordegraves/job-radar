@@ -50,7 +50,8 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Generates stable Job Radar IDs for scanned postings
 - Shows Job Radar IDs in Markdown, HTML, and email-preview reports
 - Treats Job Radar ID as the preferred history identity when present
-- Matches imported history by exact Job Radar ID before falling back to company/title similarity
+- Matches imported history by exact Job Radar ID before falling back to guarded company/title similarity
+- Routes fuzzy history matches to Track Status only when the title match is strong enough
 - Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
 
 ## Current live target sources
@@ -159,7 +160,11 @@ The simplified workbook is treated as a human job log, not as the app's internal
 
 Job Radar owns source/ATS details, scoring, blockers, risks, matching, and report placement. The workbook records what happened, what was decided, where the lead came from, and any human notes.
 
-Job Radar ID is generated for scanned postings and shown in Markdown, HTML, and email-preview reports. It is used as the preferred durable history key when present. Rows without a Job Radar ID are still allowed for LinkedIn, referral, recruiter, company-site, and other manual leads. Posting URL is used as fallback evidence when available.
+Job Radar ID is generated for scanned postings and shown in Markdown, HTML, and email-preview reports. It is used as the preferred durable history key when present.
+
+Rows without a Job Radar ID are still allowed for LinkedIn, referral, recruiter, company-site, and other manual leads. Posting URL is used as fallback evidence when available.
+
+Exact Job Radar ID matches can route roles to Track Status. Fuzzy company/title matches are guarded so broad title overlap can provide history context without automatically treating a role as already applied.
 
 Job Radar reads the workbook during history import and configured scans. It does not write IDs or enrichment data back to the workbook.
 
