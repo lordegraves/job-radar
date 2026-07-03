@@ -29,8 +29,8 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Scores jobs using configurable keyword and location rules
 - Classifies location status
 - Uses config-driven eligibility rules for Top Matches and Review Needed
-- Separates Top Matches, Review Needed, Northern Colorado Highlights, and All Jobs
-- Keeps All Jobs complete even when Top Matches and Review Needed are filtered
+- Separates Top Matches, Review Needed, Northern Colorado Highlights, and Passed / Not Recommended
+- Keeps Passed / Not Recommended audit details available when Top Matches and Review Needed are filtered
 - Keeps the full Markdown and HTML reports complete for Top Matches
 - Keeps email summaries intentionally capped for readability
 - Generates a Markdown report
@@ -174,7 +174,7 @@ Summarize imported history:
 
 Expected current result:
 
-    315 passed
+    318 passed
 
 ## Report structure
 
@@ -202,9 +202,11 @@ Location-focused section for Northern Colorado and nearby strategic locations.
 
 This section avoids duplicating jobs already shown in full Top Matches.
 
-### All Jobs
+### Passed / Not Recommended
 
-Complete scored archive of collected jobs. This section stays complete even when Top Matches and Review Needed are filtered.
+The report summary includes an omitted jobs audit so large scans show why collected jobs did not surface as Top Match or Review Needed.
+
+The full Markdown and HTML reports include passed jobs most worth reviewing, capped for readability.
 
 ## Run full live scan
 

@@ -494,12 +494,13 @@ def test_render_markdown_report_includes_omitted_reason_summary() -> None:
     markdown = render_markdown_report(report)
 
     assert "## Passed / Not Recommended" in markdown
+    assert "- Omitted jobs audit:" in markdown
     assert "- Risk / pass signal summary:" in markdown
-    assert "  - One job may appear in more than one signal count." in markdown
-    assert "  - Below compensation floor: 1" in markdown
-    assert "  - Role family mismatch: 1" in markdown
-    assert "  - Low hiring probability: 1" in markdown
-    assert "  - Below Top Match / Review Needed threshold: 1" in markdown
+    assert markdown.count("  - One job may appear in more than one signal count.") == 2
+    assert markdown.count("  - Below compensation floor: 1") == 2
+    assert markdown.count("  - Role family mismatch: 1") == 2
+    assert markdown.count("  - Low hiring probability: 1") == 2
+    assert markdown.count("  - Below Top Match / Review Needed threshold: 1") == 2
 
 
 def test_render_markdown_report_includes_passed_job_details() -> None:
@@ -1287,8 +1288,9 @@ def test_render_html_report_includes_passed_job_details() -> None:
     html = render_html_report(report)
 
     assert "<h2>Passed / Not Recommended</h2>" in html
+    assert "<strong>Omitted jobs audit:</strong>" in html
     assert "<strong>Risk / pass signal summary:</strong>" in html
-    assert "One job may appear in more than one signal count." in html
+    assert html.count("One job may appear in more than one signal count.") == 2
     assert "Passed jobs most worth reviewing, up to 25" in html
     assert "Account Executive" in html
     assert "<strong>Score:</strong> -60" in html

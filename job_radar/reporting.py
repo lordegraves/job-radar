@@ -128,6 +128,7 @@ def render_markdown_report(report: ScanReport) -> str:
         _append_work_arrangement_summary(lines, report.scored_postings)
         _append_recommendation_summary(lines, surfaced_scored_postings)
         _append_history_risk_summary(lines, report_scored_postings)
+        _append_omitted_jobs_audit_summary(lines, report_scored_postings)
 
     _append_history_context_summary(lines, report.history_context)
 
@@ -249,6 +250,7 @@ def render_html_report(report: ScanReport) -> str:
             heading="History risk summary",
             counts=_get_history_risk_summary_counts(report_scored_postings),
         )
+        _append_html_omitted_jobs_audit_summary(lines, report_scored_postings)
     _append_html_history_context_summary(lines, report.history_context)
 
     lines.append("</ul>")
@@ -489,6 +491,29 @@ def _append_history_risk_summary(
 
     for risk_level in _get_ordered_history_risk_levels(history_risk_counts):
         lines.append(f"  - {risk_level}: {history_risk_counts[risk_level]}")
+
+
+def _append_omitted_jobs_audit_summary(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    omitted_postings = _get_omitted_postings(scored_postings)
+
+    if not omitted_postings:
+        return
+
+    omitted_reason_counts = _get_omitted_reason_summary_counts(omitted_postings)
+
+    if not omitted_reason_counts:
+        return
+
+    # Keep the high-level audit near the scan summary so the report explains
+    # why thousands of collected jobs did not surface before the reader scrolls.
+    lines.append("- Omitted jobs audit:")
+    lines.append("  - One job may appear in more than one signal count.")
+
+    for reason in sorted(omitted_reason_counts):
+        lines.append(f"  - {reason}: {omitted_reason_counts[reason]}")
 
 
 def _get_history_risk_summary_counts(
@@ -1326,6 +1351,33 @@ def _append_html_work_arrangement_summary(
         heading="Work location fit",
         counts=_get_work_arrangement_summary_counts(scored_postings),
     )
+
+
+def _append_html_omitted_jobs_audit_summary(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    omitted_postings = _get_omitted_postings(scored_postings)
+
+    if not omitted_postings:
+        return
+
+    omitted_reason_counts = _get_omitted_reason_summary_counts(omitted_postings)
+
+    if not omitted_reason_counts:
+        return
+
+    lines.append("<li><strong>Omitted jobs audit:</strong>")
+    lines.append("<ul>")
+    lines.append("<li>One job may appear in more than one signal count.</li>")
+
+    for reason in sorted(omitted_reason_counts):
+        lines.append(
+            f"<li>{escape(reason)}: {omitted_reason_counts[reason]}</li>"
+        )
+
+    lines.append("</ul>")
+    lines.append("</li>")
 
 
 def _append_html_history_context_summary(
