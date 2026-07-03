@@ -144,6 +144,7 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:" in body
     assert "1. Data Center Design Execution Lead" in body
     assert "   Company: Anthropic" in body
+    assert "   Job Radar ID: jr-" in body
     assert "   Score: 158" in body
     assert "   Location: Remote" in body
     assert "   Technical match: Strong" in body
@@ -208,6 +209,7 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:" in body
     assert "1. Senior Data Center Infrastructure Engineer" in body
     assert "   Company: Anthropic" in body
+    assert "   Job Radar ID: jr-" in body
     assert "   Score: 151" in body
     assert "   Location: Remote" in body
     assert "   Technical match: Strong" in body
@@ -450,6 +452,7 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:" in preview_text
     assert "1. Data Center Design Execution Lead" in preview_text
     assert "   Company: Anthropic" in preview_text
+    assert "   Job Radar ID: jr-" in preview_text
     assert "   Score: 158" in preview_text
     assert "Full report:" in preview_text
     assert "reports/live-test.md" in preview_text

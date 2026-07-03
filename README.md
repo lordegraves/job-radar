@@ -47,7 +47,10 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Requires email passwords to come from environment variables when email is enabled
 - Imports job/application history from a tracking workbook
 - Supports the simplified Job Log spreadsheet format
+- Generates stable Job Radar IDs for scanned postings
+- Shows Job Radar IDs in Markdown, HTML, and email-preview reports
 - Treats Job Radar ID as the preferred history identity when present
+- Matches imported history by exact Job Radar ID before falling back to company/title similarity
 - Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
 
 ## Current live target sources
@@ -156,7 +159,7 @@ The simplified workbook is treated as a human job log, not as the app's internal
 
 Job Radar owns source/ATS details, scoring, blockers, risks, matching, and report placement. The workbook records what happened, what was decided, where the lead came from, and any human notes.
 
-Job Radar ID is used as the preferred durable history key when present. Rows without a Job Radar ID are still allowed for LinkedIn, referral, recruiter, company-site, and other manual leads. Posting URL is used as fallback evidence when available.
+Job Radar ID is generated for scanned postings and shown in Markdown, HTML, and email-preview reports. It is used as the preferred durable history key when present. Rows without a Job Radar ID are still allowed for LinkedIn, referral, recruiter, company-site, and other manual leads. Posting URL is used as fallback evidence when available.
 
 Job Radar reads the workbook during history import and configured scans. It does not write IDs or enrichment data back to the workbook.
 
@@ -174,7 +177,7 @@ Summarize imported history:
 
 Expected current result:
 
-    318 passed
+    319 passed
 
 ## Report structure
 

@@ -105,6 +105,14 @@ def find_history_matches(
     if not posting_company or not posting_tokens:
         return []
 
+    exact_id_matches = _find_exact_job_radar_id_matches(
+        posting=posting,
+        history_records=history_records,
+    )
+
+    if exact_id_matches:
+        return exact_id_matches[:limit]
+
     matches: list[HistoryMatch] = []
 
     for record in history_records:
@@ -132,6 +140,34 @@ def find_history_matches(
         )
 
     return matches[:limit]
+
+
+def _find_exact_job_radar_id_matches(
+    posting: JobPosting,
+    history_records: list[JobHistoryRecord],
+) -> list[HistoryMatch]:
+    expected_import_key = f"job-radar-id:{posting.job_radar_id}"
+    matches: list[HistoryMatch] = []
+
+    for record in history_records:
+        if not record.include_in_job_radar:
+            continue
+
+        if record.import_key != expected_import_key:
+            continue
+
+        risk_level, risk_reasons = _classify_history_risk(record)
+
+        matches.append(
+            HistoryMatch(
+                record=record,
+                matched_tokens=("job_radar_id",),
+                risk_level=risk_level,
+                risk_reasons=risk_reasons,
+            )
+        )
+
+    return matches
 
 
 def _classify_history_risk(record: JobHistoryRecord) -> tuple[str, tuple[str, ...]]:

@@ -333,6 +333,7 @@ def _append_email_posting_detail(
         [
             f"{index}. {_format_value(posting.title)}",
             f"   Company: {_format_value(posting.company_name)}",
+            f"   Job Radar ID: {posting.job_radar_id}",
             f"   Score: {scored_posting.score}",
             f"   Location: {_format_value(posting.location)}",
             f"   Technical match: {_get_technical_match_label(scored_posting)}",
@@ -573,6 +574,8 @@ def _append_html_posting_detail(
             "<ul>",
             f"<li><strong>Company:</strong> "
             f"{escape(_format_value(posting.company_name))}</li>",
+            f"<li><strong>Job Radar ID:</strong> "
+            f"<code>{escape(posting.job_radar_id)}</code></li>",
             f"<li><strong>Score:</strong> {scored_posting.score}</li>",
             f"<li><strong>Location:</strong> "
             f"{escape(_format_value(posting.location))}</li>",

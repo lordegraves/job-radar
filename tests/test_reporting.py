@@ -104,6 +104,7 @@ def test_render_markdown_report_includes_jobs() -> None:
     assert "- Source: greenhouse" in markdown
     assert "- Location: Remote" in markdown
     assert "- URL: https://boards.greenhouse.io/exampleai/jobs/123" in markdown
+    assert "- Job Radar ID: `jr-example_ai-" in markdown
     assert (
         "- Canonical key: `example_ai:senior-infrastructure-engineer:remote`"
         in markdown
@@ -535,6 +536,7 @@ def test_render_markdown_report_includes_passed_job_details() -> None:
     assert "- Recommended action: Pass" in markdown
     assert "- Why not recommended:" in markdown
     assert "- URL: https://boards.greenhouse.io/exampleai/jobs/123" in markdown
+    assert "- Job Radar ID: `jr-example_ai-" in markdown
 
 
 def test_top_matches_only_includes_allowed_locations_without_negative_title_matches() -> None:
@@ -1217,6 +1219,7 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     assert 'class="job-card top-match"' in html
     assert "<strong>Posting:</strong>" in html
     assert "View posting</a>" in html
+    assert "<strong>Job Radar ID:</strong>" in html
     assert "<strong>URL:</strong>" not in html
 
 

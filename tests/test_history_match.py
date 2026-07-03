@@ -239,3 +239,36 @@ def test_applied_history_record_tracks_status_instead_of_fresh_apply() -> None:
 
     assert risk_level == "track_status"
     assert risk_reasons == ["already_applied"]
+
+
+def test_find_history_matches_prefers_exact_job_radar_id() -> None:
+    posting = make_posting(
+        company_name="Example AI",
+        title="Senior Infrastructure Engineer",
+    )
+
+    exact_record = make_history_record(
+        company="Different Company Name",
+        role="Completely Different Role",
+        status="Applied",
+        outcome_category="Pending / In Progress",
+        import_key=f"job-radar-id:{posting.job_radar_id}",
+    )
+
+    fuzzy_record = make_history_record(
+        company="Example AI",
+        role="Senior Infrastructure Engineer",
+        status="Rejected - No Interview",
+        outcome_category="No Interview",
+        import_key="pipeline:example-ai:senior-infrastructure-engineer",
+    )
+
+    matches = find_history_matches(posting, [fuzzy_record, exact_record])
+
+    assert len(matches) == 1
+    assert matches[0].record == exact_record
+    assert matches[0].matched_tokens == ("job_radar_id",)
+    assert matches[0].risk_level == "track_status"
+    assert matches[0].risk_reasons == ("already_applied",)
+
+

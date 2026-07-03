@@ -996,6 +996,7 @@ def _append_passed_posting(
             f"- Why not recommended: {_format_pass_reason(scored_posting)}",
             f"- Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
             f"- URL: {posting.source_url}",
+            f"- Job Radar ID: `{posting.job_radar_id}`",
             "",
         ]
     )
@@ -1102,6 +1103,7 @@ def _append_scored_posting(
             f"- Source: {posting.source_type}",
             f"- Location: {posting.location or 'Unknown'}",
             f"- URL: {posting.source_url}",
+            f"- Job Radar ID: `{posting.job_radar_id}`",
         ]
     )
 
@@ -1125,6 +1127,7 @@ def _append_posting(lines: list[str], posting: JobPosting) -> None:
             f"- Source: {posting.source_type}",
             f"- Location: {posting.location or 'Unknown'}",
             f"- URL: {posting.source_url}",
+            f"- Job Radar ID: `{posting.job_radar_id}`",
         ]
     )
 
@@ -1585,6 +1588,8 @@ def _append_html_passed_posting(
             f"{escape(_format_pass_reason(scored_posting))}</li>",
             f"<li><strong>Hiring risks:</strong> "
             f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
+            f"<li><strong>Job Radar ID:</strong> "
+            f"<code>{escape(posting.job_radar_id)}</code></li>",
             f"<li><strong>Posting:</strong> "
             f'<a href="{escape(posting.source_url, quote=True)}">'
             "View posting</a></li>",
@@ -1616,6 +1621,8 @@ def _append_html_unscored_jobs_section(
                 f"<li><strong>Source:</strong> {escape(posting.source_type)}</li>",
                 f"<li><strong>Location:</strong> "
                 f"{escape(posting.location or 'Unknown')}</li>",
+                f"<li><strong>Job Radar ID:</strong> "
+                f"<code>{escape(posting.job_radar_id)}</code></li>",
                 f"<li><strong>Posting:</strong> "
                 f'<a href="{escape(posting.source_url, quote=True)}">'
                 "View posting</a></li>",
@@ -1670,6 +1677,8 @@ def _append_html_scored_posting(
             f"{escape(_get_action_rationale(scored_posting))}</li>",
             f"<li><strong>Hiring risks:</strong> "
             f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
+            f"<li><strong>Job Radar ID:</strong> "
+            f"<code>{escape(posting.job_radar_id)}</code></li>",
             f"<li><strong>History context:</strong> "
             f"{escape(_format_history_context(scored_posting))}</li>",
         ]
