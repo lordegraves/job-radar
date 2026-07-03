@@ -182,7 +182,9 @@ The Markdown and HTML reports include these major sections:
 
 ### Top Matches
 
-Best clean matches based on score, location, excluded title filters, and strong technical signals.
+Best clean matches based on score, location, excluded title filters, strong technical signals, and fit-risk checks.
+
+Production Kubernetes-primary roles are demoted out of Top Matches unless there is strong infrastructure counterevidence. They may still appear under Review Needed when otherwise relevant.
 
 The full Markdown and HTML reports show all Top Match eligible jobs.
 

@@ -593,6 +593,118 @@ def test_evaluate_top_match_eligibility_allows_limited_travel() -> None:
     ]
 
 
+def test_evaluate_top_match_eligibility_demotes_production_kubernetes_primary_role() -> None:
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+        description=(
+            "Own production Kubernetes clusters, operate the Kubernetes platform, "
+            "and manage Kubernetes control plane reliability for customer workloads."
+        ),
+        location="Remote",
+    )
+
+    config = make_scoring_config()
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=140,
+        score_reasons=[
+            "+8 body:kubernetes",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        scoring_config=config,
+    )
+
+    assert eligible is False
+    assert reasons == ["production_kubernetes_primary_risk"]
+
+
+def test_evaluate_top_match_eligibility_allows_kubernetes_as_adjacent_tooling() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description=(
+            "Build Linux systems for HPC clusters, GPU infrastructure, "
+            "Slurm scheduling, storage, automation, and Kubernetes-adjacent tooling."
+        ),
+        location="Remote",
+    )
+
+    config = make_scoring_config()
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=140,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "+8 body:kubernetes",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        scoring_config=config,
+    )
+
+    assert eligible is True
+    assert reasons == [
+        "score 140 meets top-match threshold 100",
+        "location fit is acceptable: allowed",
+        "strong signal matched: title:infrastructure",
+    ]
+
+
+def test_evaluate_review_needed_eligibility_keeps_demoted_kubernetes_role_reviewable() -> None:
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+        description=(
+            "Own production Kubernetes clusters, operate the Kubernetes platform, "
+            "and support Linux infrastructure."
+        ),
+        location="Remote",
+    )
+
+    config = make_scoring_config()
+    config["review_needed"] = {
+        "min_score": 100,
+        "excluded_location_statuses": [
+            "skipped",
+            "unknown",
+        ],
+        "strong_signals": [
+            "body:kubernetes",
+            "body:linux",
+        ],
+    }
+
+    top_match_eligible, top_match_reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=140,
+        score_reasons=[
+            "+8 body:kubernetes",
+            "+10 body:linux",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        scoring_config=config,
+    )
+
+    review_needed_eligible = evaluate_review_needed_eligibility(
+        score=140,
+        score_reasons=[
+            "+8 body:kubernetes",
+            "+10 body:linux",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=top_match_eligible,
+        scoring_config=config,
+    )
+
+    assert top_match_eligible is False
+    assert top_match_reasons == ["production_kubernetes_primary_risk"]
+    assert review_needed_eligible is True
+
+
 def test_load_scoring_config_reads_review_needed(tmp_path: Path) -> None:
     config_path = tmp_path / "scoring.yaml"
     config_path.write_text(
