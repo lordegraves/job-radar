@@ -4,6 +4,7 @@ from job_radar.models import JobPosting
 from job_radar.tracker.service import (
     build_application_record_from_posting,
     track_application_from_posting,
+    track_application_from_posting_if_missing,
 )
 from job_radar.tracker.storage import get_application, initialize_tracker_tables
 
@@ -96,3 +97,54 @@ def test_track_application_from_posting_updates_existing_application(
     assert application.status == "applied"
     assert application.follow_up_on == "2026-07-10"
     assert application.notes == "Applied through company site."
+
+
+def test_track_application_from_posting_if_missing_inserts_missing_application(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_tracker_tables(database_path)
+    posting = make_posting()
+
+    result = track_application_from_posting_if_missing(
+        str(database_path),
+        posting,
+        status="review_needed",
+        notes="Added from scan.",
+    )
+    application = get_application(database_path, posting.job_radar_id)
+
+    assert result == "new"
+    assert application is not None
+    assert application.status == "review_needed"
+    assert application.notes == "Added from scan."
+
+
+def test_track_application_from_posting_if_missing_does_not_overwrite_existing_application(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_tracker_tables(database_path)
+    posting = make_posting()
+
+    first_result = track_application_from_posting(
+        str(database_path),
+        posting,
+        status="applied",
+        follow_up_on="2026-07-10",
+        notes="Already applied.",
+    )
+    second_result = track_application_from_posting_if_missing(
+        str(database_path),
+        posting,
+        status="review_needed",
+        notes="Added from later scan.",
+    )
+    application = get_application(database_path, posting.job_radar_id)
+
+    assert first_result == "new"
+    assert second_result == "existing"
+    assert application is not None
+    assert application.status == "applied"
+    assert application.follow_up_on == "2026-07-10"
+    assert application.notes == "Already applied."
