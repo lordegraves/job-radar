@@ -47,6 +47,7 @@ from job_radar.storage import (
     upsert_job_history_record,
     upsert_job_posting,
 )
+from job_radar.tracker.storage import list_applications
 from job_radar.validation import validate_configuration
 
 
@@ -198,6 +199,25 @@ def build_parser() -> argparse.ArgumentParser:
     db_subparsers.add_parser(
         "init",
         help="Initialize the local SQLite database",
+    )
+
+    tracker_parser = subparsers.add_parser(
+        "tracker",
+        help="Work with the application tracker",
+    )
+    tracker_subparsers = tracker_parser.add_subparsers(
+        dest="tracker_command",
+        required=True,
+    )
+
+    tracker_list_parser = tracker_subparsers.add_parser(
+        "list",
+        help="List tracked applications",
+    )
+    tracker_list_parser.add_argument(
+        "--settings",
+        default="config/settings.yaml",
+        help="Path to settings.yaml",
     )
 
     return parser
@@ -620,6 +640,40 @@ def handle_history_summary(settings_path: str) -> None:
     print(format_history_summary(summary), end="")
 
 
+def handle_tracker_list(settings_path: str) -> None:
+    settings = load_settings(settings_path)
+    database_path = settings["database_path"]
+    initialize_database(database_path)
+
+    applications = list_applications(database_path)
+
+    print("Application tracker")
+    print(f"Database: {database_path}")
+    print(f"Applications tracked: {len(applications)}")
+
+    if not applications:
+        print("No tracked applications.")
+        return
+
+    for application in applications:
+        print()
+        print(f"- {application.company_name} — {application.role_title}")
+        print(f"  Job Radar ID: {application.job_radar_id}")
+        print(f"  Status: {application.status}")
+
+        if application.follow_up_on:
+            print(f"  Follow up on: {application.follow_up_on}")
+
+        if application.outcome:
+            print(f"  Outcome: {application.outcome}")
+
+        if application.source_url:
+            print(f"  URL: {application.source_url}")
+
+        if application.notes:
+            print(f"  Notes: {application.notes}")
+
+
 def handle_validate(
     config_path: str,
     settings_path: str,
@@ -701,6 +755,11 @@ def main() -> None:
                 settings = load_settings()
                 db_path = initialize_database(settings["database_path"])
                 print(f"Database initialized: {db_path}")
+                return
+
+        if args.command == "tracker":
+            if args.tracker_command == "list":
+                handle_tracker_list(settings_path=args.settings)
                 return
 
     except (ConfigError, ScoringConfigError) as error:

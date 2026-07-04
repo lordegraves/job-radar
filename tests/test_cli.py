@@ -9,12 +9,15 @@ from job_radar.cli import (
     build_parser,
     handle_import_history,
     handle_scan,
+    handle_tracker_list,
 )
 from job_radar.job_history import EXPECTED_HEADERS, SIMPLIFIED_HEADERS, JobHistoryRecord
 from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.email_sender import EmailSendResult
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
+from job_radar.tracker.models import ApplicationRecord
+from job_radar.tracker.storage import upsert_application
 
 
 def count_job_posting_rows(database_file: Path) -> int:
@@ -1120,3 +1123,74 @@ def test_parser_keeps_legacy_history_commands() -> None:
     assert import_args.workbook == "data/job-history.xlsx"
     assert summary_args.command == "history-summary"
     assert init_args.command == "init-db"
+
+
+def test_parser_accepts_tracker_list_command() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "tracker",
+            "list",
+            "--settings",
+            "config/settings.yaml",
+        ]
+    )
+
+    assert args.command == "tracker"
+    assert args.tracker_command == "list"
+    assert args.settings == "config/settings.yaml"
+
+
+def test_handle_tracker_list_outputs_tracked_applications(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-stack-av-12345678",
+            company_name="Stack AV",
+            role_title="Senior Site Reliability Engineer",
+            source_url="https://example.com/jobs/stack-av-sre",
+            status="applied",
+            follow_up_on="2026-07-10",
+            outcome=None,
+            notes="Applied through company site.",
+        ),
+    )
+
+    handle_tracker_list(settings_path=str(settings_file))
+
+    output = capsys.readouterr().out
+
+    assert "Application tracker" in output
+    assert f"Database: {database_file}" in output
+    assert "Applications tracked: 1" in output
+    assert "- Stack AV — Senior Site Reliability Engineer" in output
+    assert "Job Radar ID: jr-stack-av-12345678" in output
+    assert "Status: applied" in output
+    assert "Follow up on: 2026-07-10" in output
+    assert "URL: https://example.com/jobs/stack-av-sre" in output
+    assert "Notes: Applied through company site." in output
