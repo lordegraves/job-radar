@@ -1,35 +1,38 @@
+# Python virtual environments and cache
 .venv/
 __pycache__/
 *.pyc
 .pytest_cache/
 *.egg-info/
 
-data/*.sqlite3
-logs/*.log
-logs/*.log.*
-reports/*.md
-
-!data/.gitkeep
-!logs/.gitkeep
-!reports/.gitkeep
-reports/*.txt
-config/local-gmail-settings.yaml
-
-# Generated report outputs
-reports/*.html
-# Local probe / API scratch files
-usajobs-codelist-sample.json
-probe_workday_sources.py
-
 # Local credentials / environment files
 .env
 *.env
 
-# Local collector research artifacts
+# Local/private config
+config/local-*.yaml
+
+# Runtime data
+data/*.sqlite3
+data/*.db
+data/*.xlsx
+!data/.gitkeep
+
+# Logs
+logs/*.log
+logs/*.log.*
+!logs/.gitkeep
+
+# Generated report outputs
+reports/*.md
+reports/*.txt
+reports/*.html
 reports/research-*
 reports/scratch-*
 reports/probe-*
 reports/debug-*
-data/job-history.xlsx
+!reports/.gitkeep
 
-data/*.xlsx
+# Local probe / API scratch files
+usajobs-codelist-sample.json
+probe_workday_sources.py
