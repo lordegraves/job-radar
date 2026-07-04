@@ -10,6 +10,7 @@ from job_radar.cli import (
     handle_import_history,
     handle_scan,
     handle_tracker_list,
+    handle_tracker_update,
 )
 from job_radar.job_history import EXPECTED_HEADERS, SIMPLIFIED_HEADERS, JobHistoryRecord
 from job_radar.storage import initialize_database, upsert_job_history_record
@@ -1194,3 +1195,139 @@ retention:
     assert "Follow up on: 2026-07-10" in output
     assert "URL: https://example.com/jobs/stack-av-sre" in output
     assert "Notes: Applied through company site." in output
+
+
+def test_parser_accepts_tracker_update_command() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "tracker",
+            "update",
+            "--job-radar-id",
+            "jr-stack-av-12345678",
+            "--status",
+            "applied",
+            "--follow-up-on",
+            "2026-07-10",
+            "--outcome",
+            "interviewing",
+            "--notes",
+            "Recruiter replied.",
+            "--settings",
+            "config/settings.yaml",
+        ]
+    )
+
+    assert args.command == "tracker"
+    assert args.tracker_command == "update"
+    assert args.job_radar_id == "jr-stack-av-12345678"
+    assert args.status == "applied"
+    assert args.follow_up_on == "2026-07-10"
+    assert args.outcome == "interviewing"
+    assert args.notes == "Recruiter replied."
+    assert args.settings == "config/settings.yaml"
+
+
+def test_handle_tracker_update_updates_existing_application(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-stack-av-12345678",
+            company_name="Stack AV",
+            role_title="Senior Site Reliability Engineer",
+            source_url="https://example.com/jobs/stack-av-sre",
+            status="review_needed",
+            notes="Initial review.",
+        ),
+    )
+
+    handle_tracker_update(
+        settings_path=str(settings_file),
+        job_radar_id="jr-stack-av-12345678",
+        status="applied",
+        follow_up_on="2026-07-10",
+        outcome="interviewing",
+        notes="Recruiter replied.",
+    )
+
+    output = capsys.readouterr().out
+
+    assert "Application tracker updated" in output
+    assert f"Database: {database_file}" in output
+    assert "Job Radar ID: jr-stack-av-12345678" in output
+    assert "Status: applied" in output
+    assert "Follow up on: 2026-07-10" in output
+    assert "Outcome: interviewing" in output
+    assert "Notes: Recruiter replied." in output
+
+    handle_tracker_list(settings_path=str(settings_file))
+    list_output = capsys.readouterr().out
+
+    assert "Applications tracked: 1" in list_output
+    assert "Status: applied" in list_output
+    assert "Follow up on: 2026-07-10" in list_output
+    assert "Outcome: interviewing" in list_output
+    assert "Notes: Recruiter replied." in list_output
+
+
+def test_handle_tracker_update_reports_missing_application(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    handle_tracker_update(
+        settings_path=str(settings_file),
+        job_radar_id="jr-missing-00000000",
+        status="applied",
+    )
+
+    output = capsys.readouterr().out
+
+    assert "Application tracker update failed" in output
+    assert f"Database: {database_file}" in output
+    assert "Job Radar ID: jr-missing-00000000" in output
+    assert "Reason: tracked application was not found" in output

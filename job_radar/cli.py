@@ -47,7 +47,7 @@ from job_radar.storage import (
     upsert_job_history_record,
     upsert_job_posting,
 )
-from job_radar.tracker.storage import list_applications
+from job_radar.tracker.storage import list_applications, update_application_status
 from job_radar.validation import validate_configuration
 
 
@@ -215,6 +215,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="List tracked applications",
     )
     tracker_list_parser.add_argument(
+        "--settings",
+        default="config/settings.yaml",
+        help="Path to settings.yaml",
+    )
+
+    tracker_update_parser = tracker_subparsers.add_parser(
+        "update",
+        help="Update a tracked application",
+    )
+    tracker_update_parser.add_argument(
+        "--job-radar-id",
+        required=True,
+        help="Job Radar ID for the tracked application",
+    )
+    tracker_update_parser.add_argument(
+        "--status",
+        required=True,
+        help="New application status",
+    )
+    tracker_update_parser.add_argument(
+        "--follow-up-on",
+        default=None,
+        help="Optional follow-up date, such as 2026-07-10",
+    )
+    tracker_update_parser.add_argument(
+        "--outcome",
+        default=None,
+        help="Optional application outcome",
+    )
+    tracker_update_parser.add_argument(
+        "--notes",
+        default=None,
+        help="Optional tracker notes",
+    )
+    tracker_update_parser.add_argument(
         "--settings",
         default="config/settings.yaml",
         help="Path to settings.yaml",
@@ -674,6 +709,50 @@ def handle_tracker_list(settings_path: str) -> None:
             print(f"  Notes: {application.notes}")
 
 
+def handle_tracker_update(
+    settings_path: str,
+    *,
+    job_radar_id: str,
+    status: str,
+    follow_up_on: str | None = None,
+    outcome: str | None = None,
+    notes: str | None = None,
+) -> None:
+    settings = load_settings(settings_path)
+    database_path = settings["database_path"]
+    initialize_database(database_path)
+
+    updated = update_application_status(
+        database_path,
+        job_radar_id=job_radar_id,
+        status=status,
+        follow_up_on=follow_up_on,
+        outcome=outcome,
+        notes=notes,
+    )
+
+    if not updated:
+        print("Application tracker update failed")
+        print(f"Database: {database_path}")
+        print(f"Job Radar ID: {job_radar_id}")
+        print("Reason: tracked application was not found")
+        return
+
+    print("Application tracker updated")
+    print(f"Database: {database_path}")
+    print(f"Job Radar ID: {job_radar_id}")
+    print(f"Status: {status}")
+
+    if follow_up_on:
+        print(f"Follow up on: {follow_up_on}")
+
+    if outcome:
+        print(f"Outcome: {outcome}")
+
+    if notes:
+        print(f"Notes: {notes}")
+
+
 def handle_validate(
     config_path: str,
     settings_path: str,
@@ -760,6 +839,17 @@ def main() -> None:
         if args.command == "tracker":
             if args.tracker_command == "list":
                 handle_tracker_list(settings_path=args.settings)
+                return
+
+            if args.tracker_command == "update":
+                handle_tracker_update(
+                    settings_path=args.settings,
+                    job_radar_id=args.job_radar_id,
+                    status=args.status,
+                    follow_up_on=args.follow_up_on,
+                    outcome=args.outcome,
+                    notes=args.notes,
+                )
                 return
 
     except (ConfigError, ScoringConfigError) as error:
