@@ -41,6 +41,12 @@ def count_job_history_rows(database_file: Path) -> int:
         return int(cursor.fetchone()[0])
 
 
+def count_application_tracker_rows(database_file: Path) -> int:
+    with sqlite3.connect(database_file) as connection:
+        cursor = connection.execute("SELECT COUNT(*) FROM application_tracker")
+        return int(cursor.fetchone()[0])
+
+
 def fetch_job_history_status(
     database_file: Path,
     import_key: str,
@@ -231,6 +237,7 @@ retention:
 
     assert database_file.exists()
     assert count_job_history_rows(database_file) == 2
+    assert count_application_tracker_rows(database_file) == 1
 
     assert "Application history import complete" in output
     assert f"Workbook: {workbook_file}" in output
@@ -239,6 +246,9 @@ retention:
     assert "Rows imported: 2" in output
     assert "Rows updated: 0" in output
     assert "Rows skipped: 0" in output
+    assert "Tracker rows imported: 1" in output
+    assert "Tracker rows updated: 0" in output
+    assert "Tracker rows skipped: 1" in output
 
 
 def test_handle_import_history_imports_simplified_workbook_rows(
@@ -277,6 +287,7 @@ retention:
 
     assert database_file.exists()
     assert count_job_history_rows(database_file) == 2
+    assert count_application_tracker_rows(database_file) == 2
 
     assert fetch_job_history_status(
         database_file,
@@ -294,6 +305,9 @@ retention:
     assert "Rows imported: 2" in output
     assert "Rows updated: 0" in output
     assert "Rows skipped: 0" in output
+    assert "Tracker rows imported: 2" in output
+    assert "Tracker rows updated: 0" in output
+    assert "Tracker rows skipped: 0" in output
 
 
 def test_handle_scan_collects_stores_scores_and_reports_jobs(
@@ -687,6 +701,7 @@ top_matches:
     report_text = report_file.read_text(encoding="utf-8")
 
     assert count_job_history_rows(database_file) == 2
+    assert count_application_tracker_rows(database_file) == 1
     assert fetch_job_history_status(
         database_file,
         "pipeline:example-ai:senior-infrastructure-engineer",
@@ -698,6 +713,9 @@ top_matches:
     assert "Rows imported: 2" in output
     assert "Rows updated: 0" in output
     assert "Rows skipped: 0" in output
+    assert "Tracker rows imported: 1" in output
+    assert "Tracker rows updated: 0" in output
+    assert "Tracker rows skipped: 1" in output
 
     assert "- Job history context:" in report_text
     assert "  - Imported history: 2 records (1 pipeline, 1 reviewed)" in report_text

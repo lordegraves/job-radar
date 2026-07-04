@@ -48,6 +48,10 @@ from job_radar.storage import (
     upsert_job_posting,
 )
 from job_radar.tracker.models import ApplicationRecord
+from job_radar.tracker.service import (
+    build_application_record_from_history_record,
+    should_track_history_record,
+)
 from job_radar.tracker.storage import (
     list_applications,
     update_application_status,
@@ -395,6 +399,46 @@ def _dedupe_preserving_order(values: list[str]) -> list[str]:
     return deduped_values
 
 
+def _import_history_records(
+    *,
+    database_path: str,
+    records: list,
+) -> tuple[int, int, int, int, int]:
+    history_imported_count = 0
+    history_updated_count = 0
+    tracker_imported_count = 0
+    tracker_updated_count = 0
+    tracker_skipped_count = 0
+
+    for record in records:
+        history_upsert_result = upsert_job_history_record(database_path, record)
+
+        if history_upsert_result == "new":
+            history_imported_count += 1
+        elif history_upsert_result == "updated":
+            history_updated_count += 1
+
+        if not should_track_history_record(record):
+            tracker_skipped_count += 1
+            continue
+
+        tracker_record = build_application_record_from_history_record(record)
+        tracker_upsert_result = upsert_application(database_path, tracker_record)
+
+        if tracker_upsert_result == "new":
+            tracker_imported_count += 1
+        elif tracker_upsert_result == "updated":
+            tracker_updated_count += 1
+
+    return (
+        history_imported_count,
+        history_updated_count,
+        tracker_imported_count,
+        tracker_updated_count,
+        tracker_skipped_count,
+    )
+
+
 def _import_job_history_for_scan(
     *,
     settings: dict,
@@ -414,16 +458,16 @@ def _import_job_history_for_scan(
 
     import_result = load_job_history_workbook(workbook_path)
 
-    imported_count = 0
-    updated_count = 0
-
-    for record in import_result.records:
-        upsert_result = upsert_job_history_record(database_path, record)
-
-        if upsert_result == "new":
-            imported_count += 1
-        elif upsert_result == "updated":
-            updated_count += 1
+    (
+        imported_count,
+        updated_count,
+        tracker_imported_count,
+        tracker_updated_count,
+        tracker_skipped_count,
+    ) = _import_history_records(
+        database_path=database_path,
+        records=import_result.records,
+    )
 
     print("Application history import complete")
     print(f"Workbook: {workbook_path}")
@@ -431,6 +475,9 @@ def _import_job_history_for_scan(
     print(f"Rows imported: {imported_count}")
     print(f"Rows updated: {updated_count}")
     print(f"Rows skipped: {import_result.rows_skipped}")
+    print(f"Tracker rows imported: {tracker_imported_count}")
+    print(f"Tracker rows updated: {tracker_updated_count}")
+    print(f"Tracker rows skipped: {tracker_skipped_count}")
     print()
 
 
@@ -700,16 +747,16 @@ def handle_import_history(
 
     import_result = load_job_history_workbook(workbook_path)
 
-    imported_count = 0
-    updated_count = 0
-
-    for record in import_result.records:
-        upsert_result = upsert_job_history_record(database_path, record)
-
-        if upsert_result == "new":
-            imported_count += 1
-        elif upsert_result == "updated":
-            updated_count += 1
+    (
+        imported_count,
+        updated_count,
+        tracker_imported_count,
+        tracker_updated_count,
+        tracker_skipped_count,
+    ) = _import_history_records(
+        database_path=database_path,
+        records=import_result.records,
+    )
 
     print("Application history import complete")
     print(f"Workbook: {workbook_path}")
@@ -718,6 +765,9 @@ def handle_import_history(
     print(f"Rows imported: {imported_count}")
     print(f"Rows updated: {updated_count}")
     print(f"Rows skipped: {import_result.rows_skipped}")
+    print(f"Tracker rows imported: {tracker_imported_count}")
+    print(f"Tracker rows updated: {tracker_updated_count}")
+    print(f"Tracker rows skipped: {tracker_skipped_count}")
 
 
 def handle_history_summary(settings_path: str) -> None:

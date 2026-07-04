@@ -88,6 +88,8 @@ def should_track_history_record(record: JobHistoryRecord) -> bool:
         "interviewing",
         "offer",
         "withdrawn",
+        "rejected no interview",
+        "rejected after interview",
     }:
         return True
 
@@ -122,7 +124,10 @@ def _tracker_status_from_history_record(record: JobHistoryRecord) -> str:
     decision = _normalized_history_value(record.status)
     outcome = _normalized_history_value(record.outcome_category)
 
-    if outcome in {"rejected no interview", "rejected after interview"}:
+    if (
+        decision in {"rejected no interview", "rejected after interview"}
+        or outcome in {"rejected no interview", "rejected after interview"}
+    ):
         return "rejected"
 
     if outcome == "dormant":
