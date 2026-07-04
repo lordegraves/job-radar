@@ -1,0 +1,221 @@
+import sqlite3
+from pathlib import Path
+
+from job_radar.tracker.models import ApplicationRecord
+
+
+TRACKER_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS application_tracker (
+    job_radar_id TEXT PRIMARY KEY,
+    company_name TEXT NOT NULL,
+    role_title TEXT NOT NULL,
+    source_url TEXT,
+    status TEXT NOT NULL DEFAULT 'review_needed',
+    follow_up_on TEXT,
+    outcome TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_application_tracker_status
+ON application_tracker(status);
+
+CREATE INDEX IF NOT EXISTS idx_application_tracker_follow_up_on
+ON application_tracker(follow_up_on);
+"""
+
+
+def initialize_tracker_tables(database_path: str | Path) -> Path:
+    db_path = Path(database_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with sqlite3.connect(db_path) as connection:
+        connection.executescript(TRACKER_SCHEMA_SQL)
+
+    return db_path
+
+
+def upsert_application(
+    database_path: str | Path,
+    record: ApplicationRecord,
+) -> str:
+    db_path = Path(database_path)
+
+    with sqlite3.connect(db_path) as connection:
+        existing = connection.execute(
+            """
+            SELECT job_radar_id
+            FROM application_tracker
+            WHERE job_radar_id = ?
+            """,
+            (record.job_radar_id,),
+        ).fetchone()
+
+        if existing is None:
+            connection.execute(
+                """
+                INSERT INTO application_tracker (
+                    job_radar_id,
+                    company_name,
+                    role_title,
+                    source_url,
+                    status,
+                    follow_up_on,
+                    outcome,
+                    notes
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record.job_radar_id,
+                    record.company_name,
+                    record.role_title,
+                    record.source_url,
+                    record.status,
+                    record.follow_up_on,
+                    record.outcome,
+                    record.notes,
+                ),
+            )
+
+            return "new"
+
+        connection.execute(
+            """
+            UPDATE application_tracker
+            SET
+                company_name = ?,
+                role_title = ?,
+                source_url = ?,
+                status = ?,
+                follow_up_on = ?,
+                outcome = ?,
+                notes = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE job_radar_id = ?
+            """,
+            (
+                record.company_name,
+                record.role_title,
+                record.source_url,
+                record.status,
+                record.follow_up_on,
+                record.outcome,
+                record.notes,
+                record.job_radar_id,
+            ),
+        )
+
+        return "updated"
+
+
+def update_application_status(
+    database_path: str | Path,
+    *,
+    job_radar_id: str,
+    status: str,
+    follow_up_on: str | None = None,
+    outcome: str | None = None,
+    notes: str | None = None,
+) -> bool:
+    db_path = Path(database_path)
+
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.execute(
+            """
+            UPDATE application_tracker
+            SET
+                status = ?,
+                follow_up_on = ?,
+                outcome = ?,
+                notes = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE job_radar_id = ?
+            """,
+            (
+                status,
+                follow_up_on,
+                outcome,
+                notes,
+                job_radar_id,
+            ),
+        )
+
+        return cursor.rowcount > 0
+
+
+def list_applications(database_path: str | Path) -> list[ApplicationRecord]:
+    db_path = Path(database_path)
+
+    with sqlite3.connect(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+
+        rows = connection.execute(
+            """
+            SELECT
+                job_radar_id,
+                company_name,
+                role_title,
+                source_url,
+                status,
+                follow_up_on,
+                outcome,
+                notes,
+                created_at,
+                updated_at
+            FROM application_tracker
+            ORDER BY updated_at DESC, company_name ASC, role_title ASC
+            """
+        ).fetchall()
+
+    return [_row_to_application_record(row) for row in rows]
+
+
+def get_application(
+    database_path: str | Path,
+    job_radar_id: str,
+) -> ApplicationRecord | None:
+    db_path = Path(database_path)
+
+    with sqlite3.connect(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+
+        row = connection.execute(
+            """
+            SELECT
+                job_radar_id,
+                company_name,
+                role_title,
+                source_url,
+                status,
+                follow_up_on,
+                outcome,
+                notes,
+                created_at,
+                updated_at
+            FROM application_tracker
+            WHERE job_radar_id = ?
+            """,
+            (job_radar_id,),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return _row_to_application_record(row)
+
+
+def _row_to_application_record(row: sqlite3.Row) -> ApplicationRecord:
+    return ApplicationRecord(
+        job_radar_id=row["job_radar_id"],
+        company_name=row["company_name"],
+        role_title=row["role_title"],
+        source_url=row["source_url"],
+        status=row["status"],
+        follow_up_on=row["follow_up_on"],
+        outcome=row["outcome"],
+        notes=row["notes"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+    )

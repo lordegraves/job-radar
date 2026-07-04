@@ -1,0 +1,194 @@
+import sqlite3
+from pathlib import Path
+
+from job_radar.storage import initialize_database
+from job_radar.tracker.models import ApplicationRecord
+from job_radar.tracker.storage import (
+    get_application,
+    initialize_tracker_tables,
+    list_applications,
+    update_application_status,
+    upsert_application,
+)
+
+
+def table_exists(database_path: Path, table_name: str) -> bool:
+    with sqlite3.connect(database_path) as connection:
+        cursor = connection.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+            AND name = ?
+            """,
+            (table_name,),
+        )
+        return cursor.fetchone() is not None
+
+
+def count_rows(database_path: Path, table_name: str) -> int:
+    with sqlite3.connect(database_path) as connection:
+        cursor = connection.execute(f"SELECT COUNT(*) FROM {table_name}")
+        return int(cursor.fetchone()[0])
+
+
+def make_application_record(
+    job_radar_id: str = "jr-example-ai-12345678",
+    status: str = "review_needed",
+    notes: str | None = "Initial review needed.",
+) -> ApplicationRecord:
+    return ApplicationRecord(
+        job_radar_id=job_radar_id,
+        company_name="Example AI",
+        role_title="Senior Site Reliability Engineer",
+        source_url="https://example.com/jobs/senior-sre",
+        status=status,
+        follow_up_on=None,
+        outcome=None,
+        notes=notes,
+    )
+
+
+def test_initialize_tracker_tables_creates_application_tracker_table(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+
+    result = initialize_tracker_tables(database_path)
+
+    assert result == database_path
+    assert database_path.exists()
+    assert table_exists(database_path, "application_tracker")
+
+
+def test_initialize_tracker_tables_can_run_after_main_database_init(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+
+    initialize_database(database_path)
+    initialize_tracker_tables(database_path)
+
+    assert table_exists(database_path, "job_postings")
+    assert table_exists(database_path, "application_tracker")
+
+
+def test_initialize_tracker_tables_can_run_more_than_once(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+
+    initialize_tracker_tables(database_path)
+    initialize_tracker_tables(database_path)
+
+    assert table_exists(database_path, "application_tracker")
+
+
+def test_upsert_application_inserts_new_application(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_tracker_tables(database_path)
+
+    result = upsert_application(database_path, make_application_record())
+    application = get_application(database_path, "jr-example-ai-12345678")
+
+    assert result == "new"
+    assert count_rows(database_path, "application_tracker") == 1
+    assert application is not None
+    assert application.job_radar_id == "jr-example-ai-12345678"
+    assert application.company_name == "Example AI"
+    assert application.role_title == "Senior Site Reliability Engineer"
+    assert application.status == "review_needed"
+    assert application.notes == "Initial review needed."
+
+
+def test_upsert_application_updates_existing_application(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_tracker_tables(database_path)
+
+    first_result = upsert_application(database_path, make_application_record())
+    second_result = upsert_application(
+        database_path,
+        make_application_record(
+            status="applied",
+            notes="Applied through company careers page.",
+        ),
+    )
+    application = get_application(database_path, "jr-example-ai-12345678")
+
+    assert first_result == "new"
+    assert second_result == "updated"
+    assert count_rows(database_path, "application_tracker") == 1
+    assert application is not None
+    assert application.status == "applied"
+    assert application.notes == "Applied through company careers page."
+
+
+def test_update_application_status_updates_existing_record(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_tracker_tables(database_path)
+    upsert_application(database_path, make_application_record())
+
+    result = update_application_status(
+        database_path,
+        job_radar_id="jr-example-ai-12345678",
+        status="follow_up_due",
+        follow_up_on="2026-07-10",
+        outcome=None,
+        notes="Follow up with recruiter.",
+    )
+    application = get_application(database_path, "jr-example-ai-12345678")
+
+    assert result is True
+    assert application is not None
+    assert application.status == "follow_up_due"
+    assert application.follow_up_on == "2026-07-10"
+    assert application.notes == "Follow up with recruiter."
+
+
+def test_update_application_status_returns_false_for_missing_record(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_tracker_tables(database_path)
+
+    result = update_application_status(
+        database_path,
+        job_radar_id="jr-missing-00000000",
+        status="applied",
+    )
+
+    assert result is False
+
+
+def test_list_applications_returns_application_records(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_tracker_tables(database_path)
+
+    upsert_application(
+        database_path,
+        make_application_record(
+            job_radar_id="jr-example-ai-11111111",
+            status="applied",
+        ),
+    )
+    upsert_application(
+        database_path,
+        ApplicationRecord(
+            job_radar_id="jr-stack-av-22222222",
+            company_name="Stack AV",
+            role_title="Senior Site Reliability Engineer",
+            source_url="https://example.com/jobs/stack-av-sre",
+            status="review_needed",
+        ),
+    )
+
+    applications = list_applications(database_path)
+
+    assert len(applications) == 2
+    assert {application.job_radar_id for application in applications} == {
+        "jr-example-ai-11111111",
+        "jr-stack-av-22222222",
+    }
+    assert all(
+        isinstance(application, ApplicationRecord)
+        for application in applications
+    )
+
