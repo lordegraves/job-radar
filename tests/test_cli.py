@@ -4,7 +4,12 @@ from pathlib import Path
 from openpyxl import Workbook
 
 from job_radar.candidate_profile import CandidateProfile
-from job_radar.cli import _find_profile_avoid_matches, handle_import_history, handle_scan
+from job_radar.cli import (
+    _find_profile_avoid_matches,
+    build_parser,
+    handle_import_history,
+    handle_scan,
+)
 from job_radar.job_history import EXPECTED_HEADERS, SIMPLIFIED_HEADERS, JobHistoryRecord
 from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.email_sender import EmailSendResult
@@ -1042,3 +1047,76 @@ def test_find_profile_avoid_matches_ignores_non_matching_terms() -> None:
     )
 
     assert _find_profile_avoid_matches(profile, posting) == []
+
+
+def test_parser_accepts_grouped_history_import_command() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "history",
+            "import",
+            "--workbook",
+            "data/job-history.xlsx",
+            "--settings",
+            "config/settings.yaml",
+        ]
+    )
+
+    assert args.command == "history"
+    assert args.history_command == "import"
+    assert args.workbook == "data/job-history.xlsx"
+    assert args.settings == "config/settings.yaml"
+
+
+def test_parser_accepts_grouped_history_summary_command() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "history",
+            "summary",
+            "--settings",
+            "config/settings.yaml",
+        ]
+    )
+
+    assert args.command == "history"
+    assert args.history_command == "summary"
+    assert args.settings == "config/settings.yaml"
+
+
+def test_parser_accepts_grouped_db_init_command() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["db", "init"])
+
+    assert args.command == "db"
+    assert args.db_command == "init"
+
+
+def test_parser_keeps_legacy_history_commands() -> None:
+    parser = build_parser()
+
+    import_args = parser.parse_args(
+        [
+            "import-history",
+            "--workbook",
+            "data/job-history.xlsx",
+            "--settings",
+            "config/settings.yaml",
+        ]
+    )
+    summary_args = parser.parse_args(
+        [
+            "history-summary",
+            "--settings",
+            "config/settings.yaml",
+        ]
+    )
+    init_args = parser.parse_args(["init-db"])
+
+    assert import_args.command == "import-history"
+    assert import_args.workbook == "data/job-history.xlsx"
+    assert summary_args.command == "history-summary"
+    assert init_args.command == "init-db"

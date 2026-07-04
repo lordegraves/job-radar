@@ -148,8 +148,55 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to settings.yaml",
     )
 
+    history_parser = subparsers.add_parser(
+        "history",
+        help="Work with imported job history",
+    )
+    history_subparsers = history_parser.add_subparsers(
+        dest="history_command",
+        required=True,
+    )
+
+    history_import_parser = history_subparsers.add_parser(
+        "import",
+        help="Import job history from the tracking workbook",
+    )
+    history_import_parser.add_argument(
+        "--workbook",
+        required=True,
+        help="Path to job-history.xlsx",
+    )
+    history_import_parser.add_argument(
+        "--settings",
+        default="config/settings.yaml",
+        help="Path to settings.yaml",
+    )
+
+    history_summary_group_parser = history_subparsers.add_parser(
+        "summary",
+        help="Summarize imported job history",
+    )
+    history_summary_group_parser.add_argument(
+        "--settings",
+        default="config/settings.yaml",
+        help="Path to settings.yaml",
+    )
+
     subparsers.add_parser(
         "init-db",
+        help="Initialize the local SQLite database",
+    )
+
+    db_parser = subparsers.add_parser(
+        "db",
+        help="Work with the local SQLite database",
+    )
+    db_subparsers = db_parser.add_subparsers(
+        dest="db_command",
+        required=True,
+    )
+    db_subparsers.add_parser(
+        "init",
         help="Initialize the local SQLite database",
     )
 
@@ -631,11 +678,30 @@ def main() -> None:
             handle_history_summary(settings_path=args.settings)
             return
 
+        if args.command == "history":
+            if args.history_command == "import":
+                handle_import_history(
+                    workbook_path=args.workbook,
+                    settings_path=args.settings,
+                )
+                return
+
+            if args.history_command == "summary":
+                handle_history_summary(settings_path=args.settings)
+                return
+
         if args.command == "init-db":
             settings = load_settings()
             db_path = initialize_database(settings["database_path"])
             print(f"Database initialized: {db_path}")
             return
+
+        if args.command == "db":
+            if args.db_command == "init":
+                settings = load_settings()
+                db_path = initialize_database(settings["database_path"])
+                print(f"Database initialized: {db_path}")
+                return
 
     except (ConfigError, ScoringConfigError) as error:
         parser.exit(status=1, message=f"Config error: {error}\n")
