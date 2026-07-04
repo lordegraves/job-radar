@@ -3,6 +3,7 @@ from pathlib import Path
 
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
+from job_radar.tracker.storage import initialize_tracker_tables
 
 
 SCHEMA_SQL = """
@@ -161,6 +162,8 @@ def initialize_database(database_path: str | Path) -> Path:
     with sqlite3.connect(db_path) as connection:
         connection.executescript(SCHEMA_SQL)
         _migrate_scan_runs_table(connection)
+
+    initialize_tracker_tables(db_path)
 
     return db_path
 

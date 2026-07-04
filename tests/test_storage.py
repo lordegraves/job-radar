@@ -47,6 +47,7 @@ def test_initialize_database_creates_expected_tables(tmp_path: Path) -> None:
         "scan_errors",
         "job_seen_events",
         "job_history",
+        "application_tracker",
     ]
 
     for table_name in expected_tables:
