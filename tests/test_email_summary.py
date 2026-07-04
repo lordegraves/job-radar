@@ -15,6 +15,7 @@ def make_posting(
     source_job_id: str = "123",
     location: str = "Remote",
     source_url: str = "https://boards.greenhouse.io/exampleai/jobs/123",
+    description: str = "Example description",
 ) -> JobPosting:
     return JobPosting(
         company_key="example_ai",
@@ -24,7 +25,7 @@ def make_posting(
         source_url=source_url,
         title=title,
         location=location,
-        description="Example description",
+        description=description,
     )
 
 
@@ -171,6 +172,63 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "   Signals: data center, linux" in body
     assert "Full report:" in body
     assert "reports/live-test.md" in body
+
+
+def test_build_email_body_keeps_medium_kubernetes_risk_out_of_top_matches() -> None:
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+        company_name="Stack AV",
+        source_url="https://example.com/jobs/kubernetes-sre",
+        description=(
+            "Own production Kubernetes clusters, support Linux infrastructure, "
+            "and improve reliability for remote production systems."
+        ),
+    )
+
+    report = ScanReport(
+        generated_at="2026-06-24T17:08:47+00:00",
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        top_match_min_score=120,
+        review_needed_min_score=100,
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=180,
+                score_reasons=[
+                    "+30 title:site reliability",
+                    "+8 body:kubernetes",
+                    "+10 body:linux",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+                review_needed_eligible=True,
+            )
+        ],
+    )
+
+    body = build_email_body(report, "reports/live-test.md")
+
+    top_matches_section = body.split(f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:")[0]
+    review_needed_section = body.split(
+        f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:"
+    )[1]
+
+    assert "1. Senior Site Reliability Engineer" not in top_matches_section
+    assert "1. Senior Site Reliability Engineer" in review_needed_section
+    assert "   Hiring probability: Medium" in review_needed_section
+    assert (
+        "   Hiring risks: production Kubernetes translation risk; "
+        "generic remote competition"
+        in review_needed_section
+    )
 
 
 def test_build_email_body_includes_rich_review_needed_details() -> None:

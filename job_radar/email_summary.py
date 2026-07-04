@@ -2,6 +2,14 @@ from datetime import datetime
 from html import escape
 from pathlib import Path
 
+from job_radar.recommendation_constants import (
+    ACTION_HOLD,
+    ACTION_PASS,
+    ACTION_TRACK_STATUS,
+    RISK_NOT_LOCATION_ELIGIBLE,
+    TRACK_STATUS_ALREADY_APPLIED_MESSAGE,
+)
+
 from job_radar.recommendations import (
     _format_hiring_risk_flags,
     _format_resume_evidence,
@@ -14,6 +22,7 @@ from job_radar.recommendations import (
     _get_recommended_action,
     _get_resume_match_label,
     _get_technical_match_label,
+    _is_top_match_display_posting,
 )
 from job_radar.reporting import ScanReport, ScoredPosting
 
@@ -256,22 +265,18 @@ def _get_email_summary_scored_postings(report: ScanReport) -> list[ScoredPosting
 
 
 def _is_email_actionable_posting(scored_posting: ScoredPosting) -> bool:
-    return _get_recommended_action(scored_posting) not in {"Hold", "Pass"}
+    return _get_recommended_action(scored_posting) not in {ACTION_HOLD, ACTION_PASS}
 
 
 def _is_email_top_match_posting(scored_posting: ScoredPosting) -> bool:
-    return (
-        scored_posting.top_match_eligible
-        and _is_email_actionable_posting(scored_posting)
-        and _get_recommended_action(scored_posting) != "Track Status"
-    )
+    return _is_top_match_display_posting(scored_posting)
 
 
 def _is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
     if not _is_email_actionable_posting(scored_posting):
         return False
 
-    if _get_recommended_action(scored_posting) == "Track Status":
+    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
         return True
 
     return scored_posting.review_needed_eligible
@@ -394,12 +399,9 @@ def _get_top_match_reasons(scored_posting: ScoredPosting) -> list[str]:
 
 
 def _get_review_needed_reasons(scored_posting: ScoredPosting) -> list[str]:
-    if _get_recommended_action(scored_posting) == "Track Status":
+    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
         return [
-            (
-                "Prior application history matches this role, so track status "
-                "instead of treating it as a fresh apply target."
-            ),
+            TRACK_STATUS_ALREADY_APPLIED_MESSAGE,
             _format_email_work_arrangement_reason(scored_posting),
         ]
 
@@ -457,7 +459,7 @@ def _format_work_arrangement_label(work_arrangement: str) -> str:
     if work_arrangement == "remote":
         return "Remote role fits your preferences."
 
-    if work_arrangement == "not location eligible":
+    if work_arrangement == RISK_NOT_LOCATION_ELIGIBLE:
         return "Work arrangement does not fit your preferences."
 
     if work_arrangement == "needs confirmation":
@@ -672,7 +674,7 @@ def _format_email_work_arrangement(scored_posting: ScoredPosting) -> str:
         return "needs confirmation"
 
     if scored_posting.location_status == "skipped":
-        return "not location eligible"
+        return RISK_NOT_LOCATION_ELIGIBLE
 
     return "unknown"
 

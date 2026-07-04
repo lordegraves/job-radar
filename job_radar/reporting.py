@@ -6,6 +6,24 @@ from pathlib import Path
 from job_radar.compensation import CompensationResult
 from job_radar.models import JobPosting
 from job_radar.resume_match import ResumeMatchResult
+from job_radar.recommendation_constants import (
+    ACTION_HOLD,
+    ACTION_PASS,
+    ACTION_PREVIOUSLY_REVIEWED,
+    ACTION_TRACK_STATUS,
+    RISK_BELOW_COMPENSATION_FLOOR,
+    RISK_GENERIC_REMOTE_COMPETITION,
+    RISK_HARD_LOCATION_MISMATCH,
+    RISK_HIGH_COMPETITION_EMPLOYER,
+    RISK_LOCATION_NEEDS_CONFIRMATION,
+    RISK_NOT_LOCATION_ELIGIBLE,
+    RISK_PRODUCTION_KUBERNETES_TRANSLATION,
+    RISK_ROLE_FAMILY_MISMATCH,
+    RISK_SECURITY_DOMAIN_TRANSLATION,
+    RISK_SOFTWARE_HEAVY_TRANSLATION,
+    RISK_SUPPORT_ROLE,
+    TRACK_STATUS_ALREADY_APPLIED_MESSAGE,
+)
 from job_radar.recommendations import (
     _RECOMMENDATION_SUMMARY_ORDER,
     _format_hiring_risk_flags,
@@ -21,6 +39,7 @@ from job_radar.recommendations import (
     _get_resume_match_label,
     _get_technical_match_label,
     _is_actionable_posting,
+    _is_top_match_display_posting,
 )
 
 
@@ -382,7 +401,7 @@ def _format_work_arrangement_summary_label(work_arrangement: str) -> str:
     if work_arrangement == "needs confirmation":
         return "Needs location confirmation"
 
-    if work_arrangement == "not location eligible":
+    if work_arrangement == RISK_NOT_LOCATION_ELIGIBLE:
         return "Not location eligible"
 
     if work_arrangement == "unknown":
@@ -399,7 +418,7 @@ def _get_ordered_work_arrangements(
         "hybrid",
         "onsite",
         "needs confirmation",
-        "not location eligible",
+        RISK_NOT_LOCATION_ELIGIBLE,
         "unknown",
     ]
 
@@ -434,7 +453,7 @@ def _get_surfaced_recommendation_postings(report: ScanReport) -> list[ScoredPost
     surfaced_postings.extend(
         scored_posting
         for scored_posting in report_scored_postings
-        if _get_recommended_action(scored_posting) == "Track Status"
+        if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS
     )
 
     return _dedupe_scored_postings(surfaced_postings)
@@ -697,18 +716,14 @@ def _append_review_needed_section(
 
 
 def _is_top_match_report_posting(scored_posting: ScoredPosting) -> bool:
-    return (
-        scored_posting.top_match_eligible
-        and _is_actionable_posting(scored_posting)
-        and _get_recommended_action(scored_posting) != "Track Status"
-    )
+    return _is_top_match_display_posting(scored_posting)
 
 
 def _is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
     if not _is_actionable_posting(scored_posting):
         return False
 
-    if _get_recommended_action(scored_posting) == "Track Status":
+    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
         return True
 
     return scored_posting.review_needed_eligible
@@ -837,31 +852,31 @@ def _get_omitted_posting_review_score(scored_posting: ScoredPosting) -> int:
     elif technical_match == "Moderate":
         review_score += 15
 
-    if recommended_action != "Pass":
+    if recommended_action != ACTION_PASS:
         review_score += 25
 
-    if "below compensation floor" in risks:
+    if RISK_BELOW_COMPENSATION_FLOOR in risks:
         review_score += 15
 
-    if "hard location mismatch" in risks or "not location eligible" in risks:
+    if RISK_HARD_LOCATION_MISMATCH in risks or RISK_NOT_LOCATION_ELIGIBLE in risks:
         review_score += 10
 
-    if "location needs confirmation" in risks:
+    if RISK_LOCATION_NEEDS_CONFIRMATION in risks:
         review_score += 5
 
-    if "role family mismatch" in risks:
+    if RISK_ROLE_FAMILY_MISMATCH in risks:
         review_score -= 100
 
-    if "support role" in risks:
+    if RISK_SUPPORT_ROLE in risks:
         review_score -= 80
 
     if any(risk.startswith("profile avoid match:") for risk in risks):
         review_score -= 80
 
-    if "software-heavy translation risk" in risks:
+    if RISK_SOFTWARE_HEAVY_TRANSLATION in risks:
         review_score -= 20
 
-    if "security-domain translation risk" in risks:
+    if RISK_SECURITY_DOMAIN_TRANSLATION in risks:
         review_score -= 20
 
     return review_score
@@ -871,26 +886,23 @@ def _format_pass_reason(scored_posting: ScoredPosting) -> str:
     recommended_action = _get_recommended_action(scored_posting)
     risks = _get_hiring_risk_flags(scored_posting)
 
-    if recommended_action == "Track Status":
-        return (
-            "Prior application history matches this role; track status instead "
-            "of treating it as a fresh apply target."
-        )
+    if recommended_action == ACTION_TRACK_STATUS:
+        return TRACK_STATUS_ALREADY_APPLIED_MESSAGE
 
-    if recommended_action == "Pass":
-        if "below compensation floor" in risks:
+    if recommended_action == ACTION_PASS:
+        if RISK_BELOW_COMPENSATION_FLOOR in risks:
             return "Compensation appears below your current floor."
 
-        if "role family mismatch" in risks:
+        if RISK_ROLE_FAMILY_MISMATCH in risks:
             return "Role family does not match your target infrastructure/SRE profile."
 
-        if "not location eligible" in risks:
+        if RISK_NOT_LOCATION_ELIGIBLE in risks:
             return "Location does not fit your remote/Northern Colorado preferences."
 
-        if "software-heavy translation risk" in risks:
+        if RISK_SOFTWARE_HEAVY_TRANSLATION in risks:
             return "Role appears too software-heavy for the current target profile."
 
-        if "security-domain translation risk" in risks:
+        if RISK_SECURITY_DOMAIN_TRANSLATION in risks:
             return "Role leans too far into security-domain work."
 
         if risks:
@@ -898,10 +910,10 @@ def _format_pass_reason(scored_posting: ScoredPosting) -> str:
 
         return "Score and match signals are too weak for this scan."
 
-    if recommended_action == "Previously Reviewed":
+    if recommended_action == ACTION_PREVIOUSLY_REVIEWED:
         return "Already reviewed in prior history; revisit only if something changed."
 
-    if recommended_action == "Hold":
+    if recommended_action == ACTION_HOLD:
         return "Not strong enough to act on now."
 
     if (
@@ -914,28 +926,28 @@ def _format_pass_reason(scored_posting: ScoredPosting) -> str:
 
 
 def _format_pass_summary_reason(risk: str) -> str:
-    if risk == "below compensation floor":
+    if risk == RISK_BELOW_COMPENSATION_FLOOR:
         return "Below compensation floor"
 
-    if risk == "role family mismatch":
+    if risk == RISK_ROLE_FAMILY_MISMATCH:
         return "Role family mismatch"
 
-    if risk == "not location eligible":
+    if risk == RISK_NOT_LOCATION_ELIGIBLE:
         return "Not location eligible"
 
-    if risk == "software-heavy translation risk":
+    if risk == RISK_SOFTWARE_HEAVY_TRANSLATION:
         return "Software-heavy mismatch"
 
-    if risk == "security-domain translation risk":
+    if risk == RISK_SECURITY_DOMAIN_TRANSLATION:
         return "Security-domain mismatch"
 
-    if risk == "production Kubernetes translation risk":
+    if risk == RISK_PRODUCTION_KUBERNETES_TRANSLATION:
         return "Kubernetes translation risk"
 
-    if risk == "high competition employer":
+    if risk == RISK_HIGH_COMPETITION_EMPLOYER:
         return "High-competition employer"
 
-    if risk == "generic remote competition":
+    if risk == RISK_GENERIC_REMOTE_COMPETITION:
         return "Generic remote competition"
 
     return risk
@@ -949,7 +961,7 @@ def _get_omitted_reason_summary_counts(
     for scored_posting in scored_postings:
         recommended_action = _get_recommended_action(scored_posting)
 
-        if recommended_action == "Pass":
+        if recommended_action == ACTION_PASS:
             risks = _get_hiring_risk_flags(scored_posting)
 
             if risks:
@@ -962,7 +974,7 @@ def _get_omitted_reason_summary_counts(
 
             reason = "Weak fit"
 
-        elif recommended_action == "Hold":
+        elif recommended_action == ACTION_HOLD:
             reason = "Low hiring probability"
 
         elif (
@@ -1171,7 +1183,7 @@ def _format_work_arrangement(scored_posting: ScoredPosting) -> str:
         return "needs confirmation"
 
     if scored_posting.location_status == "skipped":
-        return "not location eligible"
+        return RISK_NOT_LOCATION_ELIGIBLE
 
     return "unknown"
 
@@ -1233,11 +1245,10 @@ def _format_html_decision_explanation(
 def _format_decision_explanation(
     scored_posting: ScoredPosting,
 ) -> tuple[str, str] | None:
-    if _get_recommended_action(scored_posting) == "Track Status":
+    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
         return (
             "Why it needs review",
-            "Prior application history matches this role, so track status "
-            "instead of treating it as a fresh apply target.",
+            TRACK_STATUS_ALREADY_APPLIED_MESSAGE,
         )
 
     if scored_posting.top_match_eligible:

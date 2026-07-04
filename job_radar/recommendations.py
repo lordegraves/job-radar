@@ -2,6 +2,35 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from job_radar.recommendation_constants import (
+    ACTION_APPLY,
+    ACTION_APPLY_WITH_RECRUITER,
+    ACTION_HOLD,
+    ACTION_NETWORK_FIRST,
+    ACTION_PASS,
+    ACTION_PREVIOUSLY_REVIEWED,
+    ACTION_TAILOR_RESUME,
+    ACTION_TRACK_STATUS,
+    RECOMMENDATION_SUMMARY_ORDER,
+    RISK_BELOW_COMPENSATION_FLOOR,
+    RISK_GENERIC_REMOTE_COMPETITION,
+    RISK_HARD_LOCATION_MISMATCH,
+    RISK_HIGH_COMPETITION_EMPLOYER,
+    RISK_LEADERSHIP_AMBIGUITY,
+    RISK_LOCATION_NEEDS_CONFIRMATION,
+    RISK_PRODUCTION_KUBERNETES_TRANSLATION,
+    RISK_ROLE_FAMILY_MISMATCH,
+    RISK_SECURITY_DOMAIN_TRANSLATION,
+    RISK_SOFTWARE_HEAVY_TRANSLATION,
+    RISK_SUPPORT_ROLE,
+    TRACK_STATUS_ALREADY_APPLIED_MESSAGE,
+    HISTORY_ALREADY_APPLIED,
+    HISTORY_PRIOR_NO_INTERVIEW,
+    HISTORY_PRIOR_NO_INTERVIEW_DESPITE_STRONG_MATCH,
+    HISTORY_PRIOR_REJECTED,
+    HISTORY_PRIOR_SKIPPED_SIMILAR_ROLE,
+)
+
 if TYPE_CHECKING:
     from job_radar.reporting import ScoredPosting
 
@@ -51,16 +80,7 @@ ROLE_FAMILY_MISMATCH_TITLE_KEYWORDS = [
 ]
 
 
-_RECOMMENDATION_SUMMARY_ORDER = [
-    "Apply",
-    "Apply + Recruiter Message",
-    "Network First",
-    "Tailor Resume",
-    "Track Status",
-    "Previously Reviewed",
-    "Hold",
-    "Pass",
-]
+_RECOMMENDATION_SUMMARY_ORDER = RECOMMENDATION_SUMMARY_ORDER
 
 
 def _get_recommendation_summary_counts(
@@ -163,22 +183,22 @@ def _get_hiring_probability_label(scored_posting: ScoredPosting) -> str:
     technical_match = _get_technical_match_label(scored_posting)
     resume_match = _get_resume_match_label(scored_posting)
 
-    if "hard location mismatch" in risks:
+    if RISK_HARD_LOCATION_MISMATCH in risks:
         return "Very Low"
 
-    if "role family mismatch" in risks or "support role" in risks:
+    if RISK_ROLE_FAMILY_MISMATCH in risks or RISK_SUPPORT_ROLE in risks:
         return "Low"
 
     if resume_match == "Weak":
         return "Low"
 
     if (
-        "software-heavy translation risk" in risks
-        or "generic remote competition" in risks
-        or "production Kubernetes translation risk" in risks
-        or "leadership ambiguity risk" in risks
-        or "security-domain translation risk" in risks
-        or "high competition employer" in risks
+        RISK_SOFTWARE_HEAVY_TRANSLATION in risks
+        or RISK_GENERIC_REMOTE_COMPETITION in risks
+        or RISK_PRODUCTION_KUBERNETES_TRANSLATION in risks
+        or RISK_LEADERSHIP_AMBIGUITY in risks
+        or RISK_SECURITY_DOMAIN_TRANSLATION in risks
+        or RISK_HIGH_COMPETITION_EMPLOYER in risks
     ):
         if technical_match in {"Very Strong", "Strong"}:
             return "Medium"
@@ -208,17 +228,17 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
     resume_match = _get_resume_match_label(scored_posting)
     risks = _get_hiring_risk_flags(scored_posting)
 
-    if "below compensation floor" in risks:
-        return "Pass"
+    if RISK_BELOW_COMPENSATION_FLOOR in risks:
+        return ACTION_PASS
 
-    if "hard location mismatch" in risks:
-        return "Pass"
+    if RISK_HARD_LOCATION_MISMATCH in risks:
+        return ACTION_PASS
 
-    if "role family mismatch" in risks or "support role" in risks:
-        return "Pass"
+    if RISK_ROLE_FAMILY_MISMATCH in risks or RISK_SUPPORT_ROLE in risks:
+        return ACTION_PASS
 
     if any(risk.startswith("profile avoid match: ") for risk in risks):
-        return "Pass"
+        return ACTION_PASS
 
     history_action = _get_history_recommended_action(scored_posting)
 
@@ -227,72 +247,72 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
 
     if (
         technical_match in {"Very Strong", "Strong"}
-        and "high competition employer" in risks
+        and RISK_HIGH_COMPETITION_EMPLOYER in risks
         and (
-            "software-heavy translation risk" in risks
-            or "security-domain translation risk" in risks
-            or "leadership ambiguity risk" in risks
+            RISK_SOFTWARE_HEAVY_TRANSLATION in risks
+            or RISK_SECURITY_DOMAIN_TRANSLATION in risks
+            or RISK_LEADERSHIP_AMBIGUITY in risks
         )
     ):
-        return "Network First"
+        return ACTION_NETWORK_FIRST
 
     if (
         technical_match in {"Very Strong", "Strong"}
-        and "software-heavy translation risk" in risks
+        and RISK_SOFTWARE_HEAVY_TRANSLATION in risks
         and (
-            "production Kubernetes translation risk" in risks
-            or "security-domain translation risk" in risks
+            RISK_PRODUCTION_KUBERNETES_TRANSLATION in risks
+            or RISK_SECURITY_DOMAIN_TRANSLATION in risks
         )
     ):
-        return "Network First"
+        return ACTION_NETWORK_FIRST
 
     if (
         technical_match in {"Very Strong", "Strong"}
-        and "leadership ambiguity risk" in risks
+        and RISK_LEADERSHIP_AMBIGUITY in risks
     ):
-        return "Network First"
+        return ACTION_NETWORK_FIRST
 
     if hiring_probability == "High" and technical_match == "Very Strong":
         if risks or resume_match != "Very Strong":
-            return "Apply + Recruiter Message"
-        return "Apply"
+            return ACTION_APPLY_WITH_RECRUITER
+        return ACTION_APPLY
 
     if hiring_probability == "Medium" and technical_match == "Very Strong":
-        return "Apply + Recruiter Message"
+        return ACTION_APPLY_WITH_RECRUITER
 
     if hiring_probability == "Medium" and technical_match == "Strong":
-        return "Tailor Resume"
+        return ACTION_TAILOR_RESUME
 
     if (
         technical_match in {"Very Strong", "Strong"}
-        and "software-heavy translation risk" in risks
+        and RISK_SOFTWARE_HEAVY_TRANSLATION in risks
     ):
-        return "Network First"
+        return ACTION_NETWORK_FIRST
 
     if hiring_probability == "Low":
-        return "Hold"
+        return ACTION_HOLD
 
-    return "Pass"
+    return ACTION_PASS
 
 
 def _get_history_recommended_action(scored_posting: ScoredPosting) -> str | None:
     history_reasons = set(scored_posting.history_risk_reasons or [])
 
-    if "already_applied" in history_reasons:
-        return "Track Status"
+    if HISTORY_ALREADY_APPLIED in history_reasons:
+        return ACTION_TRACK_STATUS
 
     if (
-        "prior_no_interview_despite_strong_match" in history_reasons
-        or "prior_no_interview" in history_reasons
-        or "prior_rejected" in history_reasons
+        HISTORY_PRIOR_NO_INTERVIEW_DESPITE_STRONG_MATCH in history_reasons
+        or HISTORY_PRIOR_NO_INTERVIEW in history_reasons
+        or HISTORY_PRIOR_REJECTED in history_reasons
     ):
-        return "Track Status"
+        return ACTION_TRACK_STATUS
 
     if scored_posting.history_risk_level == "blocker_review":
-        return "Previously Reviewed"
+        return ACTION_PREVIOUSLY_REVIEWED
 
-    if "prior_skipped_similar_role" in history_reasons:
-        return "Previously Reviewed"
+    if HISTORY_PRIOR_SKIPPED_SIMILAR_ROLE in history_reasons:
+        return ACTION_PREVIOUSLY_REVIEWED
 
     return None
 
@@ -304,22 +324,22 @@ def _format_risk_summary(risks: list[str]) -> str:
 
 
 def _format_risk_label(risk: str) -> str:
-    if risk == "production Kubernetes translation risk":
+    if risk == RISK_PRODUCTION_KUBERNETES_TRANSLATION:
         return "how your infrastructure background translates to production Kubernetes"
 
-    if risk == "software-heavy translation risk":
+    if risk == RISK_SOFTWARE_HEAVY_TRANSLATION:
         return "the software-heavy parts of the role"
 
-    if risk == "security-domain translation risk":
+    if risk == RISK_SECURITY_DOMAIN_TRANSLATION:
         return "the security-domain parts of the role"
 
-    if risk == "high competition employer":
+    if risk == RISK_HIGH_COMPETITION_EMPLOYER:
         return "the high-competition employer"
 
-    if risk == "generic remote competition":
+    if risk == RISK_GENERIC_REMOTE_COMPETITION:
         return "remote-role competition"
 
-    if risk == "leadership ambiguity risk":
+    if risk == RISK_LEADERSHIP_AMBIGUITY:
         return "the leadership expectations"
 
     return risk
@@ -332,7 +352,7 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
     resume_match = _get_resume_match_label(scored_posting)
     risks = _get_hiring_risk_flags(scored_posting)
 
-    if recommended_action == "Apply":
+    if recommended_action == ACTION_APPLY:
         return _append_history_rationale(
             scored_posting,
             (
@@ -341,7 +361,7 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
             ),
         )
 
-    if recommended_action == "Apply + Recruiter Message":
+    if recommended_action == ACTION_APPLY_WITH_RECRUITER:
         if risks:
             return _append_history_rationale(
                 scored_posting,
@@ -359,7 +379,7 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
             ),
         )
 
-    if recommended_action == "Network First":
+    if recommended_action == ACTION_NETWORK_FIRST:
         if risks:
             return _append_history_rationale(
                 scored_posting,
@@ -377,7 +397,7 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
             ),
         )
 
-    if recommended_action == "Tailor Resume":
+    if recommended_action == ACTION_TAILOR_RESUME:
         return _append_history_rationale(
             scored_posting,
             (
@@ -387,20 +407,16 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
             ),
         )
 
-    if recommended_action == "Track Status":
-        return (
-            "Track status: prior application history matches this role, so do not "
-            "treat it as a fresh apply target. Check the prior application, outcome, "
-            "and whether the posting materially changed."
-        )
+    if recommended_action == ACTION_TRACK_STATUS:
+        return TRACK_STATUS_ALREADY_APPLIED_MESSAGE
 
-    if recommended_action == "Previously Reviewed":
+    if recommended_action == ACTION_PREVIOUSLY_REVIEWED:
         return (
             "Previously reviewed: similar role history already exists. Revisit only "
             "if the scope, location, compensation, or posting details materially changed."
         )
 
-    if recommended_action == "Hold":
+    if recommended_action == ACTION_HOLD:
         return _append_history_rationale(
             scored_posting,
             (
@@ -454,9 +470,39 @@ def _format_history_rationale_note(scored_posting: ScoredPosting) -> str | None:
 
 def _is_actionable_posting(scored_posting: ScoredPosting) -> bool:
     return _get_recommended_action(scored_posting) not in {
-        "Pass",
-        "Previously Reviewed",
+        ACTION_PASS,
+        ACTION_PREVIOUSLY_REVIEWED,
     }
+
+
+def _is_top_match_display_posting(scored_posting: ScoredPosting) -> bool:
+    if not scored_posting.top_match_eligible:
+        return False
+
+    if not _is_actionable_posting(scored_posting):
+        return False
+
+    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
+        return False
+
+    risks = _get_hiring_risk_flags(scored_posting)
+
+    # Top Match should mean "act on this now." Production Kubernetes translation
+    # risk with only medium hiring probability belongs in Review Needed, not the
+    # urgent Top Match section.
+    if (
+        _get_hiring_probability_label(scored_posting) == "Medium"
+        and RISK_PRODUCTION_KUBERNETES_TRANSLATION in risks
+        and _get_recommended_action(scored_posting)
+        in {
+            ACTION_APPLY,
+            ACTION_APPLY_WITH_RECRUITER,
+            ACTION_TAILOR_RESUME,
+        }
+    ):
+        return False
+
+    return True
 
 
 def _format_hiring_risk_flags(scored_posting: ScoredPosting) -> str:
@@ -476,7 +522,7 @@ def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
     risks: list[str] = []
 
     if scored_posting.location_status == "skipped":
-        risks.append("hard location mismatch")
+        risks.append(RISK_HARD_LOCATION_MISMATCH)
     elif _has_any_location_keyword(
         location_text,
         [
@@ -494,57 +540,57 @@ def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
             "australia",
         ],
     ):
-        risks.append("hard location mismatch")
+        risks.append(RISK_HARD_LOCATION_MISMATCH)
     elif scored_posting.location_status in {"mixed", "conditional", "unknown"}:
-        risks.append("location needs confirmation")
+        risks.append(RISK_LOCATION_NEEDS_CONFIRMATION)
 
     if _has_any_title_keyword(title_text, ROLE_FAMILY_MISMATCH_TITLE_KEYWORDS):
-        risks.append("role family mismatch")
+        risks.append(RISK_ROLE_FAMILY_MISMATCH)
 
     if any(
         keyword in company_text for keyword in HIGH_COMPETITION_COMPANY_KEYWORDS
     ):
-        risks.append("high competition employer")
+        risks.append(RISK_HIGH_COMPETITION_EMPLOYER)
 
     if _has_any_title_keyword(title_text, ["support", "technical support", "analyst"]):
-        risks.append("support role")
+        risks.append(RISK_SUPPORT_ROLE)
 
     if _has_any_title_keyword(title_text, ["architect"]) and not _has_any_title_keyword(
         title_text,
         ["engineer", "administrator", "operations", "sre", "site reliability"],
     ):
-        risks.append("role family mismatch")
+        risks.append(RISK_ROLE_FAMILY_MISMATCH)
 
     if _has_any_title_keyword(title_text, ["manager"]):
-        risks.append("role family mismatch")
+        risks.append(RISK_ROLE_FAMILY_MISMATCH)
 
     if _has_any_title_keyword(title_text, ["lead"]):
-        risks.append("leadership ambiguity risk")
+        risks.append(RISK_LEADERSHIP_AMBIGUITY)
 
     if _has_any_title_keyword(
         title_text,
         ["security engineer", "infrastructure security"],
     ):
-        risks.append("security-domain translation risk")
+        risks.append(RISK_SECURITY_DOMAIN_TRANSLATION)
 
     if _has_any_title_keyword(
         title_text,
         ["software engineer", "frontend", "full stack", "platform engineer"],
     ):
-        risks.append("software-heavy translation risk")
+        risks.append(RISK_SOFTWARE_HEAVY_TRANSLATION)
 
     if "kubernetes" in positive_labels or "k8s" in positive_labels:
-        risks.append("production Kubernetes translation risk")
+        risks.append(RISK_PRODUCTION_KUBERNETES_TRANSLATION)
 
     if (
         scored_posting.location_status == "allowed"
         and "remote" in positive_labels
         and _get_technical_match_label(scored_posting) != "Very Strong"
     ):
-        risks.append("generic remote competition")
+        risks.append(RISK_GENERIC_REMOTE_COMPETITION)
 
     if _get_compensation_label(scored_posting) == "Below floor":
-        risks.append("below compensation floor")
+        risks.append(RISK_BELOW_COMPENSATION_FLOOR)
 
     for avoid_match in scored_posting.profile_avoid_matches or []:
         risks.append(f"profile avoid match: {avoid_match}")

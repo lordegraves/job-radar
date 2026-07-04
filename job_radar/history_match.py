@@ -3,6 +3,15 @@ from dataclasses import dataclass
 
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
+from job_radar.recommendation_constants import (
+    HISTORY_ALREADY_APPLIED,
+    HISTORY_PRIOR_NO_INTERVIEW,
+    HISTORY_PRIOR_NO_INTERVIEW_DESPITE_STRONG_MATCH,
+    HISTORY_PRIOR_SIMILAR_ROLE,
+    HISTORY_PRIOR_REJECTED,
+    HISTORY_PRIOR_SKIPPED_SIMILAR_ROLE,
+    RISK_GENERIC_REMOTE_COMPETITION,
+)
 
 
 _GENERIC_ROLE_TOKENS = {
@@ -192,13 +201,13 @@ def _classify_history_risk(
     reasons: list[str] = []
 
     if _is_applied_status(status) and allow_track_status:
-        return "track_status", ("already_applied",)
+        return "track_status", (HISTORY_ALREADY_APPLIED,)
 
     if outcome == "No Interview":
         if technical_match in {"Strong", "Very Strong"}:
-            reasons.append("prior_no_interview_despite_strong_match")
+            reasons.append(HISTORY_PRIOR_NO_INTERVIEW_DESPITE_STRONG_MATCH)
         else:
-            reasons.append("prior_no_interview")
+            reasons.append(HISTORY_PRIOR_NO_INTERVIEW)
 
         return "caution", tuple(reasons)
 
@@ -206,7 +215,7 @@ def _classify_history_risk(
         if prior_signal != "Unknown":
             reasons.append(_format_prior_signal_risk_reason(prior_signal))
         else:
-            reasons.append("prior_skipped_similar_role")
+            reasons.append(HISTORY_PRIOR_SKIPPED_SIMILAR_ROLE)
 
         if _is_prior_risk_signal(prior_signal):
             return "caution", tuple(reasons)
@@ -218,9 +227,9 @@ def _classify_history_risk(
         return "caution", tuple(reasons)
 
     if _is_rejected_status(status):
-        return "caution", ("prior_rejected",)
+        return "caution", (HISTORY_PRIOR_REJECTED,)
 
-    return "neutral", ("prior_similar_role",)
+    return "neutral", (HISTORY_PRIOR_SIMILAR_ROLE,)
 
 
 def _format_history_match(match: HistoryMatch) -> str:
@@ -274,7 +283,7 @@ def _is_rejected_status(value: str) -> bool:
 
 def _is_prior_risk_signal(value: str) -> bool:
     return value.lower() in {
-        "generic remote competition",
+        RISK_GENERIC_REMOTE_COMPETITION.lower(),
     }
 
 

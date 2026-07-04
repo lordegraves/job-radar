@@ -17,6 +17,7 @@ def make_posting(
     company_name: str = "Example AI",
     source_type: str = "greenhouse",
     source_url: str = "https://boards.greenhouse.io/exampleai/jobs/123",
+    description: str = "Build Linux infrastructure.",
 ) -> JobPosting:
     return JobPosting(
         company_key="example_ai",
@@ -26,7 +27,7 @@ def make_posting(
         source_url=source_url,
         title=title,
         location="Remote",
-        description="Build Linux infrastructure.",
+        description=description,
         canonical_key="example_ai:senior-infrastructure-engineer:remote",
         content_hash="hash",
     )
@@ -229,6 +230,59 @@ def test_render_markdown_report_includes_match_quality_action_and_hiring_risks()
         "software-heavy translation risk; "
         "production Kubernetes translation risk; generic remote competition"
         in markdown
+    )
+
+
+def test_render_markdown_report_keeps_medium_kubernetes_risk_out_of_top_matches() -> None:
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+        description=(
+            "Own production Kubernetes clusters, support Linux infrastructure, "
+            "and improve reliability for remote production systems."
+        ),
+        source_url="https://example.com/jobs/kubernetes-sre",
+    )
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=180,
+                score_reasons=[
+                    "+30 title:site reliability",
+                    "+8 body:kubernetes",
+                    "+10 body:linux",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+                review_needed_eligible=True,
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    top_matches_section = markdown.split("## Review Needed")[0]
+    review_needed_section = markdown.split("## Review Needed")[1].split(
+        "## Passed / Not Recommended"
+    )[0]
+
+    assert "### [Senior Site Reliability Engineer]" not in top_matches_section
+    assert "### [Senior Site Reliability Engineer]" in review_needed_section
+    assert "- Hiring probability: Medium" in review_needed_section
+    assert (
+        "- Hiring risks: production Kubernetes translation risk; "
+        "generic remote competition"
+        in review_needed_section
     )
 
 
@@ -2037,9 +2091,8 @@ def test_clean_apply_rationale_includes_history_caution_without_changing_action(
     assert "- Recommended action: Track Status" in markdown
     assert "- History risk: caution: prior_no_interview_despite_strong_match" in markdown
     assert (
-        "- Action rationale: Track status: prior application history matches "
-        "this role, so do not treat it as a fresh apply target. Check the prior "
-        "application, outcome, and whether the posting materially changed."
+        "- Action rationale: You already applied for this job. Track the existing "
+        "application instead of applying again."
         in markdown
     )
 
@@ -2160,8 +2213,8 @@ def test_recommendation_summary_counts_omitted_history_actions() -> None:
     assert "## Review Needed" in markdown
     assert "- Recommended action: Track Status" in markdown
     assert (
-        "- Why it needs review: Prior application history matches this role, "
-        "so track status instead of treating it as a fresh apply target."
+        "- Why it needs review: You already applied for this job. Track the existing "
+        "application instead of applying again."
         in markdown
     )
     assert "- Why not recommended: Prior application history matches this role;" not in markdown
