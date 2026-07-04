@@ -47,7 +47,12 @@ from job_radar.storage import (
     upsert_job_history_record,
     upsert_job_posting,
 )
-from job_radar.tracker.storage import list_applications, update_application_status
+from job_radar.tracker.models import ApplicationRecord
+from job_radar.tracker.storage import (
+    list_applications,
+    update_application_status,
+    upsert_application,
+)
 from job_radar.validation import validate_configuration
 
 
@@ -250,6 +255,56 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional tracker notes",
     )
     tracker_update_parser.add_argument(
+        "--settings",
+        default="config/settings.yaml",
+        help="Path to settings.yaml",
+    )
+
+    tracker_add_parser = tracker_subparsers.add_parser(
+        "add",
+        help="Add a tracked application",
+    )
+    tracker_add_parser.add_argument(
+        "--job-radar-id",
+        required=True,
+        help="Job Radar ID for the tracked application",
+    )
+    tracker_add_parser.add_argument(
+        "--company",
+        required=True,
+        help="Company name",
+    )
+    tracker_add_parser.add_argument(
+        "--role",
+        required=True,
+        help="Role title",
+    )
+    tracker_add_parser.add_argument(
+        "--url",
+        default=None,
+        help="Optional source URL",
+    )
+    tracker_add_parser.add_argument(
+        "--status",
+        default="review_needed",
+        help="Application status",
+    )
+    tracker_add_parser.add_argument(
+        "--follow-up-on",
+        default=None,
+        help="Optional follow-up date, such as 2026-07-10",
+    )
+    tracker_add_parser.add_argument(
+        "--outcome",
+        default=None,
+        help="Optional application outcome",
+    )
+    tracker_add_parser.add_argument(
+        "--notes",
+        default=None,
+        help="Optional tracker notes",
+    )
+    tracker_add_parser.add_argument(
         "--settings",
         default="config/settings.yaml",
         help="Path to settings.yaml",
@@ -709,6 +764,57 @@ def handle_tracker_list(settings_path: str) -> None:
             print(f"  Notes: {application.notes}")
 
 
+def handle_tracker_add(
+    settings_path: str,
+    *,
+    job_radar_id: str,
+    company_name: str,
+    role_title: str,
+    source_url: str | None = None,
+    status: str = "review_needed",
+    follow_up_on: str | None = None,
+    outcome: str | None = None,
+    notes: str | None = None,
+) -> None:
+    settings = load_settings(settings_path)
+    database_path = settings["database_path"]
+    initialize_database(database_path)
+
+    result = upsert_application(
+        database_path,
+        ApplicationRecord(
+            job_radar_id=job_radar_id,
+            company_name=company_name,
+            role_title=role_title,
+            source_url=source_url,
+            status=status,
+            follow_up_on=follow_up_on,
+            outcome=outcome,
+            notes=notes,
+        ),
+    )
+
+    print("Application tracker entry saved")
+    print(f"Database: {database_path}")
+    print(f"Result: {result}")
+    print(f"Job Radar ID: {job_radar_id}")
+    print(f"Company: {company_name}")
+    print(f"Role: {role_title}")
+    print(f"Status: {status}")
+
+    if follow_up_on:
+        print(f"Follow up on: {follow_up_on}")
+
+    if outcome:
+        print(f"Outcome: {outcome}")
+
+    if source_url:
+        print(f"URL: {source_url}")
+
+    if notes:
+        print(f"Notes: {notes}")
+
+
 def handle_tracker_update(
     settings_path: str,
     *,
@@ -839,6 +945,20 @@ def main() -> None:
         if args.command == "tracker":
             if args.tracker_command == "list":
                 handle_tracker_list(settings_path=args.settings)
+                return
+
+            if args.tracker_command == "add":
+                handle_tracker_add(
+                    settings_path=args.settings,
+                    job_radar_id=args.job_radar_id,
+                    company_name=args.company,
+                    role_title=args.role,
+                    source_url=args.url,
+                    status=args.status,
+                    follow_up_on=args.follow_up_on,
+                    outcome=args.outcome,
+                    notes=args.notes,
+                )
                 return
 
             if args.tracker_command == "update":

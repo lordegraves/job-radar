@@ -9,6 +9,7 @@ from job_radar.cli import (
     build_parser,
     handle_import_history,
     handle_scan,
+    handle_tracker_add,
     handle_tracker_list,
     handle_tracker_update,
 )
@@ -1331,3 +1332,103 @@ retention:
     assert f"Database: {database_file}" in output
     assert "Job Radar ID: jr-missing-00000000" in output
     assert "Reason: tracked application was not found" in output
+
+
+def test_parser_accepts_tracker_add_command() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "tracker",
+            "add",
+            "--job-radar-id",
+            "jr-manual-12345678",
+            "--company",
+            "Example AI",
+            "--role",
+            "Senior Site Reliability Engineer",
+            "--url",
+            "https://example.com/jobs/123",
+            "--status",
+            "applied",
+            "--follow-up-on",
+            "2026-07-10",
+            "--outcome",
+            "interviewing",
+            "--notes",
+            "Applied through company site.",
+            "--settings",
+            "config/settings.yaml",
+        ]
+    )
+
+    assert args.command == "tracker"
+    assert args.tracker_command == "add"
+    assert args.job_radar_id == "jr-manual-12345678"
+    assert args.company == "Example AI"
+    assert args.role == "Senior Site Reliability Engineer"
+    assert args.url == "https://example.com/jobs/123"
+    assert args.status == "applied"
+    assert args.follow_up_on == "2026-07-10"
+    assert args.outcome == "interviewing"
+    assert args.notes == "Applied through company site."
+    assert args.settings == "config/settings.yaml"
+
+
+def test_handle_tracker_add_creates_tracked_application(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    handle_tracker_add(
+        settings_path=str(settings_file),
+        job_radar_id="jr-manual-12345678",
+        company_name="Example AI",
+        role_title="Senior Site Reliability Engineer",
+        source_url="https://example.com/jobs/123",
+        status="applied",
+        follow_up_on="2026-07-10",
+        outcome="interviewing",
+        notes="Applied through company site.",
+    )
+
+    output = capsys.readouterr().out
+
+    assert "Application tracker entry saved" in output
+    assert f"Database: {database_file}" in output
+    assert "Result: new" in output
+    assert "Job Radar ID: jr-manual-12345678" in output
+    assert "Company: Example AI" in output
+    assert "Role: Senior Site Reliability Engineer" in output
+    assert "Status: applied" in output
+    assert "Follow up on: 2026-07-10" in output
+    assert "Outcome: interviewing" in output
+    assert "URL: https://example.com/jobs/123" in output
+    assert "Notes: Applied through company site." in output
+
+    handle_tracker_list(settings_path=str(settings_file))
+    list_output = capsys.readouterr().out
+
+    assert "Applications tracked: 1" in list_output
+    assert "- Example AI — Senior Site Reliability Engineer" in list_output
+    assert "Job Radar ID: jr-manual-12345678" in list_output
+    assert "Status: applied" in list_output
