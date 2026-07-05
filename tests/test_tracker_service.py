@@ -234,6 +234,34 @@ def test_build_application_record_from_history_record_uses_job_radar_id() -> Non
     assert application.notes == "Imported from spreadsheet."
 
 
+def test_build_application_record_from_history_record_keeps_human_notes() -> None:
+    record = make_history_record(
+        decision="Applied",
+        outcome="Pending / In Progress",
+        notes="Recruiter replied.",
+    )
+
+    application = build_application_record_from_history_record(record)
+
+    assert application.notes == "Recruiter replied."
+
+
+def test_build_application_record_from_history_record_drops_generated_report_notes() -> None:
+    record = make_history_record(
+        decision="Applied",
+        outcome="Pending / In Progress",
+        notes=(
+            "- Score: 120 - Why it is a top match: score 120 meets "
+            "top-match threshold 120 - Why this matched: linux, infrastructure "
+            "- Technical match: Very Strong - Resume evidence: Linux infrastructure"
+        ),
+    )
+
+    application = build_application_record_from_history_record(record)
+
+    assert application.notes is None
+
+
 def test_build_application_record_from_history_record_falls_back_to_import_key() -> None:
     record = make_history_record(
         job_radar_id=None,

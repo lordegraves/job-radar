@@ -116,8 +116,35 @@ def build_application_record_from_history_record(
         source_url=record.posting_url,
         status=_tracker_status_from_history_record(record),
         outcome=record.outcome_category,
-        notes=record.notes,
+        notes=_clean_history_notes_for_tracker(record.notes),
     )
+
+
+def _clean_history_notes_for_tracker(notes: str | None) -> str | None:
+    if notes is None:
+        return None
+
+    normalized_notes = " ".join(notes.split())
+    normalized_notes_lower = normalized_notes.lower()
+
+    generated_report_markers = [
+        "- score:",
+        "- why it is a top match:",
+        "- why this matched:",
+        "- technical match:",
+        "- resume match:",
+        "- resume evidence:",
+        "- resume gaps:",
+    ]
+
+    marker_count = sum(
+        1 for marker in generated_report_markers if marker in normalized_notes_lower
+    )
+
+    if marker_count >= 2:
+        return None
+
+    return notes
 
 
 def _tracker_status_from_history_record(record: JobHistoryRecord) -> str:
