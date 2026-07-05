@@ -1470,6 +1470,10 @@ def test_parser_accepts_tracker_update_command() -> None:
             "applied",
             "--follow-up-on",
             "2026-07-10",
+            "--applied-on",
+            "2026-07-03",
+            "--last-activity-on",
+            "2026-07-05",
             "--outcome",
             "interviewing",
             "--notes",
@@ -1484,6 +1488,8 @@ def test_parser_accepts_tracker_update_command() -> None:
     assert args.job_radar_id == "jr-stack-av-12345678"
     assert args.status == "applied"
     assert args.follow_up_on == "2026-07-10"
+    assert args.applied_on == "2026-07-03"
+    assert args.last_activity_on == "2026-07-05"
     assert args.outcome == "interviewing"
     assert args.notes == "Recruiter replied."
     assert args.settings == "config/settings.yaml"
@@ -1606,6 +1612,8 @@ retention:
         job_radar_id="jr-stack-av-12345678",
         status="applied",
         follow_up_on="2026-07-10",
+        applied_on="2026-07-03",
+        last_activity_on="2026-07-05",
         outcome="interviewing",
         notes="Recruiter replied.",
     )
@@ -1617,6 +1625,8 @@ retention:
     assert "Job Radar ID: jr-stack-av-12345678" in output
     assert "Status: applied" in output
     assert "Follow up on: 2026-07-10" in output
+    assert "Applied on: 2026-07-03" in output
+    assert "Last activity on: 2026-07-05" in output
     assert "Outcome: interviewing" in output
     assert "Notes: Recruiter replied." in output
 
@@ -1627,6 +1637,8 @@ retention:
     assert "Status: applied" in list_output
     assert "Workflow: follow_up_scheduled" in list_output
     assert "Follow up on: 2026-07-10" in list_output
+    assert "Applied on: 2026-07-03" in list_output
+    assert "Last activity on: 2026-07-05" in list_output
     assert "Outcome: interviewing" in list_output
     assert "Notes: Recruiter replied." in list_output
 
@@ -1688,6 +1700,10 @@ def test_parser_accepts_tracker_add_command() -> None:
             "applied",
             "--follow-up-on",
             "2026-07-10",
+            "--applied-on",
+            "2026-07-03",
+            "--last-activity-on",
+            "2026-07-05",
             "--outcome",
             "interviewing",
             "--notes",
@@ -1705,6 +1721,8 @@ def test_parser_accepts_tracker_add_command() -> None:
     assert args.url == "https://example.com/jobs/123"
     assert args.status == "applied"
     assert args.follow_up_on == "2026-07-10"
+    assert args.applied_on == "2026-07-03"
+    assert args.last_activity_on == "2026-07-05"
     assert args.outcome == "interviewing"
     assert args.notes == "Applied through company site."
     assert args.settings == "config/settings.yaml"
@@ -1742,6 +1760,8 @@ retention:
         source_url="https://example.com/jobs/123",
         status="applied",
         follow_up_on="2026-07-10",
+        applied_on="2026-07-03",
+        last_activity_on="2026-07-05",
         outcome="interviewing",
         notes="Applied through company site.",
     )
@@ -1756,6 +1776,8 @@ retention:
     assert "Role: Senior Site Reliability Engineer" in output
     assert "Status: applied" in output
     assert "Follow up on: 2026-07-10" in output
+    assert "Applied on: 2026-07-03" in output
+    assert "Last activity on: 2026-07-05" in output
     assert "Outcome: interviewing" in output
     assert "URL: https://example.com/jobs/123" in output
     assert "Notes: Applied through company site." in output
@@ -1767,3 +1789,5 @@ retention:
     assert "- Example AI — Senior Site Reliability Engineer" in list_output
     assert "Job Radar ID: jr-manual-12345678" in list_output
     assert "Status: applied" in list_output
+    assert "Applied on: 2026-07-03" in list_output
+    assert "Last activity on: 2026-07-05" in list_output

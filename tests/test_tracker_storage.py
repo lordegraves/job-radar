@@ -194,6 +194,8 @@ def test_update_application_status_updates_existing_record(tmp_path: Path) -> No
         follow_up_on="2026-07-10",
         outcome=None,
         notes="Follow up with recruiter.",
+        applied_on="2026-07-03",
+        last_activity_on="2026-07-05",
     )
     application = get_application(database_path, "jr-example-ai-12345678")
 
@@ -201,7 +203,43 @@ def test_update_application_status_updates_existing_record(tmp_path: Path) -> No
     assert application is not None
     assert application.status == "follow_up_due"
     assert application.follow_up_on == "2026-07-10"
+    assert application.applied_on == "2026-07-03"
+    assert application.last_activity_on == "2026-07-05"
     assert application.notes == "Follow up with recruiter."
+
+
+def test_update_application_status_preserves_existing_activity_dates_when_omitted(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_tracker_tables(database_path)
+    upsert_application(
+        database_path,
+        ApplicationRecord(
+            job_radar_id="jr-example-ai-12345678",
+            company_name="Example AI",
+            role_title="Senior Site Reliability Engineer",
+            source_url="https://example.com/jobs/senior-sre",
+            status="applied",
+            applied_on="2026-07-03",
+            last_activity_on="2026-07-05",
+        ),
+    )
+
+    result = update_application_status(
+        database_path,
+        job_radar_id="jr-example-ai-12345678",
+        status="interviewing",
+        notes="Recruiter replied.",
+    )
+    application = get_application(database_path, "jr-example-ai-12345678")
+
+    assert result is True
+    assert application is not None
+    assert application.status == "interviewing"
+    assert application.applied_on == "2026-07-03"
+    assert application.last_activity_on == "2026-07-05"
+    assert application.notes == "Recruiter replied."
 
 
 def test_update_application_status_returns_false_for_missing_record(

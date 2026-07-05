@@ -118,8 +118,8 @@ def upsert_application(
                 follow_up_on = ?,
                 outcome = ?,
                 notes = ?,
-                applied_on = ?,
-                last_activity_on = ?,
+                applied_on = COALESCE(?, applied_on),
+                last_activity_on = COALESCE(?, last_activity_on),
                 updated_at = CURRENT_TIMESTAMP
             WHERE job_radar_id = ?
             """,
@@ -148,6 +148,8 @@ def update_application_status(
     follow_up_on: str | None = None,
     outcome: str | None = None,
     notes: str | None = None,
+    applied_on: str | None = None,
+    last_activity_on: str | None = None,
 ) -> bool:
     db_path = Path(database_path)
 
@@ -160,6 +162,8 @@ def update_application_status(
                 follow_up_on = ?,
                 outcome = ?,
                 notes = ?,
+                applied_on = COALESCE(?, applied_on),
+                last_activity_on = COALESCE(?, last_activity_on),
                 updated_at = CURRENT_TIMESTAMP
             WHERE job_radar_id = ?
             """,
@@ -168,6 +172,8 @@ def update_application_status(
                 follow_up_on,
                 outcome,
                 notes,
+                applied_on,
+                last_activity_on,
                 job_radar_id,
             ),
         )

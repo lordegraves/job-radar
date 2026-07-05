@@ -256,6 +256,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional follow-up date, such as 2026-07-10",
     )
     tracker_update_parser.add_argument(
+        "--applied-on",
+        default=None,
+        help="Optional application date, such as 2026-07-03",
+    )
+    tracker_update_parser.add_argument(
+        "--last-activity-on",
+        default=None,
+        help="Optional last activity date, such as 2026-07-05",
+    )
+    tracker_update_parser.add_argument(
         "--outcome",
         default=None,
         help="Optional application outcome",
@@ -304,6 +314,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--follow-up-on",
         default=None,
         help="Optional follow-up date, such as 2026-07-10",
+    )
+    tracker_add_parser.add_argument(
+        "--applied-on",
+        default=None,
+        help="Optional application date, such as 2026-07-03",
+    )
+    tracker_add_parser.add_argument(
+        "--last-activity-on",
+        default=None,
+        help="Optional last activity date, such as 2026-07-05",
     )
     tracker_add_parser.add_argument(
         "--outcome",
@@ -845,6 +865,12 @@ def handle_tracker_list(
         if application.follow_up_on:
             print(f"  Follow up on: {application.follow_up_on}")
 
+        if application.applied_on:
+            print(f"  Applied on: {application.applied_on}")
+
+        if application.last_activity_on:
+            print(f"  Last activity on: {application.last_activity_on}")
+
         if application.outcome:
             print(f"  Outcome: {application.outcome}")
 
@@ -864,6 +890,8 @@ def handle_tracker_add(
     source_url: str | None = None,
     status: str = "review_needed",
     follow_up_on: str | None = None,
+    applied_on: str | None = None,
+    last_activity_on: str | None = None,
     outcome: str | None = None,
     notes: str | None = None,
 ) -> None:
@@ -882,6 +910,8 @@ def handle_tracker_add(
             follow_up_on=follow_up_on,
             outcome=outcome,
             notes=notes,
+            applied_on=applied_on,
+            last_activity_on=last_activity_on,
         ),
     )
 
@@ -895,6 +925,12 @@ def handle_tracker_add(
 
     if follow_up_on:
         print(f"Follow up on: {follow_up_on}")
+
+    if applied_on:
+        print(f"Applied on: {applied_on}")
+
+    if last_activity_on:
+        print(f"Last activity on: {last_activity_on}")
 
     if outcome:
         print(f"Outcome: {outcome}")
@@ -912,6 +948,8 @@ def handle_tracker_update(
     job_radar_id: str,
     status: str,
     follow_up_on: str | None = None,
+    applied_on: str | None = None,
+    last_activity_on: str | None = None,
     outcome: str | None = None,
     notes: str | None = None,
 ) -> None:
@@ -926,6 +964,8 @@ def handle_tracker_update(
         follow_up_on=follow_up_on,
         outcome=outcome,
         notes=notes,
+        applied_on=applied_on,
+        last_activity_on=last_activity_on,
     )
 
     if not updated:
@@ -942,6 +982,12 @@ def handle_tracker_update(
 
     if follow_up_on:
         print(f"Follow up on: {follow_up_on}")
+
+    if applied_on:
+        print(f"Applied on: {applied_on}")
+
+    if last_activity_on:
+        print(f"Last activity on: {last_activity_on}")
 
     if outcome:
         print(f"Outcome: {outcome}")
@@ -1050,6 +1096,8 @@ def main() -> None:
                     source_url=args.url,
                     status=args.status,
                     follow_up_on=args.follow_up_on,
+                    applied_on=args.applied_on,
+                    last_activity_on=args.last_activity_on,
                     outcome=args.outcome,
                     notes=args.notes,
                 )
@@ -1061,6 +1109,8 @@ def main() -> None:
                     job_radar_id=args.job_radar_id,
                     status=args.status,
                     follow_up_on=args.follow_up_on,
+                    applied_on=args.applied_on,
+                    last_activity_on=args.last_activity_on,
                     outcome=args.outcome,
                     notes=args.notes,
                 )
