@@ -19,6 +19,7 @@
         }
 
         input,
+        select,
         textarea {
             box-sizing: border-box;
             width: 100%;
@@ -56,7 +57,13 @@
         <input type="hidden" name="return_filter" value="{{ return_filter }}">
 
         <label for="status">Status</label>
-        <input id="status" name="status" value="{{ application.status }}" required>
+        <select id="status" name="status" required>
+            {% for status_option in status_options %}
+            <option value="{{ status_option }}" {% if status_option==application.status %}selected{% endif %}>
+                {{ status_option }}
+            </option>
+            {% endfor %}
+        </select>
 
         <label for="follow_up_on">Follow-up date</label>
         <input id="follow_up_on" name="follow_up_on" value="{{ application.follow_up_on or '' }}"
@@ -70,13 +77,25 @@
             placeholder="YYYY-MM-DD">
 
         <label for="outcome">Outcome</label>
-        <input id="outcome" name="outcome" value="{{ application.outcome or '' }}">
+        <select id="outcome" name="outcome">
+            {% for outcome_option in outcome_options %}
+            <option value="{{ outcome_option }}" {% if outcome_option==(application.outcome or '' ) %}selected{% endif
+                %}>
+                {{ outcome_option or "None" }}
+            </option>
+            {% endfor %}
+        </select>
 
         <label for="notes">Notes</label>
         <textarea id="notes" name="notes">{{ application.notes or '' }}</textarea>
 
         <div class="actions">
             <button type="submit">Save</button>
+            {% for quick_action_name, quick_action in quick_actions.items() %}
+            <button type="submit" name="quick_action" value="{{ quick_action_name }}">
+                {{ quick_action.label }}
+            </button>
+            {% endfor %}
             <a href="{{ url_for('tracker', filter=return_filter) }}">Cancel</a>
         </div>
     </form>

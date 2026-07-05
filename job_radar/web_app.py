@@ -58,6 +58,52 @@ TRACKER_WORKFLOW_PRIORITY = {
     "closed": 90,
 }
 
+TRACKER_STATUS_OPTIONS = (
+    "applied",
+    "follow_up_due",
+    "interviewing",
+    "offer",
+    "dormant",
+    "rejected",
+    "withdrawn",
+)
+
+TRACKER_OUTCOME_OPTIONS = (
+    "",
+    "Pending / In Progress",
+    "Interviewing",
+    "Offer",
+    "Dormant",
+    "Rejected - No Interview",
+    "Rejected - After Interview",
+    "Withdrawn",
+    "Closed Before Application",
+    "Alive Until Declared Dead",
+)
+
+TRACKER_QUICK_ACTIONS = {
+    "follow_up_due": {
+        "label": "Mark follow-up due",
+        "status": "follow_up_due",
+        "outcome": "Pending / In Progress",
+    },
+    "dormant": {
+        "label": "Mark dormant",
+        "status": "dormant",
+        "outcome": "Dormant",
+    },
+    "rejected": {
+        "label": "Mark rejected",
+        "status": "rejected",
+        "outcome": "Rejected - No Interview",
+    },
+    "withdrawn": {
+        "label": "Mark withdrawn",
+        "status": "withdrawn",
+        "outcome": "Withdrawn",
+    },
+}
+
 
 @dataclass(frozen=True)
 class TrackerApplicationView:
@@ -114,20 +160,36 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             application=application,
             workflow_state=workflow_state,
             return_filter=return_filter,
+            status_options=TRACKER_STATUS_OPTIONS,
+            outcome_options=TRACKER_OUTCOME_OPTIONS,
+            quick_actions=TRACKER_QUICK_ACTIONS,
         )
 
     @app.post("/tracker/<job_radar_id>/edit")
     def update_tracker_application(job_radar_id: str):
         database_path = _get_database_path(app)
 
+        status = request.form["status"].strip()
+        outcome = _normalize_optional_form_value("outcome")
+        quick_action = request.form.get("quick_action", "").strip()
+
+        if quick_action:
+            quick_action_values = TRACKER_QUICK_ACTIONS.get(quick_action)
+
+            if quick_action_values is None:
+                abort(400)
+
+            status = quick_action_values["status"]
+            outcome = quick_action_values["outcome"]
+
         updated = update_application_status(
             database_path,
             job_radar_id=job_radar_id,
-            status=request.form["status"].strip(),
+            status=status,
             follow_up_on=_normalize_optional_form_value("follow_up_on"),
             applied_on=_normalize_optional_form_value("applied_on"),
             last_activity_on=_normalize_optional_form_value("last_activity_on"),
-            outcome=_normalize_optional_form_value("outcome"),
+            outcome=outcome,
             notes=_normalize_optional_form_value("notes"),
         )
 

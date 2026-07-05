@@ -42,7 +42,7 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
             follow_up_on="2026-07-10",
             applied_on="2026-07-03",
             last_activity_on="2026-07-05",
-            outcome="interviewing",
+            outcome="Interviewing",
             notes="Applied through company site.",
         ),
     )
@@ -64,7 +64,7 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "2026-07-03" in html
     assert "2026-07-05" in html
     assert "2026-07-10" in html
-    assert "interviewing" in html
+    assert "Interviewing" in html
     assert "jr-stack-av-12345678" in html
     assert "https://example.com/jobs/stack-av-sre" in html
     assert "Applied through company site." in html
@@ -231,7 +231,7 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
             follow_up_on="2026-07-10",
             applied_on="2026-07-03",
             last_activity_on="2026-07-05",
-            outcome="interviewing",
+            outcome="Interviewing",
             notes="Applied through company site.",
         ),
     )
@@ -247,11 +247,11 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert "Stack AV" in html
     assert "Senior Site Reliability Engineer" in html
     assert 'name="return_filter" value="needs_action"' in html
-    assert 'name="status" value="applied"' in html
+    assert '<option value="applied" selected>' in html
     assert 'name="follow_up_on" value="2026-07-10"' in html
     assert 'name="applied_on" value="2026-07-03"' in html
     assert 'name="last_activity_on" value="2026-07-05"' in html
-    assert 'name="outcome" value="interviewing"' in html
+    assert '<option value="Interviewing" selected>' in html
     assert "Applied through company site." in html
 
 
@@ -274,7 +274,7 @@ def test_tracker_edit_page_updates_application_and_redirects(
             follow_up_on="2026-07-10",
             applied_on="2026-07-03",
             last_activity_on="2026-07-05",
-            outcome="interviewing",
+            outcome="Interviewing",
             notes="Applied through company site.",
         ),
     )
@@ -302,6 +302,54 @@ def test_tracker_edit_page_updates_application_and_redirects(
     assert application is not None
     assert application.status == "rejected"
     assert application.applied_on == "2026-07-03"
+    assert application.last_activity_on == "2026-07-12"
+    assert application.outcome == "Rejected - No Interview"
+    assert application.notes == "Rejected by email."
+
+
+def test_tracker_edit_quick_action_marks_application_rejected(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-stack-av-12345678",
+            company_name="Stack AV",
+            role_title="Senior Site Reliability Engineer",
+            status="applied",
+            outcome="Pending / In Progress",
+            notes="Applied through company site.",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/tracker/jr-stack-av-12345678/edit",
+        data={
+            "return_filter": "needs_review",
+            "status": "applied",
+            "follow_up_on": "",
+            "applied_on": "",
+            "last_activity_on": "2026-07-12",
+            "outcome": "Pending / In Progress",
+            "notes": "Rejected by email.",
+            "quick_action": "rejected",
+        },
+    )
+
+    application = get_application(database_file, "jr-stack-av-12345678")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/tracker?filter=needs_review")
+    assert application is not None
+    assert application.status == "rejected"
     assert application.last_activity_on == "2026-07-12"
     assert application.outcome == "Rejected - No Interview"
     assert application.notes == "Rejected by email."
