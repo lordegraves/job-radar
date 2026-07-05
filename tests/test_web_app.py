@@ -88,7 +88,7 @@ def test_tracker_page_handles_empty_tracker(tmp_path: Path) -> None:
     assert "No tracked applications." in html
 
 
-def test_tracker_page_expands_long_notes(tmp_path: Path) -> None:
+def test_tracker_page_shows_full_long_notes(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     long_note = (
@@ -118,7 +118,6 @@ def test_tracker_page_expands_long_notes(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Show full note" in html
     assert "This is a long tracker note with important context." in html
     assert "manual review comments." in html
 
