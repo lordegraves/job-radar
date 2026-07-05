@@ -11,6 +11,18 @@
             margin: 24px;
         }
 
+        nav {
+            margin: 16px 0;
+        }
+
+        nav a {
+            margin-right: 12px;
+        }
+
+        .active-filter {
+            font-weight: bold;
+        }
+
         table {
             border-collapse: collapse;
             width: 100%;
@@ -39,7 +51,17 @@
     <h1>Application Tracker</h1>
 
     <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
-    <p><strong>Applications tracked:</strong> {{ applications|length }}</p>
+    <p><strong>Applications shown:</strong> {{ applications|length }}</p>
+
+    <nav aria-label="Tracker filters">
+        {% for filter_name in filters %}
+        {% if filter_name == active_filter %}
+        <span class="active-filter">{{ filter_name }}</span>
+        {% else %}
+        <a href="{{ url_for('tracker', filter=filter_name) }}">{{ filter_name }}</a>
+        {% endif %}
+        {% endfor %}
+    </nav>
 
     {% if not applications %}
     <p>No tracked applications.</p>
@@ -47,6 +69,7 @@
     <table>
         <thead>
             <tr>
+                <th>Action</th>
                 <th>Company</th>
                 <th>Role</th>
                 <th>Status</th>
@@ -63,6 +86,10 @@
         <tbody>
             {% for row in applications %}
             <tr>
+                <td>
+                    <a
+                        href="{{ url_for('edit_tracker_application', job_radar_id=row.application.job_radar_id, filter=active_filter) }}">Edit</a>
+                </td>
                 <td>{{ row.application.company_name }}</td>
                 <td>{{ row.application.role_title }}</td>
                 <td>{{ row.application.status }}</td>

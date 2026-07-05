@@ -1,13 +1,62 @@
 import argparse
 from dataclasses import dataclass
 
-from flask import Flask, render_template
+from flask import Flask, abort, redirect, render_template, request, url_for
 
 from job_radar.config import load_settings
 from job_radar.storage import initialize_database
 from job_radar.tracker.models import ApplicationRecord
 from job_radar.tracker.service import get_application_workflow_state
-from job_radar.tracker.storage import list_applications
+from job_radar.tracker.storage import (
+    get_application,
+    list_applications,
+    update_application_status,
+)
+
+
+TRACKER_NEEDS_ACTION_WORKFLOW_STATES = {
+    "follow_up_due",
+    "needs_date_review",
+    "active_pipeline",
+}
+
+TRACKER_NEEDS_REVIEW_WORKFLOW_STATES = {
+    "needs_date_review",
+    "dormant",
+    "stale",
+    "presumed_closed",
+}
+
+TRACKER_ACTIVE_WORKFLOW_STATES = {
+    "follow_up_due",
+    "needs_date_review",
+    "active_pipeline",
+    "follow_up_scheduled",
+    "waiting",
+    "dormant",
+    "stale",
+    "presumed_closed",
+}
+
+TRACKER_FILTERS = {
+    "all": None,
+    "needs_action": TRACKER_NEEDS_ACTION_WORKFLOW_STATES,
+    "needs_review": TRACKER_NEEDS_REVIEW_WORKFLOW_STATES,
+    "active": TRACKER_ACTIVE_WORKFLOW_STATES,
+    "closed": {"closed"},
+}
+
+TRACKER_WORKFLOW_PRIORITY = {
+    "follow_up_due": 10,
+    "needs_date_review": 20,
+    "active_pipeline": 30,
+    "follow_up_scheduled": 40,
+    "waiting": 50,
+    "dormant": 60,
+    "stale": 70,
+    "presumed_closed": 80,
+    "closed": 90,
+}
 
 
 @dataclass(frozen=True)
@@ -26,25 +75,129 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
     @app.get("/tracker")
     def tracker() -> str:
-        settings = load_settings(app.config["JOB_RADAR_SETTINGS_PATH"])
-        database_path = settings["database_path"]
-        initialize_database(database_path)
+        filter_name = request.args.get("filter", "all")
 
-        applications = [
-            TrackerApplicationView(
-                application=application,
-                workflow_state=get_application_workflow_state(application),
-            )
-            for application in list_applications(database_path)
-        ]
+        if filter_name not in TRACKER_FILTERS:
+            abort(404)
+
+        database_path = _get_database_path(app)
+        applications = _get_tracker_application_views(database_path)
+        filtered_applications = _filter_tracker_applications(
+            applications,
+            filter_name,
+        )
 
         return render_template(
             "tracker.html",
             database_path=database_path,
-            applications=applications,
+            applications=filtered_applications,
+            active_filter=filter_name,
+            filters=TRACKER_FILTERS,
         )
 
+    @app.get("/tracker/<job_radar_id>/edit")
+    def edit_tracker_application(job_radar_id: str) -> str:
+        database_path = _get_database_path(app)
+        application = get_application(database_path, job_radar_id)
+
+        if application is None:
+            abort(404)
+
+        workflow_state = get_application_workflow_state(application)
+        return_filter = request.args.get("filter", "all")
+
+        if return_filter not in TRACKER_FILTERS:
+            return_filter = "all"
+
+        return render_template(
+            "tracker_edit.html",
+            application=application,
+            workflow_state=workflow_state,
+            return_filter=return_filter,
+        )
+
+    @app.post("/tracker/<job_radar_id>/edit")
+    def update_tracker_application(job_radar_id: str):
+        database_path = _get_database_path(app)
+
+        updated = update_application_status(
+            database_path,
+            job_radar_id=job_radar_id,
+            status=request.form["status"].strip(),
+            follow_up_on=_normalize_optional_form_value("follow_up_on"),
+            applied_on=_normalize_optional_form_value("applied_on"),
+            last_activity_on=_normalize_optional_form_value("last_activity_on"),
+            outcome=_normalize_optional_form_value("outcome"),
+            notes=_normalize_optional_form_value("notes"),
+        )
+
+        if not updated:
+            abort(404)
+
+        return_filter = request.form.get("return_filter", "all")
+
+        if return_filter not in TRACKER_FILTERS:
+            return_filter = "all"
+
+        return redirect(url_for("tracker", filter=return_filter))
+
     return app
+
+
+def _get_database_path(app: Flask) -> str:
+    settings = load_settings(app.config["JOB_RADAR_SETTINGS_PATH"])
+    database_path = settings["database_path"]
+    initialize_database(database_path)
+    return database_path
+
+
+def _get_tracker_application_views(database_path: str) -> list[TrackerApplicationView]:
+    applications = [
+        TrackerApplicationView(
+            application=application,
+            workflow_state=get_application_workflow_state(application),
+        )
+        for application in list_applications(database_path)
+    ]
+
+    return sorted(applications, key=_get_tracker_application_sort_key)
+
+
+def _get_tracker_application_sort_key(
+    application_view: TrackerApplicationView,
+) -> tuple[int, str, str]:
+    application = application_view.application
+
+    return (
+        TRACKER_WORKFLOW_PRIORITY.get(application_view.workflow_state, 999),
+        application.company_name.lower(),
+        application.role_title.lower(),
+    )
+
+
+def _filter_tracker_applications(
+    applications: list[TrackerApplicationView],
+    filter_name: str,
+) -> list[TrackerApplicationView]:
+    workflow_states = TRACKER_FILTERS[filter_name]
+
+    if workflow_states is None:
+        return applications
+
+    return [
+        application
+        for application in applications
+        if application.workflow_state in workflow_states
+    ]
+
+
+def _normalize_optional_form_value(field_name: str) -> str | None:
+    value = request.form.get(field_name, "").strip()
+
+    if not value:
+        return None
+
+    return value
 
 
 def build_parser() -> argparse.ArgumentParser:
