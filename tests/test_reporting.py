@@ -1208,6 +1208,32 @@ def test_render_markdown_report_includes_stored_and_omitted_counts() -> None:
     assert "- Jobs not actionable: 7" in markdown
 
 
+def test_render_markdown_report_includes_tracker_workflow_summary() -> None:
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[make_posting()],
+        tracker_workflow_summary={
+            "waiting": 3,
+            "stale": 2,
+            "follow_up_due": 1,
+        },
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Tracker workflow summary:" in markdown
+    assert "  - follow_up_due: 1" in markdown
+    assert "  - waiting: 3" in markdown
+    assert "  - stale: 2" in markdown
+    assert markdown.index("  - follow_up_due: 1") < markdown.index("  - waiting: 3")
+    assert markdown.index("  - waiting: 3") < markdown.index("  - stale: 2")
+
+
 def test_render_markdown_report_keeps_unparseable_generated_at_value() -> None:
     report = ScanReport(
         generated_at="not-a-timestamp",
@@ -1466,6 +1492,34 @@ def test_render_html_report_includes_history_risk_summary() -> None:
     assert "<strong>History risk summary:</strong>" in html
     assert "<li>blocker_review: 1</li>" in html
     assert "<li>caution: 1</li>" in html
+
+
+def test_render_html_report_includes_tracker_workflow_summary() -> None:
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[make_posting()],
+        tracker_workflow_summary={
+            "waiting": 3,
+            "stale": 2,
+            "follow_up_due": 1,
+        },
+    )
+
+    html = render_html_report(report)
+
+    assert "<strong>Tracker workflow summary:</strong>" in html
+    assert "<li>follow_up_due: 1</li>" in html
+    assert "<li>waiting: 3</li>" in html
+    assert "<li>stale: 2</li>" in html
+    assert html.index("<li>follow_up_due: 1</li>") < html.index(
+        "<li>waiting: 3</li>"
+    )
+    assert html.index("<li>waiting: 3</li>") < html.index("<li>stale: 2</li>")
 
 
 def test_write_html_report_writes_file(tmp_path: Path) -> None:

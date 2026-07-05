@@ -845,9 +845,12 @@ top_matches:
     assert count_application_tracker_rows(database_file) == 1
     assert "- Track Status:" in report_text
     assert "  - Status: applied" in report_text
+    assert "  - Workflow: follow_up_scheduled" in report_text
     assert "  - Follow up on: 2026-07-10" in report_text
     assert "  - Outcome: interviewing" in report_text
     assert "  - Notes: Already applied through company site." in report_text
+    assert "- Tracker workflow summary:" in report_text
+    assert "  - follow_up_scheduled: 1" in report_text
 
 
 def test_handle_scan_omits_track_status_for_untracked_job(

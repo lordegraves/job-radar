@@ -488,6 +488,16 @@ def _import_job_history_for_scan(
     print()
 
 
+def _build_tracker_workflow_summary(database_path: str) -> dict[str, int]:
+    workflow_summary: dict[str, int] = {}
+
+    for application in list_applications(database_path):
+        workflow_state = get_application_workflow_state(application)
+        workflow_summary[workflow_state] = workflow_summary.get(workflow_state, 0) + 1
+
+    return workflow_summary
+
+
 def handle_scan(
     config_path: str,
     settings_path: str,
@@ -552,6 +562,7 @@ def handle_scan(
     history_summary = build_history_summary(database_path)
     history_context = build_history_context(history_summary)
     history_records = fetch_included_job_history_records(database_path)
+    tracker_workflow_summary = _build_tracker_workflow_summary(database_path)
 
     scored_postings = []
 
@@ -669,6 +680,7 @@ def handle_scan(
         jobs_stored=jobs_stored,
         jobs_omitted=jobs_omitted,
         history_context=history_context,
+        tracker_workflow_summary=tracker_workflow_summary,
     )
 
     record_scan_run(

@@ -59,6 +59,18 @@ NORTHERN_COLORADO_LOCATION_KEYWORDS = (
     "cheyenne",
 )
 
+TRACKER_WORKFLOW_SUMMARY_ORDER = (
+    "follow_up_due",
+    "needs_date_review",
+    "active_pipeline",
+    "follow_up_scheduled",
+    "waiting",
+    "dormant",
+    "stale",
+    "presumed_closed",
+    "closed",
+)
+
 
 @dataclass(frozen=True)
 class ScoredPosting:
@@ -103,6 +115,7 @@ class ScanReport:
     jobs_stored: int | None = None
     jobs_omitted: int | None = None
     history_context: list[str] | None = None
+    tracker_workflow_summary: dict[str, int] | None = None
 
 
 def render_markdown_report(report: ScanReport) -> str:
@@ -143,6 +156,7 @@ def render_markdown_report(report: ScanReport) -> str:
 
     _append_companies_scanned_summary(lines, report.postings)
     _append_source_type_summary(lines, report.postings)
+    _append_tracker_workflow_summary(lines, report.tracker_workflow_summary)
 
     if report.scored_postings is not None:
         report_scored_postings = _get_report_scored_postings(report)
@@ -257,6 +271,7 @@ def render_html_report(report: ScanReport) -> str:
         heading="Source types",
         counts=_count_source_types(report.postings),
     )
+    _append_html_tracker_workflow_summary(lines, report.tracker_workflow_summary)
 
     if report.scored_postings is not None:
         report_scored_postings = _get_report_scored_postings(report)
@@ -356,6 +371,21 @@ def _append_source_type_summary(
         lines.append(f"  - {source_type}: {source_type_counts[source_type]}")
 
 
+def _append_tracker_workflow_summary(
+    lines: list[str],
+    tracker_workflow_summary: dict[str, int] | None,
+) -> None:
+    if not tracker_workflow_summary:
+        return
+
+    lines.append("- Tracker workflow summary:")
+
+    for workflow_state in _get_ordered_tracker_workflow_states(
+        tracker_workflow_summary
+    ):
+        lines.append(f"  - {workflow_state}: {tracker_workflow_summary[workflow_state]}")
+
+
 def _append_work_arrangement_summary(
     lines: list[str],
     scored_postings: list[ScoredPosting],
@@ -436,6 +466,22 @@ def _get_ordered_work_arrangements(
             ordered_arrangements.append(work_arrangement)
 
     return ordered_arrangements
+
+
+def _get_ordered_tracker_workflow_states(
+    tracker_workflow_summary: dict[str, int],
+) -> list[str]:
+    ordered_workflow_states = [
+        workflow_state
+        for workflow_state in TRACKER_WORKFLOW_SUMMARY_ORDER
+        if workflow_state in tracker_workflow_summary
+    ]
+
+    for workflow_state in sorted(tracker_workflow_summary):
+        if workflow_state not in ordered_workflow_states:
+            ordered_workflow_states.append(workflow_state)
+
+    return ordered_workflow_states
 
 
 def _get_report_scored_postings(report: ScanReport) -> list[ScoredPosting]:
@@ -1402,6 +1448,26 @@ def _append_html_work_arrangement_summary(
         heading="Work location fit",
         counts=_get_work_arrangement_summary_counts(scored_postings),
     )
+
+
+def _append_html_tracker_workflow_summary(
+    lines: list[str],
+    tracker_workflow_summary: dict[str, int] | None,
+) -> None:
+    if not tracker_workflow_summary:
+        return
+
+    lines.append("<li><strong>Tracker workflow summary:</strong><ul>")
+
+    for workflow_state in _get_ordered_tracker_workflow_states(
+        tracker_workflow_summary
+    ):
+        lines.append(
+            f"<li>{escape(workflow_state)}: "
+            f"{tracker_workflow_summary[workflow_state]}</li>"
+        )
+
+    lines.append("</ul></li>")
 
 
 def _append_html_omitted_jobs_audit_summary(
