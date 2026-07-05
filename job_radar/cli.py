@@ -62,6 +62,20 @@ from job_radar.tracker.storage import (
 from job_radar.validation import validate_configuration
 
 
+TRACKER_NEEDS_ACTION_WORKFLOW_STATES = {
+    "follow_up_due",
+    "needs_date_review",
+    "active_pipeline",
+}
+
+TRACKER_NEEDS_REVIEW_WORKFLOW_STATES = {
+    "needs_date_review",
+    "dormant",
+    "stale",
+    "presumed_closed",
+}
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="job_radar",
@@ -230,10 +244,16 @@ def build_parser() -> argparse.ArgumentParser:
         default="config/settings.yaml",
         help="Path to settings.yaml",
     )
-    tracker_list_parser.add_argument(
+    tracker_list_filter_group = tracker_list_parser.add_mutually_exclusive_group()
+    tracker_list_filter_group.add_argument(
         "--needs-action",
         action="store_true",
         help="Only show applications that need action or close attention",
+    )
+    tracker_list_filter_group.add_argument(
+        "--needs-review",
+        action="store_true",
+        help="Only show applications that need tracker review or cleanup",
     )
 
     tracker_update_parser = tracker_subparsers.add_parser(
@@ -827,6 +847,7 @@ def handle_tracker_list(
     settings_path: str,
     *,
     needs_action: bool = False,
+    needs_review: bool = False,
 ) -> None:
     settings = load_settings(settings_path)
     database_path = settings["database_path"]
@@ -839,7 +860,15 @@ def handle_tracker_list(
             application
             for application in applications
             if get_application_workflow_state(application)
-            in {"follow_up_due", "needs_date_review", "active_pipeline"}
+            in TRACKER_NEEDS_ACTION_WORKFLOW_STATES
+        ]
+
+    if needs_review:
+        applications = [
+            application
+            for application in applications
+            if get_application_workflow_state(application)
+            in TRACKER_NEEDS_REVIEW_WORKFLOW_STATES
         ]
 
     print("Application tracker")
@@ -848,6 +877,9 @@ def handle_tracker_list(
 
     if needs_action:
         print("Filter: needs action")
+
+    if needs_review:
+        print("Filter: needs review")
 
     if not applications:
         print("No tracked applications.")
@@ -1084,6 +1116,7 @@ def main() -> None:
                 handle_tracker_list(
                     settings_path=args.settings,
                     needs_action=args.needs_action,
+                    needs_review=args.needs_review,
                 )
                 return
 

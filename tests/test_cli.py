@@ -1381,6 +1381,7 @@ def test_parser_accepts_tracker_list_command() -> None:
     assert args.tracker_command == "list"
     assert args.settings == "config/settings.yaml"
     assert args.needs_action is False
+    assert args.needs_review is False
 
 
 def test_parser_accepts_tracker_list_needs_action_command() -> None:
@@ -1399,6 +1400,27 @@ def test_parser_accepts_tracker_list_needs_action_command() -> None:
     assert args.command == "tracker"
     assert args.tracker_command == "list"
     assert args.needs_action is True
+    assert args.needs_review is False
+    assert args.settings == "config/settings.yaml"
+
+
+def test_parser_accepts_tracker_list_needs_review_command() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "tracker",
+            "list",
+            "--needs-review",
+            "--settings",
+            "config/settings.yaml",
+        ]
+    )
+
+    assert args.command == "tracker"
+    assert args.tracker_command == "list"
+    assert args.needs_action is False
+    assert args.needs_review is True
     assert args.settings == "config/settings.yaml"
 
 
@@ -1568,6 +1590,121 @@ retention:
     assert "Workflow: active_pipeline" in output
     assert "WaitingCo" not in output
     assert "Workflow: waiting" not in output
+
+
+def test_handle_tracker_list_filters_to_applications_needing_review(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-invalid-date-12345678",
+            company_name="DateReviewCo",
+            role_title="Senior SRE",
+            source_url="https://example.com/jobs/date-review",
+            status="applied",
+            follow_up_on="not-a-date",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-dormant-12345678",
+            company_name="DormantCo",
+            role_title="Infrastructure Engineer",
+            source_url="https://example.com/jobs/dormant",
+            status="applied",
+            last_activity_on="2026-05-01",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-stale-12345678",
+            company_name="StaleCo",
+            role_title="Platform Engineer",
+            source_url="https://example.com/jobs/stale",
+            status="applied",
+            last_activity_on="2026-03-01",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-presumed-closed-12345678",
+            company_name="PresumedClosedCo",
+            role_title="Linux Engineer",
+            source_url="https://example.com/jobs/presumed-closed",
+            status="applied",
+            last_activity_on="2026-01-01",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-waiting-12345678",
+            company_name="WaitingCo",
+            role_title="Cluster Engineer",
+            source_url="https://example.com/jobs/waiting",
+            status="applied",
+            last_activity_on="2026-07-01",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-active-12345678",
+            company_name="ActiveCo",
+            role_title="Infrastructure Engineer",
+            source_url="https://example.com/jobs/active",
+            status="interviewing",
+        ),
+    )
+
+    handle_tracker_list(
+        settings_path=str(settings_file),
+        needs_review=True,
+    )
+
+    output = capsys.readouterr().out
+
+    assert "Application tracker" in output
+    assert "Filter: needs review" in output
+    assert "Applications tracked: 4" in output
+    assert "DateReviewCo" in output
+    assert "Workflow: needs_date_review" in output
+    assert "DormantCo" in output
+    assert "Workflow: dormant" in output
+    assert "StaleCo" in output
+    assert "Workflow: stale" in output
+    assert "PresumedClosedCo" in output
+    assert "Workflow: presumed_closed" in output
+    assert "WaitingCo" not in output
+    assert "Workflow: waiting" not in output
+    assert "ActiveCo" not in output
+    assert "Workflow: active_pipeline" not in output
 
 
 def test_handle_tracker_update_updates_existing_application(
