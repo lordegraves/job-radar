@@ -51,6 +51,8 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Shows Job Radar IDs in Markdown, HTML, and email-preview reports
 - Treats Job Radar ID as the preferred history identity when present
 - Matches imported history by exact Job Radar ID before falling back to guarded company/title similarity
+- Imports tracker-worthy history rows into the application tracker
+- Shows Track Status in reports only when a scanned job already has an application tracker record
 - Routes fuzzy history matches to Track Status only when the title match is strong enough
 - Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
 
@@ -164,7 +166,9 @@ Job Radar ID is generated for scanned postings and shown in Markdown, HTML, and 
 
 Rows without a Job Radar ID are still allowed for LinkedIn, referral, recruiter, company-site, and other manual leads. Posting URL is used as fallback evidence when available.
 
-Exact Job Radar ID matches can route roles to Track Status. Fuzzy company/title matches are guarded so broad title overlap can provide history context without automatically treating a role as already applied.
+Exact Job Radar ID matches can provide history context. Existing application tracker records are attached during scan/report generation so reports show Track Status only for jobs already tracked in `application_tracker`.
+
+Fuzzy company/title matches are guarded so broad title overlap can provide history context without automatically treating a role as already applied.
 
 Job Radar reads the workbook during history import and configured scans. It does not write IDs or enrichment data back to the workbook.
 
@@ -182,7 +186,7 @@ Summarize imported history:
 
 Expected current result:
 
-    319 passed
+    357 passed
 
 ## Report structure
 

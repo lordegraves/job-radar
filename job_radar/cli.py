@@ -53,6 +53,7 @@ from job_radar.tracker.service import (
     should_track_history_record,
 )
 from job_radar.tracker.storage import (
+    get_application,
     list_applications,
     update_application_status,
     upsert_application,
@@ -574,6 +575,7 @@ def handle_scan(
         history_risk_level, history_risk_reasons = summarize_history_risk(
             history_matches
         )
+        application = get_application(database_path, posting.job_radar_id)
 
         scored_postings.append(
             ScoredPosting(
@@ -604,6 +606,9 @@ def handle_scan(
                 history_context=format_history_matches(history_matches),
                 history_risk_level=history_risk_level,
                 history_risk_reasons=history_risk_reasons,
+                # Scan/report reads tracker state only. Newly discovered jobs must
+                # not become tracked simply because they scored well.
+                application=application,
             )
         )
 

@@ -732,6 +732,223 @@ top_matches:
     assert "  - Common prior history signals: Generic Remote Competition: 1" in report_text
 
 
+def test_handle_scan_attaches_existing_tracker_record_to_report(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    config_file = tmp_path / "companies.yaml"
+    settings_file = tmp_path / "settings.yaml"
+    scoring_file = tmp_path / "scoring.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    report_file = tmp_path / "today.md"
+
+    config_file.write_text(
+        """
+companies:
+  - company_key: example_ai
+    name: Example AI
+    source_type: greenhouse
+    source_slug: exampleai
+    enabled: true
+""",
+        encoding="utf-8",
+    )
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    scoring_file.write_text(
+        """
+positive_keywords:
+  infrastructure: 10
+  linux: 10
+
+negative_keywords:
+  sales: -10
+
+location_preferences:
+  allowed:
+    remote: 100
+  conditional: {}
+  skipped: {}
+
+top_matches:
+  min_score: 1
+  excluded_title_keywords: []
+  strong_signals:
+    - title:infrastructure
+""",
+        encoding="utf-8",
+    )
+
+    fake_posting = JobPosting(
+        company_key="example_ai",
+        company_name="Example AI",
+        source_type="greenhouse",
+        source_job_id="123",
+        source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description="Build Linux infrastructure.",
+        canonical_key="example-ai:senior-infrastructure-engineer:remote",
+        content_hash="hash-linux-infrastructure",
+    )
+
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id=fake_posting.job_radar_id,
+            company_name="Example AI",
+            role_title="Senior Infrastructure Engineer",
+            source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+            status="applied",
+            follow_up_on="2026-07-10",
+            outcome="interviewing",
+            notes="Already applied through company site.",
+        ),
+    )
+
+    def fake_collect_jobs_for_company(company_config):
+        return [fake_posting]
+
+    monkeypatch.setattr(
+        "job_radar.cli.collect_jobs_for_company",
+        fake_collect_jobs_for_company,
+    )
+
+    handle_scan(
+        config_path=str(config_file),
+        settings_path=str(settings_file),
+        report_path=str(report_file),
+        scoring_path=str(scoring_file),
+    )
+
+    capsys.readouterr()
+    report_text = report_file.read_text(encoding="utf-8")
+
+    assert count_application_tracker_rows(database_file) == 1
+    assert "- Track Status:" in report_text
+    assert "  - Status: applied" in report_text
+    assert "  - Follow up on: 2026-07-10" in report_text
+    assert "  - Outcome: interviewing" in report_text
+    assert "  - Notes: Already applied through company site." in report_text
+
+
+def test_handle_scan_omits_track_status_for_untracked_job(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    config_file = tmp_path / "companies.yaml"
+    settings_file = tmp_path / "settings.yaml"
+    scoring_file = tmp_path / "scoring.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    report_file = tmp_path / "today.md"
+
+    config_file.write_text(
+        """
+companies:
+  - company_key: example_ai
+    name: Example AI
+    source_type: greenhouse
+    source_slug: exampleai
+    enabled: true
+""",
+        encoding="utf-8",
+    )
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    scoring_file.write_text(
+        """
+positive_keywords:
+  infrastructure: 10
+  linux: 10
+
+negative_keywords:
+  sales: -10
+
+location_preferences:
+  allowed:
+    remote: 100
+  conditional: {}
+  skipped: {}
+
+top_matches:
+  min_score: 1
+  excluded_title_keywords: []
+  strong_signals:
+    - title:infrastructure
+""",
+        encoding="utf-8",
+    )
+
+    fake_posting = JobPosting(
+        company_key="example_ai",
+        company_name="Example AI",
+        source_type="greenhouse",
+        source_job_id="123",
+        source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description="Build Linux infrastructure.",
+        canonical_key="example-ai:senior-infrastructure-engineer:remote",
+        content_hash="hash-linux-infrastructure",
+    )
+
+    def fake_collect_jobs_for_company(company_config):
+        return [fake_posting]
+
+    monkeypatch.setattr(
+        "job_radar.cli.collect_jobs_for_company",
+        fake_collect_jobs_for_company,
+    )
+
+    handle_scan(
+        config_path=str(config_file),
+        settings_path=str(settings_file),
+        report_path=str(report_file),
+        scoring_path=str(scoring_file),
+    )
+
+    capsys.readouterr()
+    report_text = report_file.read_text(encoding="utf-8")
+
+    assert count_application_tracker_rows(database_file) == 0
+    assert "- Track Status:\n  - Status:" not in report_text
+
+
 def test_handle_scan_warns_and_continues_when_configured_history_workbook_is_missing(
     tmp_path: Path,
     monkeypatch,
