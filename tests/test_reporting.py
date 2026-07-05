@@ -1234,6 +1234,37 @@ def test_render_markdown_report_includes_tracker_workflow_summary() -> None:
     assert markdown.index("  - waiting: 3") < markdown.index("  - stale: 2")
 
 
+def test_render_markdown_report_includes_tracker_action_summary() -> None:
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[make_posting()],
+        tracker_workflow_summary={
+            "follow_up_due": 2,
+            "needs_date_review": 1,
+            "active_pipeline": 3,
+            "dormant": 4,
+            "stale": 5,
+            "presumed_closed": 6,
+            "waiting": 7,
+            "closed": 8,
+        },
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Tracker action summary:" in markdown
+    assert "  - Needs action: 6" in markdown
+    assert "  - Needs review: 16" in markdown
+    assert markdown.index("- Tracker action summary:") < markdown.index(
+        "- Tracker workflow summary:"
+    )
+
+
 def test_render_markdown_report_keeps_unparseable_generated_at_value() -> None:
     report = ScanReport(
         generated_at="not-a-timestamp",
@@ -1520,6 +1551,37 @@ def test_render_html_report_includes_tracker_workflow_summary() -> None:
         "<li>waiting: 3</li>"
     )
     assert html.index("<li>waiting: 3</li>") < html.index("<li>stale: 2</li>")
+
+
+def test_render_html_report_includes_tracker_action_summary() -> None:
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[make_posting()],
+        tracker_workflow_summary={
+            "follow_up_due": 2,
+            "needs_date_review": 1,
+            "active_pipeline": 3,
+            "dormant": 4,
+            "stale": 5,
+            "presumed_closed": 6,
+            "waiting": 7,
+            "closed": 8,
+        },
+    )
+
+    html = render_html_report(report)
+
+    assert "<strong>Tracker action summary:</strong>" in html
+    assert "<li>Needs action: 6</li>" in html
+    assert "<li>Needs review: 16</li>" in html
+    assert html.index("<strong>Tracker action summary:</strong>") < html.index(
+        "<strong>Tracker workflow summary:</strong>"
+    )
 
 
 def test_write_html_report_writes_file(tmp_path: Path) -> None:

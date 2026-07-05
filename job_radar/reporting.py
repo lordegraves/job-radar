@@ -71,6 +71,19 @@ TRACKER_WORKFLOW_SUMMARY_ORDER = (
     "closed",
 )
 
+TRACKER_NEEDS_ACTION_WORKFLOW_STATES = (
+    "follow_up_due",
+    "needs_date_review",
+    "active_pipeline",
+)
+
+TRACKER_NEEDS_REVIEW_WORKFLOW_STATES = (
+    "needs_date_review",
+    "dormant",
+    "stale",
+    "presumed_closed",
+)
+
 
 @dataclass(frozen=True)
 class ScoredPosting:
@@ -156,6 +169,7 @@ def render_markdown_report(report: ScanReport) -> str:
 
     _append_companies_scanned_summary(lines, report.postings)
     _append_source_type_summary(lines, report.postings)
+    _append_tracker_action_summary(lines, report.tracker_workflow_summary)
     _append_tracker_workflow_summary(lines, report.tracker_workflow_summary)
 
     if report.scored_postings is not None:
@@ -271,6 +285,7 @@ def render_html_report(report: ScanReport) -> str:
         heading="Source types",
         counts=_count_source_types(report.postings),
     )
+    _append_html_tracker_action_summary(lines, report.tracker_workflow_summary)
     _append_html_tracker_workflow_summary(lines, report.tracker_workflow_summary)
 
     if report.scored_postings is not None:
@@ -369,6 +384,40 @@ def _append_source_type_summary(
 
     for source_type in sorted(source_type_counts):
         lines.append(f"  - {source_type}: {source_type_counts[source_type]}")
+
+
+def _append_tracker_action_summary(
+    lines: list[str],
+    tracker_workflow_summary: dict[str, int] | None,
+) -> None:
+    if not tracker_workflow_summary:
+        return
+
+    needs_action_count = _sum_tracker_workflow_states(
+        tracker_workflow_summary,
+        TRACKER_NEEDS_ACTION_WORKFLOW_STATES,
+    )
+    needs_review_count = _sum_tracker_workflow_states(
+        tracker_workflow_summary,
+        TRACKER_NEEDS_REVIEW_WORKFLOW_STATES,
+    )
+
+    if needs_action_count == 0 and needs_review_count == 0:
+        return
+
+    lines.append("- Tracker action summary:")
+    lines.append(f"  - Needs action: {needs_action_count}")
+    lines.append(f"  - Needs review: {needs_review_count}")
+
+
+def _sum_tracker_workflow_states(
+    tracker_workflow_summary: dict[str, int],
+    workflow_states: tuple[str, ...],
+) -> int:
+    return sum(
+        tracker_workflow_summary.get(workflow_state, 0)
+        for workflow_state in workflow_states
+    )
 
 
 def _append_tracker_workflow_summary(
@@ -1448,6 +1497,31 @@ def _append_html_work_arrangement_summary(
         heading="Work location fit",
         counts=_get_work_arrangement_summary_counts(scored_postings),
     )
+
+
+def _append_html_tracker_action_summary(
+    lines: list[str],
+    tracker_workflow_summary: dict[str, int] | None,
+) -> None:
+    if not tracker_workflow_summary:
+        return
+
+    needs_action_count = _sum_tracker_workflow_states(
+        tracker_workflow_summary,
+        TRACKER_NEEDS_ACTION_WORKFLOW_STATES,
+    )
+    needs_review_count = _sum_tracker_workflow_states(
+        tracker_workflow_summary,
+        TRACKER_NEEDS_REVIEW_WORKFLOW_STATES,
+    )
+
+    if needs_action_count == 0 and needs_review_count == 0:
+        return
+
+    lines.append("<li><strong>Tracker action summary:</strong><ul>")
+    lines.append(f"<li>Needs action: {needs_action_count}</li>")
+    lines.append(f"<li>Needs review: {needs_review_count}</li>")
+    lines.append("</ul></li>")
 
 
 def _append_html_tracker_workflow_summary(
