@@ -6,6 +6,7 @@ from pathlib import Path
 from job_radar.compensation import CompensationResult
 from job_radar.models import JobPosting
 from job_radar.resume_match import ResumeMatchResult
+from job_radar.tracker.models import ApplicationRecord
 from job_radar.recommendation_constants import (
     ACTION_HOLD,
     ACTION_PASS,
@@ -73,6 +74,7 @@ class ScoredPosting:
     history_context: list[str] | None = None
     history_risk_level: str | None = None
     history_risk_reasons: list[str] | None = None
+    application: ApplicationRecord | None = None
 
 
 @dataclass(frozen=True)
@@ -1108,6 +1110,8 @@ def _append_scored_posting(
     if history_risk != "None":
         lines.append(f"- History risk: {history_risk}")
 
+    _append_markdown_track_status(lines, scored_posting.application)
+
     lines.extend(
         [
             f"- Work location fit: {_format_work_arrangement(scored_posting)}",
@@ -1128,6 +1132,26 @@ def _append_scored_posting(
             "",
         ]
     )
+
+
+def _append_markdown_track_status(
+    lines: list[str],
+    application: ApplicationRecord | None,
+) -> None:
+    if application is None:
+        return
+
+    lines.append("- Track Status:")
+    lines.append(f"  - Status: {application.status}")
+
+    if application.follow_up_on:
+        lines.append(f"  - Follow up on: {application.follow_up_on}")
+
+    if application.outcome:
+        lines.append(f"  - Outcome: {application.outcome}")
+
+    if application.notes:
+        lines.append(f"  - Notes: {application.notes}")
 
 
 def _append_posting(lines: list[str], posting: JobPosting) -> None:
@@ -1610,6 +1634,30 @@ def _append_html_passed_posting(
     )
 
 
+def _append_html_track_status(
+    lines: list[str],
+    application: ApplicationRecord | None,
+) -> None:
+    if application is None:
+        return
+
+    lines.append("<li><strong>Track Status:</strong>")
+    lines.append("<ul>")
+    lines.append(f"<li>Status: {escape(application.status)}</li>")
+
+    if application.follow_up_on:
+        lines.append(f"<li>Follow up on: {escape(application.follow_up_on)}</li>")
+
+    if application.outcome:
+        lines.append(f"<li>Outcome: {escape(application.outcome)}</li>")
+
+    if application.notes:
+        lines.append(f"<li>Notes: {escape(application.notes)}</li>")
+
+    lines.append("</ul>")
+    lines.append("</li>")
+
+
 def _append_html_unscored_jobs_section(
     lines: list[str],
     postings: list[JobPosting],
@@ -1701,6 +1749,8 @@ def _append_html_scored_posting(
         lines.append(
             f"<li><strong>History risk:</strong> {escape(history_risk)}</li>"
         )
+
+    _append_html_track_status(lines, scored_posting.application)
 
     lines.extend(
         [

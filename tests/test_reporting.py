@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from job_radar.models import JobPosting
+from job_radar.tracker.models import ApplicationRecord
 from job_radar.reporting import (
     ScanError,
     ScanReport,
@@ -2492,4 +2493,93 @@ def test_profile_avoid_match_blocks_even_without_existing_role_family_mismatch()
         "profile avoid match: product management"
     )
     assert _get_recommended_action(scored_posting) == "Pass"
-    
+
+
+def test_render_markdown_report_includes_track_status_for_tracked_application() -> None:
+    posting = make_posting(title="Senior Site Reliability Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=0,
+        jobs_seen=1,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=180,
+                score_reasons=[
+                    "+30 title:site reliability",
+                    "+10 body:linux",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                review_needed_eligible=True,
+                application=ApplicationRecord(
+                    job_radar_id=posting.job_radar_id,
+                    company_name="Example AI",
+                    role_title="Senior Site Reliability Engineer",
+                    source_url=posting.source_url,
+                    status="applied",
+                    follow_up_on="2026-07-10",
+                    outcome="interviewing",
+                    notes="Recruiter replied.",
+                ),
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    assert "- Track Status:" in markdown
+    assert "  - Status: applied" in markdown
+    assert "  - Follow up on: 2026-07-10" in markdown
+    assert "  - Outcome: interviewing" in markdown
+    assert "  - Notes: Recruiter replied." in markdown
+
+
+def test_render_html_report_includes_track_status_for_tracked_application() -> None:
+    posting = make_posting(title="Senior Site Reliability Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=0,
+        jobs_seen=1,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=180,
+                score_reasons=[
+                    "+30 title:site reliability",
+                    "+10 body:linux",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                review_needed_eligible=True,
+                application=ApplicationRecord(
+                    job_radar_id=posting.job_radar_id,
+                    company_name="Example AI",
+                    role_title="Senior Site Reliability Engineer",
+                    source_url=posting.source_url,
+                    status="applied",
+                    follow_up_on="2026-07-10",
+                    outcome="interviewing",
+                    notes="Recruiter replied.",
+                ),
+            )
+        ],
+    )
+
+    html = render_html_report(report)
+
+    assert "<strong>Track Status:</strong>" in html
+    assert "<li>Status: applied</li>" in html
+    assert "<li>Follow up on: 2026-07-10</li>" in html
+    assert "<li>Outcome: interviewing</li>" in html
+    assert "<li>Notes: Recruiter replied.</li>" in html
