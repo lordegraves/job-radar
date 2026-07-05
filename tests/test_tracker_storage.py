@@ -82,6 +82,41 @@ def test_initialize_tracker_tables_can_run_more_than_once(tmp_path: Path) -> Non
     assert table_exists(database_path, "application_tracker")
 
 
+def test_initialize_tracker_tables_adds_activity_date_columns_to_existing_table(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE application_tracker (
+                job_radar_id TEXT PRIMARY KEY,
+                company_name TEXT NOT NULL,
+                role_title TEXT NOT NULL,
+                source_url TEXT,
+                status TEXT NOT NULL DEFAULT 'review_needed',
+                follow_up_on TEXT,
+                outcome TEXT,
+                notes TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+    initialize_tracker_tables(database_path)
+
+    with sqlite3.connect(database_path) as connection:
+        columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(application_tracker)")
+        }
+
+    assert "applied_on" in columns
+    assert "last_activity_on" in columns
+
+
 def test_upsert_application_inserts_new_application(tmp_path: Path) -> None:
     database_path = tmp_path / "job_radar.sqlite3"
     initialize_tracker_tables(database_path)
@@ -97,6 +132,8 @@ def test_upsert_application_inserts_new_application(tmp_path: Path) -> None:
     assert application.role_title == "Senior Site Reliability Engineer"
     assert application.status == "review_needed"
     assert application.notes == "Initial review needed."
+    assert application.applied_on is None
+    assert application.last_activity_on is None
 
 
 def test_upsert_application_updates_existing_application(tmp_path: Path) -> None:
@@ -119,6 +156,30 @@ def test_upsert_application_updates_existing_application(tmp_path: Path) -> None
     assert application is not None
     assert application.status == "applied"
     assert application.notes == "Applied through company careers page."
+
+
+def test_upsert_application_stores_activity_dates(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_tracker_tables(database_path)
+
+    result = upsert_application(
+        database_path,
+        ApplicationRecord(
+            job_radar_id="jr-example-ai-12345678",
+            company_name="Example AI",
+            role_title="Senior Site Reliability Engineer",
+            source_url="https://example.com/jobs/senior-sre",
+            status="applied",
+            applied_on="2026-07-03",
+            last_activity_on="2026-07-05",
+        ),
+    )
+    application = get_application(database_path, "jr-example-ai-12345678")
+
+    assert result == "new"
+    assert application is not None
+    assert application.applied_on == "2026-07-03"
+    assert application.last_activity_on == "2026-07-05"
 
 
 def test_update_application_status_updates_existing_record(tmp_path: Path) -> None:

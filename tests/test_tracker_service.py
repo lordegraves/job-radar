@@ -234,6 +234,8 @@ def test_build_application_record_from_history_record_uses_job_radar_id() -> Non
     assert application.status == "applied"
     assert application.outcome == "Pending / In Progress"
     assert application.notes == "Imported from spreadsheet."
+    assert application.applied_on == "2026-07-03"
+    assert application.last_activity_on == "2026-07-03"
 
 
 def test_build_application_record_from_history_record_keeps_human_notes() -> None:

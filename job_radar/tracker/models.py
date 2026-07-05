@@ -11,5 +11,7 @@ class ApplicationRecord:
     follow_up_on: str | None = None
     outcome: str | None = None
     notes: str | None = None
+    applied_on: str | None = None
+    last_activity_on: str | None = None
     created_at: str | None = None
     updated_at: str | None = None

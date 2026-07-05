@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS application_tracker (
     follow_up_on TEXT,
     outcome TEXT,
     notes TEXT,
+    applied_on TEXT,
+    last_activity_on TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -32,8 +34,28 @@ def initialize_tracker_tables(database_path: str | Path) -> Path:
 
     with sqlite3.connect(db_path) as connection:
         connection.executescript(TRACKER_SCHEMA_SQL)
+        _ensure_tracker_column(connection, "applied_on", "TEXT")
+        _ensure_tracker_column(connection, "last_activity_on", "TEXT")
 
     return db_path
+
+
+def _ensure_tracker_column(
+    connection: sqlite3.Connection,
+    column_name: str,
+    column_type: str,
+) -> None:
+    columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(application_tracker)")
+    }
+
+    if column_name in columns:
+        return
+
+    connection.execute(
+        f"ALTER TABLE application_tracker ADD COLUMN {column_name} {column_type}"
+    )
 
 
 def upsert_application(
@@ -63,9 +85,11 @@ def upsert_application(
                     status,
                     follow_up_on,
                     outcome,
-                    notes
+                    notes,
+                    applied_on,
+                    last_activity_on
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     record.job_radar_id,
@@ -76,6 +100,8 @@ def upsert_application(
                     record.follow_up_on,
                     record.outcome,
                     record.notes,
+                    record.applied_on,
+                    record.last_activity_on,
                 ),
             )
 
@@ -92,6 +118,8 @@ def upsert_application(
                 follow_up_on = ?,
                 outcome = ?,
                 notes = ?,
+                applied_on = ?,
+                last_activity_on = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE job_radar_id = ?
             """,
@@ -103,6 +131,8 @@ def upsert_application(
                 record.follow_up_on,
                 record.outcome,
                 record.notes,
+                record.applied_on,
+                record.last_activity_on,
                 record.job_radar_id,
             ),
         )
@@ -162,6 +192,8 @@ def list_applications(database_path: str | Path) -> list[ApplicationRecord]:
                 follow_up_on,
                 outcome,
                 notes,
+                applied_on,
+                last_activity_on,
                 created_at,
                 updated_at
             FROM application_tracker
@@ -192,6 +224,8 @@ def get_application(
                 follow_up_on,
                 outcome,
                 notes,
+                applied_on,
+                last_activity_on,
                 created_at,
                 updated_at
             FROM application_tracker
@@ -216,6 +250,8 @@ def _row_to_application_record(row: sqlite3.Row) -> ApplicationRecord:
         follow_up_on=row["follow_up_on"],
         outcome=row["outcome"],
         notes=row["notes"],
+        applied_on=row["applied_on"],
+        last_activity_on=row["last_activity_on"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )

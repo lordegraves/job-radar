@@ -119,6 +119,8 @@ def build_application_record_from_history_record(
         status=_tracker_status_from_history_record(record),
         outcome=record.outcome_category,
         notes=_clean_history_notes_for_tracker(record.notes),
+        applied_on=record.event_date,
+        last_activity_on=record.event_date,
     )
 
 
