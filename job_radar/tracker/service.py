@@ -1,3 +1,5 @@
+from datetime import date
+
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
 from job_radar.tracker.models import ApplicationRecord
@@ -145,6 +147,50 @@ def _clean_history_notes_for_tracker(notes: str | None) -> str | None:
         return None
 
     return notes
+
+
+def get_application_workflow_state(
+    application: ApplicationRecord,
+    *,
+    today: date | None = None,
+) -> str:
+    reference_date = today or date.today()
+    normalized_status = _normalized_history_value(application.status)
+
+    if normalized_status in {"rejected", "withdrawn", "dormant"}:
+        return "closed"
+
+    if normalized_status in {"interviewing", "offer"}:
+        return "active_pipeline"
+
+    if normalized_status == "follow_up_due":
+        return "follow_up_due"
+
+    follow_up_date = _parse_follow_up_date(application.follow_up_on)
+
+    if follow_up_date is not None:
+        if follow_up_date <= reference_date:
+            return "follow_up_due"
+
+        return "follow_up_scheduled"
+
+    if application.follow_up_on:
+        return "needs_date_review"
+
+    if normalized_status in {"applied", "interested", "review_needed"}:
+        return "waiting"
+
+    return "waiting"
+
+
+def _parse_follow_up_date(value: str | None) -> date | None:
+    if not value:
+        return None
+
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def _tracker_status_from_history_record(record: JobHistoryRecord) -> str:

@@ -1377,6 +1377,26 @@ def test_parser_accepts_tracker_list_command() -> None:
     assert args.command == "tracker"
     assert args.tracker_command == "list"
     assert args.settings == "config/settings.yaml"
+    assert args.needs_action is False
+
+
+def test_parser_accepts_tracker_list_needs_action_command() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "tracker",
+            "list",
+            "--needs-action",
+            "--settings",
+            "config/settings.yaml",
+        ]
+    )
+
+    assert args.command == "tracker"
+    assert args.tracker_command == "list"
+    assert args.needs_action is True
+    assert args.settings == "config/settings.yaml"
 
 
 def test_handle_tracker_list_outputs_tracked_applications(
@@ -1428,6 +1448,7 @@ retention:
     assert "- Stack AV — Senior Site Reliability Engineer" in output
     assert "Job Radar ID: jr-stack-av-12345678" in output
     assert "Status: applied" in output
+    assert "Workflow: follow_up_scheduled" in output
     assert "Follow up on: 2026-07-10" in output
     assert "URL: https://example.com/jobs/stack-av-sre" in output
     assert "Notes: Applied through company site." in output
@@ -1463,6 +1484,81 @@ def test_parser_accepts_tracker_update_command() -> None:
     assert args.outcome == "interviewing"
     assert args.notes == "Recruiter replied."
     assert args.settings == "config/settings.yaml"
+
+
+def test_handle_tracker_list_filters_to_applications_needing_action(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-due-12345678",
+            company_name="DueCo",
+            role_title="Senior SRE",
+            source_url="https://example.com/jobs/due",
+            status="follow_up_due",
+            follow_up_on="2026-07-04",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-active-12345678",
+            company_name="ActiveCo",
+            role_title="Infrastructure Engineer",
+            source_url="https://example.com/jobs/active",
+            status="interviewing",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-waiting-12345678",
+            company_name="WaitingCo",
+            role_title="Platform Engineer",
+            source_url="https://example.com/jobs/waiting",
+            status="applied",
+        ),
+    )
+
+    handle_tracker_list(
+        settings_path=str(settings_file),
+        needs_action=True,
+    )
+
+    output = capsys.readouterr().out
+
+    assert "Application tracker" in output
+    assert "Filter: needs action" in output
+    assert "Applications tracked: 2" in output
+    assert "DueCo" in output
+    assert "Workflow: follow_up_due" in output
+    assert "ActiveCo" in output
+    assert "Workflow: active_pipeline" in output
+    assert "WaitingCo" not in output
+    assert "Workflow: waiting" not in output
 
 
 def test_handle_tracker_update_updates_existing_application(
@@ -1526,6 +1622,7 @@ retention:
 
     assert "Applications tracked: 1" in list_output
     assert "Status: applied" in list_output
+    assert "Workflow: follow_up_scheduled" in list_output
     assert "Follow up on: 2026-07-10" in list_output
     assert "Outcome: interviewing" in list_output
     assert "Notes: Recruiter replied." in list_output

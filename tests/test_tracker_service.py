@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 from job_radar.job_history import JobHistoryRecord
@@ -5,6 +6,7 @@ from job_radar.models import JobPosting
 from job_radar.tracker.service import (
     build_application_record_from_history_record,
     build_application_record_from_posting,
+    get_application_workflow_state,
     should_track_history_record,
     track_application_from_posting,
     track_application_from_posting_if_missing,
@@ -288,3 +290,96 @@ def test_build_application_record_from_history_record_maps_rejected_status() -> 
 
     assert application.status == "rejected"
     assert application.outcome == "Rejected - After Interview"
+
+
+def test_get_application_workflow_state_marks_due_follow_up() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+        follow_up_on="2026-07-04",
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "follow_up_due"
+    )
+
+
+def test_get_application_workflow_state_marks_future_follow_up_scheduled() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+        follow_up_on="2026-07-10",
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "follow_up_scheduled"
+    )
+
+
+def test_get_application_workflow_state_marks_invalid_follow_up_for_review() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+        follow_up_on="not-a-date",
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "needs_date_review"
+    )
+
+
+def test_get_application_workflow_state_marks_active_pipeline() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="interviewing",
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "active_pipeline"
+    )
+
+
+def test_get_application_workflow_state_marks_closed_applications() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="rejected",
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "closed"
+    )
+
+
+def test_get_application_workflow_state_marks_waiting_applications() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "waiting"
+    )

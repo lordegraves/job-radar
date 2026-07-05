@@ -50,6 +50,7 @@ from job_radar.storage import (
 from job_radar.tracker.models import ApplicationRecord
 from job_radar.tracker.service import (
     build_application_record_from_history_record,
+    get_application_workflow_state,
     should_track_history_record,
 )
 from job_radar.tracker.storage import (
@@ -228,6 +229,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--settings",
         default="config/settings.yaml",
         help="Path to settings.yaml",
+    )
+    tracker_list_parser.add_argument(
+        "--needs-action",
+        action="store_true",
+        help="Only show applications that need action or close attention",
     )
 
     tracker_update_parser = tracker_subparsers.add_parser(
@@ -785,26 +791,44 @@ def handle_history_summary(settings_path: str) -> None:
     print(format_history_summary(summary), end="")
 
 
-def handle_tracker_list(settings_path: str) -> None:
+def handle_tracker_list(
+    settings_path: str,
+    *,
+    needs_action: bool = False,
+) -> None:
     settings = load_settings(settings_path)
     database_path = settings["database_path"]
     initialize_database(database_path)
 
     applications = list_applications(database_path)
 
+    if needs_action:
+        applications = [
+            application
+            for application in applications
+            if get_application_workflow_state(application)
+            in {"follow_up_due", "needs_date_review", "active_pipeline"}
+        ]
+
     print("Application tracker")
     print(f"Database: {database_path}")
     print(f"Applications tracked: {len(applications)}")
+
+    if needs_action:
+        print("Filter: needs action")
 
     if not applications:
         print("No tracked applications.")
         return
 
     for application in applications:
+        workflow_state = get_application_workflow_state(application)
+
         print()
         print(f"- {application.company_name} — {application.role_title}")
         print(f"  Job Radar ID: {application.job_radar_id}")
         print(f"  Status: {application.status}")
+        print(f"  Workflow: {workflow_state}")
 
         if application.follow_up_on:
             print(f"  Follow up on: {application.follow_up_on}")
@@ -999,7 +1023,10 @@ def main() -> None:
 
         if args.command == "tracker":
             if args.tracker_command == "list":
-                handle_tracker_list(settings_path=args.settings)
+                handle_tracker_list(
+                    settings_path=args.settings,
+                    needs_action=args.needs_action,
+                )
                 return
 
             if args.tracker_command == "add":
