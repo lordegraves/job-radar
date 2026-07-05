@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Target-company job discovery and triage tool"
 requires-python = ">=3.11"
 dependencies = [
+    "flask>=3.0.0",
     "openpyxl>=3.1.0",
     "pyyaml>=6.0.0",
     "requests>=2.31.0",
@@ -20,6 +21,9 @@ dev = [
 
 [tool.setuptools]
 packages = ["job_radar"]
+
+[tool.setuptools.package-data]
+job_radar = ["templates/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

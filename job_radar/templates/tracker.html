@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Job Radar Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            margin: 24px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #dddddd;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f6f8fa;
+        }
+
+        code {
+            background: #f6f8fa;
+            padding: 2px 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Application Tracker</h1>
+
+    <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
+    <p><strong>Applications tracked:</strong> {{ applications|length }}</p>
+
+    {% if not applications %}
+    <p>No tracked applications.</p>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Workflow</th>
+                <th>Applied</th>
+                <th>Last activity</th>
+                <th>Follow-up</th>
+                <th>Outcome</th>
+                <th>Job Radar ID</th>
+                <th>Posting</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in applications %}
+            <tr>
+                <td>{{ row.application.company_name }}</td>
+                <td>{{ row.application.role_title }}</td>
+                <td>{{ row.application.status }}</td>
+                <td>{{ row.workflow_state }}</td>
+                <td>{{ row.application.applied_on or "" }}</td>
+                <td>{{ row.application.last_activity_on or "" }}</td>
+                <td>{{ row.application.follow_up_on or "" }}</td>
+                <td>{{ row.application.outcome or "" }}</td>
+                <td><code>{{ row.application.job_radar_id }}</code></td>
+                <td>
+                    {% if row.application.source_url %}
+                    <a href="{{ row.application.source_url }}">View posting</a>
+                    {% endif %}
+                </td>
+                <td>{{ row.application.notes or "" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</body>
+
+</html>
