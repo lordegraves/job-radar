@@ -1296,6 +1296,15 @@ def _format_decision_explanation(
                 "but the location fit needs confirmation.",
             )
 
+        hiring_risks = _format_hiring_risk_flags(scored_posting)
+
+        if hiring_risks != "None":
+            return (
+                "Why it needs review",
+                f"{_get_recommended_action(scored_posting)} recommended, "
+                f"but review risk first: {hiring_risks}.",
+            )
+
         return (
             "Why it needs review",
             "This role has enough signal to review manually, but it did "
@@ -1697,8 +1706,11 @@ def _append_html_scored_posting(
 ) -> None:
     posting = scored_posting.posting
     section_class = "job-card"
+    recommended_action = _get_recommended_action(scored_posting)
 
-    if scored_posting.top_match_eligible:
+    if recommended_action == ACTION_TRACK_STATUS:
+        section_class = "job-card review-needed"
+    elif scored_posting.top_match_eligible:
         section_class = "job-card top-match"
     elif scored_posting.review_needed_eligible:
         section_class = "job-card review-needed"

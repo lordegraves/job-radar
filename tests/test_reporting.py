@@ -1579,8 +1579,8 @@ def test_render_markdown_report_explains_review_needed_cards() -> None:
     assert "## Review Needed" in markdown
     assert "### [Data Center Design Execution Lead]" in markdown
     assert (
-        "- Why it needs review: This role has enough signal to review manually, "
-        "but it did not qualify as a Top Match."
+        "- Why it needs review: Network First recommended, "
+        "but review risk first: leadership ambiguity risk."
         in markdown
     )
     assert (
@@ -2583,3 +2583,39 @@ def test_render_html_report_includes_track_status_for_tracked_application() -> N
     assert "<li>Follow up on: 2026-07-10</li>" in html
     assert "<li>Outcome: interviewing</li>" in html
     assert "<li>Notes: Recruiter replied.</li>" in html
+
+
+def test_render_html_report_styles_track_status_as_review_needed() -> None:
+    posting = make_posting(title="Site Reliability Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=120,
+                score_reasons=[
+                    "+30 title:site reliability",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+                review_needed_eligible=True,
+                history_risk_level="track_status",
+                history_risk_reasons=["already_applied"],
+            )
+        ],
+    )
+
+    html = render_html_report(report)
+
+    assert '<section class="job-card review-needed">' in html
+    assert '<section class="job-card top-match">' not in html
+    assert "<strong>Recommended action:</strong> Track Status" in html
