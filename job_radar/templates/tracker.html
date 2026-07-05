@@ -46,10 +46,25 @@
         }
 
         .notes-cell {
-            min-width: 420px;
-            max-width: 760px;
+            min-width: 320px;
+            max-width: 520px;
+        }
+
+        .notes-preview {
+            margin-bottom: 6px;
+        }
+
+        details {
+            margin-top: 4px;
+        }
+
+        summary {
+            cursor: pointer;
+        }
+
+        .notes-full {
             white-space: pre-wrap;
-            overflow-wrap: anywhere;
+            margin-top: 6px;
         }
     </style>
 </head>
@@ -112,7 +127,19 @@
                     <a href="{{ row.application.source_url }}">View posting</a>
                     {% endif %}
                 </td>
-                <td class="notes-cell">{{ row.application.notes or "" }}</td>
+                <td class="notes-cell">
+                    {% if row.application.notes %}
+                    <div class="notes-preview">
+                        {{ row.application.notes[:120] }}{% if row.application.notes|length > 120 %}...{% endif %}
+                    </div>
+                    {% if row.application.notes|length > 120 %}
+                    <details>
+                        <summary>Show full note</summary>
+                        <div class="notes-full">{{ row.application.notes }}</div>
+                    </details>
+                    {% endif %}
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
