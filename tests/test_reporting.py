@@ -2522,7 +2522,7 @@ def test_render_markdown_report_includes_track_status_for_tracked_application() 
                     company_name="Example AI",
                     role_title="Senior Site Reliability Engineer",
                     source_url=posting.source_url,
-                    status="applied",
+                    status="interviewing",
                     follow_up_on="2026-07-10",
                     outcome="interviewing",
                     notes="Recruiter replied.",
@@ -2534,7 +2534,8 @@ def test_render_markdown_report_includes_track_status_for_tracked_application() 
     markdown = render_markdown_report(report)
 
     assert "- Track Status:" in markdown
-    assert "  - Status: applied" in markdown
+    assert "  - Status: interviewing" in markdown
+    assert "  - Workflow: active_pipeline" in markdown
     assert "  - Follow up on: 2026-07-10" in markdown
     assert "  - Outcome: interviewing" in markdown
     assert "  - Notes: Recruiter replied." in markdown
@@ -2567,7 +2568,7 @@ def test_render_html_report_includes_track_status_for_tracked_application() -> N
                     company_name="Example AI",
                     role_title="Senior Site Reliability Engineer",
                     source_url=posting.source_url,
-                    status="applied",
+                    status="interviewing",
                     follow_up_on="2026-07-10",
                     outcome="interviewing",
                     notes="Recruiter replied.",
@@ -2579,7 +2580,8 @@ def test_render_html_report_includes_track_status_for_tracked_application() -> N
     html = render_html_report(report)
 
     assert "<strong>Track Status:</strong>" in html
-    assert "<li>Status: applied</li>" in html
+    assert "<li>Status: interviewing</li>" in html
+    assert "<li>Workflow: active_pipeline</li>" in html
     assert "<li>Follow up on: 2026-07-10</li>" in html
     assert "<li>Outcome: interviewing</li>" in html
     assert "<li>Notes: Recruiter replied.</li>" in html

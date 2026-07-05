@@ -7,6 +7,7 @@ from job_radar.compensation import CompensationResult
 from job_radar.models import JobPosting
 from job_radar.resume_match import ResumeMatchResult
 from job_radar.tracker.models import ApplicationRecord
+from job_radar.tracker.service import get_application_workflow_state
 from job_radar.recommendation_constants import (
     ACTION_HOLD,
     ACTION_PASS,
@@ -1141,8 +1142,11 @@ def _append_markdown_track_status(
     if application is None:
         return
 
+    workflow_state = get_application_workflow_state(application)
+
     lines.append("- Track Status:")
     lines.append(f"  - Status: {application.status}")
+    lines.append(f"  - Workflow: {workflow_state}")
 
     if application.follow_up_on:
         lines.append(f"  - Follow up on: {application.follow_up_on}")
@@ -1650,9 +1654,12 @@ def _append_html_track_status(
     if application is None:
         return
 
+    workflow_state = get_application_workflow_state(application)
+
     lines.append("<li><strong>Track Status:</strong>")
     lines.append("<ul>")
     lines.append(f"<li>Status: {escape(application.status)}</li>")
+    lines.append(f"<li>Workflow: {escape(workflow_state)}</li>")
 
     if application.follow_up_on:
         lines.append(f"<li>Follow up on: {escape(application.follow_up_on)}</li>")
