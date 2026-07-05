@@ -3,6 +3,7 @@ from pathlib import Path
 
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
+from job_radar.tracker.models import ApplicationRecord
 from job_radar.tracker.service import (
     build_application_record_from_history_record,
     build_application_record_from_posting,
@@ -357,10 +358,25 @@ def test_get_application_workflow_state_marks_active_pipeline() -> None:
     )
 
 
-def test_get_application_workflow_state_marks_closed_applications() -> None:
+def test_get_application_workflow_state_marks_rejected_applications_closed() -> None:
     application = build_application_record_from_posting(
         make_posting(),
         status="rejected",
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "closed"
+    )
+
+
+def test_get_application_workflow_state_marks_withdrawn_applications_closed() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="withdrawn",
     )
 
     assert (
@@ -384,4 +400,166 @@ def test_get_application_workflow_state_marks_waiting_applications() -> None:
             today=date(2026, 7, 5),
         )
         == "waiting"
+    )
+
+
+def test_get_application_workflow_state_marks_dormant_status_as_dormant() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="dormant",
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "dormant"
+    )
+
+
+def test_get_application_workflow_state_marks_recent_activity_waiting() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+    )
+    application = ApplicationRecord(
+        **{
+            **application.__dict__,
+            "last_activity_on": "2026-06-20",
+        }
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "waiting"
+    )
+
+
+def test_get_application_workflow_state_marks_month_old_activity_dormant() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+    )
+    application = ApplicationRecord(
+        **{
+            **application.__dict__,
+            "last_activity_on": "2026-05-20",
+        }
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "dormant"
+    )
+
+
+def test_get_application_workflow_state_marks_old_activity_stale() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+    )
+    application = ApplicationRecord(
+        **{
+            **application.__dict__,
+            "last_activity_on": "2026-03-01",
+        }
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "stale"
+    )
+
+
+def test_get_application_workflow_state_marks_very_old_activity_presumed_closed() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+    )
+    application = ApplicationRecord(
+        **{
+            **application.__dict__,
+            "last_activity_on": "2026-01-01",
+        }
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "presumed_closed"
+    )
+
+
+def test_get_application_workflow_state_uses_applied_on_when_last_activity_missing() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+    )
+    application = ApplicationRecord(
+        **{
+            **application.__dict__,
+            "applied_on": "2026-03-01",
+        }
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "stale"
+    )
+
+
+def test_get_application_workflow_state_marks_invalid_activity_date_for_review() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+    )
+    application = ApplicationRecord(
+        **{
+            **application.__dict__,
+            "last_activity_on": "not-a-date",
+        }
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "needs_date_review"
+    )
+
+
+def test_get_application_workflow_state_marks_future_activity_date_for_review() -> None:
+    application = build_application_record_from_posting(
+        make_posting(),
+        status="applied",
+    )
+    application = ApplicationRecord(
+        **{
+            **application.__dict__,
+            "last_activity_on": "2026-07-10",
+        }
+    )
+
+    assert (
+        get_application_workflow_state(
+            application,
+            today=date(2026, 7, 5),
+        )
+        == "needs_date_review"
     )

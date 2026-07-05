@@ -159,7 +159,7 @@ def get_application_workflow_state(
     reference_date = today or date.today()
     normalized_status = _normalized_history_value(application.status)
 
-    if normalized_status in {"rejected", "withdrawn", "dormant"}:
+    if normalized_status in {"rejected", "withdrawn"}:
         return "closed"
 
     if normalized_status in {"interviewing", "offer"}:
@@ -168,7 +168,7 @@ def get_application_workflow_state(
     if normalized_status == "follow_up_due":
         return "follow_up_due"
 
-    follow_up_date = _parse_follow_up_date(application.follow_up_on)
+    follow_up_date = _parse_date(application.follow_up_on)
 
     if follow_up_date is not None:
         if follow_up_date <= reference_date:
@@ -179,13 +179,42 @@ def get_application_workflow_state(
     if application.follow_up_on:
         return "needs_date_review"
 
-    if normalized_status in {"applied", "interested", "review_needed"}:
+    activity_date = _get_application_activity_date(application)
+
+    if activity_date is None:
+        if application.last_activity_on or application.applied_on:
+            return "needs_date_review"
+
+        if normalized_status == "dormant":
+            return "dormant"
+
         return "waiting"
+
+    if activity_date > reference_date:
+        return "needs_date_review"
+
+    days_since_activity = (reference_date - activity_date).days
+
+    if days_since_activity > 180:
+        return "presumed_closed"
+
+    if days_since_activity > 90:
+        return "stale"
+
+    if days_since_activity > 30:
+        return "dormant"
+
+    if normalized_status == "dormant":
+        return "dormant"
 
     return "waiting"
 
 
-def _parse_follow_up_date(value: str | None) -> date | None:
+def _get_application_activity_date(application: ApplicationRecord) -> date | None:
+    return _parse_date(application.last_activity_on) or _parse_date(application.applied_on)
+
+
+def _parse_date(value: str | None) -> date | None:
     if not value:
         return None
 
