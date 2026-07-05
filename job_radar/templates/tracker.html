@@ -44,6 +44,28 @@
             background: #f6f8fa;
             padding: 2px 4px;
         }
+
+        .notes-cell {
+            min-width: 320px;
+            max-width: 520px;
+        }
+
+        .notes-preview {
+            margin-bottom: 6px;
+        }
+
+        details {
+            margin-top: 4px;
+        }
+
+        summary {
+            cursor: pointer;
+        }
+
+        .notes-full {
+            white-space: pre-wrap;
+            margin-top: 6px;
+        }
     </style>
 </head>
 
@@ -51,6 +73,7 @@
     <h1>Application Tracker</h1>
 
     <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
+    <p><a href="{{ url_for('add_tracker_application') }}">Add application</a></p>
     <p><strong>Applications shown:</strong> {{ applications|length }}</p>
 
     <nav aria-label="Tracker filters">
@@ -104,7 +127,19 @@
                     <a href="{{ row.application.source_url }}">View posting</a>
                     {% endif %}
                 </td>
-                <td>{{ row.application.notes or "" }}</td>
+                <td class="notes-cell">
+                    {% if row.application.notes %}
+                    <div class="notes-preview">
+                        {{ row.application.notes[:120] }}{% if row.application.notes|length > 120 %}...{% endif %}
+                    </div>
+                    {% if row.application.notes|length > 120 %}
+                    <details>
+                        <summary>Show full note</summary>
+                        <div class="notes-full">{{ row.application.notes }}</div>
+                    </details>
+                    {% endif %}
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>

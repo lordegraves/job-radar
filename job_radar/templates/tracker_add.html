@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Add Tracker Application</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            margin: 24px;
+            max-width: 900px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-top: 14px;
+        }
+
+        input,
+        select,
+        textarea {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 8px;
+        }
+
+        textarea {
+            min-height: 120px;
+        }
+
+        .actions {
+            margin-top: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Add Application</h1>
+
+    <form method="post">
+        <label for="job_radar_id">Job Radar ID</label>
+        <input id="job_radar_id" name="job_radar_id" required>
+
+        <label for="company_name">Company</label>
+        <input id="company_name" name="company_name" required>
+
+        <label for="role_title">Role</label>
+        <input id="role_title" name="role_title" required>
+
+        <label for="source_url">Posting URL</label>
+        <input id="source_url" name="source_url">
+
+        <label for="status">Status</label>
+        <select id="status" name="status" required>
+            {% for status_option in status_options %}
+            <option value="{{ status_option }}" {% if status_option=="applied" %}selected{% endif %}>
+                {{ status_option }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label for="follow_up_on">Follow-up date</label>
+        <input id="follow_up_on" name="follow_up_on" placeholder="YYYY-MM-DD">
+
+        <label for="applied_on">Applied date</label>
+        <input id="applied_on" name="applied_on" placeholder="YYYY-MM-DD">
+
+        <label for="last_activity_on">Last activity date</label>
+        <input id="last_activity_on" name="last_activity_on" placeholder="YYYY-MM-DD">
+
+        <label for="outcome">Outcome</label>
+        <select id="outcome" name="outcome">
+            {% for outcome_option in outcome_options %}
+            <option value="{{ outcome_option }}" {% if outcome_option=="Pending / In Progress" %}selected{% endif %}>
+                {{ outcome_option or "None" }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes"></textarea>
+
+        <div class="actions">
+            <button type="submit">Save</button>
+            <a href="{{ url_for('tracker', filter='all') }}">Cancel</a>
+        </div>
+    </form>
+</body>
+
+</html>

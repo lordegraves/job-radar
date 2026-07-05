@@ -11,6 +11,7 @@ from job_radar.tracker.storage import (
     get_application,
     list_applications,
     update_application_status,
+    upsert_application,
 )
 
 
@@ -140,6 +141,37 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             active_filter=filter_name,
             filters=TRACKER_FILTERS,
         )
+
+    @app.get("/tracker/add")
+    def add_tracker_application() -> str:
+        return render_template(
+            "tracker_add.html",
+            status_options=TRACKER_STATUS_OPTIONS,
+            outcome_options=TRACKER_OUTCOME_OPTIONS,
+        )
+
+    @app.post("/tracker/add")
+    def save_new_tracker_application():
+        database_path = _get_database_path(app)
+
+        upsert_application(
+            database_path,
+            ApplicationRecord(
+                job_radar_id=request.form["job_radar_id"].strip(),
+                company_name=request.form["company_name"].strip(),
+                role_title=request.form["role_title"].strip(),
+                source_url=_normalize_optional_form_value("source_url"),
+                status=request.form["status"].strip(),
+                follow_up_on=_normalize_optional_form_value("follow_up_on"),
+                applied_on=_normalize_optional_form_value("applied_on"),
+                last_activity_on=_normalize_optional_form_value("last_activity_on"),
+                outcome=_normalize_optional_form_value("outcome"),
+                notes=_normalize_optional_form_value("notes"),
+            ),
+        )
+
+        return redirect(url_for("tracker", filter="all"))
+
 
     @app.get("/tracker/<job_radar_id>/edit")
     def edit_tracker_application(job_radar_id: str) -> str:

@@ -88,6 +88,41 @@ def test_tracker_page_handles_empty_tracker(tmp_path: Path) -> None:
     assert "No tracked applications." in html
 
 
+def test_tracker_page_expands_long_notes(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    long_note = (
+        "This is a long tracker note with important context. "
+        "It should not be hidden from the GUI because the notes field often "
+        "contains fit concerns, recruiter context, rejection details, and "
+        "manual review comments."
+    )
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-notes-12345678",
+            company_name="NotesCo",
+            role_title="Senior Infrastructure Engineer",
+            status="applied",
+            notes=long_note,
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Show full note" in html
+    assert "This is a long tracker note with important context." in html
+    assert "manual review comments." in html
+
+
 def test_tracker_page_sorts_by_workflow_priority(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
@@ -353,3 +388,88 @@ def test_tracker_edit_quick_action_marks_application_rejected(
     assert application.last_activity_on == "2026-07-12"
     assert application.outcome == "Rejected - No Interview"
     assert application.notes == "Rejected by email."
+
+
+def test_tracker_page_links_to_add_application(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<a href="/tracker/add">Add application</a>' in html
+
+
+def test_tracker_add_page_shows_application_form(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker/add")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Add Application" in html
+    assert 'name="job_radar_id"' in html
+    assert 'name="company_name"' in html
+    assert 'name="role_title"' in html
+    assert 'name="source_url"' in html
+    assert '<option value="applied" selected>' in html
+    assert '<option value="Pending / In Progress" selected>' in html
+    assert 'name="follow_up_on"' in html
+    assert 'name="applied_on"' in html
+    assert 'name="last_activity_on"' in html
+    assert 'name="notes"' in html
+
+
+def test_tracker_add_page_saves_application_and_redirects(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/tracker/add",
+        data={
+            "job_radar_id": "jr-manual-example-12345678",
+            "company_name": "ManualCo",
+            "role_title": "Senior Infrastructure Engineer",
+            "source_url": "https://example.com/jobs/manual",
+            "status": "applied",
+            "follow_up_on": "2026-07-15",
+            "applied_on": "2026-07-05",
+            "last_activity_on": "2026-07-05",
+            "outcome": "Pending / In Progress",
+            "notes": "Added manually from GUI.",
+        },
+    )
+
+    application = get_application(database_file, "jr-manual-example-12345678")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/tracker?filter=all")
+    assert application is not None
+    assert application.company_name == "ManualCo"
+    assert application.role_title == "Senior Infrastructure Engineer"
+    assert application.source_url == "https://example.com/jobs/manual"
+    assert application.status == "applied"
+    assert application.follow_up_on == "2026-07-15"
+    assert application.applied_on == "2026-07-05"
+    assert application.last_activity_on == "2026-07-05"
+    assert application.outcome == "Pending / In Progress"
+    assert application.notes == "Added manually from GUI."
