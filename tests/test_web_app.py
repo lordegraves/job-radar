@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import job_radar.web_app as web_app_module
+
 from job_radar.job_history import JobHistoryRecord
 from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.tracker.models import ApplicationRecord
@@ -213,19 +215,76 @@ def test_scan_page_shows_manual_scan_command(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Scan" in html
-    assert "This page shows the safe manual scan command." in html
     normalized_html = " ".join(html.split())
 
-    assert (
-        "It does not start a scan, collect live jobs, write reports, or send email."
-        in normalized_html
-    )
+    assert "Scan" in html
+    assert "This page shows the safe manual scan command" in normalized_html
+    assert "GUI scan execution does not send email." in normalized_html
+    assert "Run scan now" in html
     assert "python -m job_radar scan" in html
     assert "--config config/target-companies.yaml" in html
     assert f"--settings {settings_file}" in html
     assert "--report reports/target-scan.md" in html
     assert "--email-preview reports/target-email-preview.txt" in html
+
+
+def test_scan_run_calls_handle_scan_and_redirects(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    calls = []
+
+    write_settings_file(settings_file, database_file)
+
+    def fake_handle_scan(**kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr(web_app_module, "handle_scan", fake_handle_scan)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post("/scan/run")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/scan?scan_result=success")
+    assert calls == [
+        {
+            "config_path": "config/target-companies.yaml",
+            "settings_path": str(settings_file),
+            "report_path": "reports/target-scan.md",
+            "scoring_path": "config/scoring.yaml",
+            "email_preview_path": "reports/target-email-preview.txt",
+            "send_email": False,
+        }
+    ]
+
+
+def test_scan_run_reports_errors(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    def fake_handle_scan(**kwargs):
+        raise RuntimeError("scan exploded")
+
+    monkeypatch.setattr(web_app_module, "handle_scan", fake_handle_scan)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post("/scan/run", follow_redirects=True)
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Scan failed." in html
+    assert "scan exploded" in html
 
 
 def test_index_page_links_to_reports(tmp_path: Path) -> None:

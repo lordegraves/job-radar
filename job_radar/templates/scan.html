@@ -52,8 +52,15 @@
     <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
             href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('reports') }}">Reports</a></p>
 
-    <p>This page shows the safe manual scan command. It does not start a scan, collect live jobs, write reports, or send
-        email.</p>
+    <p>This page shows the safe manual scan command and can run that scan from the local GUI. GUI scan execution does
+        not send email.</p>
+
+    {% if scan_result == "success" %}
+    <p><strong>Scan completed.</strong> Open the <a href="{{ url_for('reports') }}">Reports</a> page to view generated
+        output.</p>
+    {% elif scan_result == "error" %}
+    <p><strong>Scan failed.</strong> {{ scan_error }}</p>
+    {% endif %}
 
     <h2>Manual scan command</h2>
 
@@ -72,6 +79,10 @@
                 <td><code>{{ scan_settings_path }}</code></td>
             </tr>
             <tr>
+                <th>Scoring config</th>
+                <td><code>{{ scan_scoring_path }}</code></td>
+            </tr>
+            <tr>
                 <th>Markdown report</th>
                 <td><code>{{ scan_report_path }}</code></td>
             </tr>
@@ -81,6 +92,14 @@
             </tr>
         </tbody>
     </table>
+
+    <h2>Run scan from GUI</h2>
+
+    <p>This runs the same scan from the local Flask process. Email sending remains disabled from the GUI.</p>
+
+    <form method="post" action="{{ url_for('run_scan') }}">
+        <button type="submit">Run scan now</button>
+    </form>
 
     <p>After running the command, open the <a href="{{ url_for('reports') }}">Reports</a> page to view generated output.
     </p>

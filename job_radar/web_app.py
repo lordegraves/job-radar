@@ -5,6 +5,7 @@ from pathlib import Path
 
 from flask import Flask, abort, redirect, render_template, request, send_from_directory, url_for
 
+from job_radar.cli import handle_scan
 from job_radar.config import load_settings
 from job_radar.storage import fetch_included_job_history_records, initialize_database
 from job_radar.tracker.models import ApplicationRecord
@@ -116,6 +117,7 @@ TRACKER_QUICK_ACTIONS = {
 REPORT_FILE_EXTENSIONS = {".html", ".htm", ".md", ".txt"}
 
 DEFAULT_SCAN_CONFIG_PATH = "config/target-companies.yaml"
+DEFAULT_SCAN_SCORING_PATH = "config/scoring.yaml"
 DEFAULT_SCAN_REPORT_PATH = "reports/target-scan.md"
 DEFAULT_SCAN_EMAIL_PREVIEW_PATH = "reports/target-email-preview.txt"
 
@@ -168,9 +170,36 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             scan_command=scan_command,
             scan_config_path=DEFAULT_SCAN_CONFIG_PATH,
             scan_settings_path=settings_path,
+            scan_scoring_path=DEFAULT_SCAN_SCORING_PATH,
             scan_report_path=DEFAULT_SCAN_REPORT_PATH,
             scan_email_preview_path=DEFAULT_SCAN_EMAIL_PREVIEW_PATH,
+            scan_result=request.args.get("scan_result"),
+            scan_error=request.args.get("scan_error", "").strip(),
         )
+
+    @app.post("/scan/run")
+    def run_scan():
+        settings_path = app.config["JOB_RADAR_SETTINGS_PATH"]
+
+        try:
+            handle_scan(
+                config_path=DEFAULT_SCAN_CONFIG_PATH,
+                settings_path=settings_path,
+                report_path=DEFAULT_SCAN_REPORT_PATH,
+                scoring_path=DEFAULT_SCAN_SCORING_PATH,
+                email_preview_path=DEFAULT_SCAN_EMAIL_PREVIEW_PATH,
+                send_email=False,
+            )
+        except Exception as error:
+            return redirect(
+                url_for(
+                    "scan",
+                    scan_result="error",
+                    scan_error=str(error),
+                )
+            )
+
+        return redirect(url_for("scan", scan_result="success"))
 
     @app.get("/reports")
     def reports() -> str:
