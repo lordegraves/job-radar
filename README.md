@@ -75,7 +75,8 @@ Complete-enough means a user can install Job Radar, configure their own companie
 - Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
 - Provides an application tracker CLI
 - Provides a local Flask GUI for tracker review and updates
-- Supports tracker filters, workflow sorting, edit forms, quick actions, and manual application adds
+- Supports tracker filters, search, workflow sorting, applied-date sorting, edit forms, quick actions, and manual application adds
+- Provides a local GUI job history/archive page for imported historical records
 
 ## Current live target sources
 
@@ -328,14 +329,17 @@ Current GUI capabilities:
 - Landing page
 - Application tracker list
 - Tracker filters
+- Tracker search
 - Workflow-priority sorting
+- Applied-date sorting
 - Tracker edit page
 - Status and outcome dropdowns
 - Tracker quick actions
 - Manual application add form
 - Notes display from stored tracker records
+- Job history/archive page for imported historical records
 
-The GUI currently focuses on active application tracker records. It does not yet provide a separate full job-history/archive page for reviewed, passed, skipped, and historical records.
+The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker.
 
 ## Run tests
 

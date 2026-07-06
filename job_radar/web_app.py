@@ -5,7 +5,7 @@ from datetime import date
 from flask import Flask, abort, redirect, render_template, request, url_for
 
 from job_radar.config import load_settings
-from job_radar.storage import initialize_database
+from job_radar.storage import fetch_included_job_history_records, initialize_database
 from job_radar.tracker.models import ApplicationRecord
 from job_radar.tracker.service import get_application_workflow_state
 from job_radar.tracker.storage import (
@@ -126,6 +126,17 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     @app.get("/")
     def index() -> str:
         return render_template("index.html")
+
+    @app.get("/history")
+    def history() -> str:
+        database_path = _get_database_path(app)
+        records = fetch_included_job_history_records(database_path)
+
+        return render_template(
+            "history.html",
+            database_path=database_path,
+            records=records,
+        )
 
     @app.get("/tracker")
     def tracker() -> str:

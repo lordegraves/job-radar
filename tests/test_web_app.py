@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from job_radar.storage import initialize_database
+from job_radar.job_history import JobHistoryRecord
+from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.tracker.models import ApplicationRecord
 from job_radar.tracker.storage import get_application, upsert_application
 from job_radar.web_app import create_app
@@ -86,6 +87,95 @@ def test_tracker_page_handles_empty_tracker(tmp_path: Path) -> None:
     assert "Application Tracker" in html
     assert "Applications shown:</strong> 0" in html
     assert "No tracked applications." in html
+
+
+def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<a href="/history">Open job history archive</a>' in html
+
+
+def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Reviewed",
+            company="ArchiveCo",
+            role="Senior Linux Engineer",
+            source="LinkedIn",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-07-01",
+            status="Skipped",
+            outcome_category="Skipped / Avoid",
+            recruiter_contact="Example Recruiter",
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="manual:archiveco:senior-linux-engineer",
+            notes="Skipped because the role was onsite outside target area.",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/history")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Job History Archive" in html
+    assert f"<code>{database_file}</code>" in html
+    assert "History records shown:</strong> 1" in html
+    assert "ArchiveCo" in html
+    assert "Senior Linux Engineer" in html
+    assert "Reviewed" in html
+    assert "Skipped" in html
+    assert "Skipped / Avoid" in html
+    assert "LinkedIn" in html
+    assert "Example Recruiter" in html
+    assert "manual:archiveco:senior-linux-engineer" in html
+    assert "Skipped because the role was onsite outside target area." in html
+    assert "Viewing these records does not add them to the active application tracker." in html
+
+
+def test_history_page_handles_empty_history(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/history")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Job History Archive" in html
+    assert "History records shown:</strong> 0" in html
+    assert "No imported job history records." in html
 
 
 def test_tracker_page_expands_long_notes(tmp_path: Path) -> None:

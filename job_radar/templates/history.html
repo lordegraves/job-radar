@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Job Radar History Archive</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            margin: 24px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #dddddd;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f6f8fa;
+        }
+
+        code {
+            background: #f6f8fa;
+            padding: 2px 4px;
+        }
+
+        .date-cell {
+            min-width: 105px;
+            white-space: nowrap;
+        }
+
+        .notes-cell {
+            min-width: 320px;
+            max-width: 520px;
+        }
+
+        .notes-full {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Job History Archive</h1>
+
+    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a></p>
+    <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
+    <p><strong>History records shown:</strong> {{ records|length }}</p>
+
+    <p>
+        This page shows imported job history records from the spreadsheet bridge.
+        Viewing these records does not add them to the active application tracker.
+    </p>
+
+    {% if not records %}
+    <p>No imported job history records.</p>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Company</th>
+                <th>Role</th>
+                <th>History Type</th>
+                <th>Decision</th>
+                <th>Outcome</th>
+                <th>Lead Source</th>
+                <th>Recruiter / Contact</th>
+                <th>Import Key</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr>
+                <td class="date-cell">{{ record.event_date or "" }}</td>
+                <td>{{ record.company }}</td>
+                <td>{{ record.role }}</td>
+                <td>{{ record.history_type }}</td>
+                <td>{{ record.status or "" }}</td>
+                <td>{{ record.outcome_category or "" }}</td>
+                <td>{{ record.source or record.lead_source or "" }}</td>
+                <td>{{ record.recruiter_contact or "" }}</td>
+                <td><code>{{ record.import_key }}</code></td>
+                <td class="notes-cell">
+                    {% if record.notes %}
+                    <div class="notes-full">{{ record.notes }}</div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</body>
+
+</html>

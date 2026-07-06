@@ -238,12 +238,15 @@ Current GUI capabilities:
 - Landing page
 - Application tracker list
 - Tracker filters
+- Tracker search
 - Workflow-priority sorting
+- Applied-date sorting
 - Tracker edit page
 - Status and outcome dropdowns
 - Tracker quick actions
 - Manual application add form
 - Notes display from stored tracker records
+- Job history/archive page for imported historical records
 
 Current GUI files include:
 
@@ -252,6 +255,7 @@ Current GUI files include:
 - `job_radar/templates/tracker.html`
 - `job_radar/templates/tracker_edit.html`
 - `job_radar/templates/tracker_add.html`
+- `job_radar/templates/history.html`
 
 Current GUI command:
 
@@ -261,7 +265,7 @@ Current local GUI URL:
 
     http://127.0.0.1:5000/
 
-The GUI currently focuses on active application tracker records. It does not yet provide a separate full job-history/archive page for reviewed, passed, skipped, and historical records.
+The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker.
 
 ## Current email behavior
 
@@ -342,6 +346,8 @@ Completed so far:
 - Tracker workflow summary in reports
 - Read-only tracker GUI
 - Tracker GUI filters
+- Tracker GUI search
+- Tracker GUI applied-date sorting
 - Tracker GUI edit form
 - Tracker GUI quick actions
 - Tracker GUI manual add form
@@ -353,7 +359,6 @@ Completed so far:
 Current limitations:
 
 - Job Radar still imports spreadsheet history as a bridge for existing records and bulk intake.
-- The GUI does not yet provide a separate job-history/archive page for reviewed, passed, skipped, and historical records.
 - Job Radar does not write enriched IDs or metadata back to the spreadsheet.
 - Report scoring is still rules-based and may need calibration from real outcomes.
 - Source coverage is broad enough for current use, but individual collectors may still need maintenance if ATS pages change.
@@ -366,8 +371,8 @@ Current limitations:
 
 Remaining high-priority milestones:
 
-1. Add a GUI job-history/archive page for reviewed, passed, skipped, rejected, and historical records.
-2. Continue replacing normal spreadsheet workflow with app-native tracker GUI workflows.
+1. Continue replacing normal spreadsheet workflow with app-native tracker GUI workflows.
+2. Add scan results and report viewing to the GUI.
 3. Run a fresh live scan and review the omitted jobs audit.
 4. Calibrate scoring based on whether omitted jobs are truly bad fits.
 5. Add a short omitted-jobs review workflow if the audit shows hidden good roles.

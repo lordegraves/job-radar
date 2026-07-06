@@ -109,6 +109,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/templates/tracker.html` | Application tracker list, filters, workflow display, and edit links. | Keep |
 | `job_radar/templates/tracker_edit.html` | Application tracker edit form and quick actions. | Keep |
 | `job_radar/templates/tracker_add.html` | Manual application tracker add form. | Keep |
+| `job_radar/templates/history.html` | Job history/archive page for imported historical records. | Keep |
 
 ## Collectors
 
@@ -191,10 +192,6 @@ Current tracker and GUI logic already have dedicated boundaries:
 
 Continue using those boundaries instead of moving tracker behavior into reporting, recommendations, collectors, or generic storage.
 
-
-Replace it with:
-
-````markdown
 ## Tracker / GUI Boundary
 
 The spreadsheet is being phased out as the normal application-tracking interface. It remains a bridge for import/history data, but active application tracking now has a dedicated tracker module and a basic Flask GUI.
