@@ -4,12 +4,43 @@
 <head>
     <meta charset="utf-8">
     <title>Job Radar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            margin: 24px;
+        }
+
+        .nav-card {
+            border: 1px solid #dddddd;
+            margin: 12px 0;
+            max-width: 520px;
+            padding: 12px 16px;
+        }
+
+        .nav-card h2 {
+            font-size: 1.1rem;
+            margin: 0 0 6px 0;
+        }
+
+        .nav-card p {
+            margin: 0;
+        }
+    </style>
 </head>
 
 <body>
     <h1>Job Radar</h1>
-    <p><a href="/tracker">Open application tracker</a></p>
-    <p><a href="/history">Open job history archive</a></p>
+
+    <div class="nav-card">
+        <h2><a href="/tracker">Application tracker</a></h2>
+        <p>Review active applications, search tracker notes, sort by date, and update workflow status.</p>
+    </div>
+
+    <div class="nav-card">
+        <h2><a href="/history">Job history archive</a></h2>
+        <p>Review imported historical records without adding them to the active tracker.</p>
+    </div>
 </body>
 
 </html>

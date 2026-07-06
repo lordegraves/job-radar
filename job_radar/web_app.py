@@ -141,7 +141,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     @app.get("/tracker")
     def tracker() -> str:
         filter_name = request.args.get("filter", "all")
-        sort_name = request.args.get("sort", "workflow")
+        sort_name = request.args.get("sort", "applied_desc")
         search_query = request.args.get("q", "").strip()
 
         if filter_name not in TRACKER_FILTERS:
