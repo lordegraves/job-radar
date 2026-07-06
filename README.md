@@ -74,10 +74,7 @@ Complete-enough means a user can install Job Radar, configure their own companie
 - Routes fuzzy history matches to Track Status only when the title match is strong enough
 - Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
 - Provides an application tracker CLI
-- Provides a local Flask GUI for tracker review and updates
-- Supports tracker filters, search, workflow sorting, applied-date sorting, edit forms, quick actions, and manual application adds
-- Provides a local GUI job history/archive page for imported historical records
-- Provides a local GUI reports page for viewing existing generated reports and email previews
+- Provides a local Flask GUI for tracker review/update workflows, imported history/archive review, and existing report viewing
 
 ## Current live target sources
 
@@ -325,23 +322,16 @@ Open:
 http://127.0.0.1:5000/
 ```
 
-Current GUI capabilities:
+Current GUI summary:
 
-- Landing page
-- Application tracker list
-- Tracker filters
-- Tracker search
-- Workflow-priority sorting
-- Applied-date sorting
-- Tracker edit page
-- Status and outcome dropdowns
-- Tracker quick actions
-- Manual application add form
-- Notes display from stored tracker records
-- Job history/archive page for imported historical records
-- Reports page for existing generated reports and email previews
+- Local landing page
+- Application tracker workflows
+- Imported job history/archive review
+- Existing generated report and email-preview viewing
 
-The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker. The reports page opens existing generated reports and email previews without starting a scan or sending email.
+See `docs/current-state.md` for the detailed current GUI capability list.
+
+The local GUI is intentionally read/write only where the app already owns the workflow. Report viewing is read-only: it opens existing generated reports and email previews without starting a scan or sending email.
 
 ## Run tests
 
