@@ -111,6 +111,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/templates/tracker_add.html` | Manual application tracker add form. | Keep |
 | `job_radar/templates/history.html` | Job history/archive page for imported historical records. | Keep |
 | `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews. | Keep |
+| `job_radar/templates/scan.html` | Scan command page for safe manual scan guidance. | Keep |
 
 ## Collectors
 
@@ -217,6 +218,9 @@ job_radar/templates/
   tracker.html
   tracker_edit.html
   tracker_add.html
+  history.html
+  reports.html
+  scan.html
 ```
 
 The tracker owns application status, follow-up timing, outcomes, notes, workflow state, and manual application tracking.

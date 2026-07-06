@@ -248,6 +248,7 @@ Current GUI capabilities:
 - Notes display from stored tracker records
 - Job history/archive page for imported historical records
 - Reports page for existing generated reports and email previews
+- Scan command page for safe manual scan guidance
 
 Current GUI files include:
 
@@ -258,6 +259,7 @@ Current GUI files include:
 - `job_radar/templates/tracker_add.html`
 - `job_radar/templates/history.html`
 - `job_radar/templates/reports.html`
+- `job_radar/templates/scan.html`
 
 Current GUI command:
 
@@ -267,7 +269,7 @@ Current local GUI URL:
 
     http://127.0.0.1:5000/
 
-The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker. The reports page opens existing generated reports and email previews without starting a scan or sending email.
+The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker. The reports page opens existing generated reports and email previews without starting a scan or sending email. The scan page shows the safe manual scan command but does not execute scans from the GUI yet.
 
 ## Current email behavior
 
@@ -351,6 +353,7 @@ Completed so far:
 - Tracker GUI search
 - Tracker GUI applied-date sorting
 - GUI reports page for existing generated reports and email previews
+- GUI scan command page for safe manual scan guidance
 - Tracker GUI edit form
 - Tracker GUI quick actions
 - Tracker GUI manual add form
@@ -375,7 +378,7 @@ Current limitations:
 Remaining high-priority milestones:
 
 1. Continue replacing normal spreadsheet workflow with app-native tracker GUI workflows.
-2. Add manual scan execution to the GUI.
+2. Add controlled manual scan execution to the GUI.
 3. Run a fresh live scan and review the omitted jobs audit.
 4. Calibrate scoring based on whether omitted jobs are truly bad fits.
 5. Add a short omitted-jobs review workflow if the audit shows hidden good roles.
