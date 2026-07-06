@@ -43,6 +43,29 @@
         th {
             background: #f6f8fa;
         }
+
+        button {
+            cursor: pointer;
+            padding: 8px 12px;
+        }
+
+        button:disabled {
+            cursor: wait;
+            opacity: 0.7;
+        }
+
+        .scan-running {
+            display: none;
+            font-weight: bold;
+            margin-top: 12px;
+        }
+
+        .scan-running progress {
+            display: block;
+            margin-top: 8px;
+            max-width: 500px;
+            width: 100%;
+        }
     </style>
 </head>
 
@@ -58,6 +81,8 @@
     {% if scan_result == "success" %}
     <p><strong>Scan completed.</strong> Open the <a href="{{ url_for('reports') }}">Reports</a> page to view generated
         output.</p>
+    {% elif scan_result == "busy" %}
+    <p><strong>Scan already running.</strong> Wait for the current scan to finish before starting another one.</p>
     {% elif scan_result == "error" %}
     <p><strong>Scan failed.</strong> {{ scan_error }}</p>
     {% endif %}
@@ -97,12 +122,28 @@
 
     <p>This runs the same scan from the local Flask process. Email sending remains disabled from the GUI.</p>
 
-    <form method="post" action="{{ url_for('run_scan') }}">
-        <button type="submit">Run scan now</button>
+    <form id="scan-form" method="post" action="{{ url_for('run_scan') }}">
+        <button id="scan-submit-button" type="submit">Run scan now</button>
     </form>
+
+    <div id="scan-running" class="scan-running" role="status" aria-live="polite">
+        Scan is running. This may take a few minutes.
+        <progress></progress>
+    </div>
 
     <p>After running the command, open the <a href="{{ url_for('reports') }}">Reports</a> page to view generated output.
     </p>
+    <script>
+        const scanForm = document.getElementById("scan-form");
+        const scanButton = document.getElementById("scan-submit-button");
+        const scanRunning = document.getElementById("scan-running");
+
+        scanForm.addEventListener("submit", () => {
+            scanButton.disabled = true;
+            scanButton.textContent = "Scan running...";
+            scanRunning.style.display = "block";
+        });
+    </script>
 </body>
 
 </html>

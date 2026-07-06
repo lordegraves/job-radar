@@ -2,6 +2,7 @@ import argparse
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from threading import Lock
 
 from flask import Flask, abort, redirect, render_template, request, send_from_directory, url_for
 
@@ -121,6 +122,8 @@ DEFAULT_SCAN_SCORING_PATH = "config/scoring.yaml"
 DEFAULT_SCAN_REPORT_PATH = "reports/target-scan.md"
 DEFAULT_SCAN_EMAIL_PREVIEW_PATH = "reports/target-email-preview.txt"
 
+SCAN_RUN_LOCK = Lock()
+
 
 @dataclass(frozen=True)
 class TrackerApplicationView:
@@ -181,6 +184,9 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     def run_scan():
         settings_path = app.config["JOB_RADAR_SETTINGS_PATH"]
 
+        if not SCAN_RUN_LOCK.acquire(blocking=False):
+            return redirect(url_for("scan", scan_result="busy"))
+
         try:
             handle_scan(
                 config_path=DEFAULT_SCAN_CONFIG_PATH,
@@ -198,6 +204,8 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
                     scan_error=str(error),
                 )
             )
+        finally:
+            SCAN_RUN_LOCK.release()
 
         return redirect(url_for("scan", scan_result="success"))
 

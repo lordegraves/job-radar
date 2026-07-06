@@ -221,6 +221,7 @@ def test_scan_page_shows_manual_scan_command(tmp_path: Path) -> None:
     assert "This page shows the safe manual scan command" in normalized_html
     assert "GUI scan execution does not send email." in normalized_html
     assert "Run scan now" in html
+    assert "Scan is running. This may take a few minutes." in normalized_html
     assert "python -m job_radar scan" in html
     assert "--config config/target-companies.yaml" in html
     assert f"--settings {settings_file}" in html
@@ -260,6 +261,30 @@ def test_scan_run_calls_handle_scan_and_redirects(
             "send_email": False,
         }
     ]
+
+
+def test_scan_run_reports_busy_when_scan_is_already_running(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    web_app_module.SCAN_RUN_LOCK.acquire()
+
+    try:
+        app = create_app(settings_path=str(settings_file))
+        client = app.test_client()
+
+        response = client.post("/scan/run", follow_redirects=True)
+        html = response.get_data(as_text=True)
+
+        assert response.status_code == 200
+        assert "Scan already running." in html
+        assert "Wait for the current scan to finish before starting another one." in html
+    finally:
+        web_app_module.SCAN_RUN_LOCK.release()
 
 
 def test_scan_run_reports_errors(
