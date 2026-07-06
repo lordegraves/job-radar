@@ -1,5 +1,6 @@
 import argparse
 from dataclasses import dataclass
+from datetime import date
 
 from flask import Flask, abort, redirect, render_template, request, url_for
 
@@ -45,6 +46,12 @@ TRACKER_FILTERS = {
     "needs_review": TRACKER_NEEDS_REVIEW_WORKFLOW_STATES,
     "active": TRACKER_ACTIVE_WORKFLOW_STATES,
     "closed": {"closed"},
+}
+
+TRACKER_SORT_OPTIONS = {
+    "workflow": "Workflow priority",
+    "applied_desc": "Applied date newest first",
+    "applied_asc": "Applied date oldest first",
 }
 
 TRACKER_WORKFLOW_PRIORITY = {
@@ -123,8 +130,13 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     @app.get("/tracker")
     def tracker() -> str:
         filter_name = request.args.get("filter", "all")
+        sort_name = request.args.get("sort", "workflow")
+        search_query = request.args.get("q", "").strip()
 
         if filter_name not in TRACKER_FILTERS:
+            abort(404)
+
+        if sort_name not in TRACKER_SORT_OPTIONS:
             abort(404)
 
         database_path = _get_database_path(app)
@@ -133,13 +145,24 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             applications,
             filter_name,
         )
+        searched_applications = _search_tracker_applications(
+            filtered_applications,
+            search_query,
+        )
+        sorted_applications = _sort_tracker_applications(
+            searched_applications,
+            sort_name,
+        )
 
         return render_template(
             "tracker.html",
             database_path=database_path,
-            applications=filtered_applications,
+            applications=sorted_applications,
             active_filter=filter_name,
+            active_sort=sort_name,
+            search_query=search_query,
             filters=TRACKER_FILTERS,
+            sort_options=TRACKER_SORT_OPTIONS,
         )
 
     @app.get("/tracker/add")
@@ -246,15 +269,13 @@ def _get_database_path(app: Flask) -> str:
 
 
 def _get_tracker_application_views(database_path: str) -> list[TrackerApplicationView]:
-    applications = [
+    return [
         TrackerApplicationView(
             application=application,
             workflow_state=get_application_workflow_state(application),
         )
         for application in list_applications(database_path)
     ]
-
-    return sorted(applications, key=_get_tracker_application_sort_key)
 
 
 def _get_tracker_application_sort_key(
@@ -283,6 +304,94 @@ def _filter_tracker_applications(
         for application in applications
         if application.workflow_state in workflow_states
     ]
+
+
+def _search_tracker_applications(
+    applications: list[TrackerApplicationView],
+    search_query: str,
+) -> list[TrackerApplicationView]:
+    if not search_query:
+        return applications
+
+    normalized_query = search_query.lower()
+
+    return [
+        application_view
+        for application_view in applications
+        if normalized_query in _get_tracker_application_search_text(application_view)
+    ]
+
+
+def _get_tracker_application_search_text(
+    application_view: TrackerApplicationView,
+) -> str:
+    application = application_view.application
+
+    # Keep search intentionally simple and local. The tracker GUI should make
+    # stored application context easier to find without becoming a second index.
+    searchable_values = (
+        application.company_name,
+        application.role_title,
+        application.status,
+        application_view.workflow_state,
+        application.outcome,
+        application.job_radar_id,
+        application.source_url,
+        application.notes,
+    )
+
+    return " ".join(value or "" for value in searchable_values).lower()
+
+
+def _sort_tracker_applications(
+    applications: list[TrackerApplicationView],
+    sort_name: str,
+) -> list[TrackerApplicationView]:
+    if sort_name == "applied_desc":
+        return sorted(applications, key=_get_applied_date_desc_sort_key)
+
+    if sort_name == "applied_asc":
+        return sorted(applications, key=_get_applied_date_asc_sort_key)
+
+    return sorted(applications, key=_get_tracker_application_sort_key)
+
+
+def _get_applied_date_desc_sort_key(
+    application_view: TrackerApplicationView,
+) -> tuple[bool, int, str, str]:
+    application = application_view.application
+    applied_date = _parse_tracker_sort_date(application.applied_on)
+
+    return (
+        applied_date is None,
+        -(applied_date.toordinal() if applied_date else 0),
+        application.company_name.lower(),
+        application.role_title.lower(),
+    )
+
+
+def _get_applied_date_asc_sort_key(
+    application_view: TrackerApplicationView,
+) -> tuple[bool, int, str, str]:
+    application = application_view.application
+    applied_date = _parse_tracker_sort_date(application.applied_on)
+
+    return (
+        applied_date is None,
+        applied_date.toordinal() if applied_date else 0,
+        application.company_name.lower(),
+        application.role_title.lower(),
+    )
+
+
+def _parse_tracker_sort_date(value: str | None) -> date | None:
+    if not value:
+        return None
+
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def _normalize_optional_form_value(field_name: str) -> str | None:

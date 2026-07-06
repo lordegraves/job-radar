@@ -170,6 +170,143 @@ def test_tracker_page_sorts_by_workflow_priority(tmp_path: Path) -> None:
     assert html.index("WaitingCo") < html.index("ClosedCo")
 
 
+def test_tracker_page_sorts_by_applied_date_descending(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-old-12345678",
+            company_name="OldCo",
+            role_title="Linux Engineer",
+            status="applied",
+            applied_on="2026-05-01",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-new-12345678",
+            company_name="NewCo",
+            role_title="Platform Engineer",
+            status="applied",
+            applied_on="2026-07-05",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker?sort=applied_desc")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Applied date newest first" in html
+    assert html.index("NewCo") < html.index("OldCo")
+
+
+def test_tracker_page_sorts_by_applied_date_ascending(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-old-12345678",
+            company_name="OldCo",
+            role_title="Linux Engineer",
+            status="applied",
+            applied_on="2026-05-01",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-new-12345678",
+            company_name="NewCo",
+            role_title="Platform Engineer",
+            status="applied",
+            applied_on="2026-07-05",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker?sort=applied_asc")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Applied date oldest first" in html
+    assert html.index("OldCo") < html.index("NewCo")
+
+
+def test_tracker_page_searches_tracker_text(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-hpc-12345678",
+            company_name="Hydra Host",
+            role_title="HPC Solutions Engineer",
+            status="applied",
+            notes="GPU, InfiniBand, Slurm, and distributed machine learning.",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-platform-12345678",
+            company_name="PlatformCo",
+            role_title="Platform Engineer",
+            status="applied",
+            notes="Generic platform role.",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker?q=infiniband")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Applications shown:</strong> 1" in html
+    assert "Hydra Host" in html
+    assert "PlatformCo" not in html
+
+
+def test_tracker_filter_links_preserve_search_and_sort(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker?filter=needs_review&sort=applied_desc&q=hpc")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "/tracker?filter=all&amp;sort=applied_desc&amp;q=hpc" in html
+    assert "/tracker?filter=active&amp;sort=applied_desc&amp;q=hpc" in html
+    assert 'value="hpc"' in html
+    assert '<option value="applied_desc" selected>' in html
+
+
 def test_tracker_page_filters_to_needs_action(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"

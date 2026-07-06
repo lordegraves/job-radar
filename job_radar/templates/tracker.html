@@ -76,12 +76,32 @@
     <p><a href="{{ url_for('add_tracker_application') }}">Add application</a></p>
     <p><strong>Applications shown:</strong> {{ applications|length }}</p>
 
+    <form method="get" action="{{ url_for('tracker') }}">
+        <input type="hidden" name="filter" value="{{ active_filter }}">
+
+        <label for="tracker-search"><strong>Search:</strong></label>
+        <input id="tracker-search" name="q" type="search" value="{{ search_query }}"
+            placeholder="Company, role, notes, status">
+
+        <label for="tracker-sort"><strong>Sort:</strong></label>
+        <select id="tracker-sort" name="sort">
+            {% for sort_name, sort_label in sort_options.items() %}
+            <option value="{{ sort_name }}" {% if sort_name==active_sort %}selected{% endif %}>{{ sort_label }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Apply</button>
+        {% if search_query or active_sort != "workflow" %}
+        <a href="{{ url_for('tracker', filter=active_filter) }}">Clear search/sort</a>
+        {% endif %}
+    </form>
+
     <nav aria-label="Tracker filters">
         {% for filter_name in filters %}
         {% if filter_name == active_filter %}
         <span class="active-filter">{{ filter_name }}</span>
         {% else %}
-        <a href="{{ url_for('tracker', filter=filter_name) }}">{{ filter_name }}</a>
+        <a href="{{ url_for('tracker', filter=filter_name, sort=active_sort, q=search_query) }}">{{ filter_name }}</a>
         {% endif %}
         {% endfor %}
     </nav>
