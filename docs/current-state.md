@@ -10,6 +10,30 @@ Its purpose is to safely scan known target company job boards, normalize posting
 
 Job Radar does not apply to jobs automatically. It does not contact employers. It does not broadly crawl the internet.
 
+## Product direction
+
+Job Radar started as a personal job discovery and application-tracking tool, but the project direction is expanding toward a configurable local-first application that can be adapted for other users.
+
+The long-term goal is not only to support one hard-coded job search profile. The goal is to let a user configure:
+
+- desired companies
+- source types and career pages
+- preferred roles
+- required and preferred keywords
+- salary floor and compensation expectations
+- acceptable locations
+- remote/hybrid/on-site rules
+- exclusion rules
+- application tracking preferences
+- report/email preferences
+- scan schedule
+
+The app should eventually guide users through this setup in the GUI instead of requiring manual YAML editing.
+
+The finish line is defined in:
+
+    docs/product-roadmap.md
+
 ## Current scan coverage
 
 The primary live scan configuration is:

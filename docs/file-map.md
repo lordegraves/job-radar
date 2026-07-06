@@ -41,6 +41,7 @@ This document maps the current Job Radar repository so the project stays underst
 | File | Purpose | Keep / Review |
 |---|---|---|
 | `docs/current-state.md` | Current project state and milestone notes. | Keep |
+| `docs/product-roadmap.md` | Product direction, finish-line definition, user-configuration requirements, packaging roadmap, and platform roadmap. | Keep |
 | `docs/file-map.md` | Repository map and file ownership guide. | Keep |
 
 ## Core Application Package

@@ -8,6 +8,18 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 
 Job Radar does not contact employers. It does not scrape LinkedIn. It does not broadly crawl the internet.
 
+## Product direction
+
+Job Radar started as a personal job discovery and application-tracking tool. The long-term direction is a configurable local-first application that another user can install, configure, and use without editing source code.
+
+The finish line is defined in:
+
+```text
+docs/product-roadmap.md
+```
+
+Complete-enough means a user can install Job Radar, configure their own companies, preferences, salary expectations, locations, role targets, scan schedule, and reporting preferences, then run scans and track applications through the GUI.
+
 ## Current capabilities
 
 - Scans configured company sources
