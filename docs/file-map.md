@@ -110,6 +110,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/templates/tracker_edit.html` | Application tracker edit form and quick actions. | Keep |
 | `job_radar/templates/tracker_add.html` | Manual application tracker add form. | Keep |
 | `job_radar/templates/history.html` | Job history/archive page for imported historical records. | Keep |
+| `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews. | Keep |
 
 ## Collectors
 

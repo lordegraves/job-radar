@@ -52,7 +52,8 @@
 <body>
     <h1>Job History Archive</h1>
 
-    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a></p>
+    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
+            href="{{ url_for('reports') }}">Reports</a></p>
     <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
     <p><strong>History records shown:</strong> {{ records|length }}</p>
 

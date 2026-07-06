@@ -7,11 +7,17 @@ from job_radar.tracker.storage import get_application, upsert_application
 from job_radar.web_app import create_app
 
 
-def write_settings_file(settings_file: Path, database_file: Path) -> None:
+def write_settings_file(
+    settings_file: Path,
+    database_file: Path,
+    reports_path: Path | None = None,
+) -> None:
+    resolved_reports_path = reports_path or settings_file.parent
+
     settings_file.write_text(
         f"""
 database_path: {database_file}
-reports_path: {settings_file.parent}
+reports_path: {resolved_reports_path}
 logs_path: {settings_file.parent}
 
 retention:
@@ -176,6 +182,113 @@ def test_history_page_handles_empty_history(tmp_path: Path) -> None:
     assert "Job History Archive" in html
     assert "History records shown:</strong> 0" in html
     assert "No imported job history records." in html
+
+
+def test_index_page_links_to_reports(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<a href="/reports">Reports</a>' in html
+
+
+def test_reports_page_lists_existing_report_files(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+
+    (reports_path / "target-scan.html").write_text(
+        "<html><body>Target scan</body></html>",
+        encoding="utf-8",
+    )
+    (reports_path / "target-scan.md").write_text(
+        "# Target scan",
+        encoding="utf-8",
+    )
+    (reports_path / "job_radar.sqlite3").write_text(
+        "not a report",
+        encoding="utf-8",
+    )
+
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Reports" in html
+    assert f"<code>{reports_path}</code>" in html
+    assert "Report files shown:</strong> 2" in html
+    assert "target-scan.html" in html
+    assert "target-scan.md" in html
+    assert "job_radar.sqlite3" not in html
+    assert "It does not start a scan or send email." in html
+
+
+def test_reports_page_handles_missing_reports_directory(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "missing-reports"
+
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Report files shown:</strong> 0" in html
+    assert "No report files found." in html
+
+
+def test_report_file_serves_allowed_report_file(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    report_file = reports_path / "target-scan.md"
+    report_file.write_text("# Target scan", encoding="utf-8")
+
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports/target-scan.md")
+
+    assert response.status_code == 200
+    assert "# Target scan" in response.get_data(as_text=True)
+
+
+def test_report_file_rejects_non_report_file(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    (reports_path / "job_radar.sqlite3").write_text("private db", encoding="utf-8")
+
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports/job_radar.sqlite3")
+
+    assert response.status_code == 404
 
 
 def test_tracker_page_expands_long_notes(tmp_path: Path) -> None:

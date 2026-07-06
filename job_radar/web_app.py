@@ -1,8 +1,9 @@
 import argparse
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 
-from flask import Flask, abort, redirect, render_template, request, url_for
+from flask import Flask, abort, redirect, render_template, request, send_from_directory, url_for
 
 from job_radar.config import load_settings
 from job_radar.storage import fetch_included_job_history_records, initialize_database
@@ -112,11 +113,20 @@ TRACKER_QUICK_ACTIONS = {
     },
 }
 
+REPORT_FILE_EXTENSIONS = {".html", ".htm", ".md", ".txt"}
+
 
 @dataclass(frozen=True)
 class TrackerApplicationView:
     application: ApplicationRecord
     workflow_state: str
+
+
+@dataclass(frozen=True)
+class ReportFileView:
+    name: str
+    size_bytes: int
+    modified_at: str
 
 
 def create_app(settings_path: str = "config/settings.yaml") -> Flask:
@@ -137,6 +147,33 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             database_path=database_path,
             records=records,
         )
+
+    @app.get("/reports")
+    def reports() -> str:
+        reports_path = _get_reports_path(app)
+        report_files = _get_report_file_views(reports_path)
+
+        return render_template(
+            "reports.html",
+            reports_path=reports_path,
+            report_files=report_files,
+        )
+
+    @app.get("/reports/<path:report_name>")
+    def report_file(report_name: str):
+        reports_path = Path(_get_reports_path(app)).resolve()
+        report_path = (reports_path / report_name).resolve()
+
+        if reports_path not in report_path.parents:
+            abort(404)
+
+        if not report_path.is_file():
+            abort(404)
+
+        if report_path.suffix.lower() not in REPORT_FILE_EXTENSIONS:
+            abort(404)
+
+        return send_from_directory(reports_path, report_name)
 
     @app.get("/tracker")
     def tracker() -> str:
@@ -277,6 +314,41 @@ def _get_database_path(app: Flask) -> str:
     database_path = settings["database_path"]
     initialize_database(database_path)
     return database_path
+
+
+def _get_reports_path(app: Flask) -> str:
+    settings = load_settings(app.config["JOB_RADAR_SETTINGS_PATH"])
+    return settings["reports_path"]
+
+
+def _get_report_file_views(reports_path: str) -> list[ReportFileView]:
+    reports_dir = Path(reports_path)
+
+    if not reports_dir.exists():
+        return []
+
+    report_files: list[ReportFileView] = []
+
+    for path in reports_dir.iterdir():
+        if not path.is_file():
+            continue
+
+        if path.name.startswith("."):
+            continue
+
+        if path.suffix.lower() not in REPORT_FILE_EXTENSIONS:
+            continue
+
+        stat = path.stat()
+        report_files.append(
+            ReportFileView(
+                name=path.name,
+                size_bytes=stat.st_size,
+                modified_at=date.fromtimestamp(stat.st_mtime).isoformat(),
+            )
+        )
+
+    return sorted(report_files, key=lambda report: report.modified_at, reverse=True)
 
 
 def _get_tracker_application_views(database_path: str) -> list[TrackerApplicationView]:

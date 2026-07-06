@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Job Radar Reports</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            margin: 24px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #dddddd;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f6f8fa;
+        }
+
+        code {
+            background: #f6f8fa;
+            padding: 2px 4px;
+        }
+
+        .date-cell {
+            min-width: 105px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Reports</h1>
+
+    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
+            href="{{ url_for('history') }}">Job history archive</a></p>
+    <p><strong>Reports path:</strong> <code>{{ reports_path }}</code></p>
+    <p><strong>Report files shown:</strong> {{ report_files|length }}</p>
+
+    <p>This page opens existing generated reports and previews. It does not start a scan or send email.</p>
+
+    {% if not report_files %}
+    <p>No report files found.</p>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>Report</th>
+                <th>Modified</th>
+                <th>Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in report_files %}
+            <tr>
+                <td><a href="{{ url_for('report_file', report_name=report.name) }}">{{ report.name }}</a></td>
+                <td class="date-cell">{{ report.modified_at }}</td>
+                <td>{{ report.size_bytes }} bytes</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</body>
+
+</html>

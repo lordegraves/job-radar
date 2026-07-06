@@ -77,6 +77,7 @@ Complete-enough means a user can install Job Radar, configure their own companie
 - Provides a local Flask GUI for tracker review and updates
 - Supports tracker filters, search, workflow sorting, applied-date sorting, edit forms, quick actions, and manual application adds
 - Provides a local GUI job history/archive page for imported historical records
+- Provides a local GUI reports page for viewing existing generated reports and email previews
 
 ## Current live target sources
 
@@ -338,8 +339,9 @@ Current GUI capabilities:
 - Manual application add form
 - Notes display from stored tracker records
 - Job history/archive page for imported historical records
+- Reports page for existing generated reports and email previews
 
-The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker.
+The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker. The reports page opens existing generated reports and email previews without starting a scan or sending email.
 
 ## Run tests
 
