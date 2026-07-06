@@ -30,6 +30,12 @@ This document maps the current Job Radar repository so the project stays underst
 | `data/*.db` | Local runtime databases. | Local only / ignored |
 | `data/*.xlsx` | Local spreadsheet inputs, including current job history import files. | Local only / ignored |
 
+## Examples
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `examples/job-history-template.xlsx` | Sanitized example workbook for the simplified Job Log import format. Contains headers, formatting, validation lists, and one fake sample row. | Keep |
+
 ## Documentation
 
 | File | Purpose | Keep / Review |

@@ -1,10 +1,12 @@
 # Job Radar
 
-Job Radar is a local job discovery and triage tool.
+Job Radar is a local job discovery, triage, and application-tracking tool.
 
-It scans configured company job boards, normalizes postings, stores them in SQLite, scores them against configurable preferences, and writes Markdown, HTML, and email-preview reports.
+It scans configured company job boards, normalizes postings, stores them in SQLite, scores them against configurable preferences, imports application/history data, and provides reports plus a local tracker GUI.
 
-The current goal is not to apply to jobs automatically. The goal is to safely collect and rank roles from known target companies so manual review is faster and less dependent on stale job boards, stale LinkedIn results, or missed company postings.
+The current goal is not to apply to jobs automatically. The goal is to safely collect, rank, and track roles from known target companies so manual review is faster and less dependent on stale job boards, stale LinkedIn results, or missed company postings.
+
+Job Radar does not contact employers. It does not scrape LinkedIn. It does not broadly crawl the internet.
 
 ## Current capabilities
 
@@ -23,26 +25,30 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Supports Phenom collectors
 - Supports Dayforce collectors
 - Supports ADP Workforce Now collectors
+- Supports Activate collectors
+- Supports WEKA custom collectors
+- Supports Rippling collectors
+- Supports SchoolSpring collectors
 - Supports HTML job-link collectors
 - Stores job postings in SQLite
 - Tracks new, seen, and changed postings
-- Scores jobs using configurable keyword and location rules
+- Scores jobs using configurable keyword, location, compensation, and fit rules
 - Classifies location status
 - Uses config-driven eligibility rules for Top Matches and Review Needed
-- Separates Top Matches, Review Needed, Northern Colorado Highlights, and Passed / Not Recommended
+- Separates Top Matches, Review Needed, Northern Colorado Highlights, Track Status, and Passed / Not Recommended
 - Keeps Passed / Not Recommended audit details available when Top Matches and Review Needed are filtered
-- Keeps the full Markdown and HTML reports complete for Top Matches
+- Keeps the full Markdown and HTML reports complete for review
 - Keeps email summaries intentionally capped for readability
 - Generates a Markdown report
 - Generates an HTML report
-- Builds a plain-text email preview during scan
+- Builds plain-text and HTML email previews during scan
 - Summarizes scanned companies
 - Summarizes source type counts
 - Summarizes location status counts
 - Adds a generated timestamp to each report
-- Keeps generated email preview files out of git
+- Keeps generated reports and email preview files out of git
 - Validates email settings without sending email
-- Wires the email send path behind an explicit --send-email flag
+- Wires the email send path behind an explicit `--send-email` flag
 - Keeps SMTP delivery disabled until enabled intentionally
 - Requires email passwords to come from environment variables when email is enabled
 - Imports job/application history from a tracking workbook
@@ -55,16 +61,23 @@ The current goal is not to apply to jobs automatically. The goal is to safely co
 - Shows Track Status in reports only when a scanned job already has an application tracker record
 - Routes fuzzy history matches to Track Status only when the title match is strong enough
 - Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
+- Provides an application tracker CLI
+- Provides a local Flask GUI for tracker review and updates
+- Supports tracker filters, workflow sorting, edit forms, quick actions, and manual application adds
 
 ## Current live target sources
 
 The primary live scan config is:
 
-    config/target-companies.yaml
+```text
+config/target-companies.yaml
+```
 
 The live settings file is:
 
-    config/live-test-settings.yaml
+```text
+config/live-test-settings.yaml
+```
 
 Current implemented source types:
 
@@ -84,15 +97,19 @@ Current implemented source types:
 - ADP Workforce Now
 - Activate
 - WEKA custom
+- Rippling
+- SchoolSpring
 - HTML
 
-Current verified live scan state:
+Current verified live scan state from the last documented full live scan:
 
-    Companies enabled: 62
-    Jobs collected: 10,000
-    Jobs stored: 150
-    Jobs omitted: 9,850
-    Collector errors: 0
+```text
+Companies enabled: 62
+Jobs collected: 10,000
+Jobs stored: 150
+Jobs omitted: 9,850
+Collector errors: 0
+```
 
 Recently validated source additions:
 
@@ -124,19 +141,27 @@ Recently validated source additions:
 
 ## Important config files
 
-    config/target-companies.yaml
+```text
+config/target-companies.yaml
+```
 
 Primary target company configuration.
 
-    config/live-test-settings.yaml
+```text
+config/live-test-settings.yaml
+```
 
 Settings used for live validation, including the live test database path and email settings.
 
-    config/scoring.yaml
+```text
+config/scoring.yaml
+```
 
 Keyword scoring, location preferences, Top Match rules, and Review Needed rules.
 
-    config/demo-companies.yaml
+```text
+config/demo-companies.yaml
+```
 
 Sample/demo company configuration. These entries are placeholders.
 
@@ -144,23 +169,33 @@ Sample/demo company configuration. These entries are placeholders.
 
 Job Radar can import application and review history from a local Excel workbook.
 
+A sanitized example workbook is included at:
+
+```text
+examples/job-history-template.xlsx
+```
+
+The example workbook contains the simplified Job Log headers, formatting, validation lists, and one fake sample row. It must not contain real application history.
+
 The current simplified Job Log format uses these columns:
 
-    Job Radar ID
-    Date
-    Company
-    Role
-    Posting URL
-    Lead Source
-    Decision
-    Outcome
-    Recruiter/Contact
-    Notes
-    Include In Job Radar
+```text
+Job Radar ID
+Date
+Company
+Role
+Posting URL
+Lead Source
+Decision
+Outcome
+Recruiter/Contact
+Notes
+Include In Job Radar
+```
 
-The simplified workbook is treated as a human job log, not as the app's internal schema.
+The simplified workbook is treated as a human job log and import bridge, not as the app's internal schema.
 
-Job Radar owns source/ATS details, scoring, blockers, risks, matching, and report placement. The workbook records what happened, what was decided, where the lead came from, and any human notes.
+Job Radar owns source/ATS details, scoring, blockers, risks, matching, report placement, and app-native tracker state. The workbook records what happened, what was decided, where the lead came from, and any human notes.
 
 Job Radar ID is generated for scanned postings and shown in Markdown, HTML, and email-preview reports. It is used as the preferred durable history key when present.
 
@@ -170,23 +205,139 @@ Exact Job Radar ID matches can provide history context. Existing application tra
 
 Fuzzy company/title matches are guarded so broad title overlap can provide history context without automatically treating a role as already applied.
 
-Job Radar reads the workbook during history import and configured scans. It does not write IDs or enrichment data back to the workbook.
+Job Radar reads the workbook during manual history import and configured scans. It does not write IDs or enrichment data back to the workbook.
 
 Import history manually:
 
-    python -m job_radar import-history --workbook data/job-history.xlsx --settings config/settings.yaml
+```powershell
+python -m job_radar history import --workbook data/job-history.xlsx --settings config/settings.yaml
+```
+
+Legacy command still supported:
+
+```powershell
+python -m job_radar import-history --workbook data/job-history.xlsx --settings config/settings.yaml
+```
 
 Summarize imported history:
 
-    python -m job_radar history-summary --settings config/settings.yaml
+```powershell
+python -m job_radar history summary --settings config/settings.yaml
+```
+
+Legacy command still supported:
+
+```powershell
+python -m job_radar history-summary --settings config/settings.yaml
+```
+
+## Application tracker
+
+Job Radar has an app-native application tracker backed by SQLite.
+
+The tracker stores:
+
+- Job Radar ID
+- Company
+- Role
+- Source URL
+- Status
+- Follow-up date
+- Applied date
+- Last activity date
+- Outcome
+- Notes
+- Created/updated timestamps
+
+The tracker classifies application workflow state, including:
+
+- `follow_up_due`
+- `needs_date_review`
+- `active_pipeline`
+- `follow_up_scheduled`
+- `waiting`
+- `dormant`
+- `stale`
+- `presumed_closed`
+- `closed`
+
+The tracker is the long-term direction for active application workflow. Spreadsheet import remains available as a bridge and bulk-import path, but the spreadsheet is being retired as the normal application-tracking interface.
+
+Passed/reviewed jobs are imported into job history. They are not automatically added to the active application tracker.
+
+List tracker records:
+
+```powershell
+python -m job_radar tracker list --settings config/settings.yaml
+```
+
+List records needing action:
+
+```powershell
+python -m job_radar tracker list --needs-action --settings config/settings.yaml
+```
+
+List records needing review:
+
+```powershell
+python -m job_radar tracker list --needs-review --settings config/settings.yaml
+```
+
+Add a manual tracker record:
+
+```powershell
+python -m job_radar tracker add --job-radar-id jr-manual-example --company "Example AI" --role "Senior Infrastructure Engineer" --status applied --settings config/settings.yaml
+```
+
+Update a tracker record:
+
+```powershell
+python -m job_radar tracker update jr-manual-example --status interviewing --follow-up-on 2026-07-10 --settings config/settings.yaml
+```
+
+## Local web app
+
+Job Radar has a local Flask web interface for tracker review and updates.
+
+Start the GUI:
+
+```powershell
+python -m job_radar.web_app --settings config/settings.yaml
+```
+
+Open:
+
+```text
+http://127.0.0.1:5000/
+```
+
+Current GUI capabilities:
+
+- Landing page
+- Application tracker list
+- Tracker filters
+- Workflow-priority sorting
+- Tracker edit page
+- Status and outcome dropdowns
+- Tracker quick actions
+- Manual application add form
+- Notes display from stored tracker records
+
+The GUI currently focuses on active application tracker records. It does not yet provide a separate full job-history/archive page for reviewed, passed, skipped, and historical records.
 
 ## Run tests
 
-    python -m pytest
+Run the full suite:
+
+```powershell
+python -m pytest tests
+```
 
 Expected current result:
 
-    357 passed
+```text
+398 passed
+```
 
 ## Report structure
 
@@ -208,11 +359,25 @@ A capped summary view of the strongest Top Matches for fast scanning.
 
 High-score roles that are not clean Top Matches but may still deserve manual review.
 
+### Track Status
+
+Jobs already present in the application tracker are shown with tracker context.
+
+Track Status is shown only when the scanned job has an actual tracker record. Job Radar does not auto-track jobs merely because they are good matches.
+
 ### Northern Colorado Highlights
 
 Location-focused section for Northern Colorado and nearby strategic locations.
 
 This section avoids duplicating jobs already shown in full Top Matches.
+
+### Tracker action summary
+
+Reports summarize tracked applications that may need action or review.
+
+### Tracker workflow summary
+
+Reports summarize tracker workflow states so stale, dormant, waiting, follow-up, active, and closed applications are visible during scan review.
 
 ### Passed / Not Recommended
 
@@ -222,30 +387,38 @@ The full Markdown and HTML reports include passed jobs most worth reviewing, cap
 
 ## Run full live scan
 
-    python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports/target-email-preview.txt --send-email
+```powershell
+python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports/target-email-preview.txt --send-email
+```
 
 Expected good output:
 
-    Collector errors: 0
-    Report written: reports\target-scan.md
-    HTML report written: reports\target-scan.html
-    Email preview written: reports\target-email-preview.txt
-    Email send result: Email sending disabled by settings
+```text
+Collector errors: 0
+Report written: reports\target-scan.md
+HTML report written: reports\target-scan.html
+Email preview written: reports\target-email-preview.txt
+Email send result: Email sending disabled by settings
+```
 
 ## Run live validation with email preview
 
-    Remove-Item data\live_test.sqlite3 -ErrorAction SilentlyContinue
-    Remove-Item reports\target-email-preview.txt -ErrorAction SilentlyContinue
+```powershell
+Remove-Item data\live_test.sqlite3 -ErrorAction SilentlyContinue
+Remove-Item reports\target-email-preview.txt -ErrorAction SilentlyContinue
 
-    python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports/target-email-preview.txt
+python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports/target-email-preview.txt
 
-    Get-Content reports\target-email-preview.txt -Raw
+Get-Content reports\target-email-preview.txt -Raw
+```
 
-Email settings are validated from the settings file. With email.enabled set to false, --send-email only exercises the guarded send path and prints that email sending is disabled. No SMTP connection is made and no email is sent.
+Email settings are validated from the settings file. With `email.enabled` set to `false`, `--send-email` only exercises the guarded send path and prints that email sending is disabled. No SMTP connection is made and no email is sent.
 
-    python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports\target-email-preview.txt --send-email
+```powershell
+python -m job_radar scan --config config/target-companies.yaml --settings config/live-test-settings.yaml --report reports/target-scan.md --email-preview reports\target-email-preview.txt --send-email
+```
 
-With email.enabled set to false, --send-email only exercises the guarded send path and prints that email sending is disabled.
+With `email.enabled` set to `false`, `--send-email` only exercises the guarded send path and prints that email sending is disabled.
 
 ## Email secret handling
 
@@ -253,20 +426,35 @@ Email passwords must not be stored in YAML files.
 
 When email sending is enabled, the settings file should name an environment variable that contains the SMTP password:
 
-    email:
-      enabled: true
-      sender: "you@example.com"
-      recipients:
-        - "you@example.com"
-      smtp_host: "smtp.example.com"
-      smtp_port: 587
-      smtp_password_env: "JOB_RADAR_SMTP_PASSWORD"
+```yaml
+email:
+  enabled: true
+  sender: "you@example.com"
+  recipients:
+    - "you@example.com"
+  smtp_host: "smtp.example.com"
+  smtp_port: 587
+  smtp_password_env: "JOB_RADAR_SMTP_PASSWORD"
+```
 
 For local testing, that environment variable can be set in the shell.
 
 For k3s, that environment variable should come from a Kubernetes Secret.
 
-If email.enabled is true and the configured password environment variable is missing, Job Radar fails cleanly before attempting to send email.
+If `email.enabled` is true and the configured password environment variable is missing, Job Radar fails cleanly before attempting to send email.
+
+After real email send tests, remove the password environment variable from the shell:
+
+```powershell
+Remove-Item Env:\JOB_RADAR_SMTP_PASSWORD -ErrorAction SilentlyContinue
+Test-Path Env:\JOB_RADAR_SMTP_PASSWORD
+```
+
+Expected:
+
+```text
+False
+```
 
 ## Project principles
 
@@ -277,3 +465,6 @@ If email.enabled is true and the configured password environment variable is mis
 - Local SQLite system of record
 - Rules-based scoring before LLM integration
 - Safe manual review first
+- Spreadsheet import is a bridge, not the final product
+- App-native tracker CLI/GUI is the long-term tracking direction
+- No regression

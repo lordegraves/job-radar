@@ -1,12 +1,12 @@
 # Job Radar Current State
 
-Last updated: 2026-07-03
+Last updated: 2026-07-06
 
 ## Purpose
 
-Job Radar is a local job discovery and triage tool.
+Job Radar is a local job discovery, triage, and application-tracking tool.
 
-Its purpose is to safely scan known target company job boards, normalize postings, store them in SQLite, score them against Clayton's job preferences, and generate reports that make manual review faster.
+Its purpose is to safely scan known target company job boards, normalize postings, store them in SQLite, score them against the user's job preferences, generate reports that make manual review faster, and track application workflow through an app-native tracker.
 
 Job Radar does not apply to jobs automatically. It does not contact employers. It does not broadly crawl the internet.
 
@@ -20,7 +20,7 @@ The current live settings file is:
 
     config/live-test-settings.yaml
 
-Current verified live scan state:
+Current verified live scan state from the last documented scan:
 
     Companies enabled: 62
     Jobs collected: 10,000
@@ -46,7 +46,11 @@ Implemented source types include:
 - ADP Workforce Now
 - Activate
 - WEKA custom
+- Rippling
+- SchoolSpring
 - HTML job-link collectors
+
+Source coverage is broad enough for current use. New sources should only be added when they improve the actual target universe.
 
 ## Current storage behavior
 
@@ -60,8 +64,10 @@ It tracks:
 - Stored/actionable jobs
 - Omitted/not-actionable jobs
 - Imported job/application history
+- Application tracker records
+- Application workflow state
 
-SQLite is the current system of record for scans and imported history.
+SQLite is the current system of record for scans, imported history, and app-native tracker data.
 
 ## Current scoring behavior
 
@@ -95,6 +101,7 @@ Job Radar generates:
 - Markdown report
 - HTML report
 - Plain-text email preview
+- HTML email preview
 
 Reports include:
 
@@ -104,16 +111,19 @@ Reports include:
 - Work location fit
 - Recommendation summary
 - History risk summary
+- Tracker action summary
+- Tracker workflow summary
 - Omitted jobs audit
 - Top Matches
 - Top Matches Quick View
 - Northern Colorado Highlights
 - Review Needed
+- Track Status for jobs already tracked
 - Passed / Not Recommended
 
 The full Markdown and HTML reports keep detailed review information.
 
-Markdown, HTML, and email-preview reports show stable Job Radar IDs for scanned postings so spreadsheet history can point back to exact surfaced roles.
+Markdown, HTML, and email-preview reports show stable Job Radar IDs for scanned postings so imported history and tracker records can point back to exact surfaced roles.
 
 The email preview is intentionally capped for readability.
 
@@ -122,6 +132,12 @@ Passed / Not Recommended includes audit details so large scans explain why most 
 ## Current history behavior
 
 Job Radar imports application and review history from a local Excel workbook.
+
+A sanitized example workbook is included at:
+
+    examples/job-history-template.xlsx
+
+The example workbook contains the simplified Job Log headers, formatting, validation lists, and one fake sample row. It must not contain real application history.
 
 The simplified Job Log format uses:
 
@@ -147,9 +163,81 @@ Rows without Job Radar ID are allowed for LinkedIn, referral, recruiter, company
 
 Posting URL is fallback evidence when available.
 
-The workbook is treated as a human job log, not the app's internal schema.
+The workbook is treated as a human job log and import bridge, not the app's internal schema.
 
 Job Radar reads the workbook during manual history import and configured scans. It does not write IDs or enrichment data back to the workbook.
+
+## Current tracker behavior
+
+Job Radar now has an app-native application tracker.
+
+The tracker stores:
+
+- Job Radar ID
+- Company
+- Role
+- Source URL
+- Status
+- Follow-up date
+- Applied date
+- Last activity date
+- Outcome
+- Notes
+- Created/updated timestamps
+
+The tracker can classify application workflow state, including:
+
+- follow_up_due
+- needs_date_review
+- active_pipeline
+- follow_up_scheduled
+- waiting
+- dormant
+- stale
+- presumed_closed
+- closed
+
+Tracker action summaries are included in reports so applications needing attention are visible during scans.
+
+The tracker can be managed through CLI commands and through the Flask GUI.
+
+The tracker is the long-term direction for active application workflow. The spreadsheet remains an import/history bridge and possible bulk-import path, but it is being retired as the normal application-tracking interface.
+
+Passed/reviewed jobs are imported into job history. They are not automatically added to the active application tracker.
+
+## Current GUI behavior
+
+Job Radar has a basic Flask web interface.
+
+Current GUI capabilities:
+
+- Landing page
+- Application tracker list
+- Tracker filters
+- Workflow-priority sorting
+- Tracker edit page
+- Status and outcome dropdowns
+- Tracker quick actions
+- Manual application add form
+- Notes display from stored tracker records
+
+Current GUI files include:
+
+- `job_radar/web_app.py`
+- `job_radar/templates/index.html`
+- `job_radar/templates/tracker.html`
+- `job_radar/templates/tracker_edit.html`
+- `job_radar/templates/tracker_add.html`
+
+Current GUI command:
+
+    python -m job_radar.web_app --settings config/settings.yaml
+
+Current local GUI URL:
+
+    http://127.0.0.1:5000/
+
+The GUI currently focuses on active application tracker records. It does not yet provide a separate full job-history/archive page for reviewed, passed, skipped, and historical records.
 
 ## Current email behavior
 
@@ -175,7 +263,8 @@ Email behavior:
 - Safe manual review first
 - No regression
 - Forward progress only
-- Spreadsheet import is current intake, not the final product
+- Spreadsheet import is a bridge, not the final product
+- App-native tracker CLI/GUI is the long-term tracking direction
 
 ## Completed milestones
 
@@ -220,34 +309,50 @@ Completed so far:
 - Track Status routing
 - Production Kubernetes Top Match demotion
 - Omitted jobs audit summary
+- Application tracker storage
+- Application tracker CLI add/update/list workflow
+- Tracker applied date and last activity date support
+- Tracker workflow-state classification
+- Tracker needs-action and needs-review filters
+- Tracker action summary in reports
+- Tracker workflow summary in reports
+- Read-only tracker GUI
+- Tracker GUI filters
+- Tracker GUI edit form
+- Tracker GUI quick actions
+- Tracker GUI manual add form
+- Private AI session prompt ignored by Git
+- File map updated for tracker and GUI boundaries
 
 ## Known limitations
 
 Current limitations:
 
-- Job Radar still depends on the spreadsheet for application history intake.
-- Job Radar does not yet provide an app-native UI for tracking applications.
+- Job Radar still imports spreadsheet history as a bridge for existing records and bulk intake.
+- The GUI does not yet provide a separate job-history/archive page for reviewed, passed, skipped, and historical records.
 - Job Radar does not write enriched IDs or metadata back to the spreadsheet.
 - Report scoring is still rules-based and may need calibration from real outcomes.
 - Source coverage is broad enough for current use, but individual collectors may still need maintenance if ATS pages change.
 - The email report is intentionally limited and does not include every detail from the full Markdown/HTML reports.
 - Kubernetes deployment is not complete.
 - LLM integration is not implemented yet.
+- The Flask GUI is local/basic and not yet productionized.
 
 ## Remaining milestones before complete-enough
 
 Remaining high-priority milestones:
 
-1. Run a fresh live scan and review the new omitted jobs audit.
-2. Calibrate scoring based on whether omitted jobs are truly bad fits.
-3. Add a short omitted-jobs review workflow if the audit shows hidden good roles.
-4. Finalize daily scheduled scan behavior.
-5. Finalize email delivery settings.
-6. Deploy Job Radar onto the k3s cluster.
-7. Add operational runbook documentation.
-8. Add recovery/troubleshooting documentation.
-9. Decide whether app-native tracking replaces spreadsheet intake.
-10. Add LLM-assisted review only after rules-based behavior is stable.
+1. Add a GUI job-history/archive page for reviewed, passed, skipped, rejected, and historical records.
+2. Continue replacing normal spreadsheet workflow with app-native tracker GUI workflows.
+3. Run a fresh live scan and review the omitted jobs audit.
+4. Calibrate scoring based on whether omitted jobs are truly bad fits.
+5. Add a short omitted-jobs review workflow if the audit shows hidden good roles.
+6. Finalize daily scheduled scan behavior.
+7. Finalize email delivery settings.
+8. Deploy Job Radar onto the k3s cluster.
+9. Add operational runbook documentation.
+10. Add recovery/troubleshooting documentation.
+11. Add LLM-assisted review only after rules-based behavior is stable.
 
 ## Not in scope right now
 
@@ -255,7 +360,9 @@ Do not work on these unless explicitly requested:
 
 - New source expansion
 - Broad scoring rewrite
-- App-native UI
 - Spreadsheet write-back
 - LLM integration
 - Employer/contact automation
+- Production web authentication
+- Kubernetes deployment
+- Large GUI styling overhaul
