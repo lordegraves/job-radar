@@ -74,7 +74,7 @@ Complete-enough means a user can install Job Radar, configure their own companie
 - Routes fuzzy history matches to Track Status only when the title match is strong enough
 - Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
 - Provides an application tracker CLI
-- Provides a local Flask GUI for tracker review/update workflows, imported history/archive review, existing report viewing, and safe scan-command guidance
+- Provides a local Flask GUI for tracker review/update workflows, imported history/archive review, existing report viewing, and controlled manual scan execution
 
 ## Current live target sources
 
@@ -328,11 +328,11 @@ Current GUI summary:
 - Application tracker workflows
 - Imported job history/archive review
 - Existing generated report and email-preview viewing
-- Safe scan-command guidance
+- Controlled manual scan execution with GUI email sending disabled
 
 See `docs/current-state.md` for the detailed current GUI capability list.
 
-The local GUI is intentionally read/write only where the app already owns the workflow. Report viewing is read-only: it opens existing generated reports and email previews without starting a scan or sending email. The scan page shows the safe manual scan command but does not execute scans from the GUI yet.
+The local GUI is intentionally read/write only where the app already owns the workflow. Report viewing is read-only: it opens existing generated reports and email previews without starting a scan or sending email. The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled.
 
 ## Run tests
 
@@ -345,7 +345,7 @@ python -m pytest tests
 Expected current result:
 
 ```text
-413 passed
+415 passed
 ```
 
 ## Report structure

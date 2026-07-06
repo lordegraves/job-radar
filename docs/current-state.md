@@ -248,7 +248,7 @@ Current GUI capabilities:
 - Notes display from stored tracker records
 - Job history/archive page for imported historical records
 - Reports page for existing generated reports and email previews
-- Scan command page for safe manual scan guidance
+- Controlled manual scan execution from the local GUI
 
 Current GUI files include:
 
@@ -269,7 +269,7 @@ Current local GUI URL:
 
     http://127.0.0.1:5000/
 
-The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker. The reports page opens existing generated reports and email previews without starting a scan or sending email. The scan page shows the safe manual scan command but does not execute scans from the GUI yet.
+The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker. The reports page opens existing generated reports and email previews without starting a scan or sending email. The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled.
 
 ## Current email behavior
 
@@ -353,7 +353,7 @@ Completed so far:
 - Tracker GUI search
 - Tracker GUI applied-date sorting
 - GUI reports page for existing generated reports and email previews
-- GUI scan command page for safe manual scan guidance
+- Controlled GUI scan execution with email sending disabled
 - Tracker GUI edit form
 - Tracker GUI quick actions
 - Tracker GUI manual add form
@@ -378,8 +378,8 @@ Current limitations:
 Remaining high-priority milestones:
 
 1. Continue replacing normal spreadsheet workflow with app-native tracker GUI workflows.
-2. Add controlled manual scan execution to the GUI.
-3. Run a fresh live scan and review the omitted jobs audit.
+2. Run a fresh live scan from the GUI and review the omitted jobs audit.
+3. Calibrate GUI scan execution based on real-run behavior, runtime, and failure visibility.
 4. Calibrate scoring based on whether omitted jobs are truly bad fits.
 5. Add a short omitted-jobs review workflow if the audit shows hidden good roles.
 6. Finalize daily scheduled scan behavior.

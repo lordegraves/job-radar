@@ -111,7 +111,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/templates/tracker_add.html` | Manual application tracker add form. | Keep |
 | `job_radar/templates/history.html` | Job history/archive page for imported historical records. | Keep |
 | `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews. | Keep |
-| `job_radar/templates/scan.html` | Scan command page for safe manual scan guidance. | Keep |
+| `job_radar/templates/scan.html` | Scan page for manual command display and controlled local GUI scan execution. | Keep |
 
 ## Collectors
 
