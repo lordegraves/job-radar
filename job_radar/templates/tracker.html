@@ -78,7 +78,7 @@
     <h1>Application Tracker</h1>
 
     <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('history') }}">Job history archive</a> | <a
-            href="{{ url_for('reports') }}">Reports</a></p>
+            href="{{ url_for('reports') }}">Reports</a> | <a href="{{ url_for('scan') }}">Scan</a></p>
     <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
     <p><a href="{{ url_for('add_tracker_application') }}">Add application</a></p>
     <p><strong>Applications shown:</strong> {{ applications|length }}</p>

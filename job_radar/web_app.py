@@ -115,6 +115,10 @@ TRACKER_QUICK_ACTIONS = {
 
 REPORT_FILE_EXTENSIONS = {".html", ".htm", ".md", ".txt"}
 
+DEFAULT_SCAN_CONFIG_PATH = "config/target-companies.yaml"
+DEFAULT_SCAN_REPORT_PATH = "reports/target-scan.md"
+DEFAULT_SCAN_EMAIL_PREVIEW_PATH = "reports/target-email-preview.txt"
+
 
 @dataclass(frozen=True)
 class TrackerApplicationView:
@@ -146,6 +150,26 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             "history.html",
             database_path=database_path,
             records=records,
+        )
+
+    @app.get("/scan")
+    def scan() -> str:
+        settings_path = app.config["JOB_RADAR_SETTINGS_PATH"]
+        scan_command = (
+            "python -m job_radar scan "
+            f"--config {DEFAULT_SCAN_CONFIG_PATH} "
+            f"--settings {settings_path} "
+            f"--report {DEFAULT_SCAN_REPORT_PATH} "
+            f"--email-preview {DEFAULT_SCAN_EMAIL_PREVIEW_PATH}"
+        )
+
+        return render_template(
+            "scan.html",
+            scan_command=scan_command,
+            scan_config_path=DEFAULT_SCAN_CONFIG_PATH,
+            scan_settings_path=settings_path,
+            scan_report_path=DEFAULT_SCAN_REPORT_PATH,
+            scan_email_preview_path=DEFAULT_SCAN_EMAIL_PREVIEW_PATH,
         )
 
     @app.get("/reports")

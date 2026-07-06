@@ -184,6 +184,50 @@ def test_history_page_handles_empty_history(tmp_path: Path) -> None:
     assert "No imported job history records." in html
 
 
+def test_index_page_links_to_scan(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<a href="/scan">Scan</a>' in html
+
+
+def test_scan_page_shows_manual_scan_command(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/scan")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Scan" in html
+    assert "This page shows the safe manual scan command." in html
+    normalized_html = " ".join(html.split())
+
+    assert (
+        "It does not start a scan, collect live jobs, write reports, or send email."
+        in normalized_html
+    )
+    assert "python -m job_radar scan" in html
+    assert "--config config/target-companies.yaml" in html
+    assert f"--settings {settings_file}" in html
+    assert "--report reports/target-scan.md" in html
+    assert "--email-preview reports/target-email-preview.txt" in html
+
+
 def test_index_page_links_to_reports(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"

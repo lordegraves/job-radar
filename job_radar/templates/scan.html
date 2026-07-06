@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Job Radar Scan</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            margin: 24px;
+        }
+
+        code,
+        pre {
+            background: #f6f8fa;
+        }
+
+        code {
+            padding: 2px 4px;
+        }
+
+        pre {
+            border: 1px solid #dddddd;
+            overflow-x: auto;
+            padding: 12px 16px;
+        }
+
+        table {
+            border-collapse: collapse;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #dddddd;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f6f8fa;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Scan</h1>
+
+    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
+            href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('reports') }}">Reports</a></p>
+
+    <p>This page shows the safe manual scan command. It does not start a scan, collect live jobs, write reports, or send
+        email.</p>
+
+    <h2>Manual scan command</h2>
+
+    <pre><code>{{ scan_command }}</code></pre>
+
+    <h2>Command paths</h2>
+
+    <table>
+        <tbody>
+            <tr>
+                <th>Company config</th>
+                <td><code>{{ scan_config_path }}</code></td>
+            </tr>
+            <tr>
+                <th>Settings</th>
+                <td><code>{{ scan_settings_path }}</code></td>
+            </tr>
+            <tr>
+                <th>Markdown report</th>
+                <td><code>{{ scan_report_path }}</code></td>
+            </tr>
+            <tr>
+                <th>Email preview</th>
+                <td><code>{{ scan_email_preview_path }}</code></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>After running the command, open the <a href="{{ url_for('reports') }}">Reports</a> page to view generated output.
+    </p>
+</body>
+
+</html>
