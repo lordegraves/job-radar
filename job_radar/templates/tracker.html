@@ -45,6 +45,11 @@
             padding: 2px 4px;
         }
 
+        .date-cell {
+            min-width: 105px;
+            white-space: nowrap;
+        }
+
         .notes-cell {
             min-width: 320px;
             max-width: 520px;
@@ -137,9 +142,9 @@
                 <td>{{ row.application.role_title }}</td>
                 <td>{{ row.application.status }}</td>
                 <td>{{ row.workflow_state }}</td>
-                <td>{{ row.application.applied_on or "" }}</td>
-                <td>{{ row.application.last_activity_on or "" }}</td>
-                <td>{{ row.application.follow_up_on or "" }}</td>
+                <td class="date-cell">{{ row.application.applied_on or "" }}</td>
+                <td class="date-cell">{{ row.application.last_activity_on or "" }}</td>
+                <td class="date-cell">{{ row.application.follow_up_on or "" }}</td>
                 <td>{{ row.application.outcome or "" }}</td>
                 <td><code>{{ row.application.job_radar_id }}</code></td>
                 <td>
