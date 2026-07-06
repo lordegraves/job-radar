@@ -69,10 +69,19 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/recommendations.py` | Technical match, hiring probability, risk flags, recommended actions, and display eligibility. | Keep / watch growth |
 | `job_radar/recommendation_constants.py` | Shared labels for actions, risks, recommendation ordering, and history reasons. | Keep |
 | `job_radar/compensation.py` | Compensation parsing and compensation-floor evaluation. | Keep |
-| `job_radar/job_history.py` | Imports and represents external job/application history. | Keep |
+| `job_radar/job_history.py` | Imports and represents external job/application history from the spreadsheet bridge. | Keep |
 | `job_radar/history_match.py` | Matches current postings against prior application/review history. | Keep |
 | `job_radar/history_context.py` | Adds history context to scored postings/reports. | Keep |
 | `job_radar/history_summary.py` | Summarizes imported history for reports. | Keep |
+
+## Application Tracker
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `job_radar/tracker/__init__.py` | Tracker package marker. | Keep |
+| `job_radar/tracker/models.py` | Application tracker data model. | Keep |
+| `job_radar/tracker/storage.py` | SQLite persistence for application tracker records. | Keep |
+| `job_radar/tracker/service.py` | Tracker workflow classification, history-to-tracker conversion, and tracker business rules. | Keep |
 
 ## Reporting and Email
 
@@ -83,6 +92,16 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/email_sender.py` | Email delivery integration. | Keep |
 | `reports/.gitkeep` | Preserves generated reports directory in Git. | Keep |
 | `reports/*` | Generated reports, previews, audits, probes, and local run output. | Local only / ignored |
+
+## Web App / GUI
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers. | Keep / watch growth |
+| `job_radar/templates/index.html` | Web app landing page. | Keep |
+| `job_radar/templates/tracker.html` | Application tracker list, filters, workflow display, and edit links. | Keep |
+| `job_radar/templates/tracker_edit.html` | Application tracker edit form and quick actions. | Keep |
+| `job_radar/templates/tracker_add.html` | Manual application tracker add form. | Keep |
 
 ## Collectors
 
@@ -135,7 +154,9 @@ Collector tests intentionally mirror collector files. This makes source-specific
 | Collector tests | `tests/test_*_collector.py`, plus `tests/test_collector_registry.py` | Keep |
 | Config/CLI/storage tests | `tests/test_config.py`, `tests/test_cli.py`, `tests/test_storage.py` | Keep |
 | Scoring/recommendation/report tests | `tests/test_scoring.py`, `tests/test_reporting.py`, `tests/test_email_summary.py` | Keep |
-| Profile/resume/history tests | `tests/test_candidate_profile.py`, `tests/test_resume_loader.py`, `tests/test_resume_match.py`, `tests/test_job_history.py`, `tests/test_history_match.py`, `tests/test_history_context.py` | Keep |
+| Profile/resume/history tests | `tests/test_candidate_profile.py`, `tests/test_resume_loader.py`, `tests/test_resume_match.py`, `tests/test_job_history.py`, `tests/test_history_match.py`, `tests/test_history_context.py`, `tests/test_history_summary.py` | Keep |
+| Tracker tests | `tests/test_tracker_service.py`, `tests/test_tracker_storage.py` | Keep |
+| Web app tests | `tests/test_web_app.py` | Keep |
 | Utility tests | `tests/test_normalize.py`, `tests/test_compensation.py`, `tests/test_email_sender.py` | Keep |
 | Integration tests | `tests/test_phase1a_integration.py` | Keep |
 
@@ -155,11 +176,23 @@ The main risk is future feature growth landing in already-large files. Avoid add
 - `job_radar/storage.py`
 - `job_radar/cli.py`
 
-## Future Tracker / GUI Boundary
+Current tracker and GUI logic already have dedicated boundaries:
 
-When replacing the spreadsheet with an application tracker, prefer a new boundary instead of expanding existing modules.
+- `job_radar/tracker/`
+- `job_radar/web_app.py`
+- `job_radar/templates/`
 
-Recommended first structure:
+Continue using those boundaries instead of moving tracker behavior into reporting, recommendations, collectors, or generic storage.
+
+
+Replace it with:
+
+````markdown
+## Tracker / GUI Boundary
+
+The spreadsheet is being phased out as the normal application-tracking interface. It remains a bridge for import/history data, but active application tracking now has a dedicated tracker module and a basic Flask GUI.
+
+Current tracker structure:
 
 ```text
 job_radar/tracker/
@@ -169,15 +202,22 @@ job_radar/tracker/
   service.py
 ```
 
-Possible later web UI structure:
+
+Current web UI structure:
 
 ```text
-job_radar/web/
-  __init__.py
-  app.py
-  routes.py
-  templates/
-  static/
+job_radar/web_app.py
+job_radar/templates/
+  index.html
+  tracker.html
+  tracker_edit.html
+  tracker_add.html
 ```
 
-The tracker should own application status, follow-up timing, outcomes, notes, and manual review state. It should not be mixed into report rendering or collector code.
+The tracker owns application status, follow-up timing, outcomes, notes, workflow state, and manual application tracking.
+
+The spreadsheet/history importer owns external history intake and historical context. It should not be treated as the long-term source of truth for active application workflow.
+
+The tracker should not be mixed into report rendering or collector code.
+
+Future GUI growth should either keep `job_radar/web_app.py` small or split into a dedicated web package before it becomes hard to maintain.

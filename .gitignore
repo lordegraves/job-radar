@@ -12,6 +12,10 @@ __pycache__/
 # Local/private config
 config/local-*.yaml
 
+# Personal AI session prompt templates
+docs/prompt.md
+docs/prompt.local.md
+
 # Runtime data
 data/*.sqlite3
 data/*.db
