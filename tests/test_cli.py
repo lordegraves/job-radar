@@ -6,6 +6,7 @@ from openpyxl import Workbook
 from job_radar.candidate_profile import CandidateProfile
 from job_radar.cli import (
     _find_profile_avoid_matches,
+    _import_history_records,
     build_parser,
     handle_import_history,
     handle_scan,
@@ -13,7 +14,11 @@ from job_radar.cli import (
     handle_tracker_list,
     handle_tracker_update,
 )
-from job_radar.job_history import EXPECTED_HEADERS, SIMPLIFIED_HEADERS, JobHistoryRecord
+from job_radar.job_history import (
+    EXPECTED_HEADERS,
+    SIMPLIFIED_HEADERS,
+    JobHistoryRecord,
+)
 from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.email_sender import EmailSendResult
 from job_radar.models import JobPosting
@@ -32,7 +37,6 @@ def count_scan_run_rows(database_file: Path) -> int:
     with sqlite3.connect(database_file) as connection:
         cursor = connection.execute("SELECT COUNT(*) FROM scan_runs")
         return int(cursor.fetchone()[0])
-    
 
 
 def count_job_history_rows(database_file: Path) -> int:
@@ -44,6 +48,51 @@ def count_job_history_rows(database_file: Path) -> int:
 def count_application_tracker_rows(database_file: Path) -> int:
     with sqlite3.connect(database_file) as connection:
         cursor = connection.execute("SELECT COUNT(*) FROM application_tracker")
+        return int(cursor.fetchone()[0])
+
+
+def fetch_job_history_status_outcomes(
+    database_file: Path,
+) -> list[tuple[str | None, str | None]]:
+    with sqlite3.connect(database_file) as connection:
+        rows = connection.execute(
+            """
+            SELECT status, outcome_category
+            FROM job_history
+            ORDER BY status, outcome_category
+            """
+        ).fetchall()
+
+    return [(row[0], row[1]) for row in rows]
+
+
+def fetch_application_tracker_status_outcomes(
+    database_file: Path,
+) -> list[tuple[str, str | None]]:
+    with sqlite3.connect(database_file) as connection:
+        rows = connection.execute(
+            """
+            SELECT status, outcome
+            FROM application_tracker
+            ORDER BY status, outcome
+            """
+        ).fetchall()
+
+    return [(row[0], row[1]) for row in rows]
+
+
+def count_cross_table_company_role_duplicates(database_file: Path) -> int:
+    with sqlite3.connect(database_file) as connection:
+        cursor = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM job_history h
+            JOIN application_tracker a
+              ON lower(h.company) = lower(a.company_name)
+             AND lower(h.role) = lower(a.role_title)
+            """
+        )
+
         return int(cursor.fetchone()[0])
 
 
@@ -249,6 +298,112 @@ retention:
     assert "Tracker rows imported: 0" in output
     assert "Tracker rows updated: 0" in output
     assert "Tracker rows skipped: 2" in output
+
+
+def test_import_history_records_partitions_tracker_and_history_without_duplication(
+    tmp_path: Path,
+) -> None:
+    database_file = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_file)
+
+    records = [
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="ActiveCo",
+            role="Senior SRE",
+            source="LinkedIn",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-07-01",
+            status="Applied",
+            outcome_category="Pending / In Progress",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="job-radar-id:jr-activeco-senior-sre",
+            notes="Active application.",
+            job_radar_id="jr-activeco-senior-sre",
+            posting_url="https://example.com/activeco/senior-sre",
+            lead_source="LinkedIn",
+        ),
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="RejectedCo",
+            role="Platform Engineer",
+            source="LinkedIn",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-07-02",
+            status="Applied",
+            outcome_category="Rejected - No Interview",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="job-radar-id:jr-rejectedco-platform-engineer",
+            notes="Rejected before interview.",
+            job_radar_id="jr-rejectedco-platform-engineer",
+            posting_url="https://example.com/rejectedco/platform-engineer",
+            lead_source="LinkedIn",
+        ),
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="PassedCo",
+            role="Linux Administrator",
+            source="LinkedIn",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-07-03",
+            status="Passed",
+            outcome_category="N/A",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="job-radar-id:jr-passedco-linux-administrator",
+            notes="Compensation too low.",
+            job_radar_id="jr-passedco-linux-administrator",
+            posting_url="https://example.com/passedco/linux-administrator",
+            lead_source="LinkedIn",
+        ),
+    ]
+
+    result = _import_history_records(
+        database_path=str(database_file),
+        records=records,
+    )
+
+    assert result == (2, 0, 1, 0, 2)
+    assert count_job_history_rows(database_file) == 2
+    assert count_application_tracker_rows(database_file) == 1
+    assert count_cross_table_company_role_duplicates(database_file) == 0
+
+    assert fetch_job_history_status_outcomes(database_file) == [
+        ("Applied", "Rejected - No Interview"),
+        ("Passed", "N/A"),
+    ]
+    assert fetch_application_tracker_status_outcomes(database_file) == [
+        ("applied", "Pending / In Progress"),
+    ]
 
 
 def test_handle_import_history_imports_simplified_workbook_rows(
