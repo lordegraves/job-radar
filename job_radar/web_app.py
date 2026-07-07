@@ -77,13 +77,17 @@ CANONICAL_DECISION_FILTER_OPTIONS = (
     "Revisit",
 )
 
-CANONICAL_OUTCOME_FILTER_OPTIONS = (
+TRACKER_OUTCOME_FILTER_OPTIONS = (
     "Pending / In Progress",
     "Interview Scheduled",
     "Interview Completed",
     "Waiting For Feedback",
     "Offer",
     "Dormant",
+    "N/A",
+)
+
+HISTORY_OUTCOME_FILTER_OPTIONS = (
     "Closed Before Application",
     "Rejected - No Interview",
     "Rejected - After Interview",
@@ -232,7 +236,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             active_decision_filter=decision_filter,
             active_outcome_filter=outcome_filter,
             decision_filter_options=CANONICAL_DECISION_FILTER_OPTIONS,
-            outcome_filter_options=CANONICAL_OUTCOME_FILTER_OPTIONS,
+            outcome_filter_options=HISTORY_OUTCOME_FILTER_OPTIONS,
             sort_options=HISTORY_SORT_OPTIONS,
         )
 
@@ -370,7 +374,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             active_status_filter=status_filter,
             active_outcome_filter=outcome_filter,
             status_filter_options=CANONICAL_DECISION_FILTER_OPTIONS,
-            outcome_filter_options=CANONICAL_OUTCOME_FILTER_OPTIONS,
+            outcome_filter_options=TRACKER_OUTCOME_FILTER_OPTIONS,
             filters=TRACKER_FILTERS,
             sort_options=TRACKER_SORT_OPTIONS,
         )

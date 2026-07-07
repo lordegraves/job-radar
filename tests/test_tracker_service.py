@@ -228,6 +228,7 @@ def test_should_track_history_record_tracks_active_outcomes() -> None:
         "Waiting For Feedback",
         "Offer",
         "Dormant",
+        "N/A",
     ]
 
     for outcome in active_outcomes:
@@ -245,10 +246,25 @@ def test_should_track_history_record_routes_history_outcomes_to_history() -> Non
         "Rejected - No Interview",
         "Rejected - After Interview",
         "Withdrawn",
-        "N/A",
     ]
 
     for outcome in history_outcomes:
+        record = make_history_record(
+            decision="Applied",
+            outcome=outcome,
+        )
+
+        assert should_track_history_record(record) is False
+
+
+def test_should_track_history_record_rejects_noncanonical_outcome_aliases() -> None:
+    alias_outcomes = [
+        "n a",
+        "na",
+        "Alive Until Declared Dead",
+    ]
+
+    for outcome in alias_outcomes:
         record = make_history_record(
             decision="Applied",
             outcome=outcome,

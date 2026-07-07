@@ -345,8 +345,8 @@ def test_history_page_searches_and_filters_records(tmp_path: Path) -> None:
     filter_response = client.get(
         "/history",
         query_string={
-            "decision_filter": "Applied",
-            "outcome_filter": "Pending / In Progress",
+            "decision_filter": "Passed",
+            "outcome_filter": "Closed Before Application",
             "sort": "company",
         },
     )
@@ -354,25 +354,25 @@ def test_history_page_searches_and_filters_records(tmp_path: Path) -> None:
 
     assert filter_response.status_code == 200
     assert "History records shown:</strong> 1" in filter_html
-    assert "Hydra Host" in filter_html
-    assert "SkipCo" not in filter_html
-    assert '<option value="Applied" selected>' in filter_html
-    assert '<option value="Passed"' in filter_html
+    assert "SkipCo" in filter_html
+    assert "Hydra Host" not in filter_html
+    assert '<option value="Applied"' in filter_html
+    assert '<option value="Passed" selected>' in filter_html
     assert '<option value="Withdrawn"' in filter_html
     assert '<option value="Revisit"' in filter_html
-    assert '<option value="Pending / In Progress" selected>' in filter_html
-    assert '<option value="Interview Scheduled"' in filter_html
-    assert '<option value="Interview Completed"' in filter_html
-    assert '<option value="Waiting For Feedback"' in filter_html
-    assert '<option value="Offer"' in filter_html
-    assert '<option value="Dormant"' in filter_html
-    assert '<option value="Closed Before Application"' in filter_html
+    assert "history-outcome-filter" in filter_html
+    assert '<option value="Closed Before Application" selected>' in filter_html
     assert '<option value="Rejected - No Interview"' in filter_html
     assert '<option value="Rejected - After Interview"' in filter_html
     assert '<option value="Withdrawn"' in filter_html
     assert '<option value="N/A"' in filter_html
+    assert "Pending / In Progress" not in filter_html
+    assert "Interview Scheduled" not in filter_html
+    assert "Interview Completed" not in filter_html
+    assert "Waiting For Feedback" not in filter_html
+    assert "Offer" not in filter_html
+    assert "Dormant" not in filter_html
     assert '<option value="company" selected>' in filter_html
-    assert "Skipped / Avoid" not in filter_html
     assert "Clear search/filters/sort" in filter_html
 
 
@@ -1090,7 +1090,11 @@ def test_tracker_page_filters_by_status_and_outcome(tmp_path: Path) -> None:
     assert '<option value="Passed"' in html
     assert '<option value="Withdrawn"' in html
     assert '<option value="Revisit"' in html
-    assert '<option value="Rejected - No Interview"' in html
+    assert '<option value="N/A"' in html
+    assert '<option value="Rejected - No Interview"' not in html
+    assert '<option value="Rejected - After Interview"' not in html
+    assert '<option value="Closed Before Application"' not in html
+    assert "Alive Until Declared Dead" not in html
     assert "Clear search/field filters/sort" in html
 
 

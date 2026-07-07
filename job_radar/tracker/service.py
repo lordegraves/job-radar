@@ -7,35 +7,30 @@ from job_radar.tracker.storage import get_application, upsert_application
 
 
 HISTORY_DECISIONS = {
-    "passed",
-    "skipped",
-    "not interested",
-    "withdrawn",
-    "revisit",
-    "revisit if recruiter contacts me",
+    "Passed",
+    "Withdrawn",
+    "Revisit",
 }
 
 TRACKER_DECISIONS = {
-    "applied",
+    "Applied",
 }
 
-HISTORY_OUTCOMES = {
-    "closed before application",
-    "rejected no interview",
-    "rejected after interview",
-    "withdrawn",
-    "n a",
-    "na",
+APPLIED_HISTORY_OUTCOMES = {
+    "Closed Before Application",
+    "Rejected - No Interview",
+    "Rejected - After Interview",
+    "Withdrawn",
 }
 
 TRACKER_OUTCOMES = {
-    "pending in progress",
-    "interview scheduled",
-    "interview completed",
-    "waiting for feedback",
-    "offer",
-    "dormant",
-    "alive until declared dead",
+    "Pending / In Progress",
+    "Interview Scheduled",
+    "Interview Completed",
+    "Waiting For Feedback",
+    "Offer",
+    "Dormant",
+    "N/A",
 }
 
 
@@ -104,22 +99,21 @@ def track_application_from_posting_if_missing(
 
 
 def should_track_history_record(record: JobHistoryRecord) -> bool:
-    decision = _normalized_history_value(record.status)
-    outcome = _normalized_history_value(record.outcome_category)
+    decision = _canonical_history_value(record.status)
+    outcome = _canonical_history_value(record.outcome_category)
 
+    # Passed, Withdrawn, and Revisit are terminal archive decisions.
     if decision in HISTORY_DECISIONS:
         return False
 
-    if outcome in HISTORY_OUTCOMES:
+    if decision not in TRACKER_DECISIONS:
         return False
 
-    if decision in TRACKER_DECISIONS and outcome in TRACKER_OUTCOMES:
-        return True
+    # Applied jobs stay in Tracker unless the outcome is explicitly terminal.
+    if outcome in APPLIED_HISTORY_OUTCOMES:
+        return False
 
-    if decision in TRACKER_DECISIONS and not outcome:
-        return True
-
-    return False
+    return outcome in TRACKER_OUTCOMES
 
 
 def build_application_record_from_history_record(
@@ -239,22 +233,29 @@ def _parse_date(value: str | None) -> date | None:
 
 
 def _tracker_status_from_history_record(record: JobHistoryRecord) -> str:
-    decision = _normalized_history_value(record.status)
-    outcome = _normalized_history_value(record.outcome_category)
+    decision = _canonical_history_value(record.status)
+    outcome = _canonical_history_value(record.outcome_category)
 
-    if outcome == "dormant" or outcome == "alive until declared dead":
+    if outcome == "Dormant":
         return "dormant"
 
-    if outcome in {"interview scheduled", "interview completed", "waiting for feedback"}:
+    if outcome in {"Interview Scheduled", "Interview Completed", "Waiting For Feedback"}:
         return "interviewing"
 
-    if outcome == "offer":
+    if outcome == "Offer":
         return "offer"
 
-    if decision == "applied":
+    if decision == "Applied":
         return "applied"
 
     return "review_needed"
+
+
+def _canonical_history_value(value: str | None) -> str:
+    if value is None:
+        return ""
+
+    return " ".join(value.strip().split())
 
 
 def _normalized_history_value(value: str | None) -> str:
