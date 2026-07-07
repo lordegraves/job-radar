@@ -370,6 +370,7 @@ def test_reports_page_lists_existing_report_files(tmp_path: Path) -> None:
     assert "Primary scan outputs" in html
     assert "Other report files" in html
     assert "target-scan.html" in html
+    assert "/reports/view/target-scan.html" in html
     assert "Main scan report. Open this first." in html
     assert "target-scan.md" in html
     assert "Markdown version of the main scan report." in html
@@ -398,6 +399,49 @@ def test_reports_page_handles_missing_reports_directory(tmp_path: Path) -> None:
     assert "Report files shown:</strong> 0" in html
     assert "No primary scan outputs found yet. Run a scan first." in html
     assert "No other report files found." in html
+
+
+def test_report_view_embeds_report_inside_app_shell(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    report_file = reports_path / "target-scan.html"
+    report_file.write_text("<html><body>Target scan</body></html>", encoding="utf-8")
+
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports/view/target-scan.html")
+    html = response.get_data(as_text=True)
+
+    normalized_html = " ".join(html.split())
+
+    assert response.status_code == 200
+    assert "Report Viewer" in html
+    assert "Back to Reports" in html
+    assert "<code>target-scan.html</code>" in html
+    assert 'src="/reports/target-scan.html"' in html
+    assert '<a href="/reports">Back to Reports</a>' in normalized_html
+
+
+def test_report_view_rejects_non_report_file(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    (reports_path / "job_radar.sqlite3").write_text("private db", encoding="utf-8")
+
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports/view/job_radar.sqlite3")
+
+    assert response.status_code == 404
 
 
 def test_report_file_serves_allowed_report_file(tmp_path: Path) -> None:

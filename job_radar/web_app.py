@@ -249,19 +249,21 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             other_report_files=other_report_files,
         )
 
+    @app.get("/reports/view/<path:report_name>")
+    def report_view(report_name: str) -> str:
+        reports_path = Path(_get_reports_path(app)).resolve()
+        _validate_report_path(reports_path, report_name)
+
+        return render_template(
+            "report_view.html",
+            report_name=report_name,
+            report_url=url_for("report_file", report_name=report_name),
+        )
+
     @app.get("/reports/<path:report_name>")
     def report_file(report_name: str):
         reports_path = Path(_get_reports_path(app)).resolve()
-        report_path = (reports_path / report_name).resolve()
-
-        if reports_path not in report_path.parents:
-            abort(404)
-
-        if not report_path.is_file():
-            abort(404)
-
-        if report_path.suffix.lower() not in REPORT_FILE_EXTENSIONS:
-            abort(404)
+        _validate_report_path(reports_path, report_name)
 
         return send_from_directory(reports_path, report_name)
 
@@ -409,6 +411,21 @@ def _get_database_path(app: Flask) -> str:
 def _get_reports_path(app: Flask) -> str:
     settings = load_settings(app.config["JOB_RADAR_SETTINGS_PATH"])
     return settings["reports_path"]
+
+
+def _validate_report_path(reports_path: Path, report_name: str) -> Path:
+    report_path = (reports_path / report_name).resolve()
+
+    if reports_path not in report_path.parents:
+        abort(404)
+
+    if not report_path.is_file():
+        abort(404)
+
+    if report_path.suffix.lower() not in REPORT_FILE_EXTENSIONS:
+        abort(404)
+
+    return report_path
 
 
 def _get_report_file_views(reports_path: str) -> list[ReportFileView]:

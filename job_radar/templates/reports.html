@@ -73,7 +73,7 @@
         <tbody>
             {% for report in primary_report_files %}
             <tr>
-                <td class="primary-report"><a href="{{ url_for('report_file', report_name=report.name) }}">{{
+                <td class="primary-report"><a href="{{ url_for('report_view', report_name=report.name) }}">{{
                         report.name }}</a></td>
                 <td>{{ report.description }}</td>
                 <td class="date-cell">{{ report.modified_at }}</td>
@@ -103,7 +103,7 @@
         <tbody>
             {% for report in other_report_files %}
             <tr>
-                <td><a href="{{ url_for('report_file', report_name=report.name) }}">{{ report.name }}</a></td>
+                <td><a href="{{ url_for('report_view', report_name=report.name) }}">{{ report.name }}</a></td>
                 <td>{{ report.description }}</td>
                 <td class="date-cell">{{ report.modified_at }}</td>
                 <td>{{ report.size_bytes }} bytes</td>

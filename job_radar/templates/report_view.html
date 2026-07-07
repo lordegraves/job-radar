@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Job Radar Report Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            margin: 24px;
+        }
+
+        code {
+            background: #f6f8fa;
+            padding: 2px 4px;
+        }
+
+        iframe {
+            border: 1px solid #dddddd;
+            height: 80vh;
+            width: 100%;
+        }
+
+        .viewer-actions {
+            margin: 16px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Report Viewer</h1>
+
+    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
+            href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('scan') }}">Scan</a> | <a
+            href="{{ url_for('reports') }}">Reports</a></p>
+
+    <p><strong>Viewing:</strong> <code>{{ report_name }}</code></p>
+
+    <div class="viewer-actions">
+        <a href="{{ url_for('reports') }}">Back to Reports</a>
+    </div>
+
+    <iframe src="{{ report_url }}" title="Report file"></iframe>
+</body>
+
+</html>
