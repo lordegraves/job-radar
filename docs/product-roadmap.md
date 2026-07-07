@@ -59,9 +59,20 @@ The app still depends on developer-style configuration and manual file editing f
 Target shape:
 
 ```text
-Installable local desktop-style application + SQLite + guided setup + configurable job search profile
+Cross-platform local-first application + SQLite + guided setup + configurable job search profile
 ```
-The GUI may remain browser-based, become a packaged desktop shell, or move to another lightweight GUI approach. The final GUI approach is intentionally undecided until the current Flask workflows are complete.
+
+Job Radar should support three launch/deployment targets without becoming three separate products:
+
+```text
+Windows packaged app
+Linux packaged app
+Container/server mode
+```
+
+The current Flask GUI is the shared web/server interface. It should remain usable directly in browser/server mode and should also be able to sit behind a future desktop wrapper or launcher for normal click-to-open desktop use.
+
+The final product should hide developer launch commands from normal users. A user should eventually open Job Radar from a Start Menu shortcut, Linux application launcher, packaged executable, or container/service URL depending on how they choose to run it.
 
 The user should eventually be able to:
 
@@ -280,24 +291,30 @@ The GUI must not become a separate source of truth.
 
 Resume/profile GUI work must follow this same rule. Uploading or updating a resume through the GUI should feed the same profile/resume path and loader used by CLI scans.
 
-## Browserless GUI Direction
+## Cross-Platform App Direction
 
-A browserless GUI is possible, but it should not replace the Flask GUI yet.
+Job Radar should be built as one core application with multiple launch targets, not as separate desktop, web, and server products.
 
-Possible future paths:
+Supported target modes:
 
-- Keep Flask and launch it automatically in the user's browser
-- Wrap the local web UI in a desktop window
-- Build a native desktop GUI with PySide6/Qt
+- Windows packaged app
+- Linux packaged app
+- Container/server mode
+- Developer CLI mode
+
+The current Flask GUI remains the near-term shared interface because it works for both local browser use and server/container use. A future desktop launcher or wrapper can start the same local app and display it in a normal desktop window.
 
 Recommended path:
 
-1. Finish local Flask GUI workflows.
-2. Add a launcher that starts the local app and opens the UI automatically.
-3. Package the launcher for Windows.
-4. Evaluate desktop wrapper or native GUI later.
+1. Keep Flask as the shared web/server UI.
+2. Move workflow/business logic out of `web_app.py` into GUI-neutral services.
+3. Add a friendly GUI launch command.
+4. Add a local launcher that starts the app and opens the UI automatically.
+5. Add container/server deployment.
+6. Add desktop wrapper or packaged launcher for Windows and Linux.
+7. Package Windows and Linux distributions.
 
-This preserves current work and still moves toward a click-to-launch experience.
+This preserves current work while moving toward normal click-to-open desktop use and always-on server/container operation.
 
 ## Installer / Packaging Roadmap
 
@@ -370,13 +387,18 @@ Job Radar should be flexible enough to run in different user-controlled environm
 
 Supported target modes:
 
-- standalone local program on a user's PC
+- Windows packaged desktop/local app
+- Linux packaged desktop/local app
 - unattended service on a local machine or small server
+- containerized web/server mode
 - Kubernetes service in a user-managed cluster
+- developer CLI mode
 
 The app does not need to support more than one user at a time. Multiple profiles may be useful later, but multi-user SaaS behavior is not required.
 
-Deployment work should preserve one core service layer so CLI, GUI, scheduler, and packaged deployments do not become separate products.
+Deployment work must preserve one core service layer so CLI, Flask UI, desktop launcher/wrapper, scheduler, packaged deployments, and container/server deployments do not become separate products.
+
+Flask is the current UI/server interface, not the whole product. Business workflow logic should live in reusable services that can be called by CLI commands, web routes, future desktop launchers, and scheduled jobs.
 
 ## Scheduler Roadmap
 
@@ -459,12 +481,15 @@ The finish line can be reached in stages.
 
 ### Stage 4: Packaging and Deployment
 
-- Prepare the app to run as a standalone desktop/local program with its own GUI.
-- Add launcher.
+- Prepare the app to run as a standalone desktop/local program.
+- Keep the Flask GUI usable as the shared web/server interface.
+- Add a friendly GUI launch command.
+- Add a launcher that starts Job Radar and opens the UI automatically.
 - Store user data in OS-appropriate location.
 - Build Windows executable.
 - Build Windows installer.
 - Build Linux `.tar` / tarball distribution.
+- Add container/server deployment.
 - Support standalone PC operation.
 - Support service-style operation.
 - Support Kubernetes deployment.

@@ -109,7 +109,8 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/templates/tracker.html` | Application tracker list, workflow filters, search, sorting, workflow display, and edit links. | Keep |
 | `job_radar/templates/tracker_edit.html` | Application tracker edit form and quick actions. | Keep |
 | `job_radar/templates/tracker_add.html` | Manual application tracker add form. | Keep |
-| `job_radar/templates/history.html` | Job history/archive page for imported historical records, including history sorting controls. | Keep |
+| `job_radar/templates/history.html` | Job history/archive page for archived/history records, including search, filtering, sorting, and edit links. | Keep |
+| `job_radar/templates/history_edit.html` | Job history edit form, including save, delete, and move-back-to-tracker workflow. | Keep |
 | `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews. | Keep |
 | `job_radar/templates/report_view.html` | In-app report viewer shell for opening generated reports inside the GUI. | Keep |
 | `job_radar/templates/scan.html` | Scan page for manual command display and controlled local GUI scan execution. | Keep |
@@ -233,4 +234,14 @@ Tracker and History are now expected to be mutually exclusive. Active rows belon
 
 The tracker should not be mixed into report rendering or collector code.
 
-Future GUI growth should either keep `job_radar/web_app.py` small or split into a dedicated web package before it becomes hard to maintain.
+Future GUI growth should keep `job_radar/web_app.py` small by moving workflow/business logic into GUI-neutral service functions. If route/template volume keeps growing, split the Flask interface into a dedicated web package before it becomes hard to maintain.
+
+The long-term packaging direction is:
+
+```text
+Windows packaged app
+Linux packaged app
+container/server mode
+```
+
+These launch targets should share the same service layer instead of becoming separate products.

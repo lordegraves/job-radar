@@ -12,7 +12,15 @@ Job Radar does not apply to jobs automatically. It does not contact employers. I
 
 ## Product direction
 
-Job Radar started as a personal job discovery and application-tracking tool, but the project direction is expanding toward a configurable local-first application that can be adapted for other users.
+Job Radar started as a personal job discovery and application-tracking tool, but the project direction is expanding toward a configurable local-first cross-platform application that can be adapted for other users.
+
+The intended long-term targets are:
+
+- Windows packaged app
+- Linux packaged app
+- container/server mode for always-on use
+
+These targets should share the same core services and SQLite-backed data model instead of becoming separate products.
 
 The long-term goal is not only to support one hard-coded job search profile. The goal is to let a user configure:
 
@@ -264,13 +272,17 @@ The tracker GUI currently supports:
 - manual add
 - edit/update
 - quick actions
+- moving terminal tracker records to history
+- deleting tracker records
 - notes display
 
 The tracker is the long-term direction for active application workflow. The spreadsheet remains an import/history bridge and possible bulk-import path, but it is being retired as the normal application-tracking interface.
 
 Passed/reviewed jobs are imported into job history. They are not automatically added to the active application tracker.
 
-The next tracker workflow milestone is to move tracker records to history when the GUI changes an active application to a terminal outcome. The current cleanup fixed import partitioning and canonical display/storage values; it does not yet perform tracker-to-history movement from the GUI.
+The tracker/history GUI now supports moving active tracker records to archived history when the GUI changes an active application to a terminal outcome.
+
+The next tracker/history architecture milestone is to move the workflow actions out of `web_app.py` and into GUI-neutral service functions so the CLI, Flask UI, future desktop launcher/wrapper, scheduler, and container/server mode can reuse the same behavior.
 
 ## Current GUI behavior
 
@@ -295,8 +307,13 @@ Current GUI capabilities:
 - Status and outcome dropdowns
 - Tracker quick actions
 - Manual application add form
+- Tracker-to-history movement for terminal outcomes
+- Tracker row deletion
 - Notes display from stored tracker records
 - Job history/archive page for imported historical records
+- History edit page
+- History-to-tracker movement for reopened opportunities
+- History row deletion
 - History search
 - History decision filters
 - History outcome filters
@@ -318,6 +335,7 @@ Current GUI files include:
 - `job_radar/templates/tracker_edit.html`
 - `job_radar/templates/tracker_add.html`
 - `job_radar/templates/history.html`
+- `job_radar/templates/history_edit.html`
 - `job_radar/templates/reports.html`
 - `job_radar/templates/report_view.html`
 - `job_radar/templates/scan.html`
@@ -450,13 +468,18 @@ Completed so far:
 - Main application settings aligned to `config/settings.yaml`
 - Private AI session prompt ignored by Git
 - File map updated for tracker and GUI boundaries
+- Tracker terminal outcomes move active applications into history from the GUI
+- History rows can be edited from the GUI
+- History rows can move back to tracker from the GUI when reopened
+- Tracker rows can be deleted from the GUI
+- History rows can be deleted from the GUI
 
 ## Known limitations
 
 Current limitations:
 
 - Job Radar still imports spreadsheet history as a bridge for existing records and bulk intake, but GUI tracker/history search and filtering now cover the main review patterns previously handled with workbook filters.
-- Tracker records do not yet move to history automatically when the GUI sets a terminal outcome.
+- Tracker/history workflow actions currently work through the GUI, but too much of the route-level workflow orchestration still lives in `web_app.py`; this should be refactored into GUI-neutral services before adding larger GUI features.
 - Resume/profile updates are not yet available through the GUI; this should mirror the existing CLI resume/profile loading process instead of creating a separate GUI-only path.
 - Job Radar does not write enriched IDs or metadata back to the spreadsheet.
 - Report scoring is still rules-based and may need calibration from real outcomes.
@@ -470,7 +493,7 @@ Current limitations:
 
 Remaining high-priority milestones:
 
-1. Finish GUI-native tracker/history workflows so terminal tracker outcomes move active applications into archived history without duplication.
+1. Refactor tracker/history workflow actions out of `web_app.py` into GUI-neutral service functions.
 2. Add GUI resume/profile management that mirrors the existing CLI resume/profile process.
 3. Validate tracker/history sorting, searching, and filtering against real review patterns previously handled in the workbook.
 4. Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
