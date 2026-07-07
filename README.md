@@ -75,8 +75,8 @@ Complete-enough means a user can install Job Radar, configure their own companie
 - Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
 - Provides an application tracker CLI
 - Provides a local Flask GUI for tracker review/update workflows, imported history/archive review, existing report viewing, and controlled manual scan execution
-- Supports tracker sorting by workflow, applied date, company, role, status, and outcome
-- Supports history/archive sorting by date, company, role, decision/status, and outcome
+- Supports tracker search, workflow filters, raw status filters, raw outcome filters, and sorting by workflow, applied date, company, role, status, and outcome
+- Supports history/archive search, decision filters, outcome filters, and sorting by date, company, role, decision/status, and outcome
 
 ## Current live target sources
 
@@ -344,8 +344,11 @@ Current GUI summary:
 - Application tracker workflows
 - Tracker workflow filters
 - Tracker search
+- Tracker raw status and outcome filters
 - Tracker sorting by workflow, applied date, company, role, status, and outcome
 - Imported job history/archive review
+- History search
+- History decision and outcome filters
 - History sorting by date, company, role, decision/status, and outcome
 - Existing generated report and email-preview viewing
 - In-app report viewer
@@ -366,7 +369,7 @@ python -m pytest tests
 Expected current result:
 
 ```text
-428 passed
+430 passed
 ```
 
 ## Report structure

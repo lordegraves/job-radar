@@ -182,21 +182,36 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     @app.get("/history")
     def history() -> str:
         sort_name = request.args.get("sort", "event_desc")
+        search_query = request.args.get("q", "").strip()
+        decision_filter = request.args.get("decision_filter", "").strip()
+        outcome_filter = request.args.get("outcome_filter", "").strip()
 
         if sort_name not in HISTORY_SORT_OPTIONS:
             abort(404)
 
         database_path = _get_database_path(app)
-        records = _sort_history_records(
-            fetch_included_job_history_records(database_path),
+        all_records = fetch_included_job_history_records(database_path)
+        searched_records = _search_history_records(all_records, search_query)
+        filtered_records = _filter_history_records(
+            searched_records,
+            decision_filter,
+            outcome_filter,
+        )
+        sorted_records = _sort_history_records(
+            filtered_records,
             sort_name,
         )
 
         return render_template(
             "history.html",
             database_path=database_path,
-            records=records,
+            records=sorted_records,
             active_sort=sort_name,
+            search_query=search_query,
+            active_decision_filter=decision_filter,
+            active_outcome_filter=outcome_filter,
+            decision_filter_options=_get_history_decision_filter_options(all_records),
+            outcome_filter_options=_get_history_outcome_filter_options(all_records),
             sort_options=HISTORY_SORT_OPTIONS,
         )
 
@@ -295,6 +310,8 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         filter_name = request.args.get("filter", "all")
         sort_name = request.args.get("sort", "applied_desc")
         search_query = request.args.get("q", "").strip()
+        status_filter = request.args.get("status_filter", "").strip()
+        outcome_filter = request.args.get("outcome_filter", "").strip()
 
         if filter_name not in TRACKER_FILTERS:
             abort(404)
@@ -304,16 +321,21 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
         database_path = _get_database_path(app)
         applications = _get_tracker_application_views(database_path)
-        filtered_applications = _filter_tracker_applications(
+        workflow_filtered_applications = _filter_tracker_applications(
             applications,
             filter_name,
         )
         searched_applications = _search_tracker_applications(
-            filtered_applications,
+            workflow_filtered_applications,
             search_query,
         )
-        sorted_applications = _sort_tracker_applications(
+        field_filtered_applications = _filter_tracker_applications_by_fields(
             searched_applications,
+            status_filter,
+            outcome_filter,
+        )
+        sorted_applications = _sort_tracker_applications(
+            field_filtered_applications,
             sort_name,
         )
 
@@ -324,6 +346,10 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             active_filter=filter_name,
             active_sort=sort_name,
             search_query=search_query,
+            active_status_filter=status_filter,
+            active_outcome_filter=outcome_filter,
+            status_filter_options=_get_tracker_status_filter_options(applications),
+            outcome_filter_options=_get_tracker_outcome_filter_options(applications),
             filters=TRACKER_FILTERS,
             sort_options=TRACKER_SORT_OPTIONS,
         )
@@ -532,6 +558,58 @@ def _filter_tracker_applications(
     ]
 
 
+def _filter_tracker_applications_by_fields(
+    applications: list[TrackerApplicationView],
+    status_filter: str,
+    outcome_filter: str,
+) -> list[TrackerApplicationView]:
+    # Workflow filters answer "what needs attention"; raw field filters answer
+    # spreadsheet-style review questions such as "show rejected" or "show dormant".
+    filtered_applications = applications
+
+    if status_filter:
+        filtered_applications = [
+            application_view
+            for application_view in filtered_applications
+            if application_view.application.status == status_filter
+        ]
+
+    if outcome_filter:
+        filtered_applications = [
+            application_view
+            for application_view in filtered_applications
+            if (application_view.application.outcome or "") == outcome_filter
+        ]
+
+    return filtered_applications
+
+
+def _get_tracker_status_filter_options(
+    applications: list[TrackerApplicationView],
+) -> list[str]:
+    return sorted(
+        {
+            application_view.application.status
+            for application_view in applications
+            if application_view.application.status
+        },
+        key=str.lower,
+    )
+
+
+def _get_tracker_outcome_filter_options(
+    applications: list[TrackerApplicationView],
+) -> list[str]:
+    return sorted(
+        {
+            application_view.application.outcome
+            for application_view in applications
+            if application_view.application.outcome
+        },
+        key=str.lower,
+    )
+
+
 def _search_tracker_applications(
     applications: list[TrackerApplicationView],
     search_query: str,
@@ -645,6 +723,79 @@ def _get_applied_date_asc_sort_key(
         applied_date.toordinal() if applied_date else 0,
         application.company_name.lower(),
         application.role_title.lower(),
+    )
+
+
+def _search_history_records(
+    records: list,
+    search_query: str,
+) -> list:
+    if not search_query:
+        return records
+
+    normalized_query = search_query.lower()
+
+    return [
+        record
+        for record in records
+        if normalized_query in _get_history_record_search_text(record)
+    ]
+
+
+def _get_history_record_search_text(record) -> str:
+    # Search covers the human workbook-review fields so the archive can replace
+    # spreadsheet filtering for normal history lookup.
+    searchable_values = (
+        record.company,
+        record.role,
+        record.status,
+        record.outcome_category,
+        record.source,
+        record.lead_source,
+        record.recruiter_contact,
+        record.import_key,
+        record.notes,
+        record.history_type,
+    )
+
+    return " ".join(value or "" for value in searchable_values).lower()
+
+
+def _filter_history_records(
+    records: list,
+    decision_filter: str,
+    outcome_filter: str,
+) -> list:
+    filtered_records = records
+
+    if decision_filter:
+        filtered_records = [
+            record
+            for record in filtered_records
+            if (record.status or "") == decision_filter
+        ]
+
+    if outcome_filter:
+        filtered_records = [
+            record
+            for record in filtered_records
+            if (record.outcome_category or "") == outcome_filter
+        ]
+
+    return filtered_records
+
+
+def _get_history_decision_filter_options(records: list) -> list[str]:
+    return sorted(
+        {record.status for record in records if record.status},
+        key=str.lower,
+    )
+
+
+def _get_history_outcome_filter_options(records: list) -> list[str]:
+    return sorted(
+        {record.outcome_category for record in records if record.outcome_category},
+        key=str.lower,
     )
 
 

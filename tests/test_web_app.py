@@ -270,6 +270,98 @@ def test_history_page_sorts_by_company_status_role_outcome_and_date(tmp_path: Pa
     assert outcome_html.index("ZetaCo") < outcome_html.index("AlphaCo")
 
 
+def test_history_page_searches_and_filters_records(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="Hydra Host",
+            role="HPC Solutions Engineer",
+            source="Recruiter",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-07-01",
+            status="Applied",
+            outcome_category="Pending / In Progress",
+            recruiter_contact="Hydra Recruiter",
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="manual:hydra-host:hpc-solutions-engineer",
+            notes="Strong InfiniBand and Slurm fit.",
+        ),
+    )
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Reviewed",
+            company="SkipCo",
+            role="Desktop Support Engineer",
+            source="LinkedIn",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-06-01",
+            status="Passed",
+            outcome_category="Closed Before Application",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="manual:skipco:desktop-support-engineer",
+            notes="Wrong role family.",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    search_response = client.get("/history?q=infiniband")
+    search_html = search_response.get_data(as_text=True)
+
+    assert search_response.status_code == 200
+    assert "History records shown:</strong> 1" in search_html
+    assert "Hydra Host" in search_html
+    assert "SkipCo" not in search_html
+    assert 'value="infiniband"' in search_html
+
+    filter_response = client.get(
+        "/history",
+        query_string={
+            "decision_filter": "Applied",
+            "outcome_filter": "Pending / In Progress",
+            "sort": "company",
+        },
+    )
+    filter_html = filter_response.get_data(as_text=True)
+
+    assert filter_response.status_code == 200
+    assert "History records shown:</strong> 1" in filter_html
+    assert "Hydra Host" in filter_html
+    assert "SkipCo" not in filter_html
+    assert '<option value="Applied" selected>' in filter_html
+    assert '<option value="Pending / In Progress" selected>' in filter_html
+    assert '<option value="company" selected>' in filter_html
+    assert "Clear search/filters/sort" in filter_html
+
+
 def test_history_page_rejects_unknown_sort(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
@@ -891,23 +983,97 @@ def test_tracker_page_searches_tracker_text(tmp_path: Path) -> None:
     assert "PlatformCo" not in html
 
 
-def test_tracker_filter_links_preserve_search_and_sort(tmp_path: Path) -> None:
+def test_tracker_filter_links_preserve_search_sort_and_field_filters(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
 
     write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-hpc-12345678",
+            company_name="Hydra Host",
+            role_title="HPC Solutions Engineer",
+            status="applied",
+            outcome="Pending / In Progress",
+            notes="InfiniBand and Slurm fit.",
+        ),
+    )
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    response = client.get("/tracker?filter=needs_review&sort=applied_desc&q=hpc")
+    response = client.get(
+        "/tracker",
+        query_string={
+            "filter": "needs_review",
+            "sort": "company",
+            "q": "hpc",
+            "status_filter": "applied",
+            "outcome_filter": "Pending / In Progress",
+        },
+    )
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "/tracker?filter=all&amp;sort=applied_desc&amp;q=hpc" in html
-    assert "/tracker?filter=active&amp;sort=applied_desc&amp;q=hpc" in html
+    assert "/tracker?filter=all" in html
+    assert "/tracker?filter=active" in html
+    assert "status_filter=applied" in html
+    assert "outcome_filter=Pending+" in html
     assert 'value="hpc"' in html
-    assert '<option value="applied_desc" selected>' in html
+    assert '<option value="applied" selected>' in html
+    assert '<option value="Pending / In Progress" selected>' in html
+    assert '<option value="company" selected>' in html
+
+
+def test_tracker_page_filters_by_status_and_outcome(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-active-12345678",
+            company_name="ActiveCo",
+            role_title="Platform Engineer",
+            status="applied",
+            outcome="Pending / In Progress",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-rejected-12345678",
+            company_name="RejectedCo",
+            role_title="Linux Engineer",
+            status="rejected",
+            outcome="Rejected - No Interview",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get(
+        "/tracker",
+        query_string={
+            "status_filter": "rejected",
+            "outcome_filter": "Rejected - No Interview",
+        },
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Applications shown:</strong> 1" in html
+    assert "RejectedCo" in html
+    assert "ActiveCo" not in html
+    assert '<option value="rejected" selected>' in html
+    assert '<option value="Rejected - No Interview" selected>' in html
+    assert "Clear search/field filters/sort" in html
 
 
 def test_tracker_page_rejects_unknown_sort(tmp_path: Path) -> None:

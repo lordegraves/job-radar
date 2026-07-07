@@ -63,6 +63,32 @@
     <p><strong>History records shown:</strong> {{ records|length }}</p>
 
     <form method="get" action="{{ url_for('history') }}">
+        <label for="history-search"><strong>Search:</strong></label>
+        <input id="history-search" name="q" type="search" value="{{ search_query }}"
+            placeholder="Company, role, decision, outcome, source, recruiter, notes">
+
+        <label for="history-decision-filter"><strong>Decision:</strong></label>
+        <select id="history-decision-filter" name="decision_filter">
+            <option value="">All decisions</option>
+            {% for decision_filter_option in decision_filter_options %}
+            <option value="{{ decision_filter_option }}" {% if decision_filter_option==active_decision_filter
+                %}selected{% endif %}>
+                {{ decision_filter_option }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label for="history-outcome-filter"><strong>Outcome:</strong></label>
+        <select id="history-outcome-filter" name="outcome_filter">
+            <option value="">All outcomes</option>
+            {% for outcome_filter_option in outcome_filter_options %}
+            <option value="{{ outcome_filter_option }}" {% if outcome_filter_option==active_outcome_filter %}selected{%
+                endif %}>
+                {{ outcome_filter_option }}
+            </option>
+            {% endfor %}
+        </select>
+
         <label for="history-sort"><strong>Sort:</strong></label>
         <select id="history-sort" name="sort">
             {% for sort_name, sort_label in sort_options.items() %}
@@ -71,8 +97,8 @@
         </select>
 
         <button type="submit">Apply</button>
-        {% if active_sort != "event_desc" %}
-        <a href="{{ url_for('history') }}">Clear sort</a>
+        {% if search_query or active_decision_filter or active_outcome_filter or active_sort != "event_desc" %}
+        <a href="{{ url_for('history') }}">Clear search/filters/sort</a>
         {% endif %}
     </form>
 

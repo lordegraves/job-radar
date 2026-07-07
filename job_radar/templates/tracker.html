@@ -95,6 +95,28 @@
         <input id="tracker-search" name="q" type="search" value="{{ search_query }}"
             placeholder="Company, role, notes, status">
 
+        <label for="tracker-status-filter"><strong>Status:</strong></label>
+        <select id="tracker-status-filter" name="status_filter">
+            <option value="">All statuses</option>
+            {% for status_filter_option in status_filter_options %}
+            <option value="{{ status_filter_option }}" {% if status_filter_option==active_status_filter %}selected{%
+                endif %}>
+                {{ status_filter_option }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label for="tracker-outcome-filter"><strong>Outcome:</strong></label>
+        <select id="tracker-outcome-filter" name="outcome_filter">
+            <option value="">All outcomes</option>
+            {% for outcome_filter_option in outcome_filter_options %}
+            <option value="{{ outcome_filter_option }}" {% if outcome_filter_option==active_outcome_filter %}selected{%
+                endif %}>
+                {{ outcome_filter_option }}
+            </option>
+            {% endfor %}
+        </select>
+
         <label for="tracker-sort"><strong>Sort:</strong></label>
         <select id="tracker-sort" name="sort">
             {% for sort_name, sort_label in sort_options.items() %}
@@ -103,8 +125,8 @@
         </select>
 
         <button type="submit">Apply</button>
-        {% if search_query or active_sort != "workflow" %}
-        <a href="{{ url_for('tracker', filter=active_filter) }}">Clear search/sort</a>
+        {% if search_query or active_status_filter or active_outcome_filter or active_sort != "applied_desc" %}
+        <a href="{{ url_for('tracker', filter=active_filter) }}">Clear search/field filters/sort</a>
         {% endif %}
     </form>
 
@@ -113,7 +135,9 @@
         {% if filter_name == active_filter %}
         <span class="active-filter">{{ filter_name }}</span>
         {% else %}
-        <a href="{{ url_for('tracker', filter=filter_name, sort=active_sort, q=search_query) }}">{{ filter_name }}</a>
+        <a
+            href="{{ url_for('tracker', filter=filter_name, sort=active_sort, q=search_query, status_filter=active_status_filter, outcome_filter=active_outcome_filter) }}">{{
+            filter_name }}</a>
         {% endif %}
         {% endfor %}
     </nav>

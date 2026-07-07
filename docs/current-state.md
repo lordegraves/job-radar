@@ -235,6 +235,9 @@ The tracker GUI currently supports:
 
 - workflow filters
 - search
+- raw status filters
+- raw outcome filters
+- combined workflow/search/status/outcome/sort review
 - workflow-priority sorting
 - applied-date newest/oldest sorting
 - company sorting
@@ -260,6 +263,9 @@ Current GUI capabilities:
 - Application tracker list
 - Tracker workflow filters
 - Tracker search
+- Tracker raw status filters
+- Tracker raw outcome filters
+- Tracker combined workflow/search/status/outcome/sort review
 - Tracker workflow-priority sorting
 - Tracker applied-date newest/oldest sorting
 - Tracker company sorting
@@ -272,6 +278,10 @@ Current GUI capabilities:
 - Manual application add form
 - Notes display from stored tracker records
 - Job history/archive page for imported historical records
+- History search
+- History decision filters
+- History outcome filters
+- History combined search/filter/sort review
 - History date newest/oldest sorting
 - History company sorting
 - History role sorting
@@ -381,13 +391,20 @@ Completed so far:
 - Tracker action summary in reports
 - Tracker workflow summary in reports
 - Read-only tracker GUI
-- Tracker GUI filters
+- Tracker GUI workflow filters
 - Tracker GUI search
+- Tracker GUI raw status filters
+- Tracker GUI raw outcome filters
+- Tracker GUI combined workflow/search/status/outcome/sort review
 - Tracker GUI applied-date sorting
 - Tracker GUI company sorting
 - Tracker GUI role sorting
 - Tracker GUI status sorting
 - Tracker GUI outcome sorting
+- History GUI search
+- History GUI decision filters
+- History GUI outcome filters
+- History GUI combined search/filter/sort review
 - History GUI date sorting
 - History GUI company sorting
 - History GUI role sorting
@@ -410,7 +427,7 @@ Completed so far:
 
 Current limitations:
 
-- Job Radar still imports spreadsheet history as a bridge for existing records and bulk intake.
+- Job Radar still imports spreadsheet history as a bridge for existing records and bulk intake, but GUI tracker/history search and filtering now cover the main review patterns previously handled with workbook filters.
 - Job Radar does not write enriched IDs or metadata back to the spreadsheet.
 - Report scoring is still rules-based and may need calibration from real outcomes.
 - Source coverage is broad enough for current use, but individual collectors may still need maintenance if ATS pages change.
@@ -424,7 +441,7 @@ Current limitations:
 Remaining high-priority milestones:
 
 1. Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
-2. Add practical tracker/history search and filtering for company, role, status/decision, outcome, source, recruiter/contact, notes, and follow-up review.
+2. Validate tracker/history sorting, searching, and filtering against real review patterns previously handled in the workbook.
 3. Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
 4. Decide the final role of the spreadsheet bridge: one-time import, optional fallback, export-only, or fully retired.
 5. Build user-friendly configuration for desired companies, ATS sources, role preferences, compensation, location rules, exclusions, and email settings.
