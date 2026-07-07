@@ -55,6 +55,19 @@ TRACKER_SORT_OPTIONS = {
     "workflow": "Workflow priority",
     "applied_desc": "Applied date newest first",
     "applied_asc": "Applied date oldest first",
+    "company": "Company A-Z",
+    "role": "Role A-Z",
+    "status": "Status A-Z",
+    "outcome": "Outcome A-Z",
+}
+
+HISTORY_SORT_OPTIONS = {
+    "event_desc": "Date newest first",
+    "event_asc": "Date oldest first",
+    "company": "Company A-Z",
+    "role": "Role A-Z",
+    "status": "Decision A-Z",
+    "outcome": "Outcome A-Z",
 }
 
 TRACKER_WORKFLOW_PRIORITY = {
@@ -168,13 +181,23 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
     @app.get("/history")
     def history() -> str:
+        sort_name = request.args.get("sort", "event_desc")
+
+        if sort_name not in HISTORY_SORT_OPTIONS:
+            abort(404)
+
         database_path = _get_database_path(app)
-        records = fetch_included_job_history_records(database_path)
+        records = _sort_history_records(
+            fetch_included_job_history_records(database_path),
+            sort_name,
+        )
 
         return render_template(
             "history.html",
             database_path=database_path,
             records=records,
+            active_sort=sort_name,
+            sort_options=HISTORY_SORT_OPTIONS,
         )
 
     @app.get("/scan")
@@ -556,6 +579,44 @@ def _sort_tracker_applications(
     if sort_name == "applied_asc":
         return sorted(applications, key=_get_applied_date_asc_sort_key)
 
+    if sort_name == "company":
+        return sorted(
+            applications,
+            key=lambda row: (
+                row.application.company_name.lower(),
+                row.application.role_title.lower(),
+            ),
+        )
+
+    if sort_name == "role":
+        return sorted(
+            applications,
+            key=lambda row: (
+                row.application.role_title.lower(),
+                row.application.company_name.lower(),
+            ),
+        )
+
+    if sort_name == "status":
+        return sorted(
+            applications,
+            key=lambda row: (
+                row.application.status.lower(),
+                row.application.company_name.lower(),
+                row.application.role_title.lower(),
+            ),
+        )
+
+    if sort_name == "outcome":
+        return sorted(
+            applications,
+            key=lambda row: (
+                (row.application.outcome or "").lower(),
+                row.application.company_name.lower(),
+                row.application.role_title.lower(),
+            ),
+        )
+
     return sorted(applications, key=_get_tracker_application_sort_key)
 
 
@@ -584,6 +645,76 @@ def _get_applied_date_asc_sort_key(
         applied_date.toordinal() if applied_date else 0,
         application.company_name.lower(),
         application.role_title.lower(),
+    )
+
+
+def _sort_history_records(
+    records: list,
+    sort_name: str,
+) -> list:
+    if sort_name == "event_asc":
+        return sorted(records, key=_get_history_event_date_asc_sort_key)
+
+    if sort_name == "company":
+        return sorted(
+            records,
+            key=lambda record: (
+                record.company.lower(),
+                record.role.lower(),
+            ),
+        )
+
+    if sort_name == "role":
+        return sorted(
+            records,
+            key=lambda record: (
+                record.role.lower(),
+                record.company.lower(),
+            ),
+        )
+
+    if sort_name == "status":
+        return sorted(
+            records,
+            key=lambda record: (
+                (record.status or "").lower(),
+                record.company.lower(),
+                record.role.lower(),
+            ),
+        )
+
+    if sort_name == "outcome":
+        return sorted(
+            records,
+            key=lambda record: (
+                (record.outcome_category or "").lower(),
+                record.company.lower(),
+                record.role.lower(),
+            ),
+        )
+
+    return sorted(records, key=_get_history_event_date_desc_sort_key)
+
+
+def _get_history_event_date_desc_sort_key(record) -> tuple[bool, int, str, str]:
+    event_date = _parse_tracker_sort_date(record.event_date)
+
+    return (
+        event_date is None,
+        -(event_date.toordinal() if event_date else 0),
+        record.company.lower(),
+        record.role.lower(),
+    )
+
+
+def _get_history_event_date_asc_sort_key(record) -> tuple[bool, int, str, str]:
+    event_date = _parse_tracker_sort_date(record.event_date)
+
+    return (
+        event_date is None,
+        event_date.toordinal() if event_date else 0,
+        record.company.lower(),
+        record.role.lower(),
     )
 
 

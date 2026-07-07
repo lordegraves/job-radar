@@ -38,6 +38,11 @@
             white-space: nowrap;
         }
 
+        .outcome-cell {
+            min-width: 160px;
+            white-space: nowrap;
+        }
+
         .notes-cell {
             min-width: 320px;
             max-width: 520px;
@@ -56,6 +61,20 @@
             href="{{ url_for('reports') }}">Reports</a> | <a href="{{ url_for('scan') }}">Scan</a></p>
     <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
     <p><strong>History records shown:</strong> {{ records|length }}</p>
+
+    <form method="get" action="{{ url_for('history') }}">
+        <label for="history-sort"><strong>Sort:</strong></label>
+        <select id="history-sort" name="sort">
+            {% for sort_name, sort_label in sort_options.items() %}
+            <option value="{{ sort_name }}" {% if sort_name==active_sort %}selected{% endif %}>{{ sort_label }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Apply</button>
+        {% if active_sort != "event_desc" %}
+        <a href="{{ url_for('history') }}">Clear sort</a>
+        {% endif %}
+    </form>
 
     <p>
         This page shows imported job history records from the spreadsheet bridge.
@@ -88,7 +107,7 @@
                 <td>{{ record.role }}</td>
                 <td>{{ record.history_type }}</td>
                 <td>{{ record.status or "" }}</td>
-                <td>{{ record.outcome_category or "" }}</td>
+                <td class="outcome-cell">{{ record.outcome_category or "" }}</td>
                 <td>{{ record.source or record.lead_source or "" }}</td>
                 <td>{{ record.recruiter_contact or "" }}</td>
                 <td><code>{{ record.import_key }}</code></td>

@@ -50,6 +50,11 @@
             white-space: nowrap;
         }
 
+        .outcome-cell {
+            min-width: 160px;
+            white-space: nowrap;
+        }
+
         .notes-cell {
             min-width: 320px;
             max-width: 520px;
@@ -147,7 +152,7 @@
                 <td class="date-cell">{{ row.application.applied_on or "" }}</td>
                 <td class="date-cell">{{ row.application.last_activity_on or "" }}</td>
                 <td class="date-cell">{{ row.application.follow_up_on or "" }}</td>
-                <td>{{ row.application.outcome or "" }}</td>
+                <td class="outcome-cell">{{ row.application.outcome or "" }}</td>
                 <td><code>{{ row.application.job_radar_id }}</code></td>
                 <td>
                     {% if row.application.source_url %}

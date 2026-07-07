@@ -74,6 +74,7 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "2026-07-05" in html
     assert "2026-07-10" in html
     assert "Interviewing" in html
+    assert "outcome-cell" in html
     assert "jr-stack-av-12345678" in html
     assert "https://example.com/jobs/stack-av-sre" in html
     assert "Applied through company site." in html
@@ -161,11 +162,126 @@ def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
     assert "Reviewed" in html
     assert "Skipped" in html
     assert "Skipped / Avoid" in html
+    assert "outcome-cell" in html
     assert "LinkedIn" in html
     assert "Example Recruiter" in html
     assert "manual:archiveco:senior-linux-engineer" in html
     assert "Skipped because the role was onsite outside target area." in html
     assert "Viewing these records does not add them to the active application tracker." in html
+
+
+def test_history_page_sorts_by_company_status_role_outcome_and_date(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Reviewed",
+            company="ZetaCo",
+            role="Linux Engineer",
+            source="LinkedIn",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-06-01",
+            status="Passed",
+            outcome_category="N/A",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="manual:zetaco:linux-engineer",
+            notes=None,
+        ),
+    )
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="AlphaCo",
+            role="Platform Engineer",
+            source="Job Radar",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-07-01",
+            status="Withdrawn",
+            outcome_category="Withdrawn",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="manual:alphaco:platform-engineer",
+            notes=None,
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    default_response = client.get("/history")
+    default_html = default_response.get_data(as_text=True)
+    assert default_response.status_code == 200
+    assert '<option value="event_desc" selected>' in default_html
+    assert default_html.index("AlphaCo") < default_html.index("ZetaCo")
+
+    date_asc_response = client.get("/history?sort=event_asc")
+    date_asc_html = date_asc_response.get_data(as_text=True)
+    assert date_asc_response.status_code == 200
+    assert '<option value="event_asc" selected>' in date_asc_html
+    assert date_asc_html.index("ZetaCo") < date_asc_html.index("AlphaCo")
+
+    company_response = client.get("/history?sort=company")
+    company_html = company_response.get_data(as_text=True)
+    assert company_response.status_code == 200
+    assert '<option value="company" selected>' in company_html
+    assert company_html.index("AlphaCo") < company_html.index("ZetaCo")
+
+    role_response = client.get("/history?sort=role")
+    role_html = role_response.get_data(as_text=True)
+    assert role_response.status_code == 200
+    assert '<option value="role" selected>' in role_html
+    assert role_html.index("Linux Engineer") < role_html.index("Platform Engineer")
+
+    status_response = client.get("/history?sort=status")
+    status_html = status_response.get_data(as_text=True)
+    assert status_response.status_code == 200
+    assert '<option value="status" selected>' in status_html
+    assert status_html.index("ZetaCo") < status_html.index("AlphaCo")
+
+    outcome_response = client.get("/history?sort=outcome")
+    outcome_html = outcome_response.get_data(as_text=True)
+    assert outcome_response.status_code == 200
+    assert '<option value="outcome" selected>' in outcome_html
+    assert outcome_html.index("ZetaCo") < outcome_html.index("AlphaCo")
+
+
+def test_history_page_rejects_unknown_sort(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/history?sort=unknown")
+
+    assert response.status_code == 404
 
 
 def test_history_page_handles_empty_history(tmp_path: Path) -> None:
@@ -601,6 +717,62 @@ def test_tracker_page_defaults_to_applied_date_descending(tmp_path: Path) -> Non
     assert html.index("NewCo") < html.index("OldCo")
 
 
+def test_tracker_page_sorts_by_company_status_role_and_outcome(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-zeta-12345678",
+            company_name="ZetaCo",
+            role_title="Linux Engineer",
+            status="dormant",
+            outcome="Dormant",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-alpha-12345678",
+            company_name="AlphaCo",
+            role_title="Platform Engineer",
+            status="applied",
+            outcome="Pending / In Progress",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    company_response = client.get("/tracker?sort=company")
+    company_html = company_response.get_data(as_text=True)
+    assert company_response.status_code == 200
+    assert '<option value="company" selected>' in company_html
+    assert company_html.index("AlphaCo") < company_html.index("ZetaCo")
+
+    role_response = client.get("/tracker?sort=role")
+    role_html = role_response.get_data(as_text=True)
+    assert role_response.status_code == 200
+    assert '<option value="role" selected>' in role_html
+    assert role_html.index("Linux Engineer") < role_html.index("Platform Engineer")
+
+    status_response = client.get("/tracker?sort=status")
+    status_html = status_response.get_data(as_text=True)
+    assert status_response.status_code == 200
+    assert '<option value="status" selected>' in status_html
+    assert status_html.index("AlphaCo") < status_html.index("ZetaCo")
+
+    outcome_response = client.get("/tracker?sort=outcome")
+    outcome_html = outcome_response.get_data(as_text=True)
+    assert outcome_response.status_code == 200
+    assert '<option value="outcome" selected>' in outcome_html
+    assert outcome_html.index("ZetaCo") < outcome_html.index("AlphaCo")
+
+
 def test_tracker_page_sorts_by_applied_date_descending(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
@@ -736,6 +908,20 @@ def test_tracker_filter_links_preserve_search_and_sort(tmp_path: Path) -> None:
     assert "/tracker?filter=active&amp;sort=applied_desc&amp;q=hpc" in html
     assert 'value="hpc"' in html
     assert '<option value="applied_desc" selected>' in html
+
+
+def test_tracker_page_rejects_unknown_sort(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker?sort=unknown")
+
+    assert response.status_code == 404
 
 
 def test_tracker_page_filters_to_needs_action(tmp_path: Path) -> None:
