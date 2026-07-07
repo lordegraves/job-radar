@@ -88,7 +88,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/tracker/__init__.py` | Tracker package marker. | Keep |
 | `job_radar/tracker/tracker_models.py` | Application tracker data model. | Keep |
 | `job_radar/tracker/tracker_storage.py` | SQLite persistence for application tracker records. | Keep |
-| `job_radar/tracker/tracker_service.py` | Tracker workflow classification, history-to-tracker conversion, import partitioning, and tracker business rules. | Keep |
+| `job_radar/tracker/tracker_service.py` | Tracker workflow classification, tracker/history conversion, tracker/history update and delete workflow actions, import partitioning, and tracker business rules. | Keep |
 
 ## Reporting and Email
 
@@ -104,7 +104,7 @@ This document maps the current Job Radar repository so the project stays underst
 
 | File | Purpose | Keep / Review |
 |---|---|---|
-| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers. | Keep / watch growth |
+| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers. Route handlers should delegate tracker/history workflow actions to service-layer functions. | Keep / watch growth |
 | `job_radar/templates/index.html` | Web app landing page. | Keep |
 | `job_radar/templates/tracker.html` | Application tracker list, workflow filters, search, sorting, workflow display, and edit links. | Keep |
 | `job_radar/templates/tracker_edit.html` | Application tracker edit form and quick actions. | Keep |
@@ -221,12 +221,13 @@ job_radar/templates/
   tracker_edit.html
   tracker_add.html
   history.html
+  history_edit.html
   reports.html
   report_view.html
   scan.html
 ```
 
-The tracker owns application status/decision, follow-up timing, active outcomes, notes, workflow state, manual application tracking, and tracker-specific GUI review controls.
+The tracker service owns application status/decision, follow-up timing, active outcomes, notes, workflow state, manual application tracking rules, tracker-to-history movement, history-to-tracker movement, and tracker/history delete workflow actions.
 
 The spreadsheet/history importer owns external history intake, partitioning between active tracker records and archived history records, and historical context. The history GUI owns review/display controls for archived history. The spreadsheet should not be treated as the long-term source of truth for active application workflow.
 

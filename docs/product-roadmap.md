@@ -307,7 +307,7 @@ The current Flask GUI remains the near-term shared interface because it works fo
 Recommended path:
 
 1. Keep Flask as the shared web/server UI.
-2. Move workflow/business logic out of `web_app.py` into GUI-neutral services.
+2. Keep workflow/business logic in GUI-neutral services; tracker/history workflow actions already use service-layer functions.
 3. Add a friendly GUI launch command.
 4. Add a local launcher that starts the app and opens the UI automatically.
 5. Add container/server deployment.
@@ -454,7 +454,10 @@ The finish line can be reached in stages.
 
 - Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
 - Move tracker records to history when the GUI changes an active application to a terminal outcome.
+- Move reopened history records back to tracker from the GUI.
+- Support tracker/history row deletion from the GUI.
 - Preserve Tracker/History mutual exclusivity: active rows belong in Tracker, archived or terminal rows belong in History.
+- Keep tracker/history workflow actions in GUI-neutral services so Flask, CLI, desktop launcher/wrapper, scheduler, and container/server mode can reuse them.
 - Add practical tracker/history search and filtering.
 - Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
 - Decide the final role of the spreadsheet bridge.

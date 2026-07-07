@@ -1,3 +1,4 @@
+
 # Job Radar
 
 Job Radar is a local job discovery, triage, and application-tracking tool.
@@ -10,7 +11,15 @@ Job Radar does not contact employers. It does not scrape LinkedIn. It does not b
 
 ## Product direction
 
-Job Radar started as a personal job discovery and application-tracking tool. The long-term direction is a configurable local-first application that another user can install, configure, and use without editing source code.
+Job Radar started as a personal job discovery and application-tracking tool. The long-term direction is a configurable local-first cross-platform application that another user can install, configure, and use without editing source code.
+
+The intended long-term targets are:
+
+- Windows packaged app
+- Linux packaged app
+- container/server mode for always-on use
+
+These targets should share the same core services and SQLite-backed data model instead of becoming separate products.
 
 The finish line is defined in:
 
@@ -78,7 +87,11 @@ Complete-enough means a user can install Job Radar, configure their own companie
 - Provides an application tracker CLI
 - Provides a local Flask GUI for tracker review/update workflows, imported history/archive review, existing report viewing, and controlled manual scan execution
 - Supports tracker search, workflow filters, raw status filters, raw outcome filters, and sorting by workflow, applied date, company, role, status, and outcome
+- Supports tracker-to-history movement for terminal outcomes
+- Supports tracker row deletion from the GUI
 - Supports history/archive search, decision filters, outcome filters, and sorting by date, company, role, decision/status, and outcome
+- Supports history editing, history-to-tracker movement for reopened opportunities, and history row deletion from the GUI
+- Keeps tracker/history workflow actions in service-layer logic so future launch modes can reuse them
 
 ## Current live target sources
 
@@ -351,6 +364,9 @@ Current GUI summary:
 - Tracker raw status and outcome filters
 - Tracker sorting by workflow, applied date, company, role, status, and outcome
 - Imported job history/archive review
+- History editing
+- History-to-tracker movement for reopened opportunities
+- Tracker/history delete actions
 - History search
 - History decision and outcome filters
 - History sorting by date, company, role, decision/status, and outcome
@@ -373,7 +389,7 @@ python -m pytest tests
 Expected current result:
 
 ```text
-432 passed
+437 passed
 ```
 
 ## Report structure
