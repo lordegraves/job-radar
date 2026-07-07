@@ -1159,3 +1159,6 @@ def main() -> None:
 
     except (ConfigError, ScoringConfigError) as error:
         parser.exit(status=1, message=f"Config error: {error}\n")
+
+if __name__ == "__main__":
+    main()
