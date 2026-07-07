@@ -70,6 +70,27 @@ HISTORY_SORT_OPTIONS = {
     "outcome": "Outcome A-Z",
 }
 
+CANONICAL_DECISION_FILTER_OPTIONS = (
+    "Applied",
+    "Passed",
+    "Withdrawn",
+    "Revisit",
+)
+
+CANONICAL_OUTCOME_FILTER_OPTIONS = (
+    "Pending / In Progress",
+    "Interview Scheduled",
+    "Interview Completed",
+    "Waiting For Feedback",
+    "Offer",
+    "Dormant",
+    "Closed Before Application",
+    "Rejected - No Interview",
+    "Rejected - After Interview",
+    "Withdrawn",
+    "N/A",
+)
+
 TRACKER_WORKFLOW_PRIORITY = {
     "follow_up_due": 10,
     "needs_date_review": 20,
@@ -210,8 +231,8 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             search_query=search_query,
             active_decision_filter=decision_filter,
             active_outcome_filter=outcome_filter,
-            decision_filter_options=_get_history_decision_filter_options(all_records),
-            outcome_filter_options=_get_history_outcome_filter_options(all_records),
+            decision_filter_options=CANONICAL_DECISION_FILTER_OPTIONS,
+            outcome_filter_options=CANONICAL_OUTCOME_FILTER_OPTIONS,
             sort_options=HISTORY_SORT_OPTIONS,
         )
 
@@ -348,8 +369,8 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             search_query=search_query,
             active_status_filter=status_filter,
             active_outcome_filter=outcome_filter,
-            status_filter_options=_get_tracker_status_filter_options(applications),
-            outcome_filter_options=_get_tracker_outcome_filter_options(applications),
+            status_filter_options=CANONICAL_DECISION_FILTER_OPTIONS,
+            outcome_filter_options=CANONICAL_OUTCOME_FILTER_OPTIONS,
             filters=TRACKER_FILTERS,
             sort_options=TRACKER_SORT_OPTIONS,
         )
@@ -571,43 +592,17 @@ def _filter_tracker_applications_by_fields(
         filtered_applications = [
             application_view
             for application_view in filtered_applications
-            if application_view.application.status == status_filter
+            if _matches_filter_value(application_view.application.status, status_filter)
         ]
 
     if outcome_filter:
         filtered_applications = [
             application_view
             for application_view in filtered_applications
-            if (application_view.application.outcome or "") == outcome_filter
+            if _matches_filter_value(application_view.application.outcome, outcome_filter)
         ]
 
     return filtered_applications
-
-
-def _get_tracker_status_filter_options(
-    applications: list[TrackerApplicationView],
-) -> list[str]:
-    return sorted(
-        {
-            application_view.application.status
-            for application_view in applications
-            if application_view.application.status
-        },
-        key=str.lower,
-    )
-
-
-def _get_tracker_outcome_filter_options(
-    applications: list[TrackerApplicationView],
-) -> list[str]:
-    return sorted(
-        {
-            application_view.application.outcome
-            for application_view in applications
-            if application_view.application.outcome
-        },
-        key=str.lower,
-    )
 
 
 def _search_tracker_applications(
@@ -772,31 +767,24 @@ def _filter_history_records(
         filtered_records = [
             record
             for record in filtered_records
-            if (record.status or "") == decision_filter
+            if _matches_filter_value(record.status, decision_filter)
         ]
 
     if outcome_filter:
         filtered_records = [
             record
             for record in filtered_records
-            if (record.outcome_category or "") == outcome_filter
+            if _matches_filter_value(record.outcome_category, outcome_filter)
         ]
 
     return filtered_records
 
 
-def _get_history_decision_filter_options(records: list) -> list[str]:
-    return sorted(
-        {record.status for record in records if record.status},
-        key=str.lower,
-    )
+def _matches_filter_value(value: str | None, selected_filter: str) -> bool:
+    if value is None:
+        return False
 
-
-def _get_history_outcome_filter_options(records: list) -> list[str]:
-    return sorted(
-        {record.outcome_category for record in records if record.outcome_category},
-        key=str.lower,
-    )
+    return value.strip().casefold() == selected_filter.strip().casefold()
 
 
 def _sort_history_records(

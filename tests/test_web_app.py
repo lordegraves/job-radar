@@ -357,8 +357,22 @@ def test_history_page_searches_and_filters_records(tmp_path: Path) -> None:
     assert "Hydra Host" in filter_html
     assert "SkipCo" not in filter_html
     assert '<option value="Applied" selected>' in filter_html
+    assert '<option value="Passed"' in filter_html
+    assert '<option value="Withdrawn"' in filter_html
+    assert '<option value="Revisit"' in filter_html
     assert '<option value="Pending / In Progress" selected>' in filter_html
+    assert '<option value="Interview Scheduled"' in filter_html
+    assert '<option value="Interview Completed"' in filter_html
+    assert '<option value="Waiting For Feedback"' in filter_html
+    assert '<option value="Offer"' in filter_html
+    assert '<option value="Dormant"' in filter_html
+    assert '<option value="Closed Before Application"' in filter_html
+    assert '<option value="Rejected - No Interview"' in filter_html
+    assert '<option value="Rejected - After Interview"' in filter_html
+    assert '<option value="Withdrawn"' in filter_html
+    assert '<option value="N/A"' in filter_html
     assert '<option value="company" selected>' in filter_html
+    assert "Skipped / Avoid" not in filter_html
     assert "Clear search/filters/sort" in filter_html
 
 
@@ -1010,7 +1024,7 @@ def test_tracker_filter_links_preserve_search_sort_and_field_filters(tmp_path: P
             "filter": "needs_review",
             "sort": "company",
             "q": "hpc",
-            "status_filter": "applied",
+            "status_filter": "Applied",
             "outcome_filter": "Pending / In Progress",
         },
     )
@@ -1019,10 +1033,10 @@ def test_tracker_filter_links_preserve_search_sort_and_field_filters(tmp_path: P
     assert response.status_code == 200
     assert "/tracker?filter=all" in html
     assert "/tracker?filter=active" in html
-    assert "status_filter=applied" in html
+    assert "status_filter=Applied" in html
     assert "outcome_filter=Pending+" in html
     assert 'value="hpc"' in html
-    assert '<option value="applied" selected>' in html
+    assert '<option value="Applied" selected>' in html
     assert '<option value="Pending / In Progress" selected>' in html
     assert '<option value="company" selected>' in html
 
@@ -1061,18 +1075,22 @@ def test_tracker_page_filters_by_status_and_outcome(tmp_path: Path) -> None:
     response = client.get(
         "/tracker",
         query_string={
-            "status_filter": "rejected",
-            "outcome_filter": "Rejected - No Interview",
+            "status_filter": "Applied",
+            "outcome_filter": "Pending / In Progress",
         },
     )
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
     assert "Applications shown:</strong> 1" in html
-    assert "RejectedCo" in html
-    assert "ActiveCo" not in html
-    assert '<option value="rejected" selected>' in html
-    assert '<option value="Rejected - No Interview" selected>' in html
+    assert "ActiveCo" in html
+    assert "RejectedCo" not in html
+    assert '<option value="Applied" selected>' in html
+    assert '<option value="Pending / In Progress" selected>' in html
+    assert '<option value="Passed"' in html
+    assert '<option value="Withdrawn"' in html
+    assert '<option value="Revisit"' in html
+    assert '<option value="Rejected - No Interview"' in html
     assert "Clear search/field filters/sort" in html
 
 
