@@ -70,6 +70,8 @@ Complete-enough means a user can install Job Radar, configure their own companie
 - Treats Job Radar ID as the preferred history identity when present
 - Matches imported history by exact Job Radar ID before falling back to guarded company/title similarity
 - Imports tracker-worthy history rows into the application tracker
+- Partitions workbook import rows into either Tracker or History without cross-table duplication
+- Uses canonical tracker values such as `Applied` and `Dormant` in storage and GUI display
 - Shows Track Status in reports only when a scanned job already has an application tracker record
 - Routes fuzzy history matches to Track Status only when the title match is strong enough
 - Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
@@ -232,6 +234,8 @@ Fuzzy company/title matches are guarded so broad title overlap can provide histo
 
 Job Radar reads the workbook during manual history import. The workbook remains a transition bridge for existing history and bulk intake, but it is being retired as the normal application-tracking interface.
 
+Spreadsheet import partitions rows into either the active application tracker or archived job history. Tracker and History are mutually exclusive: active rows belong in Tracker, while terminal, passed, withdrawn, rejected, closed, or archived rows belong in History.
+
 Job Radar does not write IDs or enrichment data back to the workbook.
 
 Import history manually:
@@ -313,13 +317,13 @@ python -m job_radar tracker list --needs-review --settings config/settings.yaml
 Add a manual tracker record:
 
 ```powershell
-python -m job_radar tracker add --job-radar-id jr-manual-example --company "Example AI" --role "Senior Infrastructure Engineer" --status applied --settings config/settings.yaml
+python -m job_radar tracker add --job-radar-id jr-manual-example --company "Example AI" --role "Senior Infrastructure Engineer" --status Applied --outcome "Pending / In Progress" --settings config/settings.yaml
 ```
 
 Update a tracker record:
 
 ```powershell
-python -m job_radar tracker update jr-manual-example --status interviewing --follow-up-on 2026-07-10 --settings config/settings.yaml
+python -m job_radar tracker update jr-manual-example --status Applied --outcome "Interview Scheduled" --follow-up-on 2026-07-10 --settings config/settings.yaml
 ```
 
 ## Local web app
@@ -369,7 +373,7 @@ python -m pytest tests
 Expected current result:
 
 ```text
-430 passed
+432 passed
 ```
 
 ## Report structure

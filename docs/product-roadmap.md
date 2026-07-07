@@ -219,11 +219,13 @@ The current profile and resume flow is too user-specific.
 Long-term behavior:
 
 - Create a user profile from the GUI
-- Add or paste resume/profile text
+- Add, paste, upload, or replace resume/profile text from the GUI
 - Store resume/profile text in the user data directory
 - Allow the user to update it
 - Use it for match signals
 - Avoid committing private profile/resume data to Git
+- Mirror the existing CLI resume/profile process instead of creating a separate GUI-only resume system
+- Reuse the same resume loader/profile logic used by scans and CLI commands
 
 Future user-data layout should separate shipped app files from personal data.
 
@@ -275,6 +277,8 @@ Near-term GUI priorities:
 The GUI should keep using the same service layer as the CLI.
 
 The GUI must not become a separate source of truth.
+
+Resume/profile GUI work must follow this same rule. Uploading or updating a resume through the GUI should feed the same profile/resume path and loader used by CLI scans.
 
 ## Browserless GUI Direction
 
@@ -427,6 +431,8 @@ The finish line can be reached in stages.
 ### Stage 1: Finish Current GUI Workflow
 
 - Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
+- Move tracker records to history when the GUI changes an active application to a terminal outcome.
+- Preserve Tracker/History mutual exclusivity: active rows belong in Tracker, archived or terminal rows belong in History.
 - Add practical tracker/history search and filtering.
 - Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
 - Decide the final role of the spreadsheet bridge.
@@ -439,7 +445,7 @@ The finish line can be reached in stages.
 - Add preference setup page.
 - Add company management page.
 - Add salary/location setup.
-- Add resume/profile setup.
+- Add resume/profile setup that mirrors the existing CLI resume/profile process.
 - Move user-specific runtime config out of repo assumptions.
 
 ### Stage 3: Scheduling and Email

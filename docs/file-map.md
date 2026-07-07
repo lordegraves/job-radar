@@ -86,9 +86,9 @@ This document maps the current Job Radar repository so the project stays underst
 | File | Purpose | Keep / Review |
 |---|---|---|
 | `job_radar/tracker/__init__.py` | Tracker package marker. | Keep |
-| `job_radar/tracker/models.py` | Application tracker data model. | Keep |
-| `job_radar/tracker/storage.py` | SQLite persistence for application tracker records. | Keep |
-| `job_radar/tracker/service.py` | Tracker workflow classification, history-to-tracker conversion, and tracker business rules. | Keep |
+| `job_radar/tracker/tracker_models.py` | Application tracker data model. | Keep |
+| `job_radar/tracker/tracker_storage.py` | SQLite persistence for application tracker records. | Keep |
+| `job_radar/tracker/tracker_service.py` | Tracker workflow classification, history-to-tracker conversion, import partitioning, and tracker business rules. | Keep |
 
 ## Reporting and Email
 
@@ -204,9 +204,9 @@ Current tracker structure:
 ```text
 job_radar/tracker/
   __init__.py
-  models.py
-  storage.py
-  service.py
+  tracker_models.py
+  tracker_storage.py
+  tracker_service.py
 ```
 
 
@@ -225,9 +225,11 @@ job_radar/templates/
   scan.html
 ```
 
-The tracker owns application status, follow-up timing, outcomes, notes, workflow state, manual application tracking, and tracker-specific GUI review controls.
+The tracker owns application status/decision, follow-up timing, active outcomes, notes, workflow state, manual application tracking, and tracker-specific GUI review controls.
 
-The spreadsheet/history importer owns external history intake and historical context. The history GUI owns review/display controls for archived history. The spreadsheet should not be treated as the long-term source of truth for active application workflow.
+The spreadsheet/history importer owns external history intake, partitioning between active tracker records and archived history records, and historical context. The history GUI owns review/display controls for archived history. The spreadsheet should not be treated as the long-term source of truth for active application workflow.
+
+Tracker and History are now expected to be mutually exclusive. Active rows belong in the tracker. Terminal, passed, withdrawn, rejected, closed, or archived rows belong in history.
 
 The tracker should not be mixed into report rendering or collector code.
 

@@ -195,6 +195,21 @@ The workbook is treated as a human job log and import bridge, not the app's inte
 
 Job Radar reads the workbook during manual history import. The workbook remains a transition bridge for existing history and bulk intake, but it is being retired as the normal application-tracking interface.
 
+Spreadsheet import now partitions rows into either the active application tracker or the archived job history table. Tracker and History are mutually exclusive: a row should exist in one place or the other, not both.
+
+Current routing rules:
+
+- `Applied` with live outcomes goes to the tracker.
+- `Applied` with terminal outcomes goes to history.
+- `Passed`, `Withdrawn`, and `Revisit` go to history.
+- Terminal outcomes include `Closed Before Application`, `Rejected - No Interview`, `Rejected - After Interview`, and `Withdrawn`.
+
+The latest clean workbook rebuild read 75 rows and produced:
+
+- 45 tracker records
+- 30 history records
+- 0 cross-table company/role duplicates
+
 Job Radar does not write IDs or enrichment data back to the workbook.
 
 ## Current tracker behavior
@@ -207,13 +222,15 @@ The tracker stores:
 - Company
 - Role
 - Source URL
-- Status
+- Status / Decision
 - Follow-up date
 - Applied date
 - Last activity date
 - Outcome
 - Notes
 - Created/updated timestamps
+
+Tracker status/decision values now use the canonical workbook vocabulary. Active tracker records use `Applied` instead of internal lowercase values such as `applied`. Dormant state is represented by `Applied` plus the `Dormant` outcome.
 
 The tracker can classify application workflow state, including:
 
@@ -252,6 +269,8 @@ The tracker GUI currently supports:
 The tracker is the long-term direction for active application workflow. The spreadsheet remains an import/history bridge and possible bulk-import path, but it is being retired as the normal application-tracking interface.
 
 Passed/reviewed jobs are imported into job history. They are not automatically added to the active application tracker.
+
+The next tracker workflow milestone is to move tracker records to history when the GUI changes an active application to a terminal outcome. The current cleanup fixed import partitioning and canonical display/storage values; it does not yet perform tracker-to-history movement from the GUI.
 
 ## Current GUI behavior
 
@@ -302,6 +321,12 @@ Current GUI files include:
 - `job_radar/templates/reports.html`
 - `job_radar/templates/report_view.html`
 - `job_radar/templates/scan.html`
+
+Current tracker module files use the tracker naming convention:
+
+- `job_radar/tracker/tracker_models.py`
+- `job_radar/tracker/tracker_storage.py`
+- `job_radar/tracker/tracker_service.py`
 
 Current GUI command:
 
@@ -418,6 +443,9 @@ Completed so far:
 - Tracker GUI quick actions
 - Tracker GUI manual add form
 - Import classification by Decision and Outcome
+- Tracker/History mutual-exclusion import partitioning
+- Canonical tracker values in storage and GUI display
+- Tracker module file rename to `tracker_models.py`, `tracker_storage.py`, and `tracker_service.py`
 - CLI module entrypoint support
 - Main application settings aligned to `config/settings.yaml`
 - Private AI session prompt ignored by Git
@@ -428,6 +456,8 @@ Completed so far:
 Current limitations:
 
 - Job Radar still imports spreadsheet history as a bridge for existing records and bulk intake, but GUI tracker/history search and filtering now cover the main review patterns previously handled with workbook filters.
+- Tracker records do not yet move to history automatically when the GUI sets a terminal outcome.
+- Resume/profile updates are not yet available through the GUI; this should mirror the existing CLI resume/profile loading process instead of creating a separate GUI-only path.
 - Job Radar does not write enriched IDs or metadata back to the spreadsheet.
 - Report scoring is still rules-based and may need calibration from real outcomes.
 - Source coverage is broad enough for current use, but individual collectors may still need maintenance if ATS pages change.
@@ -440,21 +470,22 @@ Current limitations:
 
 Remaining high-priority milestones:
 
-1. Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
-2. Validate tracker/history sorting, searching, and filtering against real review patterns previously handled in the workbook.
-3. Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
-4. Decide the final role of the spreadsheet bridge: one-time import, optional fallback, export-only, or fully retired.
-5. Build user-friendly configuration for desired companies, ATS sources, role preferences, compensation, location rules, exclusions, and email settings.
-6. Add configuration screens or guided setup so users do not need to hand-edit YAML for basic use.
-7. Add email setup flow, including SMTP settings, sender/recipient configuration, safe test email, and clear failure messages.
-8. Prepare the app to run as a standalone desktop/local program with its own GUI.
-9. Package the app as a Windows installer with an `.exe` entry point and straightforward setup.
-10. Package the app for Linux installation using a `.tar` or tarball-based distribution.
-11. Support standalone PC operation, unattended service-style operation, and Kubernetes deployment.
-12. Add deployment-friendly configuration for persistent data, reports, logs, backups, retention, and safe upgrades.
-13. Keep the app single-user by default, while leaving room for multiple profiles if that becomes useful.
-14. Create a simple first-run experience that gets a new user from installation to first scan/report quickly.
-15. Write installation and operations documentation for Windows desktop, Linux standalone/server, and Kubernetes service modes.
+1. Finish GUI-native tracker/history workflows so terminal tracker outcomes move active applications into archived history without duplication.
+2. Add GUI resume/profile management that mirrors the existing CLI resume/profile process.
+3. Validate tracker/history sorting, searching, and filtering against real review patterns previously handled in the workbook.
+4. Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
+5. Decide the final role of the spreadsheet bridge: one-time import, optional fallback, export-only, or fully retired.
+6. Build user-friendly configuration for desired companies, ATS sources, role preferences, compensation, location rules, exclusions, and email settings.
+7. Add configuration screens or guided setup so users do not need to hand-edit YAML for basic use.
+8. Add email setup flow, including SMTP settings, sender/recipient configuration, safe test email, and clear failure messages.
+9. Prepare the app to run as a standalone desktop/local program with its own GUI.
+10. Package the app as a Windows installer with an `.exe` entry point and straightforward setup.
+11. Package the app for Linux installation using a `.tar` or tarball-based distribution.
+12. Support standalone PC operation, unattended service-style operation, and Kubernetes deployment.
+13. Add deployment-friendly configuration for persistent data, reports, logs, backups, retention, and safe upgrades.
+14. Keep the app single-user by default, while leaving room for multiple profiles if that becomes useful.
+15. Create a simple first-run experience that gets a new user from installation to first scan/report quickly.
+16. Write installation and operations documentation for Windows desktop, Linux standalone/server, and Kubernetes service modes.
 
 ## Not in scope right now
 
