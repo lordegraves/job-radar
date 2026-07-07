@@ -9,9 +9,9 @@ from flask import Flask, abort, redirect, render_template, request, send_from_di
 from job_radar.cli import handle_scan
 from job_radar.config import load_settings
 from job_radar.storage import fetch_included_job_history_records, initialize_database
-from job_radar.tracker.models import ApplicationRecord
-from job_radar.tracker.service import get_application_workflow_state
-from job_radar.tracker.storage import (
+from job_radar.tracker.tracker_models import ApplicationRecord
+from job_radar.tracker.tracker_service import get_application_workflow_state
+from job_radar.tracker.tracker_storage import (
     get_application,
     list_applications,
     update_application_status,
@@ -107,49 +107,57 @@ TRACKER_WORKFLOW_PRIORITY = {
     "closed": 90,
 }
 
+TRACKER_WORKFLOW_LABELS = {
+    "follow_up_due": "Follow-up Due",
+    "needs_date_review": "Needs Date Review",
+    "active_pipeline": "Active Pipeline",
+    "follow_up_scheduled": "Follow-up Scheduled",
+    "waiting": "Waiting",
+    "dormant": "Dormant",
+    "stale": "Stale",
+    "presumed_closed": "Presumed Closed",
+    "closed": "Closed",
+}
+
 TRACKER_STATUS_OPTIONS = (
-    "applied",
-    "follow_up_due",
-    "interviewing",
-    "offer",
-    "dormant",
-    "rejected",
-    "withdrawn",
+    "Applied",
 )
 
 TRACKER_OUTCOME_OPTIONS = (
-    "",
     "Pending / In Progress",
-    "Interviewing",
+    "Interview Scheduled",
+    "Interview Completed",
+    "Waiting For Feedback",
     "Offer",
     "Dormant",
-    "Rejected - No Interview",
-    "Rejected - After Interview",
-    "Withdrawn",
-    "Closed Before Application",
-    "Alive Until Declared Dead",
+    "N/A",
 )
 
 TRACKER_QUICK_ACTIONS = {
     "follow_up_due": {
         "label": "Mark follow-up due",
-        "status": "follow_up_due",
+        "status": "Applied",
         "outcome": "Pending / In Progress",
     },
     "dormant": {
         "label": "Mark dormant",
-        "status": "dormant",
+        "status": "Applied",
         "outcome": "Dormant",
     },
-    "rejected": {
-        "label": "Mark rejected",
-        "status": "rejected",
-        "outcome": "Rejected - No Interview",
+    "interview_scheduled": {
+        "label": "Mark interview scheduled",
+        "status": "Applied",
+        "outcome": "Interview Scheduled",
     },
-    "withdrawn": {
-        "label": "Mark withdrawn",
-        "status": "withdrawn",
-        "outcome": "Withdrawn",
+    "waiting_for_feedback": {
+        "label": "Mark waiting for feedback",
+        "status": "Applied",
+        "outcome": "Waiting For Feedback",
+    },
+    "offer": {
+        "label": "Mark offer",
+        "status": "Applied",
+        "outcome": "Offer",
     },
 }
 
@@ -184,6 +192,7 @@ SCAN_RUN_LOCK = Lock()
 class TrackerApplicationView:
     application: ApplicationRecord
     workflow_state: str
+    workflow_label: str
 
 
 @dataclass(frozen=True)
@@ -546,13 +555,22 @@ def _get_report_file_views(reports_path: str) -> list[ReportFileView]:
 
 
 def _get_tracker_application_views(database_path: str) -> list[TrackerApplicationView]:
-    return [
-        TrackerApplicationView(
-            application=application,
-            workflow_state=get_application_workflow_state(application),
+    application_views: list[TrackerApplicationView] = []
+
+    for application in list_applications(database_path):
+        workflow_state = get_application_workflow_state(application)
+        application_views.append(
+            TrackerApplicationView(
+                application=application,
+                workflow_state=workflow_state,
+                workflow_label=TRACKER_WORKFLOW_LABELS.get(
+                    workflow_state,
+                    workflow_state,
+                ),
+            )
         )
-        for application in list_applications(database_path)
-    ]
+
+    return application_views
 
 
 def _get_tracker_application_sort_key(

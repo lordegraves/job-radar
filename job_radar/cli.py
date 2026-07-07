@@ -48,13 +48,13 @@ from job_radar.storage import (
     upsert_job_history_record,
     upsert_job_posting,
 )
-from job_radar.tracker.models import ApplicationRecord
-from job_radar.tracker.service import (
+from job_radar.tracker.tracker_models import ApplicationRecord
+from job_radar.tracker.tracker_service import (
     build_application_record_from_history_record,
     get_application_workflow_state,
     should_track_history_record,
 )
-from job_radar.tracker.storage import (
+from job_radar.tracker.tracker_storage import (
     delete_application,
     get_application,
     list_applications,

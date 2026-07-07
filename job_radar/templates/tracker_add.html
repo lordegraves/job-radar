@@ -55,7 +55,7 @@
         <label for="status">Status</label>
         <select id="status" name="status" required>
             {% for status_option in status_options %}
-            <option value="{{ status_option }}" {% if status_option=="applied" %}selected{% endif %}>
+            <option value="{{ status_option }}" {% if status_option=="Applied" %}selected{% endif %}>
                 {{ status_option }}
             </option>
             {% endfor %}

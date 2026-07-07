@@ -4,8 +4,8 @@ import job_radar.web_app as web_app_module
 
 from job_radar.job_history import JobHistoryRecord
 from job_radar.storage import initialize_database, upsert_job_history_record
-from job_radar.tracker.models import ApplicationRecord
-from job_radar.tracker.storage import get_application, upsert_application
+from job_radar.tracker.tracker_models import ApplicationRecord
+from job_radar.tracker.tracker_storage import get_application, upsert_application
 from job_radar.web_app import create_app
 
 
@@ -68,12 +68,12 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "Applications shown:</strong> 1" in html
     assert "Stack AV" in html
     assert "Senior Site Reliability Engineer" in html
-    assert "applied" in html
-    assert "follow_up_scheduled" in html
+    assert "Applied" in html
+    assert "Follow-up Scheduled" in html
     assert "2026-07-03" in html
     assert "2026-07-05" in html
     assert "2026-07-10" in html
-    assert "Interviewing" in html
+    assert "Interview Scheduled" in html
     assert "outcome-cell" in html
     assert "jr-stack-av-12345678" in html
     assert "https://example.com/jobs/stack-av-sre" in html
@@ -1204,11 +1204,11 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
             company_name="Stack AV",
             role_title="Senior Site Reliability Engineer",
             source_url="https://example.com/jobs/stack-av-sre",
-            status="applied",
+            status="Applied",
             follow_up_on="2026-07-10",
             applied_on="2026-07-03",
             last_activity_on="2026-07-05",
-            outcome="Interviewing",
+            outcome="Interview Scheduled",
             notes="Applied through company site.",
         ),
     )
@@ -1224,11 +1224,11 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert "Stack AV" in html
     assert "Senior Site Reliability Engineer" in html
     assert 'name="return_filter" value="needs_action"' in html
-    assert '<option value="applied" selected>' in html
+    assert '<option value="Applied" selected>' in html
     assert 'name="follow_up_on" value="2026-07-10"' in html
     assert 'name="applied_on" value="2026-07-03"' in html
     assert 'name="last_activity_on" value="2026-07-05"' in html
-    assert '<option value="Interviewing" selected>' in html
+    assert '<option value="Interview Scheduled" selected>' in html
     assert "Applied through company site." in html
 
 
@@ -1284,7 +1284,7 @@ def test_tracker_edit_page_updates_application_and_redirects(
     assert application.notes == "Rejected by email."
 
 
-def test_tracker_edit_quick_action_marks_application_rejected(
+def test_tracker_edit_quick_action_marks_application_dormant(
     tmp_path: Path,
 ) -> None:
     settings_file = tmp_path / "settings.yaml"
@@ -1298,7 +1298,7 @@ def test_tracker_edit_quick_action_marks_application_rejected(
             job_radar_id="jr-stack-av-12345678",
             company_name="Stack AV",
             role_title="Senior Site Reliability Engineer",
-            status="applied",
+            status="Applied",
             outcome="Pending / In Progress",
             notes="Applied through company site.",
         ),
@@ -1311,13 +1311,13 @@ def test_tracker_edit_quick_action_marks_application_rejected(
         "/tracker/jr-stack-av-12345678/edit",
         data={
             "return_filter": "needs_review",
-            "status": "applied",
+            "status": "Applied",
             "follow_up_on": "",
             "applied_on": "",
             "last_activity_on": "2026-07-12",
             "outcome": "Pending / In Progress",
-            "notes": "Rejected by email.",
-            "quick_action": "rejected",
+            "notes": "Marked dormant.",
+            "quick_action": "dormant",
         },
     )
 
@@ -1326,10 +1326,10 @@ def test_tracker_edit_quick_action_marks_application_rejected(
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/tracker?filter=needs_review")
     assert application is not None
-    assert application.status == "rejected"
+    assert application.status == "Applied"
     assert application.last_activity_on == "2026-07-12"
-    assert application.outcome == "Rejected - No Interview"
-    assert application.notes == "Rejected by email."
+    assert application.outcome == "Dormant"
+    assert application.notes == "Marked dormant."
 
 
 def test_tracker_page_links_to_add_application(tmp_path: Path) -> None:
@@ -1366,7 +1366,7 @@ def test_tracker_add_page_shows_application_form(tmp_path: Path) -> None:
     assert 'name="company_name"' in html
     assert 'name="role_title"' in html
     assert 'name="source_url"' in html
-    assert '<option value="applied" selected>' in html
+    assert '<option value="Applied" selected>' in html
     assert '<option value="Pending / In Progress" selected>' in html
     assert 'name="follow_up_on"' in html
     assert 'name="applied_on"' in html

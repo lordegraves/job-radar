@@ -2,8 +2,8 @@ from datetime import date
 
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
-from job_radar.tracker.models import ApplicationRecord
-from job_radar.tracker.storage import get_application, upsert_application
+from job_radar.tracker.tracker_models import ApplicationRecord
+from job_radar.tracker.tracker_storage import get_application, upsert_application
 
 
 HISTORY_DECISIONS = {
@@ -166,15 +166,25 @@ def get_application_workflow_state(
 ) -> str:
     reference_date = today or date.today()
     normalized_status = _normalized_history_value(application.status)
+    outcome = _canonical_history_value(application.outcome)
 
     if normalized_status in {"rejected", "withdrawn"}:
+        return "closed"
+
+    if outcome in APPLIED_HISTORY_OUTCOMES:
         return "closed"
 
     if normalized_status in {"interviewing", "offer"}:
         return "active_pipeline"
 
+    if outcome in {"Interview Scheduled", "Interview Completed", "Waiting For Feedback", "Offer"}:
+        return "active_pipeline"
+
     if normalized_status == "follow_up_due":
         return "follow_up_due"
+
+    if normalized_status == "dormant" or outcome == "Dormant":
+        return "dormant"
 
     follow_up_date = _parse_date(application.follow_up_on)
 
@@ -193,9 +203,6 @@ def get_application_workflow_state(
         if application.last_activity_on or application.applied_on:
             return "needs_date_review"
 
-        if normalized_status == "dormant":
-            return "dormant"
-
         return "waiting"
 
     if activity_date > reference_date:
@@ -210,9 +217,6 @@ def get_application_workflow_state(
         return "stale"
 
     if days_since_activity > 30:
-        return "dormant"
-
-    if normalized_status == "dormant":
         return "dormant"
 
     return "waiting"
@@ -234,21 +238,11 @@ def _parse_date(value: str | None) -> date | None:
 
 def _tracker_status_from_history_record(record: JobHistoryRecord) -> str:
     decision = _canonical_history_value(record.status)
-    outcome = _canonical_history_value(record.outcome_category)
-
-    if outcome == "Dormant":
-        return "dormant"
-
-    if outcome in {"Interview Scheduled", "Interview Completed", "Waiting For Feedback"}:
-        return "interviewing"
-
-    if outcome == "Offer":
-        return "offer"
 
     if decision == "Applied":
-        return "applied"
+        return "Applied"
 
-    return "review_needed"
+    return decision or "Applied"
 
 
 def _canonical_history_value(value: str | None) -> str:

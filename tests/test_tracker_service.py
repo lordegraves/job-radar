@@ -3,8 +3,8 @@ from pathlib import Path
 
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
-from job_radar.tracker.models import ApplicationRecord
-from job_radar.tracker.service import (
+from job_radar.tracker.tracker_models import ApplicationRecord
+from job_radar.tracker.tracker_service import (
     build_application_record_from_history_record,
     build_application_record_from_posting,
     get_application_workflow_state,
@@ -12,7 +12,7 @@ from job_radar.tracker.service import (
     track_application_from_posting,
     track_application_from_posting_if_missing,
 )
-from job_radar.tracker.storage import get_application, initialize_tracker_tables
+from job_radar.tracker.tracker_storage import get_application, initialize_tracker_tables
 
 
 def make_posting() -> JobPosting:
@@ -294,7 +294,7 @@ def test_build_application_record_from_history_record_uses_job_radar_id() -> Non
     assert application.company_name == "Example AI"
     assert application.role_title == "Senior Site Reliability Engineer"
     assert application.source_url == "https://example.com/jobs/senior-sre"
-    assert application.status == "applied"
+    assert application.status == "Applied"
     assert application.outcome == "Pending / In Progress"
     assert application.notes == "Imported from spreadsheet."
     assert application.applied_on == "2026-07-03"
@@ -337,7 +337,8 @@ def test_build_application_record_from_history_record_maps_interview_outcome() -
 
     application = build_application_record_from_history_record(record)
 
-    assert application.status == "interviewing"
+    assert application.status == "Applied"
+    assert application.outcome == "Interview Scheduled"
 
 
 def test_build_application_record_from_history_record_maps_offer_outcome() -> None:
@@ -348,7 +349,8 @@ def test_build_application_record_from_history_record_maps_offer_outcome() -> No
 
     application = build_application_record_from_history_record(record)
 
-    assert application.status == "offer"
+    assert application.status == "Applied"
+    assert application.outcome == "Offer"
 
 
 def test_build_application_record_from_history_record_maps_dormant_outcome() -> None:
@@ -359,7 +361,8 @@ def test_build_application_record_from_history_record_maps_dormant_outcome() -> 
 
     application = build_application_record_from_history_record(record)
 
-    assert application.status == "dormant"
+    assert application.status == "Applied"
+    assert application.outcome == "Dormant"
 
 
 def test_build_application_record_from_history_record_falls_back_to_import_key() -> None:
@@ -374,7 +377,7 @@ def test_build_application_record_from_history_record_falls_back_to_import_key()
     application = build_application_record_from_history_record(record)
 
     assert application.job_radar_id == "posting-url:https://example.com/manual-lead"
-    assert application.status == "applied"
+    assert application.status == "Applied"
     assert application.source_url == "https://example.com/manual-lead"
 
 
@@ -438,7 +441,8 @@ def test_get_application_workflow_state_marks_invalid_follow_up_for_review() -> 
 def test_get_application_workflow_state_marks_active_pipeline() -> None:
     application = build_application_record_from_posting(
         make_posting(),
-        status="interviewing",
+        status="Applied",
+        outcome="Interview Scheduled",
     )
 
     assert (
@@ -495,10 +499,11 @@ def test_get_application_workflow_state_marks_waiting_applications() -> None:
     )
 
 
-def test_get_application_workflow_state_marks_dormant_status_as_dormant() -> None:
+def test_get_application_workflow_state_marks_dormant_outcome_as_dormant() -> None:
     application = build_application_record_from_posting(
         make_posting(),
-        status="dormant",
+        status="Applied",
+        outcome="Dormant",
     )
 
     assert (

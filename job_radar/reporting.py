@@ -6,8 +6,8 @@ from pathlib import Path
 from job_radar.compensation import CompensationResult
 from job_radar.models import JobPosting
 from job_radar.resume_match import ResumeMatchResult
-from job_radar.tracker.models import ApplicationRecord
-from job_radar.tracker.service import get_application_workflow_state
+from job_radar.tracker.tracker_models import ApplicationRecord
+from job_radar.tracker.tracker_service import get_application_workflow_state
 from job_radar.recommendation_constants import (
     ACTION_HOLD,
     ACTION_PASS,

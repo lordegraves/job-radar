@@ -23,8 +23,8 @@ from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.email_sender import EmailSendResult
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
-from job_radar.tracker.models import ApplicationRecord
-from job_radar.tracker.storage import upsert_application
+from job_radar.tracker.tracker_models import ApplicationRecord
+from job_radar.tracker.tracker_storage import upsert_application
 
 
 def count_job_posting_rows(database_file: Path) -> int:
@@ -402,7 +402,7 @@ def test_import_history_records_partitions_tracker_and_history_without_duplicati
         ("Passed", "N/A"),
     ]
     assert fetch_application_tracker_status_outcomes(database_file) == [
-        ("applied", "Pending / In Progress"),
+        ("Applied", "Pending / In Progress"),
     ]
 
 

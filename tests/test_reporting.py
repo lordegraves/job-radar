@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from job_radar.models import JobPosting
-from job_radar.tracker.models import ApplicationRecord
+from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.reporting import (
     ScanError,
     ScanReport,

@@ -2,8 +2,8 @@ import sqlite3
 from pathlib import Path
 
 from job_radar.storage import initialize_database
-from job_radar.tracker.models import ApplicationRecord
-from job_radar.tracker.storage import (
+from job_radar.tracker.tracker_models import ApplicationRecord
+from job_radar.tracker.tracker_storage import (
     get_application,
     initialize_tracker_tables,
     list_applications,
