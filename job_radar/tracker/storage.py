@@ -140,6 +140,24 @@ def upsert_application(
         return "updated"
 
 
+def delete_application(
+    database_path: str | Path,
+    job_radar_id: str,
+) -> bool:
+    db_path = Path(database_path)
+
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.execute(
+            """
+            DELETE FROM application_tracker
+            WHERE job_radar_id = ?
+            """,
+            (job_radar_id,),
+        )
+
+        return cursor.rowcount > 0
+
+
 def update_application_status(
     database_path: str | Path,
     *,

@@ -177,7 +177,7 @@ def write_cli_simplified_history_workbook(workbook_path: Path) -> None:
             "https://example.com/jobs/123",
             "Job Radar",
             "Applied",
-            None,
+            "Pending / In Progress",
             "Jane Recruiter",
             "Applied from simplified Job Log.",
             "Yes",
@@ -191,8 +191,8 @@ def write_cli_simplified_history_workbook(workbook_path: Path) -> None:
             "Principal SRE",
             "https://example.com/manual-lead",
             "LinkedIn",
-            "Interested",
-            None,
+            "Passed",
+            "N/A",
             None,
             "Manual lead from LinkedIn.",
             "Yes",
@@ -237,7 +237,7 @@ retention:
 
     assert database_file.exists()
     assert count_job_history_rows(database_file) == 2
-    assert count_application_tracker_rows(database_file) == 1
+    assert count_application_tracker_rows(database_file) == 0
 
     assert "Application history import complete" in output
     assert f"Workbook: {workbook_file}" in output
@@ -246,9 +246,9 @@ retention:
     assert "Rows imported: 2" in output
     assert "Rows updated: 0" in output
     assert "Rows skipped: 0" in output
-    assert "Tracker rows imported: 1" in output
+    assert "Tracker rows imported: 0" in output
     assert "Tracker rows updated: 0" in output
-    assert "Tracker rows skipped: 1" in output
+    assert "Tracker rows skipped: 2" in output
 
 
 def test_handle_import_history_imports_simplified_workbook_rows(
@@ -286,28 +286,28 @@ retention:
     output = capsys.readouterr().out
 
     assert database_file.exists()
-    assert count_job_history_rows(database_file) == 2
-    assert count_application_tracker_rows(database_file) == 2
+    assert count_job_history_rows(database_file) == 1
+    assert count_application_tracker_rows(database_file) == 1
 
     assert fetch_job_history_status(
         database_file,
         "job-radar-id:jr-example-ai-001",
-    ) == "Applied"
+    ) is None
     assert fetch_job_history_status(
         database_file,
         "posting-url:https://example.com/manual-lead",
-    ) == "Interested"
+    ) == "Passed"
 
     assert "Application history import complete" in output
     assert f"Workbook: {workbook_file}" in output
     assert f"Database: {database_file}" in output
     assert "Rows read: 2" in output
-    assert "Rows imported: 2" in output
+    assert "Rows imported: 1" in output
     assert "Rows updated: 0" in output
     assert "Rows skipped: 0" in output
-    assert "Tracker rows imported: 2" in output
+    assert "Tracker rows imported: 1" in output
     assert "Tracker rows updated: 0" in output
-    assert "Tracker rows skipped: 0" in output
+    assert "Tracker rows skipped: 1" in output
 
 
 def test_handle_scan_collects_stores_scores_and_reports_jobs(
@@ -701,7 +701,7 @@ top_matches:
     report_text = report_file.read_text(encoding="utf-8")
 
     assert count_job_history_rows(database_file) == 2
-    assert count_application_tracker_rows(database_file) == 1
+    assert count_application_tracker_rows(database_file) == 0
     assert fetch_job_history_status(
         database_file,
         "pipeline:example-ai:senior-infrastructure-engineer",
@@ -713,9 +713,9 @@ top_matches:
     assert "Rows imported: 2" in output
     assert "Rows updated: 0" in output
     assert "Rows skipped: 0" in output
-    assert "Tracker rows imported: 1" in output
+    assert "Tracker rows imported: 0" in output
     assert "Tracker rows updated: 0" in output
-    assert "Tracker rows skipped: 1" in output
+    assert "Tracker rows skipped: 2" in output
 
     assert "- Job history context:" in report_text
     assert "  - Imported history: 2 records (1 pipeline, 1 reviewed)" in report_text

@@ -6,6 +6,39 @@ from job_radar.tracker.models import ApplicationRecord
 from job_radar.tracker.storage import get_application, upsert_application
 
 
+HISTORY_DECISIONS = {
+    "passed",
+    "skipped",
+    "not interested",
+    "withdrawn",
+    "revisit",
+    "revisit if recruiter contacts me",
+}
+
+TRACKER_DECISIONS = {
+    "applied",
+}
+
+HISTORY_OUTCOMES = {
+    "closed before application",
+    "rejected no interview",
+    "rejected after interview",
+    "withdrawn",
+    "n a",
+    "na",
+}
+
+TRACKER_OUTCOMES = {
+    "pending in progress",
+    "interview scheduled",
+    "interview completed",
+    "waiting for feedback",
+    "offer",
+    "dormant",
+    "alive until declared dead",
+}
+
+
 def build_application_record_from_posting(
     posting: JobPosting,
     *,
@@ -74,35 +107,16 @@ def should_track_history_record(record: JobHistoryRecord) -> bool:
     decision = _normalized_history_value(record.status)
     outcome = _normalized_history_value(record.outcome_category)
 
-    if decision in {
-        "passed",
-        "skipped",
-        "not interested",
-        "revisit if recruiter contacts me",
-    }:
+    if decision in HISTORY_DECISIONS:
         return False
 
-    if decision in {
-        "applied",
-        "interested",
-        "review needed",
-        "follow up due",
-        "interviewing",
-        "offer",
-        "withdrawn",
-        "rejected no interview",
-        "rejected after interview",
-    }:
+    if outcome in HISTORY_OUTCOMES:
+        return False
+
+    if decision in TRACKER_DECISIONS and outcome in TRACKER_OUTCOMES:
         return True
 
-    if outcome in {
-        "pending in progress",
-        "alive until declared dead",
-        "dormant",
-        "rejected no interview",
-        "rejected after interview",
-        "withdrawn",
-    }:
+    if decision in TRACKER_DECISIONS and not outcome:
         return True
 
     return False
@@ -228,31 +242,13 @@ def _tracker_status_from_history_record(record: JobHistoryRecord) -> str:
     decision = _normalized_history_value(record.status)
     outcome = _normalized_history_value(record.outcome_category)
 
-    if (
-        decision in {"rejected no interview", "rejected after interview"}
-        or outcome in {"rejected no interview", "rejected after interview"}
-    ):
-        return "rejected"
-
-    if outcome == "dormant":
+    if outcome == "dormant" or outcome == "alive until declared dead":
         return "dormant"
 
-    if decision == "withdrawn" or outcome == "withdrawn":
-        return "withdrawn"
-
-    if decision == "interested":
-        return "interested"
-
-    if decision == "review needed":
-        return "review_needed"
-
-    if decision == "follow up due":
-        return "follow_up_due"
-
-    if decision == "interviewing":
+    if outcome in {"interview scheduled", "interview completed", "waiting for feedback"}:
         return "interviewing"
 
-    if decision == "offer":
+    if outcome == "offer":
         return "offer"
 
     if decision == "applied":

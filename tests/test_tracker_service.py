@@ -211,13 +211,59 @@ def test_should_track_history_record_does_not_track_passed_job() -> None:
     assert should_track_history_record(record) is False
 
 
-def test_should_track_history_record_tracks_rejected_application() -> None:
+def test_should_track_history_record_does_not_track_rejected_application() -> None:
     record = make_history_record(
         decision="Applied",
         outcome="Rejected - No Interview",
     )
 
-    assert should_track_history_record(record) is True
+    assert should_track_history_record(record) is False
+
+
+def test_should_track_history_record_tracks_active_outcomes() -> None:
+    active_outcomes = [
+        "Pending / In Progress",
+        "Interview Scheduled",
+        "Interview Completed",
+        "Waiting For Feedback",
+        "Offer",
+        "Dormant",
+    ]
+
+    for outcome in active_outcomes:
+        record = make_history_record(
+            decision="Applied",
+            outcome=outcome,
+        )
+
+        assert should_track_history_record(record) is True
+
+
+def test_should_track_history_record_routes_history_outcomes_to_history() -> None:
+    history_outcomes = [
+        "Closed Before Application",
+        "Rejected - No Interview",
+        "Rejected - After Interview",
+        "Withdrawn",
+        "N/A",
+    ]
+
+    for outcome in history_outcomes:
+        record = make_history_record(
+            decision="Applied",
+            outcome=outcome,
+        )
+
+        assert should_track_history_record(record) is False
+
+
+def test_should_track_history_record_routes_revisit_to_history() -> None:
+    record = make_history_record(
+        decision="Revisit",
+        outcome="N/A",
+    )
+
+    assert should_track_history_record(record) is False
 
 
 def test_build_application_record_from_history_record_uses_job_radar_id() -> None:
@@ -267,11 +313,44 @@ def test_build_application_record_from_history_record_drops_generated_report_not
     assert application.notes is None
 
 
+def test_build_application_record_from_history_record_maps_interview_outcome() -> None:
+    record = make_history_record(
+        decision="Applied",
+        outcome="Interview Scheduled",
+    )
+
+    application = build_application_record_from_history_record(record)
+
+    assert application.status == "interviewing"
+
+
+def test_build_application_record_from_history_record_maps_offer_outcome() -> None:
+    record = make_history_record(
+        decision="Applied",
+        outcome="Offer",
+    )
+
+    application = build_application_record_from_history_record(record)
+
+    assert application.status == "offer"
+
+
+def test_build_application_record_from_history_record_maps_dormant_outcome() -> None:
+    record = make_history_record(
+        decision="Applied",
+        outcome="Dormant",
+    )
+
+    application = build_application_record_from_history_record(record)
+
+    assert application.status == "dormant"
+
+
 def test_build_application_record_from_history_record_falls_back_to_import_key() -> None:
     record = make_history_record(
         job_radar_id=None,
         import_key="posting-url:https://example.com/manual-lead",
-        decision="Interested",
+        decision="Applied",
         outcome=None,
         posting_url="https://example.com/manual-lead",
     )
@@ -279,20 +358,17 @@ def test_build_application_record_from_history_record_falls_back_to_import_key()
     application = build_application_record_from_history_record(record)
 
     assert application.job_radar_id == "posting-url:https://example.com/manual-lead"
-    assert application.status == "interested"
+    assert application.status == "applied"
     assert application.source_url == "https://example.com/manual-lead"
 
 
-def test_build_application_record_from_history_record_maps_rejected_status() -> None:
+def test_should_track_history_record_does_not_track_rejected_after_interview() -> None:
     record = make_history_record(
         decision="Applied",
         outcome="Rejected - After Interview",
     )
 
-    application = build_application_record_from_history_record(record)
-
-    assert application.status == "rejected"
-    assert application.outcome == "Rejected - After Interview"
+    assert should_track_history_record(record) is False
 
 
 def test_get_application_workflow_state_marks_due_follow_up() -> None:

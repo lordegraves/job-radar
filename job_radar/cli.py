@@ -41,6 +41,7 @@ from job_radar.scoring import (
     score_posting,
 )
 from job_radar.storage import (
+    delete_job_history_record,
     fetch_included_job_history_records,
     initialize_database,
     record_scan_run,
@@ -54,6 +55,7 @@ from job_radar.tracker.service import (
     should_track_history_record,
 )
 from job_radar.tracker.storage import (
+    delete_application,
     get_application,
     list_applications,
     update_application_status,
@@ -458,6 +460,22 @@ def _import_history_records(
     tracker_skipped_count = 0
 
     for record in records:
+        tracker_record = build_application_record_from_history_record(record)
+
+        if should_track_history_record(record):
+            delete_job_history_record(database_path, record.import_key)
+
+            tracker_upsert_result = upsert_application(database_path, tracker_record)
+
+            if tracker_upsert_result == "new":
+                tracker_imported_count += 1
+            elif tracker_upsert_result == "updated":
+                tracker_updated_count += 1
+
+            continue
+
+        delete_application(database_path, tracker_record.job_radar_id)
+
         history_upsert_result = upsert_job_history_record(database_path, record)
 
         if history_upsert_result == "new":
@@ -465,17 +483,7 @@ def _import_history_records(
         elif history_upsert_result == "updated":
             history_updated_count += 1
 
-        if not should_track_history_record(record):
-            tracker_skipped_count += 1
-            continue
-
-        tracker_record = build_application_record_from_history_record(record)
-        tracker_upsert_result = upsert_application(database_path, tracker_record)
-
-        if tracker_upsert_result == "new":
-            tracker_imported_count += 1
-        elif tracker_upsert_result == "updated":
-            tracker_updated_count += 1
+        tracker_skipped_count += 1
 
     return (
         history_imported_count,

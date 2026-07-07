@@ -512,6 +512,24 @@ def upsert_job_history_record(
         return "updated"
 
 
+def delete_job_history_record(
+    database_path: str | Path,
+    import_key: str,
+) -> bool:
+    db_path = Path(database_path)
+
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.execute(
+            """
+            DELETE FROM job_history
+            WHERE import_key = ?
+            """,
+            (import_key,),
+        )
+
+        return cursor.rowcount > 0
+
+
 def fetch_included_job_history_records(
     database_path: str | Path,
 ) -> list[JobHistoryRecord]:
