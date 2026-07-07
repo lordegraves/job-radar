@@ -1427,3 +1427,230 @@ def test_tracker_add_page_saves_application_and_redirects(
     assert application.last_activity_on == "2026-07-05"
     assert application.outcome == "Pending / In Progress"
     assert application.notes == "Added manually from GUI."
+
+
+def test_tracker_edit_page_deletes_application_and_redirects(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-delete-me-12345678",
+            company_name="DeleteCo",
+            role_title="Temporary Tracker Row",
+            status="Applied",
+            outcome="Pending / In Progress",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/tracker/jr-delete-me-12345678/edit",
+        data={
+            "return_filter": "needs_action",
+            "action": "delete",
+        },
+    )
+
+    application = get_application(database_file, "jr-delete-me-12345678")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/tracker?filter=all")
+    assert application is None
+
+
+def test_tracker_edit_page_supports_path_style_job_radar_ids(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    job_radar_id = "posting-url:https://example.com/jobs/hydra"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id=job_radar_id,
+            company_name="Hydra Host",
+            role_title="HPC Solutions Engineer",
+            status="Applied",
+            outcome="Pending / In Progress",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker/posting-url:https://example.com/jobs/hydra/edit")
+
+    assert response.status_code == 200
+    assert "Hydra Host" in response.get_data(as_text=True)
+
+
+def test_history_page_links_to_history_edit(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="ReopenCo",
+            role="Senior SRE",
+            source="Job Radar Tracker",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-07-01",
+            status="Applied",
+            outcome_category="Rejected - No Interview",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="job-radar-id:jr-reopenco-senior-sre",
+            notes="Previously rejected.",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/history")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "/history/job-radar-id:jr-reopenco-senior-sre/edit" in html
+
+
+def test_history_edit_page_moves_live_record_back_to_tracker(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="ReopenCo",
+            role="Senior SRE",
+            source="Job Radar Tracker",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-07-01",
+            status="Applied",
+            outcome_category="Rejected - No Interview",
+            recruiter_contact="Recruiter",
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="job-radar-id:jr-reopenco-senior-sre",
+            notes="Opportunity reopened.",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/history/job-radar-id:jr-reopenco-senior-sre/edit",
+        data={
+            "company": "ReopenCo",
+            "role": "Senior SRE",
+            "event_date": "2026-07-15",
+            "status": "Applied",
+            "outcome": "Pending / In Progress",
+            "source": "Recruiter",
+            "recruiter_contact": "Recruiter",
+            "notes": "Opportunity reopened.",
+        },
+    )
+
+    application = get_application(database_file, "jr-reopenco-senior-sre")
+    history_records = fetch_included_job_history_records(database_file)
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/tracker?filter=all")
+    assert application is not None
+    assert application.company_name == "ReopenCo"
+    assert application.role_title == "Senior SRE"
+    assert application.status == "Applied"
+    assert application.outcome == "Pending / In Progress"
+    assert application.notes == "Opportunity reopened."
+    assert history_records == []
+
+
+def test_history_edit_page_deletes_history_record(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Reviewed",
+            company="DeleteHistoryCo",
+            role="Linux Engineer",
+            source="LinkedIn",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-07-01",
+            status="Passed",
+            outcome_category="N/A",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="manual:delete-history-co:linux-engineer",
+            notes="Delete test row.",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/history/manual:delete-history-co:linux-engineer/edit",
+        data={
+            "action": "delete",
+        },
+    )
+
+    history_records = fetch_included_job_history_records(database_file)
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/history")
+    assert history_records == []

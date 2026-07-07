@@ -113,6 +113,7 @@
     <table>
         <thead>
             <tr>
+                <th>Action</th>
                 <th>Date</th>
                 <th>Company</th>
                 <th>Role</th>
@@ -128,6 +129,9 @@
         <tbody>
             {% for record in records %}
             <tr>
+                <td>
+                    <a href="{{ url_for('edit_history_record', import_key=record.import_key) }}">Edit</a>
+                </td>
                 <td class="date-cell">{{ record.event_date or "" }}</td>
                 <td>{{ record.company }}</td>
                 <td>{{ record.role }}</td>

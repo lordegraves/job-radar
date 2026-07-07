@@ -90,12 +90,13 @@
         <textarea id="notes" name="notes">{{ application.notes or '' }}</textarea>
 
         <div class="actions">
-            <button type="submit">Save</button>
+            <button type="submit" name="action" value="save">Save</button>
             {% for quick_action_name, quick_action in quick_actions.items() %}
             <button type="submit" name="quick_action" value="{{ quick_action_name }}">
                 {{ quick_action.label }}
             </button>
             {% endfor %}
+            <button type="submit" name="action" value="delete">Delete tracker row</button>
             <a href="{{ url_for('tracker', filter=return_filter) }}">Cancel</a>
         </div>
     </form>

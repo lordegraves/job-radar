@@ -8,16 +8,20 @@ from flask import Flask, abort, redirect, render_template, request, send_from_di
 
 from job_radar.cli import handle_scan
 from job_radar.config import load_settings
+from job_radar.job_history import JobHistoryRecord
 from job_radar.storage import (
+    delete_job_history_record,
     fetch_included_job_history_records,
     initialize_database,
     upsert_job_history_record,
 )
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import (
+    build_application_record_from_history_record,
     build_history_record_from_application_record,
     get_application_workflow_state,
     is_terminal_tracker_outcome,
+    should_track_history_record,
 )
 from job_radar.tracker.tracker_storage import (
     delete_application,
@@ -277,6 +281,77 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             sort_options=HISTORY_SORT_OPTIONS,
         )
 
+    @app.get("/history/<path:import_key>/edit")
+    def edit_history_record(import_key: str) -> str:
+        database_path = _get_database_path(app)
+        record = _get_history_record(database_path, import_key)
+
+        if record is None:
+            abort(404)
+
+        return render_template(
+            "history_edit.html",
+            record=record,
+            decision_options=CANONICAL_DECISION_FILTER_OPTIONS,
+            outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
+        )
+
+    @app.post("/history/<path:import_key>/edit")
+    def update_history_record(import_key: str):
+        database_path = _get_database_path(app)
+        record = _get_history_record(database_path, import_key)
+
+        if record is None:
+            abort(404)
+
+        action = request.form.get("action", "save").strip()
+
+        if action == "delete":
+            deleted = delete_job_history_record(database_path, import_key)
+
+            if not deleted:
+                abort(404)
+
+            return redirect(url_for("history"))
+
+        updated_record = JobHistoryRecord(
+            history_type=record.history_type,
+            company=request.form["company"].strip(),
+            role=request.form["role"].strip(),
+            source=_normalize_optional_form_value("source"),
+            ats_platform=record.ats_platform,
+            work_arrangement=record.work_arrangement,
+            location=record.location,
+            comp_range=record.comp_range,
+            event_date=_normalize_optional_form_value("event_date"),
+            status=request.form["status"].strip(),
+            outcome_category=_normalize_optional_form_value("outcome"),
+            recruiter_contact=_normalize_optional_form_value("recruiter_contact"),
+            technical_match=record.technical_match,
+            hiring_probability=record.hiring_probability,
+            skills_signals=record.skills_signals,
+            primary_blocker=record.primary_blocker,
+            secondary_blocker=record.secondary_blocker,
+            revisit=record.revisit,
+            include_in_job_radar=record.include_in_job_radar,
+            import_key=record.import_key,
+            notes=_normalize_optional_form_value("notes"),
+            job_radar_id=_job_radar_id_from_history_import_key(record.import_key),
+            posting_url=None,
+            lead_source=_normalize_optional_form_value("source"),
+        )
+
+        if should_track_history_record(updated_record):
+            application = build_application_record_from_history_record(updated_record)
+            upsert_application(database_path, application)
+            delete_job_history_record(database_path, import_key)
+
+            return redirect(url_for("tracker", filter="all"))
+
+        upsert_job_history_record(database_path, updated_record)
+
+        return redirect(url_for("history"))
+
     @app.get("/scan")
     def scan() -> str:
         settings_path = app.config["JOB_RADAR_SETTINGS_PATH"]
@@ -447,7 +522,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         return redirect(url_for("tracker", filter="all"))
 
 
-    @app.get("/tracker/<job_radar_id>/edit")
+    @app.get("/tracker/<path:job_radar_id>/edit")
     def edit_tracker_application(job_radar_id: str) -> str:
         database_path = _get_database_path(app)
         application = get_application(database_path, job_radar_id)
@@ -471,9 +546,19 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             quick_actions=TRACKER_QUICK_ACTIONS,
         )
 
-    @app.post("/tracker/<job_radar_id>/edit")
+    @app.post("/tracker/<path:job_radar_id>/edit")
     def update_tracker_application(job_radar_id: str):
         database_path = _get_database_path(app)
+
+        action = request.form.get("action", "save").strip()
+
+        if action == "delete":
+            deleted = delete_application(database_path, job_radar_id)
+
+            if not deleted:
+                abort(404)
+
+            return redirect(url_for("tracker", filter="all"))
 
         status = request.form["status"].strip()
         follow_up_on = _normalize_optional_form_value("follow_up_on")
@@ -543,6 +628,26 @@ def _get_database_path(app: Flask) -> str:
 def _get_reports_path(app: Flask) -> str:
     settings = load_settings(app.config["JOB_RADAR_SETTINGS_PATH"])
     return settings["reports_path"]
+
+
+def _get_history_record(
+    database_path: str,
+    import_key: str,
+) -> JobHistoryRecord | None:
+    for record in fetch_included_job_history_records(database_path):
+        if record.import_key == import_key:
+            return record
+
+    return None
+
+
+def _job_radar_id_from_history_import_key(import_key: str) -> str | None:
+    prefix = "job-radar-id:"
+
+    if not import_key.startswith(prefix):
+        return None
+
+    return import_key.removeprefix(prefix)
 
 
 def _validate_report_path(reports_path: Path, report_name: str) -> Path:

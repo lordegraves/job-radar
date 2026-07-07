@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Edit History Record</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            margin: 24px;
+            max-width: 900px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-top: 14px;
+        }
+
+        input,
+        select,
+        textarea {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 8px;
+        }
+
+        textarea {
+            min-height: 120px;
+        }
+
+        code {
+            background: #f6f8fa;
+            padding: 2px 4px;
+        }
+
+        .actions {
+            margin-top: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Edit History Record</h1>
+
+    <p><strong>Import Key:</strong> <code>{{ record.import_key }}</code></p>
+
+    <form method="post">
+        <label for="company">Company</label>
+        <input id="company" name="company" value="{{ record.company }}" required>
+
+        <label for="role">Role</label>
+        <input id="role" name="role" value="{{ record.role }}" required>
+
+        <label for="event_date">Date</label>
+        <input id="event_date" name="event_date" value="{{ record.event_date or '' }}" placeholder="YYYY-MM-DD">
+
+        <label for="status">Decision</label>
+        <select id="status" name="status" required>
+            {% for decision_option in decision_options %}
+            <option value="{{ decision_option }}" {% if decision_option==(record.status or '' ) %}selected{% endif %}>
+                {{ decision_option }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label for="outcome">Outcome</label>
+        <select id="outcome" name="outcome">
+            {% for outcome_option in outcome_options %}
+            <option value="{{ outcome_option }}" {% if outcome_option==(record.outcome_category or '' ) %}selected{%
+                endif %}>
+                {{ outcome_option }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label for="source">Lead Source</label>
+        <input id="source" name="source" value="{{ record.source or record.lead_source or '' }}">
+
+        <label for="recruiter_contact">Recruiter / Contact</label>
+        <input id="recruiter_contact" name="recruiter_contact" value="{{ record.recruiter_contact or '' }}">
+
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes">{{ record.notes or '' }}</textarea>
+
+        <div class="actions">
+            <button type="submit" name="action" value="save">Save</button>
+            <button type="submit" name="action" value="delete">Delete history row</button>
+            <a href="{{ url_for('history') }}">Cancel</a>
+        </div>
+    </form>
+
+    <p>
+        Setting Decision to Applied with a live tracker outcome will move this record back to the active tracker.
+    </p>
+</body>
+
+</html>
