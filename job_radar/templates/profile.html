@@ -48,15 +48,17 @@
 
 <body>
     <div class="nav">
-        <a href="/">Home</a>
+        <a href="{{ url_for('index') }}">Home</a>
         |
-        <a href="/tracker">Application tracker</a>
+        <a href="{{ url_for('tracker') }}">Application tracker</a>
         |
-        <a href="/history">Job history archive</a>
+        <a href="{{ url_for('history') }}">Job history archive</a>
         |
-        <a href="/reports">Reports</a>
+        <a href="{{ url_for('profile') }}">Profile / Resume</a>
         |
-        <a href="/scan">Scan</a>
+        <a href="{{ url_for('reports') }}">Reports</a>
+        |
+        <a href="{{ url_for('scan') }}">Scan</a>
     </div>
 
     <h1>Profile / Resume</h1>

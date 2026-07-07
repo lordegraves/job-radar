@@ -1738,3 +1738,51 @@ candidate:
     assert "production Kubernetes ownership" in html
     assert "frontend" in html
     assert "Large-scale Linux and HPC operations." in html
+
+
+def test_main_pages_share_full_navigation(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    profile_file = tmp_path / "profile.yaml"
+    resume_file = tmp_path / "resume.md"
+
+    write_settings_file(settings_file, database_file)
+    settings_file.write_text(
+        settings_file.read_text(encoding="utf-8")
+        + f"\ncandidate_profile_path: {profile_file}\n",
+        encoding="utf-8",
+    )
+    resume_file.write_text(
+        "# Example Candidate\n\nLarge-scale Linux and HPC operations.",
+        encoding="utf-8",
+    )
+    profile_file.write_text(
+        f"""
+candidate:
+  name: Example Candidate
+  resume:
+    source_path: {resume_file}
+  core_strengths: []
+  credible_adjacent: []
+  learning_or_gap: []
+  avoid: []
+""",
+        encoding="utf-8",
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    for route in ["/tracker", "/history", "/profile", "/reports", "/scan"]:
+        response = client.get(route)
+        html = response.get_data(as_text=True)
+
+        normalized_html = " ".join(html.split())
+
+        assert response.status_code == 200
+        assert 'href="/">Home</a>' in normalized_html
+        assert 'href="/tracker">Application tracker</a>' in normalized_html
+        assert 'href="/history">Job history archive</a>' in normalized_html
+        assert 'href="/profile">Profile / Resume</a>' in normalized_html
+        assert 'href="/reports">Reports</a>' in normalized_html
+        assert 'href="/scan">Scan</a>' in normalized_html

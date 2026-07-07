@@ -42,6 +42,10 @@
 </head>
 
 <body>
+    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
+            href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('profile') }}">Profile /
+            Resume</a> | <a href="{{ url_for('reports') }}">Reports</a> | <a href="{{ url_for('scan') }}">Scan</a></p>
+
     <h1>Edit History Record</h1>
 
     <p><strong>Import Key:</strong> <code>{{ record.import_key }}</code></p>
