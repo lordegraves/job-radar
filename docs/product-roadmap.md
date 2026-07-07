@@ -1,6 +1,6 @@
 # Job Radar Product Roadmap
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Product Goal
 
@@ -61,6 +61,7 @@ Target shape:
 ```text
 Installable local desktop-style application + SQLite + guided setup + configurable job search profile
 ```
+The GUI may remain browser-based, become a packaged desktop shell, or move to another lightweight GUI approach. The final GUI approach is intentionally undecided until the current Flask workflows are complete.
 
 The user should eventually be able to:
 
@@ -87,22 +88,26 @@ Job Radar is complete-enough when these are true:
 
 1. A non-developer user can install and launch the app.
 2. A user can configure their own companies without editing source code.
-3. A user can configure their own preferences without editing source code.
-4. A user can configure their own salary floor and ideal salary.
-5. A user can configure their own acceptable locations and remote/hybrid/on-site rules.
-6. A user can configure their own role interests, seniority targets, and avoid rules.
-7. A user can run a scan from the GUI.
-8. A user can review scan results from the GUI.
-9. A user can track active applications from the GUI.
-10. A user can review historical, passed, skipped, rejected, and archived jobs from the GUI.
-11. A user can configure email reporting from the GUI.
-12. A user can schedule recurring scans.
-13. Runtime data is stored outside the source/repo directory.
-14. Real user data is not committed to Git.
-15. The app can be packaged for Windows.
-16. The Linux path is documented and technically viable.
-17. Documentation clearly separates developer setup from user setup.
-18. Existing CLI/test/report behavior does not regress.
+3. A user can configure their own ATS/source settings without editing source code.
+4. A user can configure their own preferences without editing source code.
+5. A user can configure their own salary floor and ideal salary.
+6. A user can configure their own acceptable locations and remote/hybrid/on-site rules.
+7. A user can configure their own role interests, seniority targets, and avoid rules.
+8. A user can configure email reporting through a user-friendly setup flow.
+9. A user can run a scan from the GUI.
+10. A user can review scan results from the GUI.
+11. A user can track active applications from the GUI.
+12. A user can review historical, passed, skipped, rejected, and archived jobs from the GUI.
+13. A user can schedule recurring scans.
+14. Runtime data is stored outside the source/repo directory.
+15. Real user data is not committed to Git.
+16. The app can run as a standalone program on a user's PC.
+17. The app can run unattended as a service on a user-controlled system.
+18. The app can run in Kubernetes when that matches the user's setup.
+19. The app can be packaged for Windows with an `.exe` entry point and installer.
+20. The app can be packaged for Linux using a `.tar` or tarball-based distribution.
+21. Documentation clearly separates developer setup from user setup.
+22. Existing CLI/test/report behavior does not regress.
 
 ## User Configuration Requirements
 
@@ -298,6 +303,8 @@ The long-term Windows target is:
 JobRadarSetup.exe
 ```
 
+The Windows installation path should be simple enough for a non-developer user to install, launch, configure, and run a first scan without manually editing source files.
+
 The installer should eventually:
 
 - Install Job Radar
@@ -305,8 +312,13 @@ The installer should eventually:
 - Create required local user data folders
 - Install default/example config files
 - Avoid overwriting existing user config
-- Include the sanitized example workbook
-- Provide a launcher
+- Include the sanitized example workbook only as an import/template bridge
+- Provide an `.exe` entry point or launcher
+- Support first-run setup
+- Support desired company setup
+- Support ATS/source setup
+- Support preference, compensation, and location setup
+- Support email setup
 - Support manual scan from the GUI
 - Optionally configure scheduled scans
 - Store runtime data outside the install directory
@@ -329,9 +341,10 @@ Possible later alternatives:
 
 Linux should remain a supported direction, but Windows packaging comes first.
 
-Possible Linux formats:
+The required Linux packaging path is a `.tar` or tarball-based distribution.
 
-- tar.gz bundle
+Possible later Linux formats:
+
 - AppImage
 - .deb package
 - systemd user service/timer
@@ -342,8 +355,24 @@ Linux needs:
 - Documented install path
 - User config under `~/.config/job-radar/`
 - User data under `~/.local/share/job-radar/`
+- `.tar` / tarball install documentation
 - Optional systemd timer for scheduled scans
+- Optional service-style operation
 - Clear no-root local mode where possible
+
+## Deployment Flexibility Roadmap
+
+Job Radar should be flexible enough to run in different user-controlled environments.
+
+Supported target modes:
+
+- standalone local program on a user's PC
+- unattended service on a local machine or small server
+- Kubernetes service in a user-managed cluster
+
+The app does not need to support more than one user at a time. Multiple profiles may be useful later, but multi-user SaaS behavior is not required.
+
+Deployment work should preserve one core service layer so CLI, GUI, scheduler, and packaged deployments do not become separate products.
 
 ## Scheduler Roadmap
 
@@ -397,43 +426,56 @@ The finish line can be reached in stages.
 
 ### Stage 1: Finish Current GUI Workflow
 
-- Add job history/archive page
-- Keep tracker focused on active applications
-- Add scan results page
-- Add manual scan button
-- Add report viewer
+- Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
+- Add practical tracker/history search and filtering.
+- Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
+- Decide the final role of the spreadsheet bridge.
+- Keep scan/report behavior stable while GUI tracker/history behavior improves.
 
 ### Stage 2: User Configuration
 
-- Add preference setup page
-- Add company management page
-- Add salary/location setup
-- Add resume/profile setup
-- Move user-specific runtime config out of repo assumptions
+- Build user-friendly configuration for desired companies, ATS sources, role preferences, compensation, location rules, exclusions, and email settings.
+- Add configuration screens or guided setup so users do not need to hand-edit YAML for basic use.
+- Add preference setup page.
+- Add company management page.
+- Add salary/location setup.
+- Add resume/profile setup.
+- Move user-specific runtime config out of repo assumptions.
 
 ### Stage 3: Scheduling and Email
 
-- Configure email from GUI
-- Configure scheduled scans from GUI
-- Keep secrets out of config files
-- Add clear validation and failure messages
+- Add email setup flow.
+- Configure email from GUI.
+- Support SMTP settings, sender/recipient configuration, safe test email, and clear failure messages.
+- Configure scheduled scans from GUI.
+- Keep secrets out of config files.
+- Add clear validation and failure messages.
 
-### Stage 4: Packaging
+### Stage 4: Packaging and Deployment
 
-- Add launcher
-- Store user data in OS-appropriate location
-- Build Windows executable
-- Build Windows installer
-- Document Linux packaging path
+- Prepare the app to run as a standalone desktop/local program with its own GUI.
+- Add launcher.
+- Store user data in OS-appropriate location.
+- Build Windows executable.
+- Build Windows installer.
+- Build Linux `.tar` / tarball distribution.
+- Support standalone PC operation.
+- Support service-style operation.
+- Support Kubernetes deployment.
+- Add deployment-friendly configuration for persistent data, reports, logs, backups, retention, and safe upgrades.
 
-### Stage 5: Polish and Stabilization
+### Stage 5: First-Run Experience and Stabilization
 
-- Improve user-facing error messages
-- Add backup/export path
-- Add import path for companies/preferences
-- Add onboarding documentation
-- Add recovery/troubleshooting documentation
-- Run no-regression validation
+- Keep the app single-user by default, while leaving room for multiple profiles if useful.
+- Create a simple first-run experience from installation to first scan/report.
+- Improve user-facing error messages.
+- Add backup/export path.
+- Add import path for companies/preferences.
+- Add onboarding documentation.
+- Add recovery/troubleshooting documentation.
+- Add installation and operations documentation for Windows desktop, Linux standalone/server, and Kubernetes service modes.
+- Add release validation for packaged builds.
+- Run no-regression validation.
 
 ## Not Yet Required
 

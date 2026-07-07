@@ -1,6 +1,6 @@
 # Job Radar Current State
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Purpose
 
@@ -40,7 +40,11 @@ The primary live scan configuration is:
 
     config/target-companies.yaml
 
-The current live settings file is:
+The current main settings file is:
+
+    config/settings.yaml
+
+The live-test settings file remains available for sandbox validation when needed:
 
     config/live-test-settings.yaml
 
@@ -189,7 +193,9 @@ Posting URL is fallback evidence when available.
 
 The workbook is treated as a human job log and import bridge, not the app's internal schema.
 
-Job Radar reads the workbook during manual history import and configured scans. It does not write IDs or enrichment data back to the workbook.
+Job Radar reads the workbook during manual history import. The workbook remains a transition bridge for existing history and bulk intake, but it is being retired as the normal application-tracking interface.
+
+Job Radar does not write IDs or enrichment data back to the workbook.
 
 ## Current tracker behavior
 
@@ -225,6 +231,21 @@ Tracker action summaries are included in reports so applications needing attenti
 
 The tracker can be managed through CLI commands and through the Flask GUI.
 
+The tracker GUI currently supports:
+
+- workflow filters
+- search
+- workflow-priority sorting
+- applied-date newest/oldest sorting
+- company sorting
+- role sorting
+- status sorting
+- outcome sorting
+- manual add
+- edit/update
+- quick actions
+- notes display
+
 The tracker is the long-term direction for active application workflow. The spreadsheet remains an import/history bridge and possible bulk-import path, but it is being retired as the normal application-tracking interface.
 
 Passed/reviewed jobs are imported into job history. They are not automatically added to the active application tracker.
@@ -237,17 +258,27 @@ Current GUI capabilities:
 
 - Landing page
 - Application tracker list
-- Tracker filters
+- Tracker workflow filters
 - Tracker search
-- Workflow-priority sorting
-- Applied-date sorting
+- Tracker workflow-priority sorting
+- Tracker applied-date newest/oldest sorting
+- Tracker company sorting
+- Tracker role sorting
+- Tracker status sorting
+- Tracker outcome sorting
 - Tracker edit page
 - Status and outcome dropdowns
 - Tracker quick actions
 - Manual application add form
 - Notes display from stored tracker records
 - Job history/archive page for imported historical records
+- History date newest/oldest sorting
+- History company sorting
+- History role sorting
+- History decision/status sorting
+- History outcome sorting
 - Reports page for existing generated reports and email previews
+- In-app report viewer
 - Controlled manual scan execution from the local GUI
 
 Current GUI files include:
@@ -259,6 +290,7 @@ Current GUI files include:
 - `job_radar/templates/tracker_add.html`
 - `job_radar/templates/history.html`
 - `job_radar/templates/reports.html`
+- `job_radar/templates/report_view.html`
 - `job_radar/templates/scan.html`
 
 Current GUI command:
@@ -352,11 +384,25 @@ Completed so far:
 - Tracker GUI filters
 - Tracker GUI search
 - Tracker GUI applied-date sorting
+- Tracker GUI company sorting
+- Tracker GUI role sorting
+- Tracker GUI status sorting
+- Tracker GUI outcome sorting
+- History GUI date sorting
+- History GUI company sorting
+- History GUI role sorting
+- History GUI decision/status sorting
+- History GUI outcome sorting
 - GUI reports page for existing generated reports and email previews
+- In-app report viewer
 - Controlled GUI scan execution with email sending disabled
+- Duplicate GUI scan prevention
 - Tracker GUI edit form
 - Tracker GUI quick actions
 - Tracker GUI manual add form
+- Import classification by Decision and Outcome
+- CLI module entrypoint support
+- Main application settings aligned to `config/settings.yaml`
 - Private AI session prompt ignored by Git
 - File map updated for tracker and GUI boundaries
 
@@ -377,17 +423,21 @@ Current limitations:
 
 Remaining high-priority milestones:
 
-1. Continue replacing normal spreadsheet workflow with app-native tracker GUI workflows.
-2. Run a fresh live scan from the GUI and review the omitted jobs audit.
-3. Calibrate GUI scan execution based on real-run behavior, runtime, and failure visibility.
-4. Calibrate scoring based on whether omitted jobs are truly bad fits.
-5. Add a short omitted-jobs review workflow if the audit shows hidden good roles.
-6. Finalize daily scheduled scan behavior.
-7. Finalize email delivery settings.
-8. Deploy Job Radar onto the k3s cluster.
-9. Add operational runbook documentation.
-10. Add recovery/troubleshooting documentation.
-11. Add LLM-assisted review only after rules-based behavior is stable.
+1. Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
+2. Add practical tracker/history search and filtering for company, role, status/decision, outcome, source, recruiter/contact, notes, and follow-up review.
+3. Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
+4. Decide the final role of the spreadsheet bridge: one-time import, optional fallback, export-only, or fully retired.
+5. Build user-friendly configuration for desired companies, ATS sources, role preferences, compensation, location rules, exclusions, and email settings.
+6. Add configuration screens or guided setup so users do not need to hand-edit YAML for basic use.
+7. Add email setup flow, including SMTP settings, sender/recipient configuration, safe test email, and clear failure messages.
+8. Prepare the app to run as a standalone desktop/local program with its own GUI.
+9. Package the app as a Windows installer with an `.exe` entry point and straightforward setup.
+10. Package the app for Linux installation using a `.tar` or tarball-based distribution.
+11. Support standalone PC operation, unattended service-style operation, and Kubernetes deployment.
+12. Add deployment-friendly configuration for persistent data, reports, logs, backups, retention, and safe upgrades.
+13. Keep the app single-user by default, while leaving room for multiple profiles if that becomes useful.
+14. Create a simple first-run experience that gets a new user from installation to first scan/report quickly.
+15. Write installation and operations documentation for Windows desktop, Linux standalone/server, and Kubernetes service modes.
 
 ## Not in scope right now
 

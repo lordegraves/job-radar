@@ -75,6 +75,8 @@ Complete-enough means a user can install Job Radar, configure their own companie
 - Allows manual/external leads without requiring ATS Platform, Import Key, or blocker/risk fields
 - Provides an application tracker CLI
 - Provides a local Flask GUI for tracker review/update workflows, imported history/archive review, existing report viewing, and controlled manual scan execution
+- Supports tracker sorting by workflow, applied date, company, role, status, and outcome
+- Supports history/archive sorting by date, company, role, decision/status, and outcome
 
 ## Current live target sources
 
@@ -84,7 +86,13 @@ The primary live scan config is:
 config/target-companies.yaml
 ```
 
-The live settings file is:
+The main settings file is:
+
+```text
+config/settings.yaml
+```
+
+The live-test settings file remains available for sandbox validation:
 
 ```text
 config/live-test-settings.yaml
@@ -159,10 +167,16 @@ config/target-companies.yaml
 Primary target company configuration.
 
 ```text
+config/settings.yaml
+```
+
+Main settings used for normal local GUI and app runs.
+
+```text
 config/live-test-settings.yaml
 ```
 
-Settings used for live validation, including the live test database path and email settings.
+Settings used for sandbox/live-test validation when needed.
 
 ```text
 config/scoring.yaml
@@ -216,7 +230,9 @@ Exact Job Radar ID matches can provide history context. Existing application tra
 
 Fuzzy company/title matches are guarded so broad title overlap can provide history context without automatically treating a role as already applied.
 
-Job Radar reads the workbook during manual history import and configured scans. It does not write IDs or enrichment data back to the workbook.
+Job Radar reads the workbook during manual history import. The workbook remains a transition bridge for existing history and bulk intake, but it is being retired as the normal application-tracking interface.
+
+Job Radar does not write IDs or enrichment data back to the workbook.
 
 Import history manually:
 
@@ -326,8 +342,13 @@ Current GUI summary:
 
 - Local landing page
 - Application tracker workflows
+- Tracker workflow filters
+- Tracker search
+- Tracker sorting by workflow, applied date, company, role, status, and outcome
 - Imported job history/archive review
+- History sorting by date, company, role, decision/status, and outcome
 - Existing generated report and email-preview viewing
+- In-app report viewer
 - Controlled manual scan execution with GUI email sending disabled
 
 See `docs/current-state.md` for the detailed current GUI capability list.
@@ -345,7 +366,7 @@ python -m pytest tests
 Expected current result:
 
 ```text
-415 passed
+428 passed
 ```
 
 ## Report structure

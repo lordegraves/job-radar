@@ -14,7 +14,7 @@ This document maps the current Job Radar repository so the project stays underst
 
 | File | Purpose | Keep / Review |
 |---|---|---|
-| `config/settings.yaml` | Main application settings. | Keep |
+| `config/settings.yaml` | Main application settings used by the local GUI and normal app runs. | Keep |
 | `config/scoring.yaml` | Scoring thresholds and scoring-related configuration. | Keep |
 | `config/target-companies.yaml` | Primary target company/source list used by scans. | Keep |
 | `config/demo-companies.yaml` | Small/demo-safe company config for development and examples. | Keep |
@@ -106,11 +106,12 @@ This document maps the current Job Radar repository so the project stays underst
 |---|---|---|
 | `job_radar/web_app.py` | Flask web application entry point and GUI route handlers. | Keep / watch growth |
 | `job_radar/templates/index.html` | Web app landing page. | Keep |
-| `job_radar/templates/tracker.html` | Application tracker list, filters, workflow display, and edit links. | Keep |
+| `job_radar/templates/tracker.html` | Application tracker list, workflow filters, search, sorting, workflow display, and edit links. | Keep |
 | `job_radar/templates/tracker_edit.html` | Application tracker edit form and quick actions. | Keep |
 | `job_radar/templates/tracker_add.html` | Manual application tracker add form. | Keep |
-| `job_radar/templates/history.html` | Job history/archive page for imported historical records. | Keep |
+| `job_radar/templates/history.html` | Job history/archive page for imported historical records, including history sorting controls. | Keep |
 | `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews. | Keep |
+| `job_radar/templates/report_view.html` | In-app report viewer shell for opening generated reports inside the GUI. | Keep |
 | `job_radar/templates/scan.html` | Scan page for manual command display and controlled local GUI scan execution. | Keep |
 
 ## Collectors
@@ -220,12 +221,13 @@ job_radar/templates/
   tracker_add.html
   history.html
   reports.html
+  report_view.html
   scan.html
 ```
 
-The tracker owns application status, follow-up timing, outcomes, notes, workflow state, and manual application tracking.
+The tracker owns application status, follow-up timing, outcomes, notes, workflow state, manual application tracking, and tracker-specific GUI review controls.
 
-The spreadsheet/history importer owns external history intake and historical context. It should not be treated as the long-term source of truth for active application workflow.
+The spreadsheet/history importer owns external history intake and historical context. The history GUI owns review/display controls for archived history. The spreadsheet should not be treated as the long-term source of truth for active application workflow.
 
 The tracker should not be mixed into report rendering or collector code.
 
