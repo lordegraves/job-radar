@@ -2,8 +2,18 @@ from datetime import date
 
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
+from job_radar.storage import (
+    delete_job_history_record,
+    fetch_included_job_history_records,
+    upsert_job_history_record,
+)
 from job_radar.tracker.tracker_models import ApplicationRecord
-from job_radar.tracker.tracker_storage import get_application, upsert_application
+from job_radar.tracker.tracker_storage import (
+    delete_application,
+    get_application,
+    update_application_status,
+    upsert_application,
+)
 
 
 HISTORY_DECISIONS = {
@@ -183,6 +193,144 @@ def _build_tracker_history_import_key(job_radar_id: str) -> str:
 
 def _history_import_key_token(value: str) -> str:
     return "-".join(_canonical_history_value(value).lower().split())
+
+
+def update_tracker_application_workflow(
+    database_path: str,
+    *,
+    job_radar_id: str,
+    status: str,
+    follow_up_on: str | None = None,
+    applied_on: str | None = None,
+    last_activity_on: str | None = None,
+    outcome: str | None = None,
+    notes: str | None = None,
+) -> str:
+    if is_terminal_tracker_outcome(outcome):
+        application = get_application(database_path, job_radar_id)
+
+        if application is None:
+            return "missing"
+
+        history_record = build_history_record_from_application_record(
+            application,
+            status=status,
+            outcome=outcome or "",
+            event_date=last_activity_on or applied_on,
+            notes=notes,
+        )
+
+        upsert_job_history_record(database_path, history_record)
+        delete_application(database_path, job_radar_id)
+
+        return "moved_to_history"
+
+    updated = update_application_status(
+        database_path,
+        job_radar_id=job_radar_id,
+        status=status,
+        follow_up_on=follow_up_on,
+        applied_on=applied_on,
+        last_activity_on=last_activity_on,
+        outcome=outcome,
+        notes=notes,
+    )
+
+    if not updated:
+        return "missing"
+
+    return "updated"
+
+
+def delete_tracker_application(
+    database_path: str,
+    job_radar_id: str,
+) -> bool:
+    return delete_application(database_path, job_radar_id)
+
+
+def get_history_record(
+    database_path: str,
+    import_key: str,
+) -> JobHistoryRecord | None:
+    for record in fetch_included_job_history_records(database_path):
+        if record.import_key == import_key:
+            return record
+
+    return None
+
+
+def update_history_record_workflow(
+    database_path: str,
+    *,
+    import_key: str,
+    company: str,
+    role: str,
+    source: str | None = None,
+    event_date: str | None = None,
+    status: str,
+    outcome: str | None = None,
+    recruiter_contact: str | None = None,
+    notes: str | None = None,
+) -> str:
+    record = get_history_record(database_path, import_key)
+
+    if record is None:
+        return "missing"
+
+    updated_record = JobHistoryRecord(
+        history_type=record.history_type,
+        company=company,
+        role=role,
+        source=source,
+        ats_platform=record.ats_platform,
+        work_arrangement=record.work_arrangement,
+        location=record.location,
+        comp_range=record.comp_range,
+        event_date=event_date,
+        status=status,
+        outcome_category=outcome,
+        recruiter_contact=recruiter_contact,
+        technical_match=record.technical_match,
+        hiring_probability=record.hiring_probability,
+        skills_signals=record.skills_signals,
+        primary_blocker=record.primary_blocker,
+        secondary_blocker=record.secondary_blocker,
+        revisit=record.revisit,
+        include_in_job_radar=record.include_in_job_radar,
+        import_key=record.import_key,
+        notes=notes,
+        job_radar_id=_job_radar_id_from_history_import_key(record.import_key),
+        posting_url=None,
+        lead_source=source,
+    )
+
+    if should_track_history_record(updated_record):
+        application = build_application_record_from_history_record(updated_record)
+        upsert_application(database_path, application)
+        delete_job_history_record(database_path, import_key)
+
+        return "moved_to_tracker"
+
+    upsert_job_history_record(database_path, updated_record)
+
+    return "updated"
+
+
+def delete_history_record(
+    database_path: str,
+    import_key: str,
+) -> bool:
+    return delete_job_history_record(database_path, import_key)
+
+
+def _job_radar_id_from_history_import_key(import_key: str) -> str | None:
+    prefix = "job-radar-id:"
+
+    if not import_key.startswith(prefix):
+        return None
+
+    return import_key.removeprefix(prefix)
 
 
 def _clean_history_notes_for_tracker(notes: str | None) -> str | None:
