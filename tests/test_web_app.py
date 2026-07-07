@@ -3,7 +3,11 @@ from pathlib import Path
 import job_radar.web_app as web_app_module
 
 from job_radar.job_history import JobHistoryRecord
-from job_radar.storage import initialize_database, upsert_job_history_record
+from job_radar.storage import (
+    fetch_included_job_history_records,
+    initialize_database,
+    upsert_job_history_record,
+)
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_storage import get_application, upsert_application
 from job_radar.web_app import create_app
@@ -1232,7 +1236,7 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert "Applied through company site." in html
 
 
-def test_tracker_edit_page_updates_application_and_redirects(
+def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
     tmp_path: Path,
 ) -> None:
     settings_file = tmp_path / "settings.yaml"
@@ -1247,11 +1251,11 @@ def test_tracker_edit_page_updates_application_and_redirects(
             company_name="Stack AV",
             role_title="Senior Site Reliability Engineer",
             source_url="https://example.com/jobs/stack-av-sre",
-            status="applied",
+            status="Applied",
             follow_up_on="2026-07-10",
             applied_on="2026-07-03",
             last_activity_on="2026-07-05",
-            outcome="Interviewing",
+            outcome="Interview Scheduled",
             notes="Applied through company site.",
         ),
     )
@@ -1263,7 +1267,7 @@ def test_tracker_edit_page_updates_application_and_redirects(
         "/tracker/jr-stack-av-12345678/edit",
         data={
             "return_filter": "needs_action",
-            "status": "rejected",
+            "status": "Applied",
             "follow_up_on": "",
             "applied_on": "2026-07-03",
             "last_activity_on": "2026-07-12",
@@ -1273,15 +1277,23 @@ def test_tracker_edit_page_updates_application_and_redirects(
     )
 
     application = get_application(database_file, "jr-stack-av-12345678")
+    history_records = fetch_included_job_history_records(database_file)
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/tracker?filter=needs_action")
-    assert application is not None
-    assert application.status == "rejected"
-    assert application.applied_on == "2026-07-03"
-    assert application.last_activity_on == "2026-07-12"
-    assert application.outcome == "Rejected - No Interview"
-    assert application.notes == "Rejected by email."
+    assert application is None
+    assert len(history_records) == 1
+
+    history_record = history_records[0]
+
+    assert history_record.company == "Stack AV"
+    assert history_record.role == "Senior Site Reliability Engineer"
+    assert history_record.source == "Job Radar Tracker"
+    assert history_record.event_date == "2026-07-12"
+    assert history_record.status == "Applied"
+    assert history_record.outcome_category == "Rejected - No Interview"
+    assert history_record.import_key == "job-radar-id:jr-stack-av-12345678"
+    assert history_record.notes == "Rejected by email."
 
 
 def test_tracker_edit_quick_action_marks_application_dormant(
@@ -1392,7 +1404,7 @@ def test_tracker_add_page_saves_application_and_redirects(
             "company_name": "ManualCo",
             "role_title": "Senior Infrastructure Engineer",
             "source_url": "https://example.com/jobs/manual",
-            "status": "applied",
+            "status": "Applied",
             "follow_up_on": "2026-07-15",
             "applied_on": "2026-07-05",
             "last_activity_on": "2026-07-05",
@@ -1409,7 +1421,7 @@ def test_tracker_add_page_saves_application_and_redirects(
     assert application.company_name == "ManualCo"
     assert application.role_title == "Senior Infrastructure Engineer"
     assert application.source_url == "https://example.com/jobs/manual"
-    assert application.status == "applied"
+    assert application.status == "Applied"
     assert application.follow_up_on == "2026-07-15"
     assert application.applied_on == "2026-07-05"
     assert application.last_activity_on == "2026-07-05"

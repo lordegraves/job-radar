@@ -8,10 +8,19 @@ from flask import Flask, abort, redirect, render_template, request, send_from_di
 
 from job_radar.cli import handle_scan
 from job_radar.config import load_settings
-from job_radar.storage import fetch_included_job_history_records, initialize_database
+from job_radar.storage import (
+    fetch_included_job_history_records,
+    initialize_database,
+    upsert_job_history_record,
+)
 from job_radar.tracker.tracker_models import ApplicationRecord
-from job_radar.tracker.tracker_service import get_application_workflow_state
+from job_radar.tracker.tracker_service import (
+    build_history_record_from_application_record,
+    get_application_workflow_state,
+    is_terminal_tracker_outcome,
+)
 from job_radar.tracker.tracker_storage import (
+    delete_application,
     get_application,
     list_applications,
     update_application_status,
@@ -95,6 +104,13 @@ HISTORY_OUTCOME_FILTER_OPTIONS = (
     "N/A",
 )
 
+TRACKER_TERMINAL_OUTCOME_OPTIONS = (
+    "Closed Before Application",
+    "Rejected - No Interview",
+    "Rejected - After Interview",
+    "Withdrawn",
+)
+
 TRACKER_WORKFLOW_PRIORITY = {
     "follow_up_due": 10,
     "needs_date_review": 20,
@@ -133,6 +149,8 @@ TRACKER_OUTCOME_OPTIONS = (
     "N/A",
 )
 
+TRACKER_EDIT_OUTCOME_OPTIONS = TRACKER_OUTCOME_OPTIONS + TRACKER_TERMINAL_OUTCOME_OPTIONS
+
 TRACKER_QUICK_ACTIONS = {
     "follow_up_due": {
         "label": "Mark follow-up due",
@@ -158,6 +176,16 @@ TRACKER_QUICK_ACTIONS = {
         "label": "Mark offer",
         "status": "Applied",
         "outcome": "Offer",
+    },
+    "rejected_no_interview": {
+        "label": "Move to history: rejected - no interview",
+        "status": "Applied",
+        "outcome": "Rejected - No Interview",
+    },
+    "withdrawn": {
+        "label": "Move to history: withdrawn",
+        "status": "Applied",
+        "outcome": "Withdrawn",
     },
 }
 
@@ -439,7 +467,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             workflow_state=workflow_state,
             return_filter=return_filter,
             status_options=TRACKER_STATUS_OPTIONS,
-            outcome_options=TRACKER_OUTCOME_OPTIONS,
+            outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
             quick_actions=TRACKER_QUICK_ACTIONS,
         )
 
@@ -448,7 +476,11 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         database_path = _get_database_path(app)
 
         status = request.form["status"].strip()
+        follow_up_on = _normalize_optional_form_value("follow_up_on")
+        applied_on = _normalize_optional_form_value("applied_on")
+        last_activity_on = _normalize_optional_form_value("last_activity_on")
         outcome = _normalize_optional_form_value("outcome")
+        notes = _normalize_optional_form_value("notes")
         quick_action = request.form.get("quick_action", "").strip()
 
         if quick_action:
@@ -460,19 +492,36 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             status = quick_action_values["status"]
             outcome = quick_action_values["outcome"]
 
-        updated = update_application_status(
-            database_path,
-            job_radar_id=job_radar_id,
-            status=status,
-            follow_up_on=_normalize_optional_form_value("follow_up_on"),
-            applied_on=_normalize_optional_form_value("applied_on"),
-            last_activity_on=_normalize_optional_form_value("last_activity_on"),
-            outcome=outcome,
-            notes=_normalize_optional_form_value("notes"),
-        )
+        if is_terminal_tracker_outcome(outcome):
+            application = get_application(database_path, job_radar_id)
 
-        if not updated:
-            abort(404)
+            if application is None:
+                abort(404)
+
+            history_record = build_history_record_from_application_record(
+                application,
+                status=status,
+                outcome=outcome,
+                event_date=last_activity_on or applied_on,
+                notes=notes,
+            )
+
+            upsert_job_history_record(database_path, history_record)
+            delete_application(database_path, job_radar_id)
+        else:
+            updated = update_application_status(
+                database_path,
+                job_radar_id=job_radar_id,
+                status=status,
+                follow_up_on=follow_up_on,
+                applied_on=applied_on,
+                last_activity_on=last_activity_on,
+                outcome=outcome,
+                notes=notes,
+            )
+
+            if not updated:
+                abort(404)
 
         return_filter = request.form.get("return_filter", "all")
 

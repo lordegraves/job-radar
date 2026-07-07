@@ -132,6 +132,59 @@ def build_application_record_from_history_record(
     )
 
 
+def build_history_record_from_application_record(
+    application: ApplicationRecord,
+    *,
+    status: str,
+    outcome: str,
+    event_date: str | None = None,
+    notes: str | None = None,
+) -> JobHistoryRecord:
+    return JobHistoryRecord(
+        history_type="Pipeline",
+        company=application.company_name,
+        role=application.role_title,
+        source="Job Radar Tracker",
+        ats_platform=None,
+        work_arrangement=None,
+        location=None,
+        comp_range=None,
+        event_date=(
+            event_date
+            or application.last_activity_on
+            or application.applied_on
+            or date.today().isoformat()
+        ),
+        status=status,
+        outcome_category=outcome,
+        recruiter_contact=None,
+        technical_match=None,
+        hiring_probability=None,
+        skills_signals=None,
+        primary_blocker=None,
+        secondary_blocker=None,
+        revisit=None,
+        include_in_job_radar=True,
+        import_key=_build_tracker_history_import_key(application.job_radar_id),
+        notes=notes,
+        job_radar_id=application.job_radar_id,
+        posting_url=application.source_url,
+        lead_source="Job Radar Tracker",
+    )
+
+
+def is_terminal_tracker_outcome(outcome: str | None) -> bool:
+    return _canonical_history_value(outcome) in APPLIED_HISTORY_OUTCOMES
+
+
+def _build_tracker_history_import_key(job_radar_id: str) -> str:
+    return f"job-radar-id:{_history_import_key_token(job_radar_id)}"
+
+
+def _history_import_key_token(value: str) -> str:
+    return "-".join(_canonical_history_value(value).lower().split())
+
+
 def _clean_history_notes_for_tracker(notes: str | None) -> str | None:
     if notes is None:
         return None
