@@ -8,6 +8,7 @@ from flask import Flask, abort, redirect, render_template, request, send_from_di
 
 from job_radar.cli import handle_scan
 from job_radar.config import load_settings
+from job_radar.profile_service import build_candidate_profile_view
 from job_radar.storage import (
     fetch_included_job_history_records,
     initialize_database,
@@ -240,6 +241,17 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     @app.get("/")
     def index() -> str:
         return render_template("index.html")
+
+    @app.get("/profile")
+    def profile() -> str:
+        profile_view = build_candidate_profile_view(
+            app.config["JOB_RADAR_SETTINGS_PATH"]
+        )
+
+        return render_template(
+            "profile.html",
+            profile=profile_view,
+        )
 
     @app.get("/history")
     def history() -> str:

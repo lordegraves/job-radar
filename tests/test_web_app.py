@@ -1654,3 +1654,87 @@ def test_history_edit_page_deletes_history_record(
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/history")
     assert history_records == []
+
+
+def test_index_page_links_to_profile(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<a href="/profile">Profile / Resume</a>' in html
+
+
+def test_profile_page_shows_candidate_profile_and_resume_summary(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    profile_file = tmp_path / "profile.yaml"
+    resume_file = tmp_path / "resume.md"
+    normalized_resume_file = tmp_path / "resume.normalized.txt"
+
+    write_settings_file(settings_file, database_file)
+    settings_file.write_text(
+        settings_file.read_text(encoding="utf-8")
+        + f"\ncandidate_profile_path: {profile_file}\n",
+        encoding="utf-8",
+    )
+    resume_file.write_text(
+        "# Example Candidate\n\nLarge-scale Linux and HPC operations.",
+        encoding="utf-8",
+    )
+    normalized_resume_file.write_text(
+        "large-scale linux and hpc operations\n",
+        encoding="utf-8",
+    )
+    profile_file.write_text(
+        f"""
+candidate:
+  name: Example Candidate
+  compensation_floor_usd: 160000
+  preferred_base_usd: 185000
+  resume:
+    source_path: {resume_file}
+    normalized_text_path: {normalized_resume_file}
+  core_strengths:
+    - Linux infrastructure
+    - HPC operations
+  credible_adjacent:
+    - SRE
+  learning_or_gap:
+    - production Kubernetes ownership
+  avoid:
+    - frontend
+""",
+        encoding="utf-8",
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/profile")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Profile / Resume" in html
+    assert str(settings_file) in html
+    assert str(profile_file) in html
+    assert str(resume_file) in html
+    assert str(normalized_resume_file) in html
+    assert "Example Candidate" in html
+    assert "$160,000" in html
+    assert "$185,000" in html
+    assert "Linux infrastructure" in html
+    assert "HPC operations" in html
+    assert "SRE" in html
+    assert "production Kubernetes ownership" in html
+    assert "frontend" in html
+    assert "Large-scale Linux and HPC operations." in html
