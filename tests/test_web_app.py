@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import Path
 
 import job_radar.web_app as web_app_module
@@ -410,6 +411,168 @@ def test_history_page_handles_empty_history(tmp_path: Path) -> None:
     assert "Job History Archive" in html
     assert "History records shown:</strong> 0" in html
     assert "No imported job history records." in html
+
+
+def test_profile_page_shows_resume_upload_form(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    profile_file = tmp_path / "profile.yaml"
+    resume_file = tmp_path / "resume.md"
+    normalized_resume_file = tmp_path / "resume.normalized.txt"
+
+    write_settings_file(settings_file, database_file)
+    settings_file.write_text(
+        settings_file.read_text(encoding="utf-8")
+        + f"candidate_profile_path: {profile_file}\n",
+        encoding="utf-8",
+    )
+    profile_file.write_text(
+        f"""
+candidate:
+  name: Example Candidate
+  resume:
+    source_path: {resume_file}
+    normalized_text_path: {normalized_resume_file}
+  core_strengths:
+    - Linux infrastructure
+  credible_adjacent: []
+  learning_or_gap: []
+  avoid: []
+""",
+        encoding="utf-8",
+    )
+    resume_file.write_text("Linux infrastructure", encoding="utf-8")
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/profile")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Upload resume" in html
+    assert "Current resume" in html
+    assert "resume.md" in html
+    assert "Choose resume file" in html
+    assert "No file selected" in html
+    assert "replace-confirmation" in html
+    assert "Yes, replace resume" in html
+    assert "No, keep current resume" in " ".join(html.split())
+    assert "Replace it with the selected file?" in html
+    assert 'enctype="multipart/form-data"' in html
+    assert 'accept=".md,.txt,.pdf,.docx"' in html
+    assert "Upload and normalize resume" in html
+    assert "Supported formats: .md, .txt, .pdf, .docx." in html
+
+
+def test_profile_resume_upload_updates_resume_and_normalized_text(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    profile_file = tmp_path / "profile.yaml"
+    resume_file = tmp_path / "resume.md"
+    normalized_resume_file = tmp_path / "resume.normalized.txt"
+
+    write_settings_file(settings_file, database_file)
+    settings_file.write_text(
+        settings_file.read_text(encoding="utf-8")
+        + f"candidate_profile_path: {profile_file}\n",
+        encoding="utf-8",
+    )
+    profile_file.write_text(
+        f"""
+candidate:
+  name: Example Candidate
+  resume:
+    source_path: {resume_file}
+    normalized_text_path: {normalized_resume_file}
+  core_strengths:
+    - Linux infrastructure
+  credible_adjacent: []
+  learning_or_gap: []
+  avoid: []
+""",
+        encoding="utf-8",
+    )
+    resume_file.write_text("Old resume", encoding="utf-8")
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/profile/resume",
+        data={
+            "resume_file": (
+                BytesIO(b"# Updated Resume\n\nLinux infrastructure and HPC operations"),
+                "resume.md",
+            )
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Resume updated." in html
+    assert resume_file.read_text(encoding="utf-8") == (
+        "# Updated Resume\n\nLinux infrastructure and HPC operations"
+    )
+    assert normalized_resume_file.read_text(encoding="utf-8") == (
+        "# Updated Resume Linux infrastructure and HPC operations\n"
+    )
+    assert "# Updated Resume" in html
+    assert "Linux infrastructure and HPC operations" in html
+
+
+def test_profile_resume_upload_rejects_unsupported_file_type(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    profile_file = tmp_path / "profile.yaml"
+    resume_file = tmp_path / "resume.md"
+    normalized_resume_file = tmp_path / "resume.normalized.txt"
+
+    write_settings_file(settings_file, database_file)
+    settings_file.write_text(
+        settings_file.read_text(encoding="utf-8")
+        + f"candidate_profile_path: {profile_file}\n",
+        encoding="utf-8",
+    )
+    profile_file.write_text(
+        f"""
+candidate:
+  name: Example Candidate
+  resume:
+    source_path: {resume_file}
+    normalized_text_path: {normalized_resume_file}
+  core_strengths:
+    - Linux infrastructure
+  credible_adjacent: []
+  learning_or_gap: []
+  avoid: []
+""",
+        encoding="utf-8",
+    )
+    resume_file.write_text("Old resume", encoding="utf-8")
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/profile/resume",
+        data={
+            "resume_file": (
+                BytesIO(b"name,experience"),
+                "resume.csv",
+            )
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Resume upload failed:" in html
+    assert "Unsupported resume format: .csv" in html
+    assert resume_file.read_text(encoding="utf-8") == "Old resume"
 
 
 def test_index_page_links_to_scan(tmp_path: Path) -> None:

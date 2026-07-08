@@ -37,6 +37,29 @@ def load_resume_text(path: str | Path) -> str:
     return normalized_text
 
 
+def load_resume_display_text(path: str | Path) -> str:
+    resume_path = Path(path)
+    extension = resume_path.suffix.lower()
+
+    if extension not in SUPPORTED_RESUME_EXTENSIONS:
+        supported = ", ".join(sorted(SUPPORTED_RESUME_EXTENSIONS))
+        raise ConfigError(
+            f"Unsupported resume format: {extension or 'none'}. "
+            f"Supported formats: {supported}"
+        )
+
+    if not resume_path.exists():
+        raise ConfigError(f"Resume file does not exist: {resume_path}")
+
+    text = _read_resume_text(resume_path, extension)
+    display_text = _clean_display_text(text)
+
+    if not display_text:
+        raise ConfigError(f"Resume file is empty or unreadable: {resume_path}")
+
+    return display_text
+
+
 def write_normalized_resume_text(
     source_path: str | Path,
     normalized_text_path: str | Path,
@@ -77,9 +100,10 @@ def _read_docx_text(resume_path: Path) -> str:
 
     for table in document.tables:
         for row in table.rows:
-            for cell in row.cells:
-                if cell.text:
-                    parts.append(cell.text)
+            row_parts = [cell.text for cell in row.cells if cell.text]
+
+            if row_parts:
+                parts.append(" ".join(row_parts))
 
     return "\n".join(parts)
 
@@ -103,4 +127,16 @@ def _read_pdf_text(resume_path: Path) -> str:
         if page_text:
             parts.append(page_text)
 
-    return "\n".join(parts)
+    return "\n\n".join(parts)
+
+
+def _clean_display_text(text: str) -> str:
+    lines = []
+
+    for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        cleaned_line = " ".join(line.split())
+
+        if cleaned_line:
+            lines.append(cleaned_line)
+
+    return "\n".join(lines)

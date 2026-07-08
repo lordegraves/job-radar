@@ -4,8 +4,105 @@
 
 {% block page_styles %}
 <style>
-    pre {
+    .profile-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+
+    .resume-preview {
+        max-height: 620px;
+        overflow-y: auto;
+        scrollbar-color: var(--border-strong) var(--surface-muted);
+        scrollbar-width: thin;
         white-space: pre-wrap;
+    }
+
+    .resume-preview::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    .resume-preview::-webkit-scrollbar-track {
+        background: var(--surface-muted);
+        border-radius: 999px;
+    }
+
+    .resume-preview::-webkit-scrollbar-thumb {
+        background: var(--border-strong);
+        border: 2px solid var(--surface-muted);
+        border-radius: 999px;
+    }
+
+    .resume-preview::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
+    }
+
+    .success {
+        background: rgba(26, 127, 55, 0.18);
+        border: 1px solid rgba(46, 160, 67, 0.65);
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .upload-help {
+        margin-bottom: 12px;
+    }
+
+    .current-resume-card {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-top: 14px;
+        padding: 14px 16px;
+    }
+
+    .current-resume-card h3 {
+        margin: 0 0 10px 0;
+    }
+
+    .file-input-panel {
+        background: rgba(43, 43, 49, 0.62);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-top: 12px;
+        padding: 14px 16px;
+    }
+
+    .native-file-input {
+        height: 1px;
+        opacity: 0;
+        overflow: hidden;
+        position: absolute;
+        width: 1px;
+    }
+
+    .file-picker-row {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 8px;
+    }
+
+    .selected-file-name {
+        color: var(--muted);
+    }
+
+    .replace-confirmation {
+        background: rgba(96, 205, 255, 0.08);
+        border: 1px solid rgba(96, 205, 255, 0.35);
+        border-radius: 10px;
+        display: none;
+        margin-top: 14px;
+        padding: 14px 16px;
+    }
+
+    .replace-confirmation.is-visible {
+        display: block;
+    }
+
+    .replace-confirmation p {
+        margin-top: 0;
     }
 </style>
 {% endblock %}
@@ -14,14 +111,70 @@
 <div class="page-card">
     <h1 class="page-title">Profile / Resume</h1>
 
-    <p class="muted">Review the candidate profile and resume currently used by scans. This page is read-only for now.
-    </p>
+    <p class="muted">Review and update the candidate profile and resume currently used by scans.</p>
+
+    {% if upload_result == "success" %}
+    <div class="success">
+        <strong>Resume updated.</strong> The uploaded resume was saved and normalized for future scans.
+    </div>
+    {% endif %}
+
+    {% if upload_result == "error" and upload_error %}
+    <div class="error">
+        <strong>Resume upload failed:</strong> {{ upload_error }}
+    </div>
+    {% endif %}
 
     {% if profile.load_error %}
     <div class="error">
         <strong>Profile/resume warning:</strong> {{ profile.load_error }}
     </div>
     {% endif %}
+</div>
+
+<div class="section">
+    <h2>Upload resume</h2>
+    <p class="muted upload-help">Supported formats: .md, .txt, .pdf, .docx. The upload is validated before it replaces the active resume.</p>
+
+    <div class="current-resume-card">
+        <h3>Current resume</h3>
+        <p><span class="label">File name:</span>
+            {% if profile.resume_source_file_name %}
+            {{ profile.resume_source_file_name }}
+            {% else %}
+            Not configured
+            {% endif %}
+        </p>
+        <p><span class="label">Source exists:</span> {{ profile.resume_source_exists }}</p>
+        <p><span class="label">Normalized text exists:</span> {{ profile.normalized_text_exists }}</p>
+        {% if profile.resume_character_count is not none %}
+        <p><span class="label">Display character count:</span> {{ profile.resume_character_count }}</p>
+        {% endif %}
+    </div>
+
+    <form id="resume-upload-form" method="post" action="{{ url_for('upload_resume') }}" enctype="multipart/form-data" data-resume-exists="{{ 'true' if profile.resume_source_exists or profile.normalized_text_exists else 'false' }}" data-resume-file-name="{{ profile.resume_source_file_name or 'configured resume' }}">
+        <div class="file-input-panel">
+            <label for="resume_file">Resume file</label>
+            <div class="file-picker-row">
+                <input class="native-file-input" id="resume_file" name="resume_file" type="file" accept=".md,.txt,.pdf,.docx" required>
+                <label class="button-link button-secondary" for="resume_file">Choose resume file</label>
+                <span class="selected-file-name" id="selected-file-name">No file selected</span>
+            </div>
+        </div>
+
+        <div class="replace-confirmation" id="replace-confirmation">
+            <p><strong>A resume already exists:</strong> {{ profile.resume_source_file_name or "configured resume" }}</p>
+            <p>Replace it with the selected file?</p>
+            <div class="actions">
+                <button type="button" id="confirm-upload-button">Yes, replace resume</button>
+                <button class="button-secondary" type="button" id="cancel-upload-button">No, keep current resume</button>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="upload-button" type="submit">Upload and normalize resume</button>
+        </div>
+    </form>
 </div>
 
 <div class="section">
@@ -53,87 +206,145 @@
     <p><span class="label">Normalized resume exists:</span> {{ profile.normalized_text_exists }}</p>
 </div>
 
-<div class="section">
-    <h2>Candidate summary</h2>
-    <p><span class="label">Name:</span> {{ profile.candidate_name or "Unknown" }}</p>
-    <p><span class="label">Compensation floor:</span>
-        {% if profile.compensation_floor_usd %}
-        ${{ "{:,}".format(profile.compensation_floor_usd) }}
-        {% else %}
-        Not configured
+<div class="profile-grid">
+    <div class="section">
+        <h2>Candidate summary</h2>
+        <p><span class="label">Name:</span> {{ profile.candidate_name or "Unknown" }}</p>
+        <p><span class="label">Compensation floor:</span>
+            {% if profile.compensation_floor_usd %}
+            ${{ "{:,}".format(profile.compensation_floor_usd) }}
+            {% else %}
+            Not configured
+            {% endif %}
+        </p>
+        <p><span class="label">Preferred base:</span>
+            {% if profile.preferred_base_usd %}
+            ${{ "{:,}".format(profile.preferred_base_usd) }}
+            {% else %}
+            Not configured
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="section">
+        <h2>Resume summary</h2>
+        {% if profile.resume_source_file_name %}
+        <p><span class="label">Active file:</span> {{ profile.resume_source_file_name }}</p>
         {% endif %}
-    </p>
-    <p><span class="label">Preferred base:</span>
-        {% if profile.preferred_base_usd %}
-        ${{ "{:,}".format(profile.preferred_base_usd) }}
+        {% if profile.resume_character_count is not none %}
+        <p><span class="label">Display character count:</span> {{ profile.resume_character_count }}</p>
         {% else %}
-        Not configured
+        <p>No resume text is currently available.</p>
         {% endif %}
-    </p>
+    </div>
 </div>
 
-<div class="section">
-    <h2>Core strengths</h2>
-    {% if profile.core_strengths %}
-    <ul>
-        {% for item in profile.core_strengths %}
-        <li>{{ item }}</li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p>No core strengths configured.</p>
-    {% endif %}
-</div>
+<div class="profile-grid">
+    <div class="section">
+        <h2>Core strengths</h2>
+        {% if profile.core_strengths %}
+        <ul>
+            {% for item in profile.core_strengths %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No core strengths configured.</p>
+        {% endif %}
+    </div>
 
-<div class="section">
-    <h2>Credible adjacent areas</h2>
-    {% if profile.credible_adjacent %}
-    <ul>
-        {% for item in profile.credible_adjacent %}
-        <li>{{ item }}</li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p>No credible adjacent areas configured.</p>
-    {% endif %}
-</div>
+    <div class="section">
+        <h2>Credible adjacent areas</h2>
+        {% if profile.credible_adjacent %}
+        <ul>
+            {% for item in profile.credible_adjacent %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No credible adjacent areas configured.</p>
+        {% endif %}
+    </div>
 
-<div class="section">
-    <h2>Learning / gap areas</h2>
-    {% if profile.learning_or_gap %}
-    <ul>
-        {% for item in profile.learning_or_gap %}
-        <li>{{ item }}</li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p>No learning or gap areas configured.</p>
-    {% endif %}
-</div>
+    <div class="section">
+        <h2>Learning / gap areas</h2>
+        {% if profile.learning_or_gap %}
+        <ul>
+            {% for item in profile.learning_or_gap %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No learning or gap areas configured.</p>
+        {% endif %}
+    </div>
 
-<div class="section">
-    <h2>Avoid signals</h2>
-    {% if profile.avoid %}
-    <ul>
-        {% for item in profile.avoid %}
-        <li>{{ item }}</li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p>No avoid signals configured.</p>
-    {% endif %}
+    <div class="section">
+        <h2>Avoid signals</h2>
+        {% if profile.avoid %}
+        <ul>
+            {% for item in profile.avoid %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No avoid signals configured.</p>
+        {% endif %}
+    </div>
 </div>
 
 <div class="section">
     <h2>Resume preview</h2>
-    {% if profile.resume_character_count is not none %}
-    <p><span class="label">Normalized character count:</span> {{ profile.resume_character_count }}</p>
-    {% endif %}
-
     {% if profile.resume_preview %}
-    <pre>{{ profile.resume_preview }}</pre>
+    <pre class="resume-preview">{{ profile.resume_preview }}</pre>
     {% else %}
     <p>No resume preview available.</p>
     {% endif %}
 </div>
+
+<script>
+    const uploadForm = document.getElementById("resume-upload-form");
+    const resumeExists = uploadForm.dataset.resumeExists === "true";
+    const resumeFileName = uploadForm.dataset.resumeFileName;
+    const fileInput = document.getElementById("resume_file");
+    const selectedFileName = document.getElementById("selected-file-name");
+    const replaceConfirmation = document.getElementById("replace-confirmation");
+    const confirmUploadButton = document.getElementById("confirm-upload-button");
+    const cancelUploadButton = document.getElementById("cancel-upload-button");
+
+    let replacementConfirmed = false;
+
+    fileInput.addEventListener("change", function () {
+        replacementConfirmed = false;
+
+        if (fileInput.files.length > 0) {
+            selectedFileName.textContent = fileInput.files[0].name;
+        } else {
+            selectedFileName.textContent = "No file selected";
+        }
+
+        replaceConfirmation.classList.remove("is-visible");
+    });
+
+    uploadForm.addEventListener("submit", function (event) {
+        if (!resumeExists || replacementConfirmed) {
+            return;
+        }
+
+        event.preventDefault();
+        replaceConfirmation.classList.add("is-visible");
+    });
+
+    confirmUploadButton.addEventListener("click", function () {
+        replacementConfirmed = true;
+        uploadForm.requestSubmit();
+    });
+
+    cancelUploadButton.addEventListener("click", function () {
+        replacementConfirmed = false;
+        fileInput.value = "";
+        selectedFileName.textContent = "No file selected";
+        replaceConfirmation.classList.remove("is-visible");
+    });
+</script>
 {% endblock %}

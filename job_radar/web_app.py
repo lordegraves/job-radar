@@ -7,8 +7,8 @@ from threading import Lock
 from flask import Flask, abort, redirect, render_template, request, send_from_directory, url_for
 
 from job_radar.cli import handle_scan
-from job_radar.config import load_settings
-from job_radar.profile_service import build_candidate_profile_view
+from job_radar.config import ConfigError, load_settings
+from job_radar.profile_service import build_candidate_profile_view, save_uploaded_resume
 from job_radar.storage import (
     fetch_included_job_history_records,
     initialize_database,
@@ -251,7 +251,39 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         return render_template(
             "profile.html",
             profile=profile_view,
+            upload_result=request.args.get("upload_result", "").strip(),
+            upload_error=request.args.get("upload_error", "").strip(),
         )
+
+    @app.post("/profile/resume")
+    def upload_resume():
+        uploaded_file = request.files.get("resume_file")
+
+        if uploaded_file is None or not uploaded_file.filename:
+            return redirect(
+                url_for(
+                    "profile",
+                    upload_result="error",
+                    upload_error="Choose a resume file to upload.",
+                )
+            )
+
+        try:
+            save_uploaded_resume(
+                app.config["JOB_RADAR_SETTINGS_PATH"],
+                uploaded_file.filename,
+                uploaded_file.read(),
+            )
+        except ConfigError as error:
+            return redirect(
+                url_for(
+                    "profile",
+                    upload_result="error",
+                    upload_error=str(error),
+                )
+            )
+
+        return redirect(url_for("profile", upload_result="success"))
 
     @app.get("/history")
     def history() -> str:

@@ -1,0 +1,8 @@
+{
+    "[html]": {
+        "editor.formatOnSave": false
+    },
+    "[jinja-html]": {
+        "editor.formatOnSave": false
+    }
+}

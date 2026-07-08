@@ -57,6 +57,22 @@ def test_load_resume_text_rejects_unsupported_extension(tmp_path) -> None:
         load_resume_text(resume_path)
 
 
+def test_load_resume_display_text_preserves_readable_lines(tmp_path) -> None:
+    from job_radar.resume_loader import load_resume_display_text
+
+    resume_path = tmp_path / "resume.md"
+    resume_path.write_text(
+        "# Resume\n\nLinux infrastructure\nHPC operations",
+        encoding="utf-8",
+    )
+
+    assert load_resume_display_text(resume_path) == (
+        "# Resume\n"
+        "Linux infrastructure\n"
+        "HPC operations"
+    )
+
+
 def test_write_normalized_resume_text(tmp_path) -> None:
     resume_path = tmp_path / "resume.md"
     normalized_path = tmp_path / "resume.normalized.txt"
