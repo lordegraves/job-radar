@@ -1892,6 +1892,16 @@ candidate:
 
     assert response.status_code == 200
     assert "Profile / Resume" in html
+    assert "Job Radar profile summary" in html
+    assert "This is the candidate context currently available to scans and fit scoring." in html
+    assert "Candidate profile" in html
+    assert "Resume source" in html
+    assert "Normalized resume" in html
+    assert "Active resume file" in html
+    assert "Core strengths" in html
+    assert "Credible adjacent areas" in html
+    assert "Learning / gap areas" in html
+    assert "Avoid signals" in html
     assert str(settings_file) in html
     assert str(profile_file) in html
     assert str(resume_file) in html
@@ -1953,3 +1963,54 @@ candidate:
         assert 'href="/profile">Profile / Resume</a>' in normalized_html
         assert 'href="/reports">Reports</a>' in normalized_html
         assert 'href="/scan">Scan</a>' in normalized_html
+        assert "active-nav" in normalized_html
+
+
+def test_navigation_marks_current_page_active(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    profile_file = tmp_path / "profile.yaml"
+    resume_file = tmp_path / "resume.md"
+
+    write_settings_file(settings_file, database_file)
+    settings_file.write_text(
+        settings_file.read_text(encoding="utf-8")
+        + f"\ncandidate_profile_path: {profile_file}\n",
+        encoding="utf-8",
+    )
+    resume_file.write_text(
+        "# Example Candidate\n\nLarge-scale Linux and HPC operations.",
+        encoding="utf-8",
+    )
+    profile_file.write_text(
+        f"""
+candidate:
+  name: Example Candidate
+  resume:
+    source_path: {resume_file}
+  core_strengths: []
+  credible_adjacent: []
+  learning_or_gap: []
+  avoid: []
+""",
+        encoding="utf-8",
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    expected_active_links = {
+        "/": '<a class="active-nav" href="/">Home</a>',
+        "/tracker": '<a class="active-nav" href="/tracker">Application tracker</a>',
+        "/history": '<a class="active-nav" href="/history">Job history archive</a>',
+        "/profile": '<a class="active-nav" href="/profile">Profile / Resume</a>',
+        "/reports": '<a class="active-nav" href="/reports">Reports</a>',
+        "/scan": '<a class="active-nav" href="/scan">Scan</a>',
+    }
+
+    for route, expected_link in expected_active_links.items():
+        response = client.get(route)
+        normalized_html = " ".join(response.get_data(as_text=True).split())
+
+        assert response.status_code == 200
+        assert expected_link in normalized_html

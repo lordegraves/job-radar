@@ -10,6 +10,26 @@
         grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     }
 
+    .profile-health-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        margin-top: 14px;
+    }
+
+    .profile-health-card {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 14px;
+    }
+
+    .profile-health-card strong {
+        display: block;
+        font-size: 1.4rem;
+        margin-bottom: 4px;
+    }
+
     .resume-preview {
         max-height: 620px;
         overflow-y: auto;
@@ -130,6 +150,39 @@
         <strong>Profile/resume warning:</strong> {{ profile.load_error }}
     </div>
     {% endif %}
+</div>
+
+<div class="section">
+    <h2>Job Radar profile summary</h2>
+    <p class="muted">This is the candidate context currently available to scans and fit scoring.</p>
+
+    <div class="profile-health-grid">
+        <div class="profile-health-card">
+            <strong>{% if profile.candidate_profile_exists %}Ready{% else %}Missing{% endif %}</strong>
+            <span class="muted">Candidate profile</span>
+        </div>
+
+        <div class="profile-health-card">
+            <strong>{% if profile.resume_source_exists %}Ready{% else %}Missing{% endif %}</strong>
+            <span class="muted">Resume source</span>
+        </div>
+
+        <div class="profile-health-card">
+            <strong>{% if profile.normalized_text_exists %}Ready{% else %}Missing{% endif %}</strong>
+            <span class="muted">Normalized resume</span>
+        </div>
+
+        <div class="profile-health-card">
+            <strong>
+                {% if profile.resume_source_file_name %}
+                {{ profile.resume_source_file_name }}
+                {% else %}
+                Missing
+                {% endif %}
+            </strong>
+            <span class="muted">Active resume file</span>
+        </div>
+    </div>
 </div>
 
 <div class="section">
