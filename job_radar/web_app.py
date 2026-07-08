@@ -236,6 +236,15 @@ class TrackerApplicationView:
 
 
 @dataclass(frozen=True)
+class TrackerSummaryView:
+    total: int
+    needs_action: int
+    needs_review: int
+    active: int
+    closed: int
+
+
+@dataclass(frozen=True)
 class ReportFileView:
     name: str
     size_bytes: int
@@ -496,6 +505,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
         database_path = _get_database_path(app)
         applications = _get_tracker_application_views(database_path)
+        tracker_summary = _build_tracker_summary(applications)
         workflow_filtered_applications = _filter_tracker_applications(
             applications,
             filter_name,
@@ -518,6 +528,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             "tracker.html",
             database_path=database_path,
             applications=sorted_applications,
+            tracker_summary=tracker_summary,
             active_filter=filter_name,
             active_sort=sort_name,
             search_query=search_query,
@@ -743,6 +754,33 @@ def _get_tracker_application_views(database_path: str) -> list[TrackerApplicatio
         )
 
     return application_views
+
+def _build_tracker_summary(
+    applications: list[TrackerApplicationView],
+) -> TrackerSummaryView:
+    return TrackerSummaryView(
+        total=len(applications),
+        needs_action=sum(
+            1
+            for application in applications
+            if application.workflow_state in TRACKER_NEEDS_ACTION_WORKFLOW_STATES
+        ),
+        needs_review=sum(
+            1
+            for application in applications
+            if application.workflow_state in TRACKER_NEEDS_REVIEW_WORKFLOW_STATES
+        ),
+        active=sum(
+            1
+            for application in applications
+            if application.workflow_state in TRACKER_ACTIVE_WORKFLOW_STATES
+        ),
+        closed=sum(
+            1
+            for application in applications
+            if application.workflow_state == "closed"
+        ),
+    )
 
 
 def _get_tracker_application_sort_key(

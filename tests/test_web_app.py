@@ -71,6 +71,16 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "Application Tracker" in html
     assert f"<code>{database_file}</code>" in html
     assert "Applications shown:</strong> 1" in html
+    assert "Application tracker summary" in html
+    assert "Total tracked" in html
+    assert "Needs action" in html
+    assert "Needs review" in html
+    assert "Active pipeline" in html
+    assert "Closed" in html
+    assert "/tracker?filter=needs_action" in html
+    assert "/tracker?filter=needs_review" in html
+    assert "/tracker?filter=active" in html
+    assert "/tracker?filter=closed" in html
     assert "Stack AV" in html
     assert "Senior Site Reliability Engineer" in html
     assert "Applied" in html
@@ -83,6 +93,74 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "jr-stack-av-12345678" in html
     assert "https://example.com/jobs/stack-av-sre" in html
     assert "Applied through company site." in html
+
+
+def test_tracker_page_summarizes_workflow_counts(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-action-12345678",
+            company_name="ActionCo",
+            role_title="SRE",
+            status="Applied",
+            follow_up_on="2026-01-01",
+            applied_on="2026-01-01",
+            outcome="Pending / In Progress",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-review-12345678",
+            company_name="ReviewCo",
+            role_title="Platform Engineer",
+            status="Applied",
+            applied_on="2025-01-01",
+            outcome="Pending / In Progress",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-active-12345678",
+            company_name="ActiveCo",
+            role_title="Infrastructure Engineer",
+            status="Applied",
+            applied_on="2026-01-01",
+            outcome="Interview Scheduled",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-closed-12345678",
+            company_name="ClosedCo",
+            role_title="Linux Engineer",
+            status="rejected",
+            outcome="Rejected - No Interview",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker")
+    html = response.get_data(as_text=True)
+    normalized_html = " ".join(html.split())
+
+    assert response.status_code == 200
+    assert "Application tracker summary" in html
+    assert "<strong>4</strong> <span class=\"muted\">Total tracked</span>" in normalized_html
+    assert '<strong><a href="/tracker?filter=needs_action">2</a></strong> <span class="muted">Needs action</span>' in normalized_html
+    assert '<strong><a href="/tracker?filter=needs_review">1</a></strong> <span class="muted">Needs review</span>' in normalized_html
+    assert '<strong><a href="/tracker?filter=active">3</a></strong> <span class="muted">Active pipeline</span>' in normalized_html
+    assert '<strong><a href="/tracker?filter=closed">1</a></strong> <span class="muted">Closed</span>' in normalized_html
 
 
 def test_tracker_page_handles_empty_tracker(tmp_path: Path) -> None:
