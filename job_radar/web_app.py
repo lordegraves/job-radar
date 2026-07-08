@@ -1,4 +1,5 @@
 import argparse
+import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -191,6 +192,16 @@ TRACKER_QUICK_ACTIONS = {
 }
 
 REPORT_FILE_EXTENSIONS = {".html", ".htm", ".md", ".txt"}
+
+REPORT_HTML_BODY_PATTERN = re.compile(
+    r"<body\b[^>]*>(.*?)</body>",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+
+REPORT_HTML_STYLE_PATTERN = re.compile(
+    r"<style\b[^>]*>.*?</style>",
+    flags=re.IGNORECASE | re.DOTALL,
+)
 
 PRIMARY_REPORT_FILE_DETAILS = {
     "target-scan.html": {
@@ -450,12 +461,16 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     @app.get("/reports/view/<path:report_name>")
     def report_view(report_name: str) -> str:
         reports_path = Path(_get_reports_path(app)).resolve()
-        _validate_report_path(reports_path, report_name)
+        report_path = _validate_report_path(reports_path, report_name)
+        report_kind = "html" if report_path.suffix.lower() in {".html", ".htm"} else "text"
+        report_content = _read_report_view_content(report_path, report_kind)
 
         return render_template(
             "report_view.html",
             report_name=report_name,
-            report_url=url_for("report_file", report_name=report_name),
+            report_content=report_content,
+            report_kind=report_kind,
+            is_email_preview="email" in report_name.lower(),
         )
 
     @app.get("/reports/<path:report_name>")
@@ -634,6 +649,23 @@ def _get_database_path(app: Flask) -> str:
 def _get_reports_path(app: Flask) -> str:
     settings = load_settings(app.config["JOB_RADAR_SETTINGS_PATH"])
     return settings["reports_path"]
+
+
+def _read_report_view_content(report_path: Path, report_kind: str) -> str:
+    report_content = report_path.read_text(encoding="utf-8", errors="replace")
+
+    if report_kind != "html":
+        return report_content
+
+    # Generated report HTML may include its own light-theme CSS and full document
+    # shell. The GUI viewer owns page styling, so only embed the report body.
+    report_content = REPORT_HTML_STYLE_PATTERN.sub("", report_content)
+    body_match = REPORT_HTML_BODY_PATTERN.search(report_content)
+
+    if body_match is None:
+        return report_content
+
+    return body_match.group(1).strip()
 
 
 def _validate_report_path(reports_path: Path, report_name: str) -> Path:

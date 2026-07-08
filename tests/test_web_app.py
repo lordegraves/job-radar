@@ -812,7 +812,11 @@ def test_report_view_embeds_report_inside_app_shell(tmp_path: Path) -> None:
     assert "Report Viewer" in html
     assert "Back to Reports" in html
     assert "<code>target-scan.html</code>" in html
-    assert 'src="/reports/target-scan.html"' in html
+    assert "report-shell" in html
+    assert "report-content" in html
+    assert "Target scan" in html
+    assert "<iframe" not in html
+    assert 'src="/reports/target-scan.html"' not in html
     assert '<a href="/reports">Back to Reports</a>' in normalized_html
 
 

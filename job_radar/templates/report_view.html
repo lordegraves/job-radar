@@ -4,16 +4,132 @@
 
 {% block page_styles %}
 <style>
-    iframe {
-        background: #ffffff;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        height: 80vh;
-        width: 100%;
-    }
-
     .viewer-actions {
         margin: 16px 0;
+    }
+
+    .report-shell {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        margin-top: 16px;
+        max-height: 80vh;
+        overflow: auto;
+        padding: 22px 26px;
+        scrollbar-color: var(--border-strong) var(--surface-muted);
+        scrollbar-width: thin;
+    }
+
+    .report-shell::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    .report-shell::-webkit-scrollbar-track {
+        background: var(--surface-muted);
+        border-radius: 999px;
+    }
+
+    .report-shell::-webkit-scrollbar-thumb {
+        background: var(--border-strong);
+        border: 2px solid var(--surface-muted);
+        border-radius: 999px;
+    }
+
+    .report-shell::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
+    }
+
+    .report-content {
+        color: var(--text);
+        line-height: 1.55;
+    }
+
+    .report-content * {
+        color: inherit;
+    }
+
+    .report-content div,
+    .report-content section,
+    .report-content article,
+    .report-content main {
+        background: transparent !important;
+    }
+
+    .report-content ul,
+    .report-content ol {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 18px 14px 34px;
+    }
+
+    .report-content li {
+        margin: 4px 0;
+    }
+
+    .report-content h1,
+    .report-content h2,
+    .report-content h3,
+    .report-content h4 {
+        color: var(--text);
+        line-height: 1.2;
+        margin-top: 1.4em;
+    }
+
+    .report-content h1:first-child,
+    .report-content h2:first-child,
+    .report-content h3:first-child {
+        margin-top: 0;
+    }
+
+    .report-content hr {
+        border: 0;
+        border-top: 1px solid var(--border);
+        margin: 18px 0;
+    }
+
+    .report-content a {
+        color: var(--accent);
+    }
+
+    .report-content code {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--text);
+        padding: 1px 5px;
+    }
+
+    .report-content pre {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        overflow: auto;
+        padding: 14px 16px;
+        white-space: pre-wrap;
+    }
+
+    .report-content blockquote {
+        border-left: 4px solid var(--accent);
+        color: var(--muted);
+        margin-left: 0;
+        padding-left: 14px;
+    }
+
+    .report-content table {
+        margin: 16px 0;
+    }
+
+    .report-content .report-text-preview {
+        font-family: Consolas, "Cascadia Mono", monospace;
+        white-space: pre-wrap;
+    }
+
+    .email-preview-content {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        white-space: pre-wrap;
     }
 </style>
 {% endblock %}
@@ -29,5 +145,15 @@
     </div>
 </div>
 
-<iframe src="{{ report_url }}" title="Report file"></iframe>
+<div class="report-shell">
+    {% if report_kind == "html" %}
+    <div class="report-content {% if is_email_preview %}email-preview-content{% endif %}">
+        {{ report_content|safe }}
+    </div>
+    {% else %}
+    <div class="report-content">
+        <pre class="report-text-preview">{{ report_content }}</pre>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}
