@@ -22,6 +22,38 @@
         max-width: 760px;
     }
 
+    .dashboard-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin: 24px 0;
+    }
+
+    .dashboard-card {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 16px 18px;
+    }
+
+    .dashboard-card strong {
+        display: block;
+        font-size: 1.55rem;
+        margin-bottom: 4px;
+    }
+
+    .dashboard-card.is-action {
+        border-color: var(--link);
+        box-shadow:
+            var(--shadow),
+            inset 0 0 0 1px rgba(96, 205, 255, 0.22);
+    }
+
+    .dashboard-card a {
+        text-decoration: none;
+    }
+
     .nav-grid {
         display: grid;
         gap: 16px;
@@ -60,6 +92,33 @@
     <h1>Job Radar</h1>
     <p>Review scanned roles, track active applications, inspect archived history, and open generated reports from one
         local dashboard.</p>
+</section>
+
+<section class="dashboard-grid" aria-label="Application tracker dashboard">
+    <div class="dashboard-card">
+        <strong>{{ tracker_summary.total }}</strong>
+        <span class="muted">Total tracked applications</span>
+    </div>
+
+    <div class="dashboard-card is-action">
+        <strong><a href="{{ url_for('tracker', filter='needs_action') }}">{{ tracker_summary.needs_action }}</a></strong>
+        <span class="muted">Need action</span>
+    </div>
+
+    <div class="dashboard-card">
+        <strong><a href="{{ url_for('tracker', filter='needs_review') }}">{{ tracker_summary.needs_review }}</a></strong>
+        <span class="muted">Need review</span>
+    </div>
+
+    <div class="dashboard-card">
+        <strong><a href="{{ url_for('tracker', filter='active') }}">{{ tracker_summary.active }}</a></strong>
+        <span class="muted">Active pipeline</span>
+    </div>
+
+    <div class="dashboard-card">
+        <strong><a href="{{ url_for('tracker', filter='closed') }}">{{ tracker_summary.closed }}</a></strong>
+        <span class="muted">Closed</span>
+    </div>
 </section>
 
 <section class="nav-grid" aria-label="Job Radar sections">

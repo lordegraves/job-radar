@@ -195,6 +195,69 @@ def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert '<a href="/history">Job history archive</a>' in html
+    assert "Application tracker dashboard" in html
+    assert "Total tracked applications" in html
+    assert "Need action" in html
+    assert "Need review" in html
+    assert "Active pipeline" in html
+    assert "Closed" in html
+
+
+def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-action-12345678",
+            company_name="ActionCo",
+            role_title="SRE",
+            status="Applied",
+            follow_up_on="2026-01-01",
+            applied_on="2026-01-01",
+            outcome="Pending / In Progress",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-active-12345678",
+            company_name="ActiveCo",
+            role_title="Infrastructure Engineer",
+            status="Applied",
+            applied_on="2026-01-01",
+            outcome="Interview Scheduled",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-closed-12345678",
+            company_name="ClosedCo",
+            role_title="Linux Engineer",
+            status="rejected",
+            outcome="Rejected - No Interview",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/")
+    html = response.get_data(as_text=True)
+    normalized_html = " ".join(html.split())
+
+    assert response.status_code == 200
+    assert "Application tracker dashboard" in html
+    assert "<strong>3</strong> <span class=\"muted\">Total tracked applications</span>" in normalized_html
+    assert '<strong><a href="/tracker?filter=needs_action">2</a></strong> <span class="muted">Need action</span>' in normalized_html
+    assert '<strong><a href="/tracker?filter=needs_review">0</a></strong> <span class="muted">Need review</span>' in normalized_html
+    assert '<strong><a href="/tracker?filter=active">2</a></strong> <span class="muted">Active pipeline</span>' in normalized_html
+    assert '<strong><a href="/tracker?filter=closed">1</a></strong> <span class="muted">Closed</span>' in normalized_html
 
 
 def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:

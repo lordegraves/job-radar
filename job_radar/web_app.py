@@ -260,7 +260,14 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
     @app.get("/")
     def index() -> str:
-        return render_template("index.html")
+        database_path = _get_database_path(app)
+        applications = _get_tracker_application_views(database_path)
+        tracker_summary = _build_tracker_summary(applications)
+
+        return render_template(
+            "index.html",
+            tracker_summary=tracker_summary,
+        )
 
     @app.get("/profile")
     def profile() -> str:
