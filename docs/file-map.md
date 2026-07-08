@@ -2,12 +2,25 @@
 
 This document maps the current Job Radar repository so the project stays understandable as it grows.
 
-## Root Files
+## Purpose of this document
+
+This file owns repository structure and file ownership boundaries.
+
+It should not duplicate current project state or roadmap details.
+
+Use the documentation set this way:
+
+- `README.md` — quick project overview, common commands, and user-facing capabilities
+- `docs/current-state.md` — detailed current behavior and completed milestone state
+- `docs/product-roadmap.md` — future direction, finish-line definition, and remaining milestones
+- `docs/file-map.md` — repository structure and file ownership boundaries
+
+## Root files
 
 | File | Purpose | Keep / Review |
 |---|---|---|
 | `.gitignore` | Keeps local runtime data, generated reports, credentials, caches, and build artifacts out of Git. | Keep |
-| `README.md` | Main project overview and usage documentation. | Keep |
+| `README.md` | Quick project overview, common commands, and user-facing capabilities. | Keep |
 | `pyproject.toml` | Python project metadata, dependencies, package config, and test/tooling config. | Keep |
 
 ## Configuration
@@ -21,7 +34,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `config/live-test-settings.yaml` | Live test scan settings. | Keep |
 | `config/local-*.yaml` | Local/private config files, ignored by Git. | Local only / ignored |
 
-## Runtime Data
+## Runtime data
 
 | File / Pattern | Purpose | Keep / Review |
 |---|---|---|
@@ -40,11 +53,11 @@ This document maps the current Job Radar repository so the project stays underst
 
 | File | Purpose | Keep / Review |
 |---|---|---|
-| `docs/current-state.md` | Current project state and milestone notes. | Keep |
-| `docs/product-roadmap.md` | Product direction, finish-line definition, user-configuration requirements, packaging roadmap, and platform roadmap. | Keep |
+| `docs/current-state.md` | Detailed current project state and completed milestone notes. | Keep |
+| `docs/product-roadmap.md` | Product direction, finish-line definition, and future milestone roadmap. | Keep |
 | `docs/file-map.md` | Repository map and file ownership guide. | Keep |
 
-## Core Application Package
+## Core application package
 
 | File | Purpose | Keep / Review |
 |---|---|---|
@@ -57,7 +70,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/validation.py` | Validation helpers. | Keep |
 | `job_radar/normalize.py` | Text/key normalization helpers. | Keep |
 
-## Profile, Resume, and Match Context
+## Profile, resume, and match context
 
 | File | Purpose | Keep / Review |
 |---|---|---|
@@ -68,7 +81,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `profiles/clayton/resume.md` | Clayton-specific resume source used by Job Radar. | Keep / review before public release |
 | `profiles/clayton/resume.normalized.txt` | Normalized resume text for matching. | Keep / review whether generated |
 
-## Scoring, Recommendations, and History
+## Scoring, recommendations, and history
 
 | File | Purpose | Keep / Review |
 |---|---|---|
@@ -81,7 +94,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/history_context.py` | Adds history context to scored postings/reports. | Keep |
 | `job_radar/history_summary.py` | Summarizes imported history for reports. | Keep |
 
-## Application Tracker
+## Application tracker
 
 | File | Purpose | Keep / Review |
 |---|---|---|
@@ -90,7 +103,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `job_radar/tracker/tracker_storage.py` | SQLite persistence for application tracker records. | Keep |
 | `job_radar/tracker/tracker_service.py` | Tracker workflow classification, tracker/history conversion, tracker/history update and delete workflow actions, import partitioning, and tracker business rules. | Keep |
 
-## Reporting and Email
+## Reporting and email
 
 | File | Purpose | Keep / Review |
 |---|---|---|
@@ -100,7 +113,7 @@ This document maps the current Job Radar repository so the project stays underst
 | `reports/.gitkeep` | Preserves generated reports directory in Git. | Keep |
 | `reports/*` | Generated reports, previews, audits, probes, and local run output. | Local only / ignored |
 
-## Web App / GUI
+## Web app / GUI
 
 | File | Purpose | Keep / Review |
 |---|---|---|
@@ -172,7 +185,7 @@ Collector tests intentionally mirror collector files. This makes source-specific
 | Utility tests | `tests/test_normalize.py`, `tests/test_compensation.py`, `tests/test_email_sender.py` | Keep |
 | Integration tests | `tests/test_phase1a_integration.py` | Keep |
 
-## Current Simplification Guidance
+## Simplification guidance
 
 The project is not needlessly complicated yet. The apparent file count comes from three mostly healthy choices:
 
@@ -196,7 +209,7 @@ Current tracker and GUI logic already have dedicated boundaries:
 
 Continue using those boundaries instead of moving tracker behavior into reporting, recommendations, collectors, or generic storage.
 
-## Tracker / GUI Boundary
+## Tracker / GUI boundary
 
 The spreadsheet is being phased out as the normal application-tracking interface. It remains a bridge for import/history data, but active application tracking now has a dedicated tracker module and a basic Flask GUI.
 
@@ -209,7 +222,6 @@ job_radar/tracker/
   tracker_storage.py
   tracker_service.py
 ```
-
 
 Current web UI structure:
 
@@ -231,9 +243,11 @@ The tracker service owns application status/decision, follow-up timing, active o
 
 The spreadsheet/history importer owns external history intake, partitioning between active tracker records and archived history records, and historical context. The history GUI owns review/display controls for archived history. The spreadsheet should not be treated as the long-term source of truth for active application workflow.
 
-Tracker and History are now expected to be mutually exclusive. Active rows belong in the tracker. Terminal, passed, withdrawn, rejected, closed, or archived rows belong in history.
+Tracker and History are expected to be mutually exclusive. Active rows belong in the tracker. Terminal, passed, withdrawn, rejected, closed, or archived rows belong in history.
 
-The tracker should not be mixed into report rendering or collector code.
+The tracker should not be mixed into collector code or generic storage.
+
+Reporting and recommendation code may read tracker state from `ScoredPosting.application` for display/routing, but tracker workflow behavior should stay in the tracker service layer.
 
 Future GUI growth should keep `job_radar/web_app.py` small by moving workflow/business logic into GUI-neutral service functions. If route/template volume keeps growing, split the Flask interface into a dedicated web package before it becomes hard to maintain.
 

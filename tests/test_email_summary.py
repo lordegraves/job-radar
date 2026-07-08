@@ -7,6 +7,7 @@ from job_radar.email_summary import (
 )
 from job_radar.models import JobPosting
 from job_radar.reporting import ScanReport, ScoredPosting
+from job_radar.tracker.tracker_models import ApplicationRecord
 
 
 def make_posting(
@@ -332,6 +333,59 @@ def test_build_email_body_includes_hiring_risk_action_for_false_positive() -> No
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
     assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
     assert "Forward Deployed Engineer APAC" not in body
+
+
+def test_email_summary_excludes_tracked_applications() -> None:
+    posting = make_posting(title="Site Reliability Engineer")
+
+    report = ScanReport(
+        generated_at="2026-07-08T10:49:00+00:00",
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=120,
+                score_reasons=[
+                    "+30 title:site reliability",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+                review_needed_eligible=True,
+                history_risk_level="track_status",
+                history_risk_reasons=[],
+                application=ApplicationRecord(
+                    job_radar_id=posting.job_radar_id,
+                    company_name="Example AI",
+                    role_title="Site Reliability Engineer",
+                    source_url=posting.source_url,
+                    status="Applied",
+                    outcome="Pending / In Progress",
+                ),
+            )
+        ],
+    )
+
+    subject = build_email_subject(report)
+    body = build_email_body(report, "reports/test.md")
+    html_body = build_email_html_body(report, "reports/test.html")
+
+    assert subject == "Job Radar Report - 2026-07-08 - 1 jobs - 0 top matches - 0 review needed"
+    assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
+    assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
+    assert "Site Reliability Engineer" not in body
+    assert "Recommended action: Track Status" not in body
+    assert "You already applied for this job" not in body
+    assert "Site Reliability Engineer" not in html_body
+    assert "<strong>Recommended action:</strong> Track Status" not in html_body
+    assert "You already applied for this job" not in html_body
 
 
 def test_build_email_body_handles_empty_sections() -> None:

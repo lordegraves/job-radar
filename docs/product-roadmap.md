@@ -1,8 +1,21 @@
 # Job Radar Product Roadmap
 
-Last updated: 2026-07-07
+Last updated: 2026-07-08
 
-## Product Goal
+## Purpose of this document
+
+This file owns Job Radar's future direction, finish-line definition, and remaining milestones.
+
+It should not duplicate the detailed current-state ledger from `docs/current-state.md`.
+
+Use the documentation set this way:
+
+- `README.md` — quick project overview, common commands, and user-facing capabilities
+- `docs/current-state.md` — detailed current behavior and completed milestone state
+- `docs/product-roadmap.md` — future direction, finish-line definition, and remaining milestones
+- `docs/file-map.md` — repository structure and file ownership boundaries
+
+## Product goal
 
 Job Radar started as a personal job discovery, scoring, reporting, and application-tracking tool.
 
@@ -12,7 +25,7 @@ The finish line is not a hosted SaaS product and not an automated job-applicatio
 
 Job Radar is complete-enough when a user can install it, configure their own job search profile, add desired companies, run scans, review scored jobs, track applications, and receive reports without editing source code.
 
-## Product Principles
+## Product principles
 
 Job Radar should remain:
 
@@ -29,7 +42,7 @@ Job Radar should remain:
 
 The app should help the user decide where to spend time. It should not pretend to replace the user.
 
-## Current Product Shape
+## Current product shape
 
 Current shape:
 
@@ -43,10 +56,10 @@ Current strengths:
 - Multiple ATS/source collectors
 - SQLite-backed scan and tracker storage
 - Rules-based scoring
-- Report generation
+- Markdown/HTML reports
 - Email preview/send guardrails
 - Application tracker CLI
-- Local Flask tracker GUI
+- Local Flask tracker/history/report GUI
 - Spreadsheet import bridge
 - Sanitized example workbook
 
@@ -54,7 +67,9 @@ Current limitation:
 
 The app still depends on developer-style configuration and manual file editing for too many setup tasks.
 
-## Future Product Shape
+Detailed current state belongs in `docs/current-state.md`.
+
+## Future product shape
 
 Target shape:
 
@@ -93,7 +108,7 @@ The user should eventually be able to:
 - Configure email reports
 - Export or back up local data
 
-## Finish Line Definition
+## Finish line definition
 
 Job Radar is complete-enough when these are true:
 
@@ -120,7 +135,7 @@ Job Radar is complete-enough when these are true:
 21. Documentation clearly separates developer setup from user setup.
 22. Existing CLI/test/report behavior does not regress.
 
-## User Configuration Requirements
+## User configuration requirements
 
 Job Radar must stop assuming one hard-coded user profile.
 
@@ -151,7 +166,7 @@ The app should eventually support user-specific configuration for:
 - Email preferences
 - Scan schedule
 
-## Desired Companies
+## Desired companies
 
 Users need a way to add desired companies without editing YAML manually.
 
@@ -185,7 +200,7 @@ Save
 
 Near-term version can still write to config files or a local database, but the user should not need to know the internal YAML format.
 
-## Preferences and Scoring Setup
+## Preferences and scoring setup
 
 Users need guided preference setup.
 
@@ -223,7 +238,7 @@ How much travel is acceptable?
 Are clearance-required roles acceptable?
 ```
 
-## Profile and Resume Setup
+## Profile and resume setup
 
 The current profile and resume flow is too user-specific.
 
@@ -264,11 +279,11 @@ Linux target:
 
 ~/.local/share/job-radar/
   job_radar.sqlite3
-  reports\
-  logs\
+  reports/
+  logs/
 ```
 
-## GUI Roadmap
+## GUI roadmap
 
 The current Flask GUI should continue as the near-term interface.
 
@@ -291,7 +306,7 @@ The GUI must not become a separate source of truth.
 
 Resume/profile GUI work must follow this same rule. Uploading or updating a resume through the GUI should feed the same profile/resume path and loader used by CLI scans.
 
-## Cross-Platform App Direction
+## Cross-platform app direction
 
 Job Radar should be built as one core application with multiple launch targets, not as separate desktop, web, and server products.
 
@@ -307,7 +322,7 @@ The current Flask GUI remains the near-term shared interface because it works fo
 Recommended path:
 
 1. Keep Flask as the shared web/server UI.
-2. Keep workflow/business logic in GUI-neutral services; tracker/history workflow actions already use service-layer functions.
+2. Keep workflow/business logic in GUI-neutral services.
 3. Add a friendly GUI launch command.
 4. Add a local launcher that starts the app and opens the UI automatically.
 5. Add container/server deployment.
@@ -316,7 +331,7 @@ Recommended path:
 
 This preserves current work while moving toward normal click-to-open desktop use and always-on server/container operation.
 
-## Installer / Packaging Roadmap
+## Installer and packaging roadmap
 
 The long-term Windows target is:
 
@@ -358,7 +373,7 @@ Possible later alternatives:
 - NSIS
 - WiX Toolset
 
-## Linux Roadmap
+## Linux roadmap
 
 Linux should remain a supported direction, but Windows packaging comes first.
 
@@ -381,7 +396,7 @@ Linux needs:
 - Optional service-style operation
 - Clear no-root local mode where possible
 
-## Deployment Flexibility Roadmap
+## Deployment flexibility roadmap
 
 Job Radar should be flexible enough to run in different user-controlled environments.
 
@@ -400,7 +415,7 @@ Deployment work must preserve one core service layer so CLI, Flask UI, desktop l
 
 Flask is the current UI/server interface, not the whole product. Business workflow logic should live in reusable services that can be called by CLI commands, web routes, future desktop launchers, and scheduled jobs.
 
-## Scheduler Roadmap
+## Scheduler roadmap
 
 Scheduled scans should eventually be configurable without editing scripts.
 
@@ -419,7 +434,7 @@ Linux target:
 
 The scheduler should run the same scan pipeline as manual scans.
 
-## Data Ownership and Privacy
+## Data ownership and privacy
 
 Job Radar should assume job search data is private.
 
@@ -446,20 +461,16 @@ The repo may include:
 - Tests
 - Non-private sample data
 
-## Complete-Enough Milestones
+## Complete-enough milestones
 
 The finish line can be reached in stages.
 
 ### Stage 1: Finish Current GUI Workflow
 
 - Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
-- Move tracker records to history when the GUI changes an active application to a terminal outcome.
-- Move reopened history records back to tracker from the GUI.
-- Support tracker/history row deletion from the GUI.
+- Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
 - Preserve Tracker/History mutual exclusivity: active rows belong in Tracker, archived or terminal rows belong in History.
 - Keep tracker/history workflow actions in GUI-neutral services so Flask, CLI, desktop launcher/wrapper, scheduler, and container/server mode can reuse them.
-- Add practical tracker/history search and filtering.
-- Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
 - Decide the final role of the spreadsheet bridge.
 - Keep scan/report behavior stable while GUI tracker/history behavior improves.
 
@@ -511,7 +522,7 @@ The finish line can be reached in stages.
 - Add release validation for packaged builds.
 - Run no-regression validation.
 
-## Not Yet Required
+## Not yet required
 
 The following are not required for complete-enough:
 

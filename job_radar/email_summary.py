@@ -7,7 +7,6 @@ from job_radar.recommendation_constants import (
     ACTION_PASS,
     ACTION_TRACK_STATUS,
     RISK_NOT_LOCATION_ELIGIBLE,
-    TRACK_STATUS_ALREADY_APPLIED_MESSAGE,
 )
 
 from job_radar.recommendations import (
@@ -131,8 +130,9 @@ def build_email_html_body(
     report_path: str | Path,
     include_report_path: bool = True,
 ) -> str:
-    top_matches = _get_top_matches(report.scored_postings)
-    review_needed = _get_review_needed(report.scored_postings)
+    email_scored_postings = _get_email_summary_scored_postings(report)
+    top_matches = _get_top_matches(email_scored_postings)
+    review_needed = _get_review_needed(email_scored_postings)
 
     lines: list[str] = [
         "<!doctype html>",
@@ -261,7 +261,14 @@ def _get_email_summary_scored_postings(report: ScanReport) -> list[ScoredPosting
     summary_scored_postings = list(report.scored_postings or [])
     summary_scored_postings.extend(report.omitted_scored_postings or [])
 
-    return summary_scored_postings
+    # Email is for new things that deserve attention. Already-applied jobs stay
+    # in the full report under Tracked Applications, but they should not create
+    # inbox noise or look like fresh apply targets.
+    return [
+        scored_posting
+        for scored_posting in summary_scored_postings
+        if _get_recommended_action(scored_posting) != ACTION_TRACK_STATUS
+    ]
 
 
 def _is_email_actionable_posting(scored_posting: ScoredPosting) -> bool:
@@ -269,6 +276,9 @@ def _is_email_actionable_posting(scored_posting: ScoredPosting) -> bool:
 
 
 def _is_email_top_match_posting(scored_posting: ScoredPosting) -> bool:
+    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
+        return False
+
     return _is_top_match_display_posting(scored_posting)
 
 
@@ -277,7 +287,7 @@ def _is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
         return False
 
     if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
-        return True
+        return False
 
     return scored_posting.review_needed_eligible
 
@@ -399,12 +409,6 @@ def _get_top_match_reasons(scored_posting: ScoredPosting) -> list[str]:
 
 
 def _get_review_needed_reasons(scored_posting: ScoredPosting) -> list[str]:
-    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
-        return [
-            TRACK_STATUS_ALREADY_APPLIED_MESSAGE,
-            _format_email_work_arrangement_reason(scored_posting),
-        ]
-
     return [
         "Strong technical signals, but review before applying.",
         _format_email_work_arrangement_reason(scored_posting),

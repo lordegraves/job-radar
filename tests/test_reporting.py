@@ -2327,12 +2327,24 @@ def test_recommendation_summary_counts_omitted_history_actions() -> None:
     markdown = render_markdown_report(report)
 
     assert "  - Track Status: 1" in markdown
-    assert "## Review Needed" in markdown
-    assert "- Recommended action: Track Status" in markdown
+    assert "## Tracked Applications" in markdown
+
+    top_matches_section = markdown.split("## Northern Colorado Highlights")[0]
+    review_needed_section = markdown.split("## Tracked Applications")[0].split(
+        "## Review Needed"
+    )[1]
+    tracked_section = markdown.split("## Tracked Applications")[1].split(
+        "## Passed / Not Recommended"
+    )[0]
+
+    assert "### [Site Reliability Engineer]" not in top_matches_section
+    assert "### [Site Reliability Engineer]" not in review_needed_section
+    assert "### [Site Reliability Engineer]" in tracked_section
+    assert "- Recommended action: Track Status" in tracked_section
     assert (
-        "- Why it needs review: You already applied for this job. Track the existing "
+        "- Why it is tracked: You already applied for this job. Track the existing "
         "application instead of applying again."
-        in markdown
+        in tracked_section
     )
     assert "- Why not recommended: Prior application history matches this role;" not in markdown
 
@@ -2611,6 +2623,63 @@ def test_profile_avoid_match_blocks_even_without_existing_role_family_mismatch()
     assert _get_recommended_action(scored_posting) == "Pass"
 
 
+def test_render_markdown_report_routes_track_status_to_tracked_applications() -> None:
+    posting = make_posting(title="Site Reliability Engineer")
+
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[
+            ScoredPosting(
+                posting=posting,
+                score=120,
+                score_reasons=[
+                    "+30 title:site reliability",
+                    "+100 location_allowed:remote",
+                ],
+                location_status="allowed",
+                top_match_eligible=True,
+                top_match_reasons=["eligible"],
+                review_needed_eligible=True,
+                history_risk_level="track_status",
+                history_risk_reasons=[],
+                application=ApplicationRecord(
+                    job_radar_id=posting.job_radar_id,
+                    company_name="Example AI",
+                    role_title="Site Reliability Engineer",
+                    source_url=posting.source_url,
+                    status="Applied",
+                    outcome="Pending / In Progress",
+                ),
+            )
+        ],
+    )
+
+    markdown = render_markdown_report(report)
+
+    top_matches_section = markdown.split("## Northern Colorado Highlights")[0]
+    review_needed_section = markdown.split("## Tracked Applications")[0].split(
+        "## Review Needed"
+    )[1]
+    tracked_section = markdown.split("## Tracked Applications")[1].split(
+        "## Passed / Not Recommended"
+    )[0]
+
+    assert "### [Site Reliability Engineer]" not in top_matches_section
+    assert "### [Site Reliability Engineer]" not in review_needed_section
+    assert "### [Site Reliability Engineer]" in tracked_section
+    assert "- Recommended action: Track Status" in tracked_section
+    assert "- Track Status:" in tracked_section
+    assert "  - Status: Applied" in tracked_section
+    assert "  - Workflow: waiting" in tracked_section
+    assert "  - Outcome: Pending / In Progress" in tracked_section
+
+
 def test_render_markdown_report_includes_track_status_for_tracked_application() -> None:
     posting = make_posting(title="Senior Site Reliability Engineer")
 
@@ -2703,7 +2772,7 @@ def test_render_html_report_includes_track_status_for_tracked_application() -> N
     assert "<li>Notes: Recruiter replied.</li>" in html
 
 
-def test_render_html_report_styles_track_status_as_review_needed() -> None:
+def test_render_html_report_styles_track_status_as_tracked_application() -> None:
     posting = make_posting(title="Site Reliability Engineer")
 
     report = ScanReport(
@@ -2734,6 +2803,8 @@ def test_render_html_report_styles_track_status_as_review_needed() -> None:
 
     html = render_html_report(report)
 
-    assert '<section class="job-card review-needed">' in html
+    assert "<h2>Tracked Applications</h2>" in html
+    assert '<section class="job-card tracked-application">' in html
+    assert '<section class="job-card review-needed">' not in html
     assert '<section class="job-card top-match">' not in html
     assert "<strong>Recommended action:</strong> Track Status" in html

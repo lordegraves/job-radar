@@ -223,6 +223,7 @@ def render_html_report(report: ScanReport) -> str:
         ".job-card { border: 1px solid #dddddd; padding: 14px 16px; margin: 16px 0; border-radius: 6px; }",
         ".top-match { border-left: 6px solid #2e7d32; }",
         ".review-needed { border-left: 6px solid #b26a00; }",
+        ".tracked-application { border-left: 6px solid #5f6368; }",
         ".quick-view { background: #f6f8fa; border: 1px solid #dddddd; padding: 10px 14px; }",
         "code { background: #f6f8fa; padding: 2px 4px; }",
         "</style>",
@@ -548,11 +549,7 @@ def _get_surfaced_recommendation_postings(report: ScanReport) -> list[ScoredPost
     surfaced_postings.extend(_get_top_matches(scored_postings))
     surfaced_postings.extend(_get_northern_colorado_highlights(scored_postings))
     surfaced_postings.extend(_get_review_needed(report_scored_postings))
-    surfaced_postings.extend(
-        scored_posting
-        for scored_posting in report_scored_postings
-        if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS
-    )
+    surfaced_postings.extend(_get_tracked_applications(report_scored_postings))
 
     return _dedupe_scored_postings(surfaced_postings)
 
@@ -720,6 +717,7 @@ def _append_scored_sections(
     _append_top_matches_section(lines, report_scored_postings)
     _append_northern_colorado_highlights_section(lines, report_scored_postings)
     _append_review_needed_section(lines, report_scored_postings)
+    _append_tracked_applications_section(lines, report_scored_postings)
     _append_omitted_jobs_section(
         lines,
         scored_postings=(
@@ -813,7 +811,38 @@ def _append_review_needed_section(
         _append_scored_posting(lines, scored_posting)
 
 
+def _append_tracked_applications_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    lines.extend(
+        [
+            "## Tracked Applications",
+            "",
+        ]
+    )
+
+    tracked_applications = _get_tracked_applications(scored_postings)
+
+    if not tracked_applications:
+        lines.extend(
+            [
+                "No tracked applications found in this scan.",
+                "",
+            ]
+        )
+        return
+
+    for scored_posting in tracked_applications:
+        _append_scored_posting(lines, scored_posting)
+
+
 def _is_top_match_report_posting(scored_posting: ScoredPosting) -> bool:
+    # Already-applied jobs are not new opportunities. Keep them out of
+    # Top Matches even if the score still looks strong.
+    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
+        return False
+
     return _is_top_match_display_posting(scored_posting)
 
 
@@ -821,8 +850,10 @@ def _is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
     if not _is_actionable_posting(scored_posting):
         return False
 
+    # Track Status means "watch the existing application", not "review/apply."
+    # It gets its own report section so applied jobs do not crowd new leads.
     if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
-        return True
+        return False
 
     return scored_posting.review_needed_eligible
 
@@ -834,6 +865,16 @@ def _get_review_needed(
         scored_posting
         for scored_posting in scored_postings
         if _is_review_needed_report_posting(scored_posting)
+    ]
+
+
+def _get_tracked_applications(
+    scored_postings: list[ScoredPosting],
+) -> list[ScoredPosting]:
+    return [
+        scored_posting
+        for scored_posting in scored_postings
+        if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS
     ]
 
 
@@ -916,6 +957,7 @@ def _get_omitted_postings(
         for scored_posting in scored_postings
         if not _is_top_match_report_posting(scored_posting)
         and not _is_review_needed_report_posting(scored_posting)
+        and _get_recommended_action(scored_posting) != ACTION_TRACK_STATUS
     ]
 
 
@@ -1370,7 +1412,7 @@ def _format_decision_explanation(
 ) -> tuple[str, str] | None:
     if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
         return (
-            "Why it needs review",
+            "Why it is tracked",
             TRACK_STATUS_ALREADY_APPLIED_MESSAGE,
         )
 
@@ -1614,15 +1656,21 @@ def _append_html_scored_sections(
     scored_postings: list[ScoredPosting],
     omitted_scored_postings: list[ScoredPosting] | None = None,
 ) -> None:
-    _append_html_top_matches_section(lines, scored_postings)
-    _append_html_northern_colorado_highlights_section(lines, scored_postings)
-    _append_html_review_needed_section(lines, scored_postings)
+    report_scored_postings = list(scored_postings)
+
+    if omitted_scored_postings is not None:
+        report_scored_postings.extend(omitted_scored_postings)
+
+    _append_html_top_matches_section(lines, report_scored_postings)
+    _append_html_northern_colorado_highlights_section(lines, report_scored_postings)
+    _append_html_review_needed_section(lines, report_scored_postings)
+    _append_html_tracked_applications_section(lines, report_scored_postings)
     _append_html_omitted_jobs_section(
         lines,
         scored_postings=(
             omitted_scored_postings
             if omitted_scored_postings is not None
-            else scored_postings
+            else report_scored_postings
         ),
     )
 
@@ -1697,6 +1745,22 @@ def _append_html_review_needed_section(
         return
 
     for scored_posting in review_needed:
+        _append_html_scored_posting(lines, scored_posting)
+
+
+def _append_html_tracked_applications_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    lines.append("<h2>Tracked Applications</h2>")
+
+    tracked_applications = _get_tracked_applications(scored_postings)
+
+    if not tracked_applications:
+        lines.append("<p>No tracked applications found in this scan.</p>")
+        return
+
+    for scored_posting in tracked_applications:
         _append_html_scored_posting(lines, scored_posting)
 
 
@@ -1856,7 +1920,7 @@ def _append_html_scored_posting(
     recommended_action = _get_recommended_action(scored_posting)
 
     if recommended_action == ACTION_TRACK_STATUS:
-        section_class = "job-card review-needed"
+        section_class = "job-card tracked-application"
     elif scored_posting.top_match_eligible:
         section_class = "job-card top-match"
     elif scored_posting.review_needed_eligible:

@@ -223,6 +223,11 @@ def _get_hiring_probability_label(scored_posting: ScoredPosting) -> str:
 
 
 def _get_recommended_action(scored_posting: ScoredPosting) -> str:
+    # A tracked application is not a new lead. The scan may still see the
+    # posting, but reports should point back to the existing application.
+    if scored_posting.application is not None:
+        return ACTION_TRACK_STATUS
+
     hiring_probability = _get_hiring_probability_label(scored_posting)
     technical_match = _get_technical_match_label(scored_posting)
     resume_match = _get_resume_match_label(scored_posting)

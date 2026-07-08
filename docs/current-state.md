@@ -1,14 +1,27 @@
 # Job Radar Current State
 
-Last updated: 2026-07-07
+Last updated: 2026-07-08
 
 ## Purpose
 
-Job Radar is a local job discovery, triage, and application-tracking tool.
+Job Radar is a local job discovery, triage, reporting, and application-tracking tool.
 
 Its purpose is to safely scan known target company job boards, normalize postings, store them in SQLite, score them against the user's job preferences, generate reports that make manual review faster, and track application workflow through an app-native tracker.
 
 Job Radar does not apply to jobs automatically. It does not contact employers. It does not broadly crawl the internet.
+
+## Document ownership
+
+This file is the detailed current-state snapshot and completed milestone ledger.
+
+Use the documentation set this way:
+
+- `README.md` owns quick project overview, common commands, and user-facing capabilities.
+- `docs/current-state.md` owns detailed current behavior and completed milestone state.
+- `docs/product-roadmap.md` owns future direction, finish-line definition, and remaining milestones.
+- `docs/file-map.md` owns repository structure and file ownership boundaries.
+
+Avoid pasting the same update into all four docs.
 
 ## Product direction
 
@@ -22,47 +35,31 @@ The intended long-term targets are:
 
 These targets should share the same core services and SQLite-backed data model instead of becoming separate products.
 
-The long-term goal is not only to support one hard-coded job search profile. The goal is to let a user configure:
-
-- desired companies
-- source types and career pages
-- preferred roles
-- required and preferred keywords
-- salary floor and compensation expectations
-- acceptable locations
-- remote/hybrid/on-site rules
-- exclusion rules
-- application tracking preferences
-- report/email preferences
-- scan schedule
-
-The app should eventually guide users through this setup in the GUI instead of requiring manual YAML editing.
-
 The finish line is defined in:
 
-    docs/product-roadmap.md
+- `docs/product-roadmap.md`
 
 ## Current scan coverage
 
 The primary live scan configuration is:
 
-    config/target-companies.yaml
+- `config/target-companies.yaml`
 
 The current main settings file is:
 
-    config/settings.yaml
+- `config/settings.yaml`
 
 The live-test settings file remains available for sandbox validation when needed:
 
-    config/live-test-settings.yaml
+- `config/live-test-settings.yaml`
 
 Current verified live scan state from the last documented scan:
 
-    Companies enabled: 62
-    Jobs collected: 10,000
-    Jobs stored: 150
-    Jobs omitted: 9,850
-    Collector errors: 0
+- Companies enabled: 62
+- Jobs collected: 10,000
+- Jobs stored: 150
+- Jobs omitted: 9,850
+- Collector errors: 0
 
 Implemented source types include:
 
@@ -109,7 +106,7 @@ SQLite is the current system of record for scans, imported history, and app-nati
 
 Job Radar uses config-driven scoring from:
 
-    config/scoring.yaml
+- `config/scoring.yaml`
 
 Current scoring includes:
 
@@ -129,6 +126,24 @@ Top Matches are reserved for clean, high-confidence roles with strong fit signal
 Production Kubernetes-primary roles are demoted out of Top Matches unless there is strong infrastructure counterevidence. They may still appear under Review Needed when otherwise relevant.
 
 Generic Remote Competition is a risk signal only. It must not block or reject a role by itself.
+
+## Current recommendation and tracker routing behavior
+
+A scanned posting with an attached application tracker record is treated as `Track Status`.
+
+Tracked applications are not new leads.
+
+Tracked applications:
+
+- do not appear in Top Matches
+- do not appear in Review Needed
+- do not appear in email summaries
+- appear in the full Markdown and HTML reports under Tracked Applications
+- keep tracker context visible in the full report
+
+This behavior is driven by the attached tracker record, not merely by fuzzy history context.
+
+Job Radar does not auto-track jobs because they scored well. Scan/report reads tracker state only.
 
 ## Current report behavior
 
@@ -154,14 +169,14 @@ Reports include:
 - Top Matches Quick View
 - Northern Colorado Highlights
 - Review Needed
-- Track Status for jobs already tracked
+- Tracked Applications
 - Passed / Not Recommended
 
 The full Markdown and HTML reports keep detailed review information.
 
-Markdown, HTML, and email-preview reports show stable Job Radar IDs for scanned postings so imported history and tracker records can point back to exact surfaced roles.
+Markdown, HTML, and email-preview outputs show stable Job Radar IDs for scanned postings so imported history and tracker records can point back to exact surfaced roles.
 
-The email preview is intentionally capped for readability.
+The email preview is intentionally capped for readability and excludes tracked applications.
 
 Passed / Not Recommended includes audit details so large scans explain why most collected jobs did not surface as Top Match or Review Needed.
 
@@ -171,7 +186,7 @@ Job Radar imports application and review history from a local Excel workbook.
 
 A sanitized example workbook is included at:
 
-    examples/job-history-template.xlsx
+- `examples/job-history-template.xlsx`
 
 The example workbook contains the simplified Job Log headers, formatting, validation lists, and one fake sample row. It must not contain real application history.
 
@@ -193,15 +208,15 @@ Job Radar ID is generated by Job Radar for scanned postings and is the preferred
 
 History matching checks exact Job Radar ID before falling back to guarded company/title similarity.
 
-Exact Job Radar ID matches can route roles to Track Status. Fuzzy company/title matches only route to Track Status when the title match is strong enough; weaker fuzzy matches remain history context instead of treating the role as already applied.
+Exact Job Radar ID matches can provide history context. Existing application tracker records are attached during scan/report generation so already-tracked jobs route to Tracked Applications.
+
+Fuzzy company/title matches only route to Track Status when the title match is strong enough. Weaker fuzzy matches remain history context instead of treating the role as already applied.
 
 Rows without Job Radar ID are allowed for LinkedIn, referral, recruiter, company-site, and manual leads.
 
 Posting URL is fallback evidence when available.
 
 The workbook is treated as a human job log and import bridge, not the app's internal schema.
-
-Job Radar reads the workbook during manual history import. The workbook remains a transition bridge for existing history and bulk intake, but it is being retired as the normal application-tracking interface.
 
 Spreadsheet import now partitions rows into either the active application tracker or the archived job history table. Tracker and History are mutually exclusive: a row should exist in one place or the other, not both.
 
@@ -348,13 +363,21 @@ Current tracker module files use the tracker naming convention:
 
 Current GUI command:
 
-    python -m job_radar.web_app --settings config/settings.yaml
+```powershell
+python -m job_radar.web_app --settings config/settings.yaml
+```
 
 Current local GUI URL:
 
-    http://127.0.0.1:5000/
+```text
+http://127.0.0.1:5000/
+```
 
-The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker. The reports page opens existing generated reports and email previews without starting a scan or sending email. The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled.
+The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker.
+
+The reports page opens existing generated reports and email previews without starting a scan or sending email.
+
+The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled.
 
 ## Current email behavior
 
@@ -368,6 +391,8 @@ Email behavior:
 - Passwords must come from environment variables.
 - No SMTP password should be stored in YAML.
 - With email disabled, `--send-email` prints that sending is disabled.
+- Email summaries are intentionally capped for readability.
+- Tracked applications are excluded from email summaries.
 
 ## Current project principles
 
@@ -423,7 +448,9 @@ Completed so far:
 - Exact Job Radar ID history matching
 - Guarded fuzzy history matching
 - History context summary
-- Track Status routing
+- Track Status recommendation routing
+- Tracked Applications full-report section
+- Tracked applications excluded from Top Matches, Review Needed, and email summaries
 - Production Kubernetes Top Match demotion
 - Omitted jobs audit summary
 - Application tracker storage
@@ -489,27 +516,6 @@ Current limitations:
 - Kubernetes deployment is not complete.
 - LLM integration is not implemented yet.
 - The Flask GUI is local/basic and not yet productionized.
-
-## Remaining milestones before complete-enough
-
-Remaining high-priority milestones:
-
-1. Add a friendly GUI launch command so normal local use does not require remembering `python -m job_radar.web_app --settings config/settings.yaml`.
-2. Add GUI resume/profile management that mirrors the existing CLI resume/profile process.
-3. Validate tracker/history sorting, searching, and filtering against real review patterns previously handled in the workbook.
-4. Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
-5. Decide the final role of the spreadsheet bridge: one-time import, optional fallback, export-only, or fully retired.
-6. Build user-friendly configuration for desired companies, ATS sources, role preferences, compensation, location rules, exclusions, and email settings.
-7. Add configuration screens or guided setup so users do not need to hand-edit YAML for basic use.
-8. Add email setup flow, including SMTP settings, sender/recipient configuration, safe test email, and clear failure messages.
-9. Prepare the app to run as a standalone desktop/local program with its own GUI.
-10. Package the app as a Windows installer with an `.exe` entry point and straightforward setup.
-11. Package the app for Linux installation using a `.tar` or tarball-based distribution.
-12. Support standalone PC operation, unattended service-style operation, and Kubernetes deployment.
-13. Add deployment-friendly configuration for persistent data, reports, logs, backups, retention, and safe upgrades.
-14. Keep the app single-user by default, while leaving room for multiple profiles if that becomes useful.
-15. Create a simple first-run experience that gets a new user from installation to first scan/report quickly.
-16. Write installation and operations documentation for Windows desktop, Linux standalone/server, and Kubernetes service modes.
 
 ## Not in scope right now
 
