@@ -273,6 +273,8 @@ The tracker can be managed through CLI commands and through the Flask GUI.
 
 The tracker GUI currently supports:
 
+- clickable tracker summary cards
+- active tracker filter highlighting
 - workflow filters
 - search
 - raw status filters
@@ -286,7 +288,15 @@ The tracker GUI currently supports:
 - outcome sorting
 - manual add
 - edit/update
-- quick actions
+- grouped quick actions
+- quick action to refresh last activity to today
+- quick action to schedule follow-up next week
+- quick action to mark follow-up due
+- quick actions for active pipeline states
+- quick actions for moving terminal records to history
+- Needs Review queue guidance
+- workflow badges
+- visual emphasis for stale/dormant/presumed-closed rows
 - moving terminal tracker records to history
 - deleting tracker records
 - notes display
@@ -306,7 +316,10 @@ Job Radar has a basic Flask web interface.
 Current GUI capabilities:
 
 - Landing page
+- Clickable Home dashboard cards for tracker workflow navigation
 - Application tracker list
+- Clickable tracker summary cards
+- Active tracker filter card highlighting
 - Tracker workflow filters
 - Tracker search
 - Tracker raw status filters
@@ -318,9 +331,12 @@ Current GUI capabilities:
 - Tracker role sorting
 - Tracker status sorting
 - Tracker outcome sorting
+- Tracker Needs Review queue guidance
+- Tracker workflow badges
 - Tracker edit page
 - Status and outcome dropdowns
-- Tracker quick actions
+- Grouped tracker quick actions
+- Tracker quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history
 - Manual application add form
 - Tracker-to-history movement for terminal outcomes
 - Tracker row deletion
@@ -338,6 +354,9 @@ Current GUI capabilities:
 - History role sorting
 - History decision/status sorting
 - History outcome sorting
+- Profile/resume page
+- Resume upload and replacement from the GUI
+- Existing generated report and email-preview viewing
 - Reports page for existing generated reports and email previews
 - In-app report viewer
 - Controlled manual scan execution from the local GUI
@@ -502,13 +521,32 @@ Completed so far:
 - History rows can be deleted from the GUI
 - Tracker/history workflow actions moved out of `web_app.py` into GUI-neutral service functions
 
+- Profile/resume GUI page
+- Resume upload and replacement from the GUI
+- PDF resume loading
+- DOCX resume loading
+- GUI report viewer dark-style integration
+- Shared GUI layout consistency improvements
+- Home dashboard tracker summary
+- Clickable Home dashboard tracker cards
+- Tracker workflow summary cards
+- Clickable tracker summary filter cards
+- Active tracker filter card highlighting
+- Tracker Needs Review queue guidance
+- Tracker workflow badges
+- Grouped tracker quick actions
+- Tracker quick action to refresh activity today
+- Tracker quick action to schedule follow-up next week
+- Tracker quick action to mark follow-up due
+- Manual validation of tracker/history movement and count updates
+
 ## Known limitations
 
 Current limitations:
 
 - Job Radar still imports spreadsheet history as a bridge for existing records and bulk intake, but GUI tracker/history search and filtering now cover the main review patterns previously handled with workbook filters.
 - The tracker/history workflow service refactor is complete, but future GUI growth should continue keeping `web_app.py` focused on route/form/render/redirect behavior.
-- Resume/profile updates are not yet available through the GUI; this should mirror the existing CLI resume/profile loading process instead of creating a separate GUI-only path.
+- Resume/profile GUI support now exists for resume upload/replacement, but broader profile/preference setup still requires config-file editing.
 - Job Radar does not write enriched IDs or metadata back to the spreadsheet.
 - Report scoring is still rules-based and may need calibration from real outcomes.
 - Source coverage is broad enough for current use, but individual collectors may still need maintenance if ATS pages change.

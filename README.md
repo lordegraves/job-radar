@@ -56,6 +56,12 @@ Job Radar currently supports:
 - tracker/history mutual-exclusion import partitioning
 - local Flask GUI for tracker/history/report/scan workflows
 - controlled manual scans from the local GUI
+- GUI profile/resume page with resume upload/replacement support
+- PDF, DOCX, Markdown, and plain-text resume loading
+- clickable Home dashboard cards for tracker workflow navigation
+- clickable Tracker summary cards with active filter highlighting
+- tracker Needs Review queue guidance
+- grouped tracker quick actions for common workflow updates
 
 Implemented source types include:
 
@@ -256,12 +262,16 @@ http://127.0.0.1:5000/
 
 Current GUI summary:
 
-- landing page
+- landing page with clickable tracker dashboard cards
 - application tracker workflows
+- clickable tracker summary cards with active filter highlighting
 - tracker workflow filters
 - tracker search
 - tracker raw status and outcome filters
 - tracker sorting by workflow, applied date, company, role, status, and outcome
+- tracker Needs Review queue guidance
+- tracker edit page with grouped quick actions
+- tracker quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history
 - imported job history/archive review
 - history editing
 - history-to-tracker movement for reopened opportunities
@@ -269,6 +279,8 @@ Current GUI summary:
 - history search
 - history decision and outcome filters
 - history sorting by date, company, role, decision/status, and outcome
+- profile/resume page
+- resume upload and replacement from the GUI
 - existing generated report and email-preview viewing
 - in-app report viewer
 - controlled manual scan execution with GUI email sending disabled
@@ -351,7 +363,7 @@ python -m pytest tests
 Expected current result:
 
 ```text
-442 passed
+457 passed
 ```
 
 ## Run full live scan

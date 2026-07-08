@@ -59,13 +59,17 @@ Current strengths:
 - Markdown/HTML reports
 - Email preview/send guardrails
 - Application tracker CLI
-- Local Flask tracker/history/report GUI
+- Local Flask tracker/history/report/scan GUI
+- Clickable tracker dashboards and workflow navigation
+- GUI tracker Needs Review queue
+- GUI tracker quick actions
+- GUI profile/resume upload support
 - Spreadsheet import bridge
 - Sanitized example workbook
 
 Current limitation:
 
-The app still depends on developer-style configuration and manual file editing for too many setup tasks.
+The app still depends on developer-style configuration and manual file editing for too many setup tasks, especially company management, preference/scoring setup, email setup, scheduling, and runtime data location.
 
 Detailed current state belongs in `docs/current-state.md`.
 
@@ -240,12 +244,14 @@ Are clearance-required roles acceptable?
 
 ## Profile and resume setup
 
-The current profile and resume flow is too user-specific.
+The current profile and resume flow has started moving into the GUI, but broader profile setup is still too user-specific.
 
 Long-term behavior:
 
 - Create a user profile from the GUI
 - Add, paste, upload, or replace resume/profile text from the GUI
+- Preserve the current GUI resume upload/replacement flow
+- Keep PDF, DOCX, Markdown, and plain-text resume loading supported
 - Store resume/profile text in the user data directory
 - Allow the user to update it
 - Use it for match signals
@@ -289,16 +295,16 @@ The current Flask GUI should continue as the near-term interface.
 
 Near-term GUI priorities:
 
-1. Application tracker page
-2. Job history/archive page
-3. Scan results page
-4. Manual scan button
-5. Settings page
-6. Company management page
-7. Preference setup page
-8. Email settings page
-9. Scheduled scan settings page
-10. Report viewer
+1. Finish history/archive page polish
+2. Improve scan/report flow after manual GUI scans
+3. Settings page
+4. Company management page
+5. Preference setup page
+6. Email settings page
+7. Scheduled scan settings page
+8. Complete profile/preference setup beyond resume upload
+9. Runtime data location setup
+10. Packaging/launcher preparation
 
 The GUI should keep using the same service layer as the CLI.
 
@@ -468,6 +474,9 @@ The finish line can be reached in stages.
 ### Stage 1: Finish Current GUI Workflow
 
 - Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
+- Preserve the completed tracker workflow improvements: clickable dashboard cards, Needs Review queue, grouped quick actions, tracker-to-history movement, and history-to-tracker reopening.
+- Improve history/archive summary and review visibility.
+- Improve scan/report flow after manual GUI scans.
 - Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
 - Preserve Tracker/History mutual exclusivity: active rows belong in Tracker, archived or terminal rows belong in History.
 - Keep tracker/history workflow actions in GUI-neutral services so Flask, CLI, desktop launcher/wrapper, scheduler, and container/server mode can reuse them.

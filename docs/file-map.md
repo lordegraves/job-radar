@@ -20,6 +20,7 @@ Use the documentation set this way:
 | File | Purpose | Keep / Review |
 |---|---|---|
 | `.gitignore` | Keeps local runtime data, generated reports, credentials, caches, and build artifacts out of Git. | Keep |
+| `.vscode/settings.json` | Local editor guardrails for the repo, including disabling HTML/Jinja format-on-save to avoid template damage. | Keep |
 | `README.md` | Quick project overview, common commands, and user-facing capabilities. | Keep |
 | `pyproject.toml` | Python project metadata, dependencies, package config, and test/tooling config. | Keep |
 
@@ -75,7 +76,8 @@ Use the documentation set this way:
 | File | Purpose | Keep / Review |
 |---|---|---|
 | `job_radar/candidate_profile.py` | Candidate preference/profile loading and interpretation. | Keep |
-| `job_radar/resume_loader.py` | Loads resume/profile text for matching. | Keep |
+| `job_radar/profile_service.py` | Profile/resume service helpers, including GUI-safe resume upload/replacement and normalized resume regeneration. | Keep |
+| `job_radar/resume_loader.py` | Loads Markdown, plain-text, PDF, and DOCX resume/profile text for matching. | Keep |
 | `job_radar/resume_match.py` | Resume-to-posting match logic. | Keep |
 | `profiles/clayton/profile.yaml` | Clayton-specific target profile and avoid/preference signals. | Keep / review before public release |
 | `profiles/clayton/resume.md` | Clayton-specific resume source used by Job Radar. | Keep / review before public release |
@@ -118,14 +120,15 @@ Use the documentation set this way:
 | File | Purpose | Keep / Review |
 |---|---|---|
 | `job_radar/web_app.py` | Flask web application entry point and GUI route handlers. Route handlers should delegate tracker/history workflow actions to service-layer functions. | Keep / watch growth |
-| `job_radar/templates/index.html` | Web app landing page. | Keep |
-| `job_radar/templates/tracker.html` | Application tracker list, workflow filters, search, sorting, workflow display, and edit links. | Keep |
-| `job_radar/templates/tracker_edit.html` | Application tracker edit form and quick actions. | Keep |
+| `job_radar/templates/index.html` | Web app landing page with clickable tracker dashboard cards. | Keep |
+| `job_radar/templates/tracker.html` | Application tracker list, clickable summary filter cards, workflow filters, search, sorting, workflow display, Needs Review guidance, workflow badges, and edit links. | Keep |
+| `job_radar/templates/tracker_edit.html` | Application tracker edit form and grouped quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history. | Keep |
 | `job_radar/templates/tracker_add.html` | Manual application tracker add form. | Keep |
 | `job_radar/templates/history.html` | Job history/archive page for archived/history records, including search, filtering, sorting, and edit links. | Keep |
 | `job_radar/templates/history_edit.html` | Job history edit form, including save, delete, and move-back-to-tracker workflow. | Keep |
+| `job_radar/templates/profile.html` | Profile/resume page for viewing profile state and uploading/replacing resumes through the GUI. | Keep |
 | `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews. | Keep |
-| `job_radar/templates/report_view.html` | In-app report viewer shell for opening generated reports inside the GUI. | Keep |
+| `job_radar/templates/report_view.html` | In-app report viewer shell for opening generated reports inside the GUI with shared dark styling. | Keep |
 | `job_radar/templates/scan.html` | Scan page for manual command display and controlled local GUI scan execution. | Keep |
 
 ## Collectors
@@ -234,6 +237,7 @@ job_radar/templates/
   tracker_add.html
   history.html
   history_edit.html
+  profile.html
   reports.html
   report_view.html
   scan.html
