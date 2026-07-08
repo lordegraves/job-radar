@@ -81,6 +81,67 @@
         color: #ffffff;
     }
 
+    .tracker-review-panel {
+        background: rgba(96, 205, 255, 0.08);
+        border: 1px solid rgba(96, 205, 255, 0.35);
+        border-radius: 12px;
+        margin: 16px 0;
+        padding: 14px 16px;
+    }
+
+    .tracker-review-panel h2 {
+        font-size: 1.05rem;
+        margin: 0 0 8px 0;
+    }
+
+    .tracker-review-panel p {
+        margin: 0;
+    }
+
+    .workflow-badge {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 0.88rem;
+        font-weight: 650;
+        padding: 4px 8px;
+        white-space: nowrap;
+    }
+
+    .workflow-follow_up_due,
+    .workflow-needs_date_review {
+        border-color: var(--link);
+        color: var(--link);
+    }
+
+    .workflow-active_pipeline,
+    .workflow-follow_up_scheduled,
+    .workflow-waiting {
+        color: var(--text);
+    }
+
+    .workflow-dormant,
+    .workflow-stale,
+    .workflow-presumed_closed {
+        border-color: #f7c948;
+        color: #f7c948;
+    }
+
+    .workflow-closed {
+        color: var(--muted);
+    }
+
+    tr.workflow-follow_up_due td:first-child,
+    tr.workflow-needs_date_review td:first-child {
+        border-left: 4px solid var(--link);
+    }
+
+    tr.workflow-dormant td:first-child,
+    tr.workflow-stale td:first-child,
+    tr.workflow-presumed_closed td:first-child {
+        border-left: 4px solid #f7c948;
+    }
+
     .page {
         max-width: none;
     }
@@ -217,6 +278,13 @@
     {% endfor %}
 </nav>
 
+{% if active_filter == "needs_review" %}
+<div class="tracker-review-panel">
+    <h2>Needs review queue</h2>
+    <p class="muted">Review these applications for stale dates, dormant status, presumed closure, or invalid date fields. Use Edit to refresh dates, mark dormant, move closed outcomes to history, or add notes.</p>
+</div>
+{% endif %}
+
 {% if not applications %}
 <div class="page-card">
     <p>No tracked applications.</p>
@@ -242,15 +310,15 @@
         </thead>
         <tbody>
             {% for row in applications %}
-            <tr>
+            <tr class="workflow-row workflow-{{ row.workflow_state }}">
                 <td>
                     <a
-                        href="{{ url_for('edit_tracker_application', job_radar_id=row.application.job_radar_id, filter=active_filter) }}">Edit</a>
+                        href="{{ url_for('edit_tracker_application', job_radar_id=row.application.job_radar_id, filter=active_filter) }}">{% if active_filter == "needs_review" %}Review{% else %}Edit{% endif %}</a>
                 </td>
                 <td>{{ row.application.company_name }}</td>
                 <td>{{ row.application.role_title }}</td>
                 <td>{{ row.application.status }}</td>
-                <td>{{ row.workflow_label }}</td>
+                <td><span class="workflow-badge workflow-{{ row.workflow_state }}">{{ row.workflow_label }}</span></td>
                 <td class="date-cell">{{ row.application.applied_on or "" }}</td>
                 <td class="date-cell">{{ row.application.last_activity_on or "" }}</td>
                 <td class="date-cell">{{ row.application.follow_up_on or "" }}</td>

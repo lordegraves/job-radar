@@ -85,6 +85,7 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "Senior Site Reliability Engineer" in html
     assert "Applied" in html
     assert "Follow-up Scheduled" in html
+    assert "workflow-badge workflow-follow_up_scheduled" in html
     assert "2026-07-03" in html
     assert "2026-07-05" in html
     assert "2026-07-10" in html
@@ -1499,6 +1500,11 @@ def test_tracker_page_filters_to_needs_review(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Applications shown:</strong> 1" in html
+    assert "Needs review queue" in html
+    assert "Review these applications for stale dates, dormant status, presumed closure, or invalid date fields." in html
+    assert "Review</a>" in html
+    assert "workflow-badge workflow-stale" in html
+    assert "Stale" in html
     assert "StaleCo" in html
     assert "WaitingCo" not in html
 
