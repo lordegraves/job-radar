@@ -1,61 +1,91 @@
-<!doctype html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <title>Job Radar</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.4;
-            margin: 24px;
-        }
+{% block title %}Job Radar{% endblock %}
 
-        .nav-card {
-            border: 1px solid #dddddd;
-            margin: 12px 0;
-            max-width: 520px;
-            padding: 12px 16px;
-        }
+{% block page_styles %}
+<style>
+    .hero {
+        margin-bottom: 24px;
+    }
 
-        .nav-card h2 {
-            font-size: 1.1rem;
-            margin: 0 0 6px 0;
-        }
+    .hero h1 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        margin: 0 0 8px 0;
+    }
 
-        .nav-card p {
-            margin: 0;
-        }
-    </style>
-</head>
+    .hero p {
+        color: var(--muted);
+        font-size: 1.05rem;
+        margin: 0;
+        max-width: 760px;
+    }
 
-<body>
+    .nav-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .nav-card {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 18px 20px;
+        transition: border-color 120ms ease, transform 120ms ease, background 120ms ease;
+    }
+
+    .nav-card:hover {
+        background: var(--surface-hover);
+        border-color: var(--link);
+        transform: translateY(-1px);
+    }
+
+    .nav-card h2 {
+        font-size: 1.1rem;
+        margin: 0 0 8px 0;
+    }
+
+    .nav-card p {
+        color: var(--muted);
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="hero">
     <h1>Job Radar</h1>
+    <p>Review scanned roles, track active applications, inspect archived history, and open generated reports from one
+        local dashboard.</p>
+</section>
 
+<section class="nav-grid" aria-label="Job Radar sections">
     <div class="nav-card">
-        <h2><a href="/tracker">Application tracker</a></h2>
+        <h2><a href="{{ url_for('tracker') }}">Application tracker</a></h2>
         <p>Review active applications, search tracker notes, sort by date, and update workflow status.</p>
     </div>
 
     <div class="nav-card">
-        <h2><a href="/history">Job history archive</a></h2>
+        <h2><a href="{{ url_for('history') }}">Job history archive</a></h2>
         <p>Review imported historical records without adding them to the active tracker.</p>
     </div>
 
     <div class="nav-card">
-        <h2><a href="/profile">Profile / Resume</a></h2>
+        <h2><a href="{{ url_for('profile') }}">Profile / Resume</a></h2>
         <p>Review the active candidate profile and resume paths used by scans.</p>
     </div>
 
     <div class="nav-card">
-        <h2><a href="/reports">Reports</a></h2>
+        <h2><a href="{{ url_for('reports') }}">Reports</a></h2>
         <p>Open existing generated reports and email previews without starting a new scan.</p>
     </div>
 
     <div class="nav-card">
-        <h2><a href="/scan">Scan</a></h2>
-        <p>View the safe manual scan command before scan execution is wired into the GUI.</p>
+        <h2><a href="{{ url_for('scan') }}">Scan</a></h2>
+        <p>View the safe manual scan command and run a controlled local GUI scan.</p>
     </div>
-</body>
-
-</html>
+</section>
+{% endblock %}

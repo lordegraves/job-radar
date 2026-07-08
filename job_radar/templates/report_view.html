@@ -1,47 +1,33 @@
-<!doctype html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <title>Job Radar Report Viewer</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.4;
-            margin: 24px;
-        }
+{% block title %}Report Viewer - Job Radar{% endblock %}
 
-        code {
-            background: #f6f8fa;
-            padding: 2px 4px;
-        }
+{% block page_styles %}
+<style>
+    iframe {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        height: 80vh;
+        width: 100%;
+    }
 
-        iframe {
-            border: 1px solid #dddddd;
-            height: 80vh;
-            width: 100%;
-        }
+    .viewer-actions {
+        margin: 16px 0;
+    }
+</style>
+{% endblock %}
 
-        .viewer-actions {
-            margin: 16px 0;
-        }
-    </style>
-</head>
-
-<body>
-    <h1>Report Viewer</h1>
-
-    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
-            href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('profile') }}">Profile /
-            Resume</a> | <a href="{{ url_for('reports') }}">Reports</a> | <a href="{{ url_for('scan') }}">Scan</a></p>
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">Report Viewer</h1>
 
     <p><strong>Viewing:</strong> <code>{{ report_name }}</code></p>
 
     <div class="viewer-actions">
         <a href="{{ url_for('reports') }}">Back to Reports</a>
     </div>
+</div>
 
-    <iframe src="{{ report_url }}" title="Report file"></iframe>
-</body>
-
-</html>
+<iframe src="{{ report_url }}" title="Report file"></iframe>
+{% endblock %}

@@ -1,52 +1,20 @@
-<!doctype html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <title>Edit History Record</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.4;
-            margin: 24px;
-            max-width: 900px;
-        }
+{% block title %}Edit History Record - Job Radar{% endblock %}
 
-        label {
-            display: block;
-            font-weight: bold;
-            margin-top: 14px;
-        }
+{% block page_styles %}
+<style>
+    .danger-zone {
+        border-top: 1px solid var(--border);
+        margin-top: 18px;
+        padding-top: 18px;
+    }
+</style>
+{% endblock %}
 
-        input,
-        select,
-        textarea {
-            box-sizing: border-box;
-            width: 100%;
-            padding: 8px;
-        }
-
-        textarea {
-            min-height: 120px;
-        }
-
-        code {
-            background: #f6f8fa;
-            padding: 2px 4px;
-        }
-
-        .actions {
-            margin-top: 18px;
-        }
-    </style>
-</head>
-
-<body>
-    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
-            href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('profile') }}">Profile /
-            Resume</a> | <a href="{{ url_for('reports') }}">Reports</a> | <a href="{{ url_for('scan') }}">Scan</a></p>
-
-    <h1>Edit History Record</h1>
+{% block content %}
+<div class="page-card form-page">
+    <h1 class="page-title">Edit History Record</h1>
 
     <p><strong>Import Key:</strong> <code>{{ record.import_key }}</code></p>
 
@@ -90,14 +58,16 @@
 
         <div class="actions">
             <button type="submit" name="action" value="save">Save</button>
-            <button type="submit" name="action" value="delete">Delete history row</button>
-            <a href="{{ url_for('history') }}">Cancel</a>
+            <a class="button-link button-secondary" href="{{ url_for('history') }}">Cancel</a>
+        </div>
+
+        <div class="danger-zone">
+            <button class="button-danger" type="submit" name="action" value="delete"
+                onclick="return confirmDestructiveAction('Delete this history row?')">Delete history row</button>
         </div>
     </form>
 
-    <p>
-        Setting Decision to Applied with a live tracker outcome will move this record back to the active tracker.
-    </p>
-</body>
-
-</html>
+    <p class="muted">Setting Decision to Applied with a live tracker outcome will move this record back to the active
+        tracker.</p>
+</div>
+{% endblock %}

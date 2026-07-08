@@ -1,113 +1,151 @@
-<!doctype html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <title>Edit Tracker Application</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.4;
-            margin: 24px;
-            max-width: 900px;
-        }
+{% block title %}Edit Application - Job Radar{% endblock %}
 
-        label {
-            display: block;
-            font-weight: bold;
-            margin-top: 14px;
-        }
+{% block page_styles %}
+<style>
+    .record-summary {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin: 16px 0;
+    }
 
-        input,
-        select,
-        textarea {
-            box-sizing: border-box;
-            width: 100%;
-            padding: 8px;
-        }
+    .summary-item {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+    }
 
-        textarea {
-            min-height: 120px;
-        }
+    .summary-item strong {
+        display: block;
+        margin-bottom: 4px;
+    }
 
-        code {
-            background: #f6f8fa;
-            padding: 2px 4px;
-        }
+    .primary-actions {
+        border-top: 1px solid var(--border);
+        margin-top: 20px;
+        padding-top: 18px;
+    }
 
-        .actions {
-            margin-top: 18px;
-        }
-    </style>
-</head>
+    .quick-action-panel {
+        background: rgba(43, 43, 49, 0.62);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-top: 18px;
+        padding: 14px 16px;
+    }
 
-<body>
+    .quick-action-panel h2 {
+        font-size: 1rem;
+        margin: 0 0 6px 0;
+    }
 
-    <body>
-        <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
-                href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('profile') }}">Profile /
-                Resume</a> | <a href="{{ url_for('reports') }}">Reports</a> | <a href="{{ url_for('scan') }}">Scan</a>
-        </p>
+    .quick-action-panel p {
+        margin: 0 0 12px 0;
+    }
 
-        <h1>Edit Application</h1>
+    .quick-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
 
-        <p><strong>Company:</strong> {{ application.company_name }}</p>
-        <p><strong>Role:</strong> {{ application.role_title }}</p>
-        <p><strong>Workflow:</strong> {{ workflow_state }}</p>
-        <p><strong>Job Radar ID:</strong> <code>{{ application.job_radar_id }}</code></p>
+    .danger-zone {
+        border-top: 1px solid var(--border);
+        margin-top: 18px;
+        padding-top: 18px;
+    }
+</style>
+{% endblock %}
 
-        {% if application.source_url %}
-        <p><strong>Posting:</strong> <a href="{{ application.source_url }}">View posting</a></p>
-        {% endif %}
+{% block content %}
+<div class="page-card form-page">
+    <h1 class="page-title">Edit Application</h1>
 
-        <form method="post">
-            <input type="hidden" name="return_filter" value="{{ return_filter }}">
+    <div class="record-summary">
+        <div class="summary-item">
+            <strong>Company</strong>
+            {{ application.company_name }}
+        </div>
+        <div class="summary-item">
+            <strong>Role</strong>
+            {{ application.role_title }}
+        </div>
+        <div class="summary-item">
+            <strong>Workflow</strong>
+            {{ workflow_state }}
+        </div>
+        <div class="summary-item">
+            <strong>Job Radar ID</strong>
+            <code>{{ application.job_radar_id }}</code>
+        </div>
+    </div>
 
-            <label for="status">Status</label>
-            <select id="status" name="status" required>
-                {% for status_option in status_options %}
-                <option value="{{ status_option }}" {% if status_option==application.status %}selected{% endif %}>
-                    {{ status_option }}
-                </option>
-                {% endfor %}
-            </select>
+    {% if application.source_url %}
+    <p><strong>Posting:</strong> <a href="{{ application.source_url }}">View posting</a></p>
+    {% endif %}
 
-            <label for="follow_up_on">Follow-up date</label>
-            <input id="follow_up_on" name="follow_up_on" value="{{ application.follow_up_on or '' }}"
-                placeholder="YYYY-MM-DD">
+    <form method="post">
+        <input type="hidden" name="return_filter" value="{{ return_filter }}">
 
-            <label for="applied_on">Applied date</label>
-            <input id="applied_on" name="applied_on" value="{{ application.applied_on or '' }}"
-                placeholder="YYYY-MM-DD">
+        <label for="status">Status</label>
+        <select id="status" name="status" required>
+            {% for status_option in status_options %}
+            <option value="{{ status_option }}" {% if status_option==application.status %}selected{% endif %}>
+                {{ status_option }}
+            </option>
+            {% endfor %}
+        </select>
 
-            <label for="last_activity_on">Last activity date</label>
-            <input id="last_activity_on" name="last_activity_on" value="{{ application.last_activity_on or '' }}"
-                placeholder="YYYY-MM-DD">
+        <label for="follow_up_on">Follow-up date</label>
+        <input id="follow_up_on" name="follow_up_on" value="{{ application.follow_up_on or '' }}"
+            placeholder="YYYY-MM-DD">
 
-            <label for="outcome">Outcome</label>
-            <select id="outcome" name="outcome">
-                {% for outcome_option in outcome_options %}
-                <option value="{{ outcome_option }}" {% if outcome_option==(application.outcome or '' ) %}selected{%
-                    endif %}>
-                    {{ outcome_option or "None" }}
-                </option>
-                {% endfor %}
-            </select>
+        <label for="applied_on">Applied date</label>
+        <input id="applied_on" name="applied_on" value="{{ application.applied_on or '' }}" placeholder="YYYY-MM-DD">
 
-            <label for="notes">Notes</label>
-            <textarea id="notes" name="notes">{{ application.notes or '' }}</textarea>
+        <label for="last_activity_on">Last activity date</label>
+        <input id="last_activity_on" name="last_activity_on" value="{{ application.last_activity_on or '' }}"
+            placeholder="YYYY-MM-DD">
 
-            <div class="actions">
-                <button type="submit" name="action" value="save">Save</button>
+        <label for="outcome">Outcome</label>
+        <select id="outcome" name="outcome">
+            {% for outcome_option in outcome_options %}
+            <option value="{{ outcome_option }}" {% if outcome_option==(application.outcome or '' ) %}selected{% endif
+                %}>
+                {{ outcome_option or "None" }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes">{{ application.notes or '' }}</textarea>
+
+        <div class="actions primary-actions">
+            <button type="submit" name="action" value="save">Save</button>
+            <a class="button-link button-secondary" href="{{ url_for('tracker', filter=return_filter) }}">Cancel</a>
+        </div>
+
+        <div class="quick-action-panel">
+            <h2>Quick actions</h2>
+            <p class="muted">Use these to update common tracker states without manually changing every field.</p>
+
+            <div class="quick-actions">
                 {% for quick_action_name, quick_action in quick_actions.items() %}
                 <button type="submit" name="quick_action" value="{{ quick_action_name }}">
                     {{ quick_action.label }}
                 </button>
                 {% endfor %}
-                <button type="submit" name="action" value="delete">Delete tracker row</button>
-                <a href="{{ url_for('tracker', filter=return_filter) }}">Cancel</a>
             </div>
-        </form>
-    </body>
+        </div>
 
-</html>
+        <div class="danger-zone">
+            <button class="button-danger" type="submit" name="action" value="delete"
+                onclick="return confirmDestructiveAction('Delete this tracker row?')">Delete tracker row</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

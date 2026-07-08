@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}Job Radar{% endblock %}</title>
+    <style>
+        :root {
+            --background: #0f0f10;
+            --background-elevated: #171719;
+            --surface: #1f1f23;
+            --surface-muted: #2b2b31;
+            --surface-hover: #34343b;
+            --border: #3a3a42;
+            --border-strong: #4a4a55;
+            --text: #f3f3f3;
+            --muted: #b7b7c2;
+            --link: #60cdff;
+            --link-hover: #8adeff;
+            --accent: #0078d4;
+            --accent-hover: #106ebe;
+            --danger-surface: #442426;
+            --danger-border: #a33f45;
+            --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+        }
+
+        body {
+            background:
+                radial-gradient(circle at top left, rgba(0, 120, 212, 0.16), transparent 34rem),
+                linear-gradient(180deg, #151517 0%, var(--background) 18rem);
+            color: var(--text);
+            font-family: "Segoe UI", Arial, sans-serif;
+            line-height: 1.45;
+            margin: 0;
+        }
+
+        a {
+            color: var(--link);
+        }
+
+        a:hover {
+            color: var(--link-hover);
+        }
+
+        .app-header {
+            backdrop-filter: blur(18px);
+            background: rgba(31, 31, 35, 0.88);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+            padding: 14px 28px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .app-header-inner {
+            align-items: center;
+            display: flex;
+            gap: 24px;
+            justify-content: space-between;
+            margin: 0 auto;
+            max-width: 1400px;
+        }
+
+        .brand {
+            align-items: center;
+            color: var(--text);
+            display: inline-flex;
+            font-size: 1.15rem;
+            font-weight: 650;
+            gap: 10px;
+            letter-spacing: 0.01em;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .brand::before {
+            background: linear-gradient(135deg, var(--link), var(--accent));
+            border-radius: 7px;
+            box-shadow: 0 0 18px rgba(96, 205, 255, 0.25);
+            content: "";
+            display: inline-block;
+            height: 22px;
+            width: 22px;
+        }
+
+        .site-nav {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .site-nav a {
+            border: 1px solid transparent;
+            border-radius: 999px;
+            color: var(--muted);
+            padding: 6px 11px;
+            text-decoration: none;
+        }
+
+        .site-nav a:hover {
+            background: var(--surface-muted);
+            border-color: var(--border-strong);
+            color: var(--text);
+        }
+
+        .page {
+            margin: 0 auto;
+            max-width: 1400px;
+            padding: 28px;
+        }
+
+        .page-card {
+            background: rgba(31, 31, 35, 0.94);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            padding: 20px 24px;
+        }
+
+        .page-title {
+            margin-top: 0;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        table {
+            background: rgba(31, 31, 35, 0.94);
+            border-collapse: collapse;
+            border-radius: 10px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #25252b;
+            color: #ffffff;
+            font-weight: 650;
+        }
+
+        tr:hover td {
+            background: rgba(96, 205, 255, 0.04);
+        }
+
+        code {
+            background: var(--surface-muted);
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+
+        pre {
+            background: var(--surface-muted);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow-x: auto;
+            padding: 12px 16px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-top: 14px;
+        }
+
+        input,
+        select,
+        textarea {
+            background: #151517;
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            box-sizing: border-box;
+            color: var(--text);
+            padding: 8px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--link);
+            box-shadow: 0 0 0 2px rgba(96, 205, 255, 0.22);
+            outline: none;
+        }
+
+        textarea {
+            min-height: 120px;
+        }
+
+        button,
+        .button-link {
+            background: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            color: #ffffff;
+            cursor: pointer;
+            display: inline-block;
+            font: inherit;
+            font-weight: 650;
+            line-height: 1.2;
+            padding: 8px 12px;
+            text-decoration: none;
+        }
+
+        button:hover,
+        .button-link:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            color: #ffffff;
+        }
+
+        .button-secondary {
+            background: var(--surface-muted);
+            border-color: var(--border-strong);
+            color: var(--text);
+        }
+
+        .button-secondary:hover {
+            background: var(--surface-hover);
+            border-color: var(--border-strong);
+            color: var(--text);
+        }
+
+        .button-danger {
+            background: #b4232a;
+            border-color: #b4232a;
+        }
+
+        .button-danger:hover {
+            background: #8f1d22;
+            border-color: #8f1d22;
+        }
+
+        button:disabled {
+            cursor: wait;
+            opacity: 0.7;
+        }
+
+        .active-filter {
+            font-weight: bold;
+        }
+
+        .actions {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 18px;
+        }
+
+        .date-cell {
+            min-width: 105px;
+            white-space: nowrap;
+        }
+
+        .outcome-cell {
+            min-width: 160px;
+            white-space: nowrap;
+        }
+
+        .notes-cell {
+            min-width: 320px;
+            max-width: 520px;
+        }
+
+        .notes-preview {
+            margin-bottom: 6px;
+        }
+
+        .notes-full {
+            margin-top: 6px;
+            white-space: pre-wrap;
+        }
+
+        details {
+            margin-top: 4px;
+        }
+
+        summary {
+            cursor: pointer;
+        }
+
+        .section {
+            background: rgba(31, 31, 35, 0.94);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            margin: 16px 0;
+            max-width: 960px;
+            padding: 12px 16px;
+        }
+
+        .label {
+            font-weight: bold;
+        }
+
+        .error {
+            background: var(--danger-surface);
+            border: 1px solid var(--danger-border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .form-page {
+            max-width: 900px;
+        }
+
+        .form-page input,
+        .form-page select,
+        .form-page textarea {
+            width: 100%;
+        }
+    </style>
+    {% block page_styles %}{% endblock %}
+</head>
+
+<body>
+    <header class="app-header">
+        <div class="app-header-inner">
+            <a class="brand" href="{{ url_for('index') }}">Job Radar</a>
+            <nav class="site-nav" aria-label="Primary navigation">
+                <a href="{{ url_for('index') }}">Home</a>
+                <a href="{{ url_for('tracker') }}">Application tracker</a>
+                <a href="{{ url_for('history') }}">Job history archive</a>
+                <a href="{{ url_for('profile') }}">Profile / Resume</a>
+                <a href="{{ url_for('reports') }}">Reports</a>
+                <a href="{{ url_for('scan') }}">Scan</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        function confirmDestructiveAction(message) {
+            const confirmation = window.prompt(`${message}\n\nType DELETE to confirm.`);
+            return confirmation === "DELETE";
+        }
+    </script>
+</body>
+
+</html>

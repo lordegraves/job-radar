@@ -1,151 +1,172 @@
-<!doctype html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <title>Job Radar Tracker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.4;
-            margin: 24px;
+{% block title %}Application Tracker - Job Radar{% endblock %}
+
+{% block page_styles %}
+<style>
+    .toolbar {
+        align-items: end;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(160px, 1fr)) auto;
+        margin-top: 16px;
+    }
+
+    .toolbar label {
+        margin-top: 0;
+    }
+
+    .toolbar input,
+    .toolbar select {
+        width: 100%;
+    }
+
+    .filter-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 18px 0;
+    }
+
+    .filter-nav a,
+    .filter-nav span {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 6px 10px;
+        text-decoration: none;
+    }
+
+    .filter-nav a {
+        color: var(--muted);
+    }
+
+    .filter-nav a:hover {
+        background: var(--surface-hover);
+        border-color: var(--link);
+        color: var(--text);
+    }
+
+    .filter-nav span {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+    }
+
+    .page {
+        max-width: none;
+    }
+
+    .table-wrap {
+        max-width: calc(100vw - 56px);
+        overflow-x: auto;
+    }
+
+    .table-wrap table {
+        table-layout: fixed;
+    }
+
+    .table-wrap th,
+    .table-wrap td {
+        overflow-wrap: anywhere;
+    }
+
+    .table-wrap code {
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    @media (max-width: 1000px) {
+        .toolbar {
+            grid-template-columns: 1fr;
         }
+    }
+</style>
+{% endblock %}
 
-        nav {
-            margin: 16px 0;
-        }
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">Application Tracker</h1>
 
-        nav a {
-            margin-right: 12px;
-        }
+    <p class="muted">Review active applications, search notes, sort by workflow/date/company, and update application
+        status.</p>
 
-        .active-filter {
-            font-weight: bold;
-        }
-
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-
-        th,
-        td {
-            border: 1px solid #dddddd;
-            padding: 8px 10px;
-            text-align: left;
-            vertical-align: top;
-        }
-
-        th {
-            background: #f6f8fa;
-        }
-
-        code {
-            background: #f6f8fa;
-            padding: 2px 4px;
-        }
-
-        .date-cell {
-            min-width: 105px;
-            white-space: nowrap;
-        }
-
-        .outcome-cell {
-            min-width: 160px;
-            white-space: nowrap;
-        }
-
-        .notes-cell {
-            min-width: 320px;
-            max-width: 520px;
-        }
-
-        .notes-preview {
-            margin-bottom: 6px;
-        }
-
-        details {
-            margin-top: 4px;
-        }
-
-        summary {
-            cursor: pointer;
-        }
-
-        .notes-full {
-            white-space: pre-wrap;
-            margin-top: 6px;
-        }
-    </style>
-</head>
-
-<body>
-    <h1>Application Tracker</h1>
-
-    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
-            href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('profile') }}">Profile /
-            Resume</a> | <a href="{{ url_for('reports') }}">Reports</a> | <a href="{{ url_for('scan') }}">Scan</a></p>
     <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
-    <p><a href="{{ url_for('add_tracker_application') }}">Add application</a></p>
     <p><strong>Applications shown:</strong> {{ applications|length }}</p>
+    <p><a href="{{ url_for('add_tracker_application') }}">Add application</a></p>
 
-    <form method="get" action="{{ url_for('tracker') }}">
+    <form class="toolbar" method="get" action="{{ url_for('tracker') }}">
         <input type="hidden" name="filter" value="{{ active_filter }}">
 
-        <label for="tracker-search"><strong>Search:</strong></label>
-        <input id="tracker-search" name="q" type="search" value="{{ search_query }}"
-            placeholder="Company, role, notes, status">
+        <div>
+            <label for="tracker-search">Search</label>
+            <input id="tracker-search" name="q" type="search" value="{{ search_query }}"
+                placeholder="Company, role, notes, status">
+        </div>
 
-        <label for="tracker-status-filter"><strong>Status:</strong></label>
-        <select id="tracker-status-filter" name="status_filter">
-            <option value="">All statuses</option>
-            {% for status_filter_option in status_filter_options %}
-            <option value="{{ status_filter_option }}" {% if status_filter_option==active_status_filter %}selected{%
-                endif %}>
-                {{ status_filter_option }}
-            </option>
-            {% endfor %}
-        </select>
+        <div>
+            <label for="tracker-status-filter">Status</label>
+            <select id="tracker-status-filter" name="status_filter">
+                <option value="">All statuses</option>
+                {% for status_filter_option in status_filter_options %}
+                <option value="{{ status_filter_option }}" {% if status_filter_option==active_status_filter %}selected{%
+                    endif %}>
+                    {{ status_filter_option }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <label for="tracker-outcome-filter"><strong>Outcome:</strong></label>
-        <select id="tracker-outcome-filter" name="outcome_filter">
-            <option value="">All outcomes</option>
-            {% for outcome_filter_option in outcome_filter_options %}
-            <option value="{{ outcome_filter_option }}" {% if outcome_filter_option==active_outcome_filter %}selected{%
-                endif %}>
-                {{ outcome_filter_option }}
-            </option>
-            {% endfor %}
-        </select>
+        <div>
+            <label for="tracker-outcome-filter">Outcome</label>
+            <select id="tracker-outcome-filter" name="outcome_filter">
+                <option value="">All outcomes</option>
+                {% for outcome_filter_option in outcome_filter_options %}
+                <option value="{{ outcome_filter_option }}" {% if outcome_filter_option==active_outcome_filter
+                    %}selected{% endif %}>
+                    {{ outcome_filter_option }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <label for="tracker-sort"><strong>Sort:</strong></label>
-        <select id="tracker-sort" name="sort">
-            {% for sort_name, sort_label in sort_options.items() %}
-            <option value="{{ sort_name }}" {% if sort_name==active_sort %}selected{% endif %}>{{ sort_label }}</option>
-            {% endfor %}
-        </select>
+        <div>
+            <label for="tracker-sort">Sort</label>
+            <select id="tracker-sort" name="sort">
+                {% for sort_name, sort_label in sort_options.items() %}
+                <option value="{{ sort_name }}" {% if sort_name==active_sort %}selected{% endif %}>{{ sort_label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <button type="submit">Apply</button>
-        {% if search_query or active_status_filter or active_outcome_filter or active_sort != "applied_desc" %}
-        <a href="{{ url_for('tracker', filter=active_filter) }}">Clear search/field filters/sort</a>
-        {% endif %}
+        <div>
+            <button type="submit">Apply</button>
+        </div>
     </form>
 
-    <nav aria-label="Tracker filters">
-        {% for filter_name in filters %}
-        {% if filter_name == active_filter %}
-        <span class="active-filter">{{ filter_name }}</span>
-        {% else %}
-        <a
-            href="{{ url_for('tracker', filter=filter_name, sort=active_sort, q=search_query, status_filter=active_status_filter, outcome_filter=active_outcome_filter) }}">{{
-            filter_name }}</a>
-        {% endif %}
-        {% endfor %}
-    </nav>
+    {% if search_query or active_status_filter or active_outcome_filter or active_sort != "applied_desc" %}
+    <p><a href="{{ url_for('tracker', filter=active_filter) }}">Clear search/field filters/sort</a></p>
+    {% endif %}
+</div>
 
-    {% if not applications %}
-    <p>No tracked applications.</p>
+<nav class="filter-nav" aria-label="Tracker filters">
+    {% for filter_name in filters %}
+    {% if filter_name == active_filter %}
+    <span class="active-filter">{{ filter_name }}</span>
     {% else %}
+    <a
+        href="{{ url_for('tracker', filter=filter_name, sort=active_sort, q=search_query, status_filter=active_status_filter, outcome_filter=active_outcome_filter) }}">{{
+        filter_name }}</a>
+    {% endif %}
+    {% endfor %}
+</nav>
+
+{% if not applications %}
+<div class="page-card">
+    <p>No tracked applications.</p>
+</div>
+{% else %}
+<div class="table-wrap">
     <table>
         <thead>
             <tr>
@@ -201,7 +222,6 @@
             {% endfor %}
         </tbody>
     </table>
-    {% endif %}
-</body>
-
-</html>
+</div>
+{% endif %}
+{% endblock %}

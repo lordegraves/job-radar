@@ -1,83 +1,34 @@
-<!doctype html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <title>Job Radar Scan</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.4;
-            margin: 24px;
-        }
+{% block title %}Scan - Job Radar{% endblock %}
 
-        code,
-        pre {
-            background: #f6f8fa;
-        }
+{% block page_styles %}
+<style>
+    table {
+        max-width: 900px;
+    }
 
-        code {
-            padding: 2px 4px;
-        }
+    .scan-running {
+        display: none;
+        font-weight: bold;
+        margin-top: 12px;
+    }
 
-        pre {
-            border: 1px solid #dddddd;
-            overflow-x: auto;
-            padding: 12px 16px;
-        }
+    .scan-running progress {
+        display: block;
+        margin-top: 8px;
+        max-width: 500px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
 
-        table {
-            border-collapse: collapse;
-            max-width: 900px;
-            width: 100%;
-        }
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">Scan</h1>
 
-        th,
-        td {
-            border: 1px solid #dddddd;
-            padding: 8px 10px;
-            text-align: left;
-            vertical-align: top;
-        }
-
-        th {
-            background: #f6f8fa;
-        }
-
-        button {
-            cursor: pointer;
-            padding: 8px 12px;
-        }
-
-        button:disabled {
-            cursor: wait;
-            opacity: 0.7;
-        }
-
-        .scan-running {
-            display: none;
-            font-weight: bold;
-            margin-top: 12px;
-        }
-
-        .scan-running progress {
-            display: block;
-            margin-top: 8px;
-            max-width: 500px;
-            width: 100%;
-        }
-    </style>
-</head>
-
-<body>
-    <h1>Scan</h1>
-
-    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
-            href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('profile') }}">Profile /
-            Resume</a> | <a href="{{ url_for('reports') }}">Reports</a> | <a href="{{ url_for('scan') }}">Scan</a></p>
-
-    <p>This page shows the safe manual scan command and can run that scan from the local GUI. GUI scan execution does
-        not send email.</p>
+    <p class="muted">This page shows the safe manual scan command and can run that scan from the local GUI. GUI scan
+        execution does not send email.</p>
 
     {% if scan_result == "success" %}
     <p><strong>Scan completed.</strong> Open the <a href="{{ url_for('reports') }}">Reports</a> page to view generated
@@ -87,40 +38,42 @@
     {% elif scan_result == "error" %}
     <p><strong>Scan failed.</strong> {{ scan_error }}</p>
     {% endif %}
+</div>
 
-    <h2>Manual scan command</h2>
+<h2>Manual scan command</h2>
 
-    <pre><code>{{ scan_command }}</code></pre>
+<pre><code>{{ scan_command }}</code></pre>
 
-    <h2>Command paths</h2>
+<h2>Command paths</h2>
 
-    <table>
-        <tbody>
-            <tr>
-                <th>Company config</th>
-                <td><code>{{ scan_config_path }}</code></td>
-            </tr>
-            <tr>
-                <th>Settings</th>
-                <td><code>{{ scan_settings_path }}</code></td>
-            </tr>
-            <tr>
-                <th>Scoring config</th>
-                <td><code>{{ scan_scoring_path }}</code></td>
-            </tr>
-            <tr>
-                <th>Markdown report</th>
-                <td><code>{{ scan_report_path }}</code></td>
-            </tr>
-            <tr>
-                <th>Email preview</th>
-                <td><code>{{ scan_email_preview_path }}</code></td>
-            </tr>
-        </tbody>
-    </table>
+<table>
+    <tbody>
+        <tr>
+            <th>Company config</th>
+            <td><code>{{ scan_config_path }}</code></td>
+        </tr>
+        <tr>
+            <th>Settings</th>
+            <td><code>{{ scan_settings_path }}</code></td>
+        </tr>
+        <tr>
+            <th>Scoring config</th>
+            <td><code>{{ scan_scoring_path }}</code></td>
+        </tr>
+        <tr>
+            <th>Markdown report</th>
+            <td><code>{{ scan_report_path }}</code></td>
+        </tr>
+        <tr>
+            <th>Email preview</th>
+            <td><code>{{ scan_email_preview_path }}</code></td>
+        </tr>
+    </tbody>
+</table>
 
-    <h2>Run scan from GUI</h2>
+<h2>Run scan from GUI</h2>
 
+<div class="page-card">
     <p>This runs the same scan from the local Flask process. Email sending remains disabled from the GUI.</p>
 
     <form id="scan-form" method="post" action="{{ url_for('run_scan') }}">
@@ -134,17 +87,17 @@
 
     <p>After running the command, open the <a href="{{ url_for('reports') }}">Reports</a> page to view generated output.
     </p>
-    <script>
-        const scanForm = document.getElementById("scan-form");
-        const scanButton = document.getElementById("scan-submit-button");
-        const scanRunning = document.getElementById("scan-running");
+</div>
 
-        scanForm.addEventListener("submit", () => {
-            scanButton.disabled = true;
-            scanButton.textContent = "Scan running...";
-            scanRunning.style.display = "block";
-        });
-    </script>
-</body>
+<script>
+    const scanForm = document.getElementById("scan-form");
+    const scanButton = document.getElementById("scan-submit-button");
+    const scanRunning = document.getElementById("scan-running");
 
-</html>
+    scanForm.addEventListener("submit", () => {
+        scanButton.disabled = true;
+        scanButton.textContent = "Scan running...";
+        scanRunning.style.display = "block";
+    });
+</script>
+{% endblock %}

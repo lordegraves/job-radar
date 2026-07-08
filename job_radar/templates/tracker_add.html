@@ -1,47 +1,12 @@
-<!doctype html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <title>Add Tracker Application</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.4;
-            margin: 24px;
-            max-width: 900px;
-        }
+{% block title %}Add Application - Job Radar{% endblock %}
 
-        label {
-            display: block;
-            font-weight: bold;
-            margin-top: 14px;
-        }
+{% block content %}
+<div class="page-card form-page">
+    <h1 class="page-title">Add Application</h1>
 
-        input,
-        select,
-        textarea {
-            box-sizing: border-box;
-            width: 100%;
-            padding: 8px;
-        }
-
-        textarea {
-            min-height: 120px;
-        }
-
-        .actions {
-            margin-top: 18px;
-        }
-    </style>
-</head>
-
-<body>
-    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
-            href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('profile') }}">Profile /
-            Resume</a> | <a href="{{ url_for('reports') }}">Reports</a> | <a href="{{ url_for('scan') }}">Scan</a></p>
-
-    <h1>Add Application</h1>
+    <p class="muted">Create a manual tracker record for an application or external lead.</p>
 
     <form method="post">
         <label for="job_radar_id">Job Radar ID</label>
@@ -88,9 +53,8 @@
 
         <div class="actions">
             <button type="submit">Save</button>
-            <a href="{{ url_for('tracker', filter='all') }}">Cancel</a>
+            <a class="button-link button-secondary" href="{{ url_for('tracker', filter='all') }}">Cancel</a>
         </div>
     </form>
-</body>
-
-</html>
+</div>
+{% endblock %}

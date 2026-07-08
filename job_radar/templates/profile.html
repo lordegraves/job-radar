@@ -1,188 +1,139 @@
-<!doctype html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <title>Profile / Resume - Job Radar</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.4;
-            margin: 24px;
-        }
+{% block title %}Profile / Resume - Job Radar{% endblock %}
 
-        .nav {
-            margin-bottom: 16px;
-        }
+{% block page_styles %}
+<style>
+    pre {
+        white-space: pre-wrap;
+    }
+</style>
+{% endblock %}
 
-        .section {
-            border: 1px solid #dddddd;
-            margin: 16px 0;
-            max-width: 960px;
-            padding: 12px 16px;
-        }
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">Profile / Resume</h1>
 
-        .label {
-            font-weight: bold;
-        }
-
-        code {
-            background: #f5f5f5;
-            padding: 2px 4px;
-        }
-
-        pre {
-            background: #f5f5f5;
-            overflow-x: auto;
-            padding: 12px;
-            white-space: pre-wrap;
-        }
-
-        .error {
-            background: #fff4f4;
-            border: 1px solid #cc7777;
-            padding: 12px;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="nav">
-        <a href="{{ url_for('index') }}">Home</a>
-        |
-        <a href="{{ url_for('tracker') }}">Application tracker</a>
-        |
-        <a href="{{ url_for('history') }}">Job history archive</a>
-        |
-        <a href="{{ url_for('profile') }}">Profile / Resume</a>
-        |
-        <a href="{{ url_for('reports') }}">Reports</a>
-        |
-        <a href="{{ url_for('scan') }}">Scan</a>
-    </div>
-
-    <h1>Profile / Resume</h1>
-
-    <p>This page shows the candidate profile and resume currently used by scans. It is read-only for now.</p>
+    <p class="muted">Review the candidate profile and resume currently used by scans. This page is read-only for now.
+    </p>
 
     {% if profile.load_error %}
     <div class="error">
         <strong>Profile/resume warning:</strong> {{ profile.load_error }}
     </div>
     {% endif %}
+</div>
 
-    <div class="section">
-        <h2>Configured paths</h2>
-        <p><span class="label">Settings file:</span> <code>{{ profile.settings_path }}</code></p>
-        <p><span class="label">Candidate profile:</span>
-            {% if profile.candidate_profile_path %}
-            <code>{{ profile.candidate_profile_path }}</code>
-            {% else %}
-            Not configured
-            {% endif %}
-        </p>
-        <p><span class="label">Candidate profile exists:</span> {{ profile.candidate_profile_exists }}</p>
-        <p><span class="label">Resume source:</span>
-            {% if profile.resume_source_path %}
-            <code>{{ profile.resume_source_path }}</code>
-            {% else %}
-            Not configured
-            {% endif %}
-        </p>
-        <p><span class="label">Resume source exists:</span> {{ profile.resume_source_exists }}</p>
-        <p><span class="label">Normalized resume path:</span>
-            {% if profile.normalized_text_path %}
-            <code>{{ profile.normalized_text_path }}</code>
-            {% else %}
-            Not configured
-            {% endif %}
-        </p>
-        <p><span class="label">Normalized resume exists:</span> {{ profile.normalized_text_exists }}</p>
-    </div>
-
-    <div class="section">
-        <h2>Candidate summary</h2>
-        <p><span class="label">Name:</span> {{ profile.candidate_name or "Unknown" }}</p>
-        <p><span class="label">Compensation floor:</span>
-            {% if profile.compensation_floor_usd %}
-            ${{ "{:,}".format(profile.compensation_floor_usd) }}
-            {% else %}
-            Not configured
-            {% endif %}
-        </p>
-        <p><span class="label">Preferred base:</span>
-            {% if profile.preferred_base_usd %}
-            ${{ "{:,}".format(profile.preferred_base_usd) }}
-            {% else %}
-            Not configured
-            {% endif %}
-        </p>
-    </div>
-
-    <div class="section">
-        <h2>Core strengths</h2>
-        {% if profile.core_strengths %}
-        <ul>
-            {% for item in profile.core_strengths %}
-            <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
+<div class="section">
+    <h2>Configured paths</h2>
+    <p><span class="label">Settings file:</span> <code>{{ profile.settings_path }}</code></p>
+    <p><span class="label">Candidate profile:</span>
+        {% if profile.candidate_profile_path %}
+        <code>{{ profile.candidate_profile_path }}</code>
         {% else %}
-        <p>No core strengths configured.</p>
+        Not configured
         {% endif %}
-    </div>
-
-    <div class="section">
-        <h2>Credible adjacent areas</h2>
-        {% if profile.credible_adjacent %}
-        <ul>
-            {% for item in profile.credible_adjacent %}
-            <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
+    </p>
+    <p><span class="label">Candidate profile exists:</span> {{ profile.candidate_profile_exists }}</p>
+    <p><span class="label">Resume source:</span>
+        {% if profile.resume_source_path %}
+        <code>{{ profile.resume_source_path }}</code>
         {% else %}
-        <p>No credible adjacent areas configured.</p>
+        Not configured
         {% endif %}
-    </div>
-
-    <div class="section">
-        <h2>Learning / gap areas</h2>
-        {% if profile.learning_or_gap %}
-        <ul>
-            {% for item in profile.learning_or_gap %}
-            <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
+    </p>
+    <p><span class="label">Resume source exists:</span> {{ profile.resume_source_exists }}</p>
+    <p><span class="label">Normalized resume path:</span>
+        {% if profile.normalized_text_path %}
+        <code>{{ profile.normalized_text_path }}</code>
         {% else %}
-        <p>No learning or gap areas configured.</p>
+        Not configured
         {% endif %}
-    </div>
+    </p>
+    <p><span class="label">Normalized resume exists:</span> {{ profile.normalized_text_exists }}</p>
+</div>
 
-    <div class="section">
-        <h2>Avoid signals</h2>
-        {% if profile.avoid %}
-        <ul>
-            {% for item in profile.avoid %}
-            <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
+<div class="section">
+    <h2>Candidate summary</h2>
+    <p><span class="label">Name:</span> {{ profile.candidate_name or "Unknown" }}</p>
+    <p><span class="label">Compensation floor:</span>
+        {% if profile.compensation_floor_usd %}
+        ${{ "{:,}".format(profile.compensation_floor_usd) }}
         {% else %}
-        <p>No avoid signals configured.</p>
+        Not configured
         {% endif %}
-    </div>
-
-    <div class="section">
-        <h2>Resume preview</h2>
-        {% if profile.resume_character_count is not none %}
-        <p><span class="label">Normalized character count:</span> {{ profile.resume_character_count }}</p>
-        {% endif %}
-
-        {% if profile.resume_preview %}
-        <pre>{{ profile.resume_preview }}</pre>
+    </p>
+    <p><span class="label">Preferred base:</span>
+        {% if profile.preferred_base_usd %}
+        ${{ "{:,}".format(profile.preferred_base_usd) }}
         {% else %}
-        <p>No resume preview available.</p>
+        Not configured
         {% endif %}
-    </div>
-</body>
+    </p>
+</div>
 
-</html>
+<div class="section">
+    <h2>Core strengths</h2>
+    {% if profile.core_strengths %}
+    <ul>
+        {% for item in profile.core_strengths %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No core strengths configured.</p>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>Credible adjacent areas</h2>
+    {% if profile.credible_adjacent %}
+    <ul>
+        {% for item in profile.credible_adjacent %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No credible adjacent areas configured.</p>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>Learning / gap areas</h2>
+    {% if profile.learning_or_gap %}
+    <ul>
+        {% for item in profile.learning_or_gap %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No learning or gap areas configured.</p>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>Avoid signals</h2>
+    {% if profile.avoid %}
+    <ul>
+        {% for item in profile.avoid %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No avoid signals configured.</p>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>Resume preview</h2>
+    {% if profile.resume_character_count is not none %}
+    <p><span class="label">Normalized character count:</span> {{ profile.resume_character_count }}</p>
+    {% endif %}
+
+    {% if profile.resume_preview %}
+    <pre>{{ profile.resume_preview }}</pre>
+    {% else %}
+    <p>No resume preview available.</p>
+    {% endif %}
+</div>
+{% endblock %}

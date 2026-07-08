@@ -1,116 +1,128 @@
-<!doctype html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <title>Job Radar History Archive</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.4;
-            margin: 24px;
+{% block title %}Job History Archive - Job Radar{% endblock %}
+
+{% block page_styles %}
+<style>
+    .toolbar {
+        align-items: end;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(160px, 1fr)) auto;
+        margin-top: 16px;
+    }
+
+    .toolbar label {
+        margin-top: 0;
+    }
+
+    .toolbar input,
+    .toolbar select {
+        width: 100%;
+    }
+
+    .page {
+        max-width: none;
+    }
+
+    .table-wrap {
+        max-width: calc(100vw - 56px);
+        overflow-x: auto;
+    }
+
+    .table-wrap table {
+        table-layout: fixed;
+    }
+
+    .table-wrap th,
+    .table-wrap td {
+        overflow-wrap: anywhere;
+    }
+
+    .table-wrap code {
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    @media (max-width: 1000px) {
+        .toolbar {
+            grid-template-columns: 1fr;
         }
+    }
+</style>
+{% endblock %}
 
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">Job History Archive</h1>
 
-        th,
-        td {
-            border: 1px solid #dddddd;
-            padding: 8px 10px;
-            text-align: left;
-            vertical-align: top;
-        }
+    <p class="muted">
+        This page shows imported job history records from the spreadsheet bridge.
+        <span>Viewing these records does not add them to the active application tracker.</span>
+    </p>
 
-        th {
-            background: #f6f8fa;
-        }
-
-        code {
-            background: #f6f8fa;
-            padding: 2px 4px;
-        }
-
-        .date-cell {
-            min-width: 105px;
-            white-space: nowrap;
-        }
-
-        .outcome-cell {
-            min-width: 160px;
-            white-space: nowrap;
-        }
-
-        .notes-cell {
-            min-width: 320px;
-            max-width: 520px;
-        }
-
-        .notes-full {
-            white-space: pre-wrap;
-        }
-    </style>
-</head>
-
-<body>
-    <h1>Job History Archive</h1>
-
-    <p><a href="{{ url_for('index') }}">Home</a> | <a href="{{ url_for('tracker') }}">Application tracker</a> | <a
-            href="{{ url_for('history') }}">Job history archive</a> | <a href="{{ url_for('profile') }}">Profile /
-            Resume</a> | <a href="{{ url_for('reports') }}">Reports</a> | <a href="{{ url_for('scan') }}">Scan</a></p>
     <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
     <p><strong>History records shown:</strong> {{ records|length }}</p>
 
-    <form method="get" action="{{ url_for('history') }}">
-        <label for="history-search"><strong>Search:</strong></label>
-        <input id="history-search" name="q" type="search" value="{{ search_query }}"
-            placeholder="Company, role, decision, outcome, source, recruiter, notes">
+    <form class="toolbar" method="get" action="{{ url_for('history') }}">
+        <div>
+            <label for="history-search">Search</label>
+            <input id="history-search" name="q" type="search" value="{{ search_query }}"
+                placeholder="Company, role, decision, outcome, source, recruiter, notes">
+        </div>
 
-        <label for="history-decision-filter"><strong>Decision:</strong></label>
-        <select id="history-decision-filter" name="decision_filter">
-            <option value="">All decisions</option>
-            {% for decision_filter_option in decision_filter_options %}
-            <option value="{{ decision_filter_option }}" {% if decision_filter_option==active_decision_filter
-                %}selected{% endif %}>
-                {{ decision_filter_option }}
-            </option>
-            {% endfor %}
-        </select>
+        <div>
+            <label for="history-decision-filter">Decision</label>
+            <select id="history-decision-filter" name="decision_filter">
+                <option value="">All decisions</option>
+                {% for decision_filter_option in decision_filter_options %}
+                <option value="{{ decision_filter_option }}" {% if decision_filter_option==active_decision_filter
+                    %}selected{% endif %}>
+                    {{ decision_filter_option }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <label for="history-outcome-filter"><strong>Outcome:</strong></label>
-        <select id="history-outcome-filter" name="outcome_filter">
-            <option value="">All outcomes</option>
-            {% for outcome_filter_option in outcome_filter_options %}
-            <option value="{{ outcome_filter_option }}" {% if outcome_filter_option==active_outcome_filter %}selected{%
-                endif %}>
-                {{ outcome_filter_option }}
-            </option>
-            {% endfor %}
-        </select>
+        <div>
+            <label for="history-outcome-filter">Outcome</label>
+            <select id="history-outcome-filter" name="outcome_filter">
+                <option value="">All outcomes</option>
+                {% for outcome_filter_option in outcome_filter_options %}
+                <option value="{{ outcome_filter_option }}" {% if outcome_filter_option==active_outcome_filter
+                    %}selected{% endif %}>
+                    {{ outcome_filter_option }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <label for="history-sort"><strong>Sort:</strong></label>
-        <select id="history-sort" name="sort">
-            {% for sort_name, sort_label in sort_options.items() %}
-            <option value="{{ sort_name }}" {% if sort_name==active_sort %}selected{% endif %}>{{ sort_label }}</option>
-            {% endfor %}
-        </select>
+        <div>
+            <label for="history-sort">Sort</label>
+            <select id="history-sort" name="sort">
+                {% for sort_name, sort_label in sort_options.items() %}
+                <option value="{{ sort_name }}" {% if sort_name==active_sort %}selected{% endif %}>{{ sort_label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <button type="submit">Apply</button>
-        {% if search_query or active_decision_filter or active_outcome_filter or active_sort != "event_desc" %}
-        <a href="{{ url_for('history') }}">Clear search/filters/sort</a>
-        {% endif %}
+        <div>
+            <button type="submit">Apply</button>
+        </div>
     </form>
 
-    <p>
-        This page shows imported job history records from the spreadsheet bridge.
-        Viewing these records does not add them to the active application tracker.
-    </p>
+    {% if search_query or active_decision_filter or active_outcome_filter or active_sort != "event_desc" %}
+    <p><a href="{{ url_for('history') }}">Clear search/filters/sort</a></p>
+    {% endif %}
+</div>
 
-    {% if not records %}
+{% if not records %}
+<div class="page-card">
     <p>No imported job history records.</p>
-    {% else %}
+</div>
+{% else %}
+<div class="table-wrap">
     <table>
         <thead>
             <tr>
@@ -151,7 +163,6 @@
             {% endfor %}
         </tbody>
     </table>
-    {% endif %}
-</body>
-
-</html>
+</div>
+{% endif %}
+{% endblock %}
