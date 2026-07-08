@@ -29,6 +29,23 @@
         padding-top: 18px;
     }
 
+    .review-helper-panel {
+        background: rgba(96, 205, 255, 0.08);
+        border: 1px solid rgba(96, 205, 255, 0.35);
+        border-radius: 10px;
+        margin-top: 18px;
+        padding: 14px 16px;
+    }
+
+    .review-helper-panel h2 {
+        font-size: 1rem;
+        margin: 0 0 6px 0;
+    }
+
+    .review-helper-panel p {
+        margin: 0;
+    }
+
     .quick-action-panel {
         background: rgba(43, 43, 49, 0.62);
         border: 1px solid var(--border);
@@ -46,11 +63,45 @@
         margin: 0 0 12px 0;
     }
 
+    .quick-action-group {
+        border-top: 1px solid var(--border);
+        margin-top: 14px;
+        padding-top: 14px;
+    }
+
+    .quick-action-group:first-of-type {
+        border-top: 0;
+        margin-top: 0;
+        padding-top: 0;
+    }
+
+    .quick-action-group h3 {
+        color: var(--muted);
+        font-size: 0.92rem;
+        margin: 0 0 8px 0;
+    }
+
     .quick-actions {
         align-items: center;
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
+    }
+
+    .quick-actions button {
+        font-size: 0.92rem;
+    }
+
+    .terminal-actions button {
+        background: var(--danger-surface);
+        border-color: var(--danger-border);
+        color: var(--text);
+    }
+
+    .terminal-actions button:hover {
+        background: #5a2a2d;
+        border-color: var(--danger-border);
+        color: var(--text);
     }
 
     .danger-zone {
@@ -86,6 +137,13 @@
 
     {% if application.source_url %}
     <p><strong>Posting:</strong> <a href="{{ application.source_url }}">View posting</a></p>
+    {% endif %}
+
+    {% if return_filter == "needs_review" %}
+    <div class="review-helper-panel">
+        <h2>Needs Review helper</h2>
+        <p class="muted">Use quick actions to refresh activity, schedule a follow-up, mark dormant, or move terminal outcomes to history without manually editing every field.</p>
+    </div>
     {% endif %}
 
     <form method="post">
@@ -131,14 +189,42 @@
 
         <div class="quick-action-panel">
             <h2>Quick actions</h2>
-            <p class="muted">Use these to update common tracker states without manually changing every field.</p>
+            <p class="muted">Use these to update common tracker states. Some actions also update follow-up or last-activity dates automatically.</p>
 
-            <div class="quick-actions">
-                {% for quick_action_name, quick_action in quick_actions.items() %}
-                <button type="submit" name="quick_action" value="{{ quick_action_name }}">
-                    {{ quick_action.label }}
-                </button>
-                {% endfor %}
+            <div class="quick-action-group">
+                <h3>Dates and follow-up</h3>
+                <div class="quick-actions">
+                    {% for quick_action_name in ["refresh_activity_today", "follow_up_next_week", "follow_up_due"] %}
+                    {% set quick_action = quick_actions[quick_action_name] %}
+                    <button type="submit" name="quick_action" value="{{ quick_action_name }}">
+                        {{ quick_action.label }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="quick-action-group">
+                <h3>Pipeline status</h3>
+                <div class="quick-actions">
+                    {% for quick_action_name in ["dormant", "interview_scheduled", "waiting_for_feedback", "offer"] %}
+                    {% set quick_action = quick_actions[quick_action_name] %}
+                    <button type="submit" name="quick_action" value="{{ quick_action_name }}">
+                        {{ quick_action.label }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="quick-action-group terminal-actions">
+                <h3>Move out of active tracker</h3>
+                <div class="quick-actions">
+                    {% for quick_action_name in ["rejected_no_interview", "withdrawn"] %}
+                    {% set quick_action = quick_actions[quick_action_name] %}
+                    <button type="submit" name="quick_action" value="{{ quick_action_name }}">
+                        {{ quick_action.label }}
+                    </button>
+                    {% endfor %}
+                </div>
             </div>
         </div>
 

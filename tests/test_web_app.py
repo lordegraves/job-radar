@@ -1,3 +1,4 @@
+from datetime import date
 from io import BytesIO
 from pathlib import Path
 
@@ -77,10 +78,11 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "Needs review" in html
     assert "Active pipeline" in html
     assert "Closed" in html
-    assert "/tracker?filter=needs_action" in html
-    assert "/tracker?filter=needs_review" in html
-    assert "/tracker?filter=active" in html
-    assert "/tracker?filter=closed" in html
+    assert 'class="tracker-summary-card is-active"' in html
+    assert "filter=needs_action" in html
+    assert "filter=needs_review" in html
+    assert "filter=active" in html
+    assert "filter=closed" in html
     assert "Stack AV" in html
     assert "Senior Site Reliability Engineer" in html
     assert "Applied" in html
@@ -157,11 +159,16 @@ def test_tracker_page_summarizes_workflow_counts(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Application tracker summary" in html
-    assert "<strong>4</strong> <span class=\"muted\">Total tracked</span>" in normalized_html
-    assert '<strong><a href="/tracker?filter=needs_action">2</a></strong> <span class="muted">Needs action</span>' in normalized_html
-    assert '<strong><a href="/tracker?filter=needs_review">1</a></strong> <span class="muted">Needs review</span>' in normalized_html
-    assert '<strong><a href="/tracker?filter=active">3</a></strong> <span class="muted">Active pipeline</span>' in normalized_html
-    assert '<strong><a href="/tracker?filter=closed">1</a></strong> <span class="muted">Closed</span>' in normalized_html
+    assert '<a class="tracker-summary-card is-active" href="/tracker?filter=all' in normalized_html
+    assert '<strong>4</strong> <span class="muted">Total tracked</span>' in normalized_html
+    assert '<a class="tracker-summary-card is-action " href="/tracker?filter=needs_action' in normalized_html
+    assert '<strong>2</strong> <span class="muted">Needs action</span>' in normalized_html
+    assert 'href="/tracker?filter=needs_review' in normalized_html
+    assert '<strong>1</strong> <span class="muted">Needs review</span>' in normalized_html
+    assert 'href="/tracker?filter=active' in normalized_html
+    assert '<strong>3</strong> <span class="muted">Active pipeline</span>' in normalized_html
+    assert 'href="/tracker?filter=closed' in normalized_html
+    assert '<strong>1</strong> <span class="muted">Closed</span>' in normalized_html
 
 
 def test_tracker_page_handles_empty_tracker(tmp_path: Path) -> None:
@@ -254,11 +261,16 @@ def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Application tracker dashboard" in html
+    assert '<a class="dashboard-card" href="/tracker?filter=all">' in normalized_html
     assert "<strong>3</strong> <span class=\"muted\">Total tracked applications</span>" in normalized_html
-    assert '<strong><a href="/tracker?filter=needs_action">2</a></strong> <span class="muted">Need action</span>' in normalized_html
-    assert '<strong><a href="/tracker?filter=needs_review">0</a></strong> <span class="muted">Need review</span>' in normalized_html
-    assert '<strong><a href="/tracker?filter=active">2</a></strong> <span class="muted">Active pipeline</span>' in normalized_html
-    assert '<strong><a href="/tracker?filter=closed">1</a></strong> <span class="muted">Closed</span>' in normalized_html
+    assert '<a class="dashboard-card is-action" href="/tracker?filter=needs_action">' in normalized_html
+    assert '<strong>2</strong> <span class="muted">Need action</span>' in normalized_html
+    assert '<a class="dashboard-card" href="/tracker?filter=needs_review">' in normalized_html
+    assert '<strong>0</strong> <span class="muted">Need review</span>' in normalized_html
+    assert '<a class="dashboard-card" href="/tracker?filter=active">' in normalized_html
+    assert '<strong>2</strong> <span class="muted">Active pipeline</span>' in normalized_html
+    assert '<a class="dashboard-card" href="/tracker?filter=closed">' in normalized_html
+    assert '<strong>1</strong> <span class="muted">Closed</span>' in normalized_html
 
 
 def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
@@ -1344,8 +1356,9 @@ def test_tracker_filter_links_preserve_search_sort_and_field_filters(tmp_path: P
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "/tracker?filter=all" in html
-    assert "/tracker?filter=active" in html
+    assert "filter=all" in html
+    assert "filter=active" in html
+    assert "tracker-summary-card" in html
     assert "status_filter=Applied" in html
     assert "outcome_filter=Pending+" in html
     assert 'value="hpc"' in html
@@ -1547,6 +1560,8 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert 'name="applied_on" value="2026-07-03"' in html
     assert 'name="last_activity_on" value="2026-07-05"' in html
     assert '<option value="Interview Scheduled" selected>' in html
+    assert "Refresh activity today" in html
+    assert "Schedule follow-up next week" in html
     assert "Applied through company site." in html
 
 
@@ -1656,6 +1671,126 @@ def test_tracker_edit_quick_action_marks_application_dormant(
     assert application.last_activity_on == "2026-07-12"
     assert application.outcome == "Dormant"
     assert application.notes == "Marked dormant."
+
+
+def test_tracker_edit_quick_action_refreshes_activity_today(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 7, 20)
+
+    monkeypatch.setattr(web_app_module, "date", FixedDate)
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-refresh-12345678",
+            company_name="RefreshCo",
+            role_title="Platform Engineer",
+            status="Applied",
+            applied_on="2026-01-01",
+            last_activity_on="2026-01-01",
+            outcome="Pending / In Progress",
+            notes="Needs refresh.",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/tracker/jr-refresh-12345678/edit",
+        data={
+            "return_filter": "needs_review",
+            "status": "Applied",
+            "follow_up_on": "",
+            "applied_on": "2026-01-01",
+            "last_activity_on": "2026-01-01",
+            "outcome": "Pending / In Progress",
+            "notes": "Needs refresh.",
+            "quick_action": "refresh_activity_today",
+        },
+    )
+
+    application = get_application(database_file, "jr-refresh-12345678")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/tracker?filter=needs_review")
+    assert application is not None
+    assert application.status == "Applied"
+    assert application.outcome == "Pending / In Progress"
+    assert application.applied_on == "2026-01-01"
+    assert application.last_activity_on == "2026-07-20"
+    assert application.follow_up_on is None
+    assert application.notes == "Needs refresh."
+
+
+def test_tracker_edit_quick_action_schedules_follow_up_next_week(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 7, 20)
+
+    monkeypatch.setattr(web_app_module, "date", FixedDate)
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-followup-12345678",
+            company_name="FollowUpCo",
+            role_title="Infrastructure Engineer",
+            status="Applied",
+            applied_on="2026-01-01",
+            last_activity_on="2026-01-01",
+            outcome="Pending / In Progress",
+            notes="Needs follow-up.",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/tracker/jr-followup-12345678/edit",
+        data={
+            "return_filter": "needs_review",
+            "status": "Applied",
+            "follow_up_on": "",
+            "applied_on": "2026-01-01",
+            "last_activity_on": "2026-01-01",
+            "outcome": "Pending / In Progress",
+            "notes": "Needs follow-up.",
+            "quick_action": "follow_up_next_week",
+        },
+    )
+
+    application = get_application(database_file, "jr-followup-12345678")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/tracker?filter=needs_review")
+    assert application is not None
+    assert application.status == "Applied"
+    assert application.outcome == "Pending / In Progress"
+    assert application.applied_on == "2026-01-01"
+    assert application.last_activity_on == "2026-07-20"
+    assert application.follow_up_on == "2026-07-27"
+    assert application.notes == "Needs follow-up."
 
 
 def test_tracker_page_links_to_add_application(tmp_path: Path) -> None:

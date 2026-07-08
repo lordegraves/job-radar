@@ -34,24 +34,31 @@
         border: 1px solid var(--border);
         border-radius: 14px;
         box-shadow: var(--shadow);
+        color: var(--text);
+        display: block;
         padding: 16px 18px;
+        text-decoration: none;
+        transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+    }
+
+    .dashboard-card:hover {
+        background: var(--surface-hover);
+        border-color: var(--link);
+        color: var(--text);
     }
 
     .dashboard-card strong {
+        color: var(--link);
         display: block;
         font-size: 1.55rem;
         margin-bottom: 4px;
     }
 
     .dashboard-card.is-action {
-        border-color: var(--link);
+        border-color: rgba(96, 205, 255, 0.45);
         box-shadow:
             var(--shadow),
             inset 0 0 0 1px rgba(96, 205, 255, 0.22);
-    }
-
-    .dashboard-card a {
-        text-decoration: none;
     }
 
     .nav-grid {
@@ -95,30 +102,30 @@
 </section>
 
 <section class="dashboard-grid" aria-label="Application tracker dashboard">
-    <div class="dashboard-card">
+    <a class="dashboard-card" href="{{ url_for('tracker', filter='all') }}">
         <strong>{{ tracker_summary.total }}</strong>
         <span class="muted">Total tracked applications</span>
-    </div>
+    </a>
 
-    <div class="dashboard-card is-action">
-        <strong><a href="{{ url_for('tracker', filter='needs_action') }}">{{ tracker_summary.needs_action }}</a></strong>
+    <a class="dashboard-card is-action" href="{{ url_for('tracker', filter='needs_action') }}">
+        <strong>{{ tracker_summary.needs_action }}</strong>
         <span class="muted">Need action</span>
-    </div>
+    </a>
 
-    <div class="dashboard-card">
-        <strong><a href="{{ url_for('tracker', filter='needs_review') }}">{{ tracker_summary.needs_review }}</a></strong>
+    <a class="dashboard-card" href="{{ url_for('tracker', filter='needs_review') }}">
+        <strong>{{ tracker_summary.needs_review }}</strong>
         <span class="muted">Need review</span>
-    </div>
+    </a>
 
-    <div class="dashboard-card">
-        <strong><a href="{{ url_for('tracker', filter='active') }}">{{ tracker_summary.active }}</a></strong>
+    <a class="dashboard-card" href="{{ url_for('tracker', filter='active') }}">
+        <strong>{{ tracker_summary.active }}</strong>
         <span class="muted">Active pipeline</span>
-    </div>
+    </a>
 
-    <div class="dashboard-card">
-        <strong><a href="{{ url_for('tracker', filter='closed') }}">{{ tracker_summary.closed }}</a></strong>
+    <a class="dashboard-card" href="{{ url_for('tracker', filter='closed') }}">
+        <strong>{{ tracker_summary.closed }}</strong>
         <span class="muted">Closed</span>
-    </div>
+    </a>
 </section>
 
 <section class="nav-grid" aria-label="Job Radar sections">

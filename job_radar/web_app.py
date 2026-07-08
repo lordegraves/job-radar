@@ -1,7 +1,7 @@
 import argparse
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from threading import Lock
 
@@ -154,10 +154,24 @@ TRACKER_OUTCOME_OPTIONS = (
 TRACKER_EDIT_OUTCOME_OPTIONS = TRACKER_OUTCOME_OPTIONS + TRACKER_TERMINAL_OUTCOME_OPTIONS
 
 TRACKER_QUICK_ACTIONS = {
+    "refresh_activity_today": {
+        "label": "Refresh activity today",
+        "status": "Applied",
+        "outcome": "Pending / In Progress",
+        "last_activity_on": "today",
+    },
+    "follow_up_next_week": {
+        "label": "Schedule follow-up next week",
+        "status": "Applied",
+        "outcome": "Pending / In Progress",
+        "follow_up_on": "today+7",
+        "last_activity_on": "today",
+    },
     "follow_up_due": {
         "label": "Mark follow-up due",
         "status": "Applied",
         "outcome": "Pending / In Progress",
+        "follow_up_on": "today",
     },
     "dormant": {
         "label": "Mark dormant",
@@ -632,6 +646,14 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
             status = quick_action_values["status"]
             outcome = quick_action_values["outcome"]
+            follow_up_on = _resolve_quick_action_date(
+                quick_action_values.get("follow_up_on"),
+                follow_up_on,
+            )
+            last_activity_on = _resolve_quick_action_date(
+                quick_action_values.get("last_activity_on"),
+                last_activity_on,
+            )
 
         result = update_tracker_application_workflow(
             database_path,
@@ -1104,6 +1126,24 @@ def _parse_tracker_sort_date(value: str | None) -> date | None:
         return date.fromisoformat(value)
     except ValueError:
         return None
+    
+
+def _resolve_quick_action_date(
+    quick_action_value: str | None,
+    current_value: str | None,
+) -> str | None:
+    if quick_action_value is None:
+        return current_value
+
+    today = date.today()
+
+    if quick_action_value == "today":
+        return today.isoformat()
+
+    if quick_action_value == "today+7":
+        return (today + timedelta(days=7)).isoformat()
+
+    return quick_action_value
 
 
 def _normalize_optional_form_value(field_name: str) -> str | None:
