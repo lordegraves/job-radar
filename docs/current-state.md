@@ -1,6 +1,6 @@
 # Job Radar Current State
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
 
 ## Purpose
 
@@ -101,6 +101,10 @@ It tracks:
 - Application workflow state
 
 SQLite is the current system of record for scans, imported history, and app-native tracker data.
+
+Tracker identity is app-owned. Scanned postings use generated scan IDs. Spreadsheet-imported active applications without scanned IDs and GUI-created manual applications receive generated `jr_manual_*` IDs. Posting URLs remain evidence/source URLs and are not tracker primary keys.
+
+Older tracker rows that used `posting-url:*` as their primary Job Radar ID are repaired into app-owned `jr_manual_*` IDs during tracker table initialization and before tracker reads.
 
 ## Current scoring behavior
 
@@ -214,11 +218,11 @@ Fuzzy company/title matches only route to Track Status when the title match is s
 
 Rows without Job Radar ID are allowed for LinkedIn, referral, recruiter, company-site, and manual leads.
 
-Posting URL is fallback evidence when available.
+Posting URL is fallback evidence for manual/external rows, but it is not active tracker identity. When an active spreadsheet-imported row lacks a real Job Radar ID, the app assigns a generated `jr_manual_*` tracker ID.
 
 The workbook is treated as a human job log and import bridge, not the app's internal schema.
 
-Spreadsheet import now partitions rows into either the active application tracker or the archived job history table. Tracker and History are mutually exclusive: a row should exist in one place or the other, not both.
+Spreadsheet import partitions rows into either the active application tracker or the archived job history table. Tracker and History are mutually exclusive: a row should exist in one place or the other, not both.
 
 Current routing rules:
 
@@ -286,7 +290,7 @@ The tracker GUI currently supports:
 - role sorting
 - status sorting
 - outcome sorting
-- manual add
+- manual add with app-assigned Job Radar ID
 - edit/update
 - grouped quick actions
 - quick action to refresh last activity to today
@@ -300,6 +304,8 @@ The tracker GUI currently supports:
 - moving terminal tracker records to history
 - deleting tracker records
 - notes display
+- wrapping Job Radar ID display on the edit page
+- `/tracker/` redirect to `/tracker`
 
 The tracker is the long-term direction for active application workflow. The spreadsheet remains an import/history bridge and possible bulk-import path, but it is being retired as the normal application-tracking interface.
 
@@ -334,14 +340,16 @@ Current GUI capabilities:
 - Tracker Needs Review queue guidance
 - Tracker workflow badges
 - Tracker edit page
+- Tracker edit summary cards with wrapped Job Radar ID display
 - Status and outcome dropdowns
 - Grouped tracker quick actions
 - Tracker quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history
-- Manual application add form
+- Manual application add form with app-assigned Job Radar ID on save
 - Tracker-to-history movement for terminal outcomes
 - Tracker row deletion
 - Notes display from stored tracker records
 - Job history/archive page for imported historical records
+- Clickable History archive summary cards
 - History edit page
 - History-to-tracker movement for reopened opportunities
 - History row deletion
@@ -358,8 +366,11 @@ Current GUI capabilities:
 - Resume upload and replacement from the GUI
 - Existing generated report and email-preview viewing
 - Reports page for existing generated reports and email previews
+- Reports page primary output shortcut cards
 - In-app report viewer
 - Controlled manual scan execution from the local GUI
+- Direct scan completion links to HTML report, Markdown report, and email preview
+- `/tracker/` trailing-slash redirect
 
 Current GUI files include:
 
@@ -370,12 +381,14 @@ Current GUI files include:
 - `job_radar/templates/tracker_add.html`
 - `job_radar/templates/history.html`
 - `job_radar/templates/history_edit.html`
+- `job_radar/templates/profile.html`
 - `job_radar/templates/reports.html`
 - `job_radar/templates/report_view.html`
 - `job_radar/templates/scan.html`
 
 Current tracker module files use the tracker naming convention:
 
+- `job_radar/tracker/tracker_ids.py`
 - `job_radar/tracker/tracker_models.py`
 - `job_radar/tracker/tracker_storage.py`
 - `job_radar/tracker/tracker_service.py`
@@ -394,9 +407,9 @@ http://127.0.0.1:5000/
 
 The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker.
 
-The reports page opens existing generated reports and email previews without starting a scan or sending email.
+The reports page opens existing generated reports and email previews without starting a scan or sending email. The Reports page now highlights primary scan outputs with shortcut cards.
 
-The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled.
+The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled. On success, the Scan page links directly to the latest HTML report, Markdown report, and email preview.
 
 ## Current email behavior
 
@@ -413,6 +426,18 @@ Email behavior:
 - Email summaries are intentionally capped for readability.
 - Tracked applications are excluded from email summaries.
 
+## Current verification
+
+Latest verification from this milestone:
+
+```text
+python -m pytest tests\test_web_app.py
+57 passed
+
+python -m pytest tests
+461 passed
+```
+
 ## Current project principles
 
 - Configured-company scanning only
@@ -426,6 +451,7 @@ Email behavior:
 - Forward progress only
 - Spreadsheet import is a bridge, not the final product
 - App-native tracker CLI/GUI is the long-term tracking direction
+- Job Radar ID is app-owned identity; URLs are evidence, not tracker primary keys
 
 ## Completed milestones
 
@@ -520,7 +546,6 @@ Completed so far:
 - Tracker rows can be deleted from the GUI
 - History rows can be deleted from the GUI
 - Tracker/history workflow actions moved out of `web_app.py` into GUI-neutral service functions
-
 - Profile/resume GUI page
 - Resume upload and replacement from the GUI
 - PDF resume loading
@@ -539,6 +564,18 @@ Completed so far:
 - Tracker quick action to schedule follow-up next week
 - Tracker quick action to mark follow-up due
 - Manual validation of tracker/history movement and count updates
+- History archive summary cards
+- History quick filters for applied, passed, rejected, withdrawn, and closed-before-application records
+- Rejected history quick filter covering both rejection outcomes
+- Withdrawn history quick filter matching both withdrawn decision and withdrawn outcome
+- History chip styling for archive type, decision/status, and outcome
+- Reports primary output shortcut cards
+- Scan completion direct links to HTML report, Markdown report, and email preview
+- Manual tracker add form now assigns Job Radar ID on save instead of asking the user
+- Spreadsheet-imported active applications without a Job Radar ID now receive app-owned `jr_manual_*` IDs
+- Existing `posting-url:*` tracker IDs are repaired to app-owned `jr_manual_*` IDs
+- Tracker edit summary layout now keeps Job Radar ID aligned with other summary cards and wraps long IDs
+- `/tracker/` redirects to `/tracker`
 
 ## Known limitations
 

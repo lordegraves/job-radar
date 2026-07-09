@@ -1,6 +1,6 @@
 # Job Radar Product Roadmap
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
 
 ## Purpose of this document
 
@@ -63,7 +63,11 @@ Current strengths:
 - Clickable tracker dashboards and workflow navigation
 - GUI tracker Needs Review queue
 - GUI tracker quick actions
+- GUI history/archive summary cards and quick filters
+- GUI scan/report flow polish
 - GUI profile/resume upload support
+- App-assigned tracker IDs for spreadsheet-imported and GUI-created manual application records
+- Legacy `posting-url:*` tracker ID repair
 - Spreadsheet import bridge
 - Sanitized example workbook
 
@@ -128,16 +132,17 @@ Job Radar is complete-enough when these are true:
 10. A user can review scan results from the GUI.
 11. A user can track active applications from the GUI.
 12. A user can review historical, passed, skipped, rejected, and archived jobs from the GUI.
-13. A user can schedule recurring scans.
-14. Runtime data is stored outside the source/repo directory.
-15. Real user data is not committed to Git.
-16. The app can run as a standalone program on a user's PC.
-17. The app can run unattended as a service on a user-controlled system.
-18. The app can run in Kubernetes when that matches the user's setup.
-19. The app can be packaged for Windows with an `.exe` entry point and installer.
-20. The app can be packaged for Linux using a `.tar` or tarball-based distribution.
-21. Documentation clearly separates developer setup from user setup.
-22. Existing CLI/test/report behavior does not regress.
+13. A user can create manual applications from the GUI without manually inventing tracker IDs.
+14. A user can schedule recurring scans.
+15. Runtime data is stored outside the source/repo directory.
+16. Real user data is not committed to Git.
+17. The app can run as a standalone program on a user's PC.
+18. The app can run unattended as a service on a user-controlled system.
+19. The app can run in Kubernetes when that matches the user's setup.
+20. The app can be packaged for Windows with an `.exe` entry point and installer.
+21. The app can be packaged for Linux using a `.tar` or tarball-based distribution.
+22. Documentation clearly separates developer setup from user setup.
+23. Existing CLI/test/report behavior does not regress.
 
 ## User configuration requirements
 
@@ -293,18 +298,27 @@ Linux target:
 
 The current Flask GUI should continue as the near-term interface.
 
+Recently completed GUI work:
+
+- History/archive summary cards and quick filters
+- Rejected and withdrawn history quick-filter behavior
+- Reports primary output shortcut cards
+- Scan completion links to the main generated outputs
+- Manual application add form no longer asks for Job Radar ID
+- Tracker edit summary layout polish for long/generated IDs
+- Legacy `posting-url:*` tracker ID repair surfaced through the GUI
+- `/tracker/` redirect to `/tracker`
+
 Near-term GUI priorities:
 
-1. Finish history/archive page polish
-2. Improve scan/report flow after manual GUI scans
-3. Settings page
-4. Company management page
-5. Preference setup page
-6. Email settings page
-7. Scheduled scan settings page
-8. Complete profile/preference setup beyond resume upload
-9. Runtime data location setup
-10. Packaging/launcher preparation
+1. Settings page
+2. Company management page
+3. Preference setup page
+4. Email settings page
+5. Scheduled scan settings page
+6. Complete profile/preference setup beyond resume upload
+7. Runtime data location setup
+8. Packaging/launcher preparation
 
 The GUI should keep using the same service layer as the CLI.
 
@@ -474,11 +488,10 @@ The finish line can be reached in stages.
 ### Stage 1: Finish Current GUI Workflow
 
 - Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
-- Preserve the completed tracker workflow improvements: clickable dashboard cards, Needs Review queue, grouped quick actions, tracker-to-history movement, and history-to-tracker reopening.
-- Improve history/archive summary and review visibility.
-- Improve scan/report flow after manual GUI scans.
+- Preserve the completed tracker workflow improvements: clickable dashboard cards, Needs Review queue, grouped quick actions, tracker-to-history movement, history-to-tracker reopening, history/archive quick filters, scan/report flow shortcuts, and app-assigned manual tracker IDs.
 - Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
 - Preserve Tracker/History mutual exclusivity: active rows belong in Tracker, archived or terminal rows belong in History.
+- Preserve app-owned tracker identity: posting URLs are evidence/source links, not tracker primary keys.
 - Keep tracker/history workflow actions in GUI-neutral services so Flask, CLI, desktop launcher/wrapper, scheduler, and container/server mode can reuse them.
 - Decide the final role of the spreadsheet bridge.
 - Keep scan/report behavior stable while GUI tracker/history behavior improves.

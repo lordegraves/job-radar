@@ -7,6 +7,7 @@ from job_radar.storage import (
     fetch_included_job_history_records,
     upsert_job_history_record,
 )
+from job_radar.tracker.tracker_ids import build_manual_job_radar_id
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_storage import (
     delete_application,
@@ -130,7 +131,7 @@ def build_application_record_from_history_record(
     record: JobHistoryRecord,
 ) -> ApplicationRecord:
     return ApplicationRecord(
-        job_radar_id=record.job_radar_id or record.import_key,
+        job_radar_id=_job_radar_id_for_history_tracker_record(record),
         company_name=record.company,
         role_title=record.role,
         source_url=record.posting_url,
@@ -139,6 +140,18 @@ def build_application_record_from_history_record(
         notes=_clean_history_notes_for_tracker(record.notes),
         applied_on=record.event_date,
         last_activity_on=record.event_date,
+    )
+
+
+def _job_radar_id_for_history_tracker_record(record: JobHistoryRecord) -> str:
+    if record.job_radar_id:
+        return record.job_radar_id
+
+    return build_manual_job_radar_id(
+        company_name=record.company,
+        role_title=record.role,
+        source_url=record.posting_url,
+        source_key=record.import_key,
     )
 
 

@@ -117,6 +117,35 @@ def test_initialize_tracker_tables_adds_activity_date_columns_to_existing_table(
     assert "last_activity_on" in columns
 
 
+def test_initialize_tracker_tables_repairs_posting_url_tracker_ids(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_tracker_tables(database_path)
+
+    upsert_application(
+        database_path,
+        ApplicationRecord(
+            job_radar_id="posting-url:https://example.com/manual-lead",
+            company_name="ManualCo",
+            role_title="Senior Infrastructure Engineer",
+            source_url="https://example.com/manual-lead",
+            status="Applied",
+        ),
+    )
+
+    initialize_tracker_tables(database_path)
+
+    applications = list_applications(database_path)
+
+    assert len(applications) == 1
+    assert applications[0].job_radar_id.startswith(
+        "jr_manual_manualco_senior_infrastructure_engineer_"
+    )
+    assert not applications[0].job_radar_id.startswith("posting-url:")
+    assert applications[0].source_url == "https://example.com/manual-lead"
+
+
 def test_upsert_application_inserts_new_application(tmp_path: Path) -> None:
     database_path = tmp_path / "job_radar.sqlite3"
     initialize_tracker_tables(database_path)

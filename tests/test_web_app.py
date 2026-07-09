@@ -11,7 +11,11 @@ from job_radar.storage import (
     upsert_job_history_record,
 )
 from job_radar.tracker.tracker_models import ApplicationRecord
-from job_radar.tracker.tracker_storage import get_application, upsert_application
+from job_radar.tracker.tracker_storage import (
+    get_application,
+    list_applications,
+    upsert_application,
+)
 from job_radar.web_app import create_app
 
 
@@ -189,6 +193,21 @@ def test_tracker_page_handles_empty_tracker(tmp_path: Path) -> None:
     assert "No tracked applications." in html
 
 
+def test_tracker_trailing_slash_redirects_to_tracker(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker/?filter=needs_action")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/tracker?filter=needs_action")
+
+
 def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
@@ -316,6 +335,20 @@ def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
     assert "Job History Archive" in html
     assert f"<code>{database_file}</code>" in html
     assert "History records shown:</strong> 1" in html
+    assert "Archive summary" in html
+    assert "Total archived" in html
+    assert "Applied records" in html
+    assert "Passed records" in html
+    assert "Rejected records" in html
+    assert "Withdrawn records" in html
+    assert "Closed before apply" in html
+    assert "history-summary-card" in html
+    assert 'href="/history?quick_filter=applied"' in html
+    assert 'href="/history?quick_filter=passed"' in html
+    assert 'href="/history?quick_filter=rejected"' in html
+    assert 'href="/history?quick_filter=withdrawn"' in html
+    assert 'href="/history?quick_filter=closed_before_application"' in html
+    assert "history-chip" in html
     assert "ArchiveCo" in html
     assert "Senior Linux Engineer" in html
     assert "Reviewed" in html
@@ -533,6 +566,141 @@ def test_history_page_searches_and_filters_records(tmp_path: Path) -> None:
     assert "Dormant" not in filter_html
     assert '<option value="company" selected>' in filter_html
     assert "Clear search/filters/sort" in filter_html
+
+
+def test_history_page_summary_cards_apply_filters(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="RejectCo",
+            role="SRE",
+            source="Job Radar",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-07-01",
+            status="Applied",
+            outcome_category="Rejected - No Interview",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="manual:rejectco:sre",
+            notes=None,
+        ),
+    )
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Reviewed",
+            company="PassCo",
+            role="Support Engineer",
+            source="LinkedIn",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-06-01",
+            status="Passed",
+            outcome_category="Closed Before Application",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="manual:passco:support-engineer",
+            notes=None,
+        ),
+    )
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="WithdrawCo",
+            role="Platform Engineer",
+            source="Job Radar Tracker",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-05-01",
+            status="Withdrawn",
+            outcome_category="N/A",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="manual:withdrawco:platform-engineer",
+            notes=None,
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    passed_response = client.get("/history?quick_filter=passed")
+    passed_html = passed_response.get_data(as_text=True)
+
+    assert passed_response.status_code == 200
+    assert "History records shown:</strong> 1" in passed_html
+    assert "PassCo" in passed_html
+    assert "RejectCo" not in passed_html
+    assert '<option value="Passed" selected>' in passed_html
+    assert "is-active" in passed_html
+
+    rejected_response = client.get("/history?quick_filter=rejected")
+    rejected_html = rejected_response.get_data(as_text=True)
+
+    assert rejected_response.status_code == 200
+    assert "History records shown:</strong> 1" in rejected_html
+    assert "RejectCo" in rejected_html
+    assert "PassCo" not in rejected_html
+    assert "WithdrawCo" not in rejected_html
+    assert "Rejected records" in rejected_html
+    assert "is-active" in rejected_html
+
+    withdrawn_response = client.get("/history?quick_filter=withdrawn")
+    withdrawn_html = withdrawn_response.get_data(as_text=True)
+
+    assert withdrawn_response.status_code == 200
+    assert "History records shown:</strong> 1" in withdrawn_html
+    assert "WithdrawCo" in withdrawn_html
+    assert "RejectCo" not in withdrawn_html
+    assert "PassCo" not in withdrawn_html
+    assert '<option value="Withdrawn" selected>' in withdrawn_html
+
+
+def test_history_page_rejects_unknown_quick_filter(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/history?quick_filter=unknown")
+
+    assert response.status_code == 404
 
 
 def test_history_page_rejects_unknown_sort(tmp_path: Path) -> None:
@@ -765,6 +933,7 @@ def test_scan_page_shows_manual_scan_command(tmp_path: Path) -> None:
     assert "GUI scan execution does not send email." in normalized_html
     assert "Run scan now" in html
     assert "Scan is running. This may take a few minutes." in normalized_html
+    assert "After running the command, use the scan completion links above" in normalized_html
     assert "python -m job_radar scan" in html
     assert "--config config/target-companies.yaml" in html
     assert f"--settings {settings_file}" in html
@@ -790,10 +959,17 @@ def test_scan_run_calls_handle_scan_and_redirects(
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    response = client.post("/scan/run")
+    response = client.post("/scan/run", follow_redirects=True)
+    html = response.get_data(as_text=True)
 
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith("/scan?scan_result=success")
+    assert response.status_code == 200
+    assert "Scan completed." in html
+    assert "HTML report" in html
+    assert "Markdown report" in html
+    assert "email preview" in html
+    assert "/reports/view/target-scan.html" in html
+    assert "/reports/view/target-scan.md" in html
+    assert "/reports/view/target-email-preview.txt" in html
     assert calls == [
         {
             "config_path": "config/target-companies.yaml",
@@ -915,6 +1091,9 @@ def test_reports_page_lists_existing_report_files(tmp_path: Path) -> None:
     assert "target-scan.html" in html
     assert "/reports/view/target-scan.html" in html
     assert "Main scan report. Open this first." in html
+    assert "Primary scan output shortcuts" in html
+    assert "primary-output-card" in html
+    assert "Open the HTML report first for normal review." in html
     assert "target-scan.md" in html
     assert "Markdown version of the main scan report." in html
     assert "target-email-preview.txt" in html
@@ -1554,6 +1733,11 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert "Edit Application" in html
     assert "Stack AV" in html
     assert "Senior Site Reliability Engineer" in html
+    assert "Job Radar ID" in html
+    assert "jr-stack-av-12345678" in html
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr));" in html
+    assert "overflow-wrap: anywhere;" in html
+    assert "word-break: break-word;" in html
     assert 'name="return_filter" value="needs_action"' in html
     assert '<option value="Applied" selected>' in html
     assert 'name="follow_up_on" value="2026-07-10"' in html
@@ -1823,7 +2007,8 @@ def test_tracker_add_page_shows_application_form(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Add Application" in html
-    assert 'name="job_radar_id"' in html
+    assert "Job Radar assigns the ID when the record is saved." in html
+    assert 'name="job_radar_id"' not in html
     assert 'name="company_name"' in html
     assert 'name="role_title"' in html
     assert 'name="source_url"' in html
@@ -1849,7 +2034,6 @@ def test_tracker_add_page_saves_application_and_redirects(
     response = client.post(
         "/tracker/add",
         data={
-            "job_radar_id": "jr-manual-example-12345678",
             "company_name": "ManualCo",
             "role_title": "Senior Infrastructure Engineer",
             "source_url": "https://example.com/jobs/manual",
@@ -1862,11 +2046,16 @@ def test_tracker_add_page_saves_application_and_redirects(
         },
     )
 
-    application = get_application(database_file, "jr-manual-example-12345678")
+    applications = list_applications(database_file)
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/tracker?filter=all")
-    assert application is not None
+    assert len(applications) == 1
+
+    application = applications[0]
+
+    assert application.job_radar_id.startswith("jr_manual_manualco_senior_infrastructure_engineer_")
+    assert application.source_url == "https://example.com/jobs/manual"
     assert application.company_name == "ManualCo"
     assert application.role_title == "Senior Infrastructure Engineer"
     assert application.source_url == "https://example.com/jobs/manual"
@@ -1915,21 +2104,21 @@ def test_tracker_edit_page_deletes_application_and_redirects(
     assert application is None
 
 
-def test_tracker_edit_page_supports_path_style_job_radar_ids(
+def test_tracker_edit_page_repairs_path_style_job_radar_ids(
     tmp_path: Path,
 ) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
-    job_radar_id = "posting-url:https://example.com/jobs/hydra"
 
     write_settings_file(settings_file, database_file)
     initialize_database(database_file)
     upsert_application(
         database_file,
         ApplicationRecord(
-            job_radar_id=job_radar_id,
+            job_radar_id="posting-url:https://example.com/jobs/hydra",
             company_name="Hydra Host",
             role_title="HPC Solutions Engineer",
+            source_url="https://example.com/jobs/hydra",
             status="Applied",
             outcome="Pending / In Progress",
         ),
@@ -1938,10 +2127,22 @@ def test_tracker_edit_page_supports_path_style_job_radar_ids(
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    response = client.get("/tracker/posting-url:https://example.com/jobs/hydra/edit")
+    repaired_application = list_applications(database_file)[0]
 
-    assert response.status_code == 200
-    assert "Hydra Host" in response.get_data(as_text=True)
+    old_id_response = client.get("/tracker/posting-url:https://example.com/jobs/hydra/edit")
+    repaired_id_response = client.get(
+        f"/tracker/{repaired_application.job_radar_id}/edit"
+    )
+    repaired_html = repaired_id_response.get_data(as_text=True)
+
+    assert repaired_application.job_radar_id.startswith(
+        "jr_manual_hydra_host_hpc_solutions_engineer_"
+    )
+    assert not repaired_application.job_radar_id.startswith("posting-url:")
+    assert old_id_response.status_code == 404
+    assert repaired_id_response.status_code == 200
+    assert "Hydra Host" in repaired_html
+    assert "posting-url:https://example.com/jobs/hydra" not in repaired_html
 
 
 def test_history_page_links_to_history_edit(tmp_path: Path) -> None:

@@ -365,7 +365,7 @@ def test_build_application_record_from_history_record_maps_dormant_outcome() -> 
     assert application.outcome == "Dormant"
 
 
-def test_build_application_record_from_history_record_falls_back_to_import_key() -> None:
+def test_build_application_record_from_history_record_generates_manual_id() -> None:
     record = make_history_record(
         job_radar_id=None,
         import_key="posting-url:https://example.com/manual-lead",
@@ -376,7 +376,10 @@ def test_build_application_record_from_history_record_falls_back_to_import_key()
 
     application = build_application_record_from_history_record(record)
 
-    assert application.job_radar_id == "posting-url:https://example.com/manual-lead"
+    assert application.job_radar_id.startswith(
+        "jr_manual_example_ai_senior_site_reliability_engineer_"
+    )
+    assert not application.job_radar_id.startswith("posting-url:")
     assert application.status == "Applied"
     assert application.source_url == "https://example.com/manual-lead"
 

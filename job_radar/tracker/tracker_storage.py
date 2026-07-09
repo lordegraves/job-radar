@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 
+from job_radar.tracker.tracker_ids import build_manual_job_radar_id
 from job_radar.tracker.tracker_models import ApplicationRecord
 
 
@@ -36,6 +37,7 @@ def initialize_tracker_tables(database_path: str | Path) -> Path:
         connection.executescript(TRACKER_SCHEMA_SQL)
         _ensure_tracker_column(connection, "applied_on", "TEXT")
         _ensure_tracker_column(connection, "last_activity_on", "TEXT")
+        _repair_url_backed_tracker_ids(connection)
 
     return db_path
 
@@ -56,6 +58,47 @@ def _ensure_tracker_column(
     connection.execute(
         f"ALTER TABLE application_tracker ADD COLUMN {column_name} {column_type}"
     )
+
+
+def _repair_url_backed_tracker_ids(connection: sqlite3.Connection) -> None:
+    rows = connection.execute(
+        """
+        SELECT job_radar_id, company_name, role_title, source_url
+        FROM application_tracker
+        WHERE job_radar_id LIKE 'posting-url:%'
+        """
+    ).fetchall()
+
+    for old_job_radar_id, company_name, role_title, source_url in rows:
+        new_job_radar_id = build_manual_job_radar_id(
+            company_name=company_name,
+            role_title=role_title,
+            source_url=source_url,
+            source_key=old_job_radar_id,
+        )
+
+        existing = connection.execute(
+            """
+            SELECT job_radar_id
+            FROM application_tracker
+            WHERE job_radar_id = ?
+            """,
+            (new_job_radar_id,),
+        ).fetchone()
+
+        if existing is not None:
+            continue
+
+        # Older spreadsheet imports used posting URLs as tracker primary keys.
+        # Repair them once so the GUI shows app-owned Job Radar IDs instead.
+        connection.execute(
+            """
+            UPDATE application_tracker
+            SET job_radar_id = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE job_radar_id = ?
+            """,
+            (new_job_radar_id, old_job_radar_id),
+        )
 
 
 def upsert_application(
@@ -203,6 +246,7 @@ def list_applications(database_path: str | Path) -> list[ApplicationRecord]:
     db_path = Path(database_path)
 
     with sqlite3.connect(db_path) as connection:
+        _repair_url_backed_tracker_ids(connection)
         connection.row_factory = sqlite3.Row
 
         rows = connection.execute(
@@ -235,6 +279,7 @@ def get_application(
     db_path = Path(database_path)
 
     with sqlite3.connect(db_path) as connection:
+        _repair_url_backed_tracker_ids(connection)
         connection.row_factory = sqlite3.Row
 
         row = connection.execute(

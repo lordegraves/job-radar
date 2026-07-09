@@ -91,7 +91,7 @@ Use the documentation set this way:
 | `job_radar/recommendations.py` | Technical match, hiring probability, risk flags, recommended actions, and display eligibility. | Keep / watch growth |
 | `job_radar/recommendation_constants.py` | Shared labels for actions, risks, recommendation ordering, and history reasons. | Keep |
 | `job_radar/compensation.py` | Compensation parsing and compensation-floor evaluation. | Keep |
-| `job_radar/job_history.py` | Imports and represents external job/application history from the spreadsheet bridge. | Keep |
+| `job_radar/job_history.py` | Imports and represents external job/application history from the spreadsheet bridge. Posting URLs are import evidence; active tracker identity is assigned by Job Radar when needed. | Keep |
 | `job_radar/history_match.py` | Matches current postings against prior application/review history. | Keep |
 | `job_radar/history_context.py` | Adds history context to scored postings/reports. | Keep |
 | `job_radar/history_summary.py` | Summarizes imported history for reports. | Keep |
@@ -101,9 +101,10 @@ Use the documentation set this way:
 | File | Purpose | Keep / Review |
 |---|---|---|
 | `job_radar/tracker/__init__.py` | Tracker package marker. | Keep |
+| `job_radar/tracker/tracker_ids.py` | App-owned manual Job Radar ID generation for spreadsheet-imported and GUI-created tracker records that did not come from a scan. | Keep |
 | `job_radar/tracker/tracker_models.py` | Application tracker data model. | Keep |
-| `job_radar/tracker/tracker_storage.py` | SQLite persistence for application tracker records. | Keep |
-| `job_radar/tracker/tracker_service.py` | Tracker workflow classification, tracker/history conversion, tracker/history update and delete workflow actions, import partitioning, and tracker business rules. | Keep |
+| `job_radar/tracker/tracker_storage.py` | SQLite persistence for application tracker records, including repair of legacy `posting-url:*` tracker IDs to app-owned `jr_manual_*` IDs. | Keep |
+| `job_radar/tracker/tracker_service.py` | Tracker workflow classification, tracker/history conversion, tracker/history update and delete workflow actions, import partitioning, generated tracker identity rules, and tracker business rules. | Keep |
 
 ## Reporting and email
 
@@ -119,17 +120,17 @@ Use the documentation set this way:
 
 | File | Purpose | Keep / Review |
 |---|---|---|
-| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers. Route handlers should delegate tracker/history workflow actions to service-layer functions. | Keep / watch growth |
+| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers, including tracker/history/report/scan routes and `/tracker/` trailing-slash redirect. Route handlers should delegate tracker/history workflow actions to service-layer functions. | Keep / watch growth |
 | `job_radar/templates/index.html` | Web app landing page with clickable tracker dashboard cards. | Keep |
 | `job_radar/templates/tracker.html` | Application tracker list, clickable summary filter cards, workflow filters, search, sorting, workflow display, Needs Review guidance, workflow badges, and edit links. | Keep |
-| `job_radar/templates/tracker_edit.html` | Application tracker edit form and grouped quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history. | Keep |
-| `job_radar/templates/tracker_add.html` | Manual application tracker add form. | Keep |
-| `job_radar/templates/history.html` | Job history/archive page for archived/history records, including search, filtering, sorting, and edit links. | Keep |
+| `job_radar/templates/tracker_edit.html` | Application tracker edit form, summary cards with wrapping Job Radar ID display, and grouped quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history. | Keep |
+| `job_radar/templates/tracker_add.html` | Manual application tracker add form. Job Radar assigns the tracker ID when the record is saved. | Keep |
+| `job_radar/templates/history.html` | Job history/archive page for archived/history records, including summary cards, quick filters, search, filtering, sorting, chip display, and edit links. | Keep |
 | `job_radar/templates/history_edit.html` | Job history edit form, including save, delete, and move-back-to-tracker workflow. | Keep |
 | `job_radar/templates/profile.html` | Profile/resume page for viewing profile state and uploading/replacing resumes through the GUI. | Keep |
-| `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews. | Keep |
+| `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews, including primary output shortcut cards. | Keep |
 | `job_radar/templates/report_view.html` | In-app report viewer shell for opening generated reports inside the GUI with shared dark styling. | Keep |
-| `job_radar/templates/scan.html` | Scan page for manual command display and controlled local GUI scan execution. | Keep |
+| `job_radar/templates/scan.html` | Scan page for manual command display, controlled local GUI scan execution, and direct completion links to the latest outputs. | Keep |
 
 ## Collectors
 
@@ -221,6 +222,7 @@ Current tracker structure:
 ```text
 job_radar/tracker/
   __init__.py
+  tracker_ids.py
   tracker_models.py
   tracker_storage.py
   tracker_service.py
@@ -243,7 +245,11 @@ job_radar/templates/
   scan.html
 ```
 
-The tracker service owns application status/decision, follow-up timing, active outcomes, notes, workflow state, manual application tracking rules, tracker-to-history movement, history-to-tracker movement, and tracker/history delete workflow actions.
+The tracker ID helper owns generated app identity for manual/imported tracker records. URLs are evidence and source links, not active tracker primary keys.
+
+The tracker storage layer owns persistence and legacy repair for older `posting-url:*` tracker IDs.
+
+The tracker service owns application status/decision, follow-up timing, active outcomes, notes, workflow state, manual application tracking rules, tracker-to-history movement, history-to-tracker movement, generated tracker identity for imported active applications, and tracker/history delete workflow actions.
 
 The spreadsheet/history importer owns external history intake, partitioning between active tracker records and archived history records, and historical context. The history GUI owns review/display controls for archived history. The spreadsheet should not be treated as the long-term source of truth for active application workflow.
 

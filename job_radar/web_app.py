@@ -14,6 +14,7 @@ from job_radar.storage import (
     fetch_included_job_history_records,
     initialize_database,
 )
+from job_radar.tracker.tracker_ids import build_manual_job_radar_id
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import (
     delete_history_record,
@@ -79,6 +80,33 @@ HISTORY_SORT_OPTIONS = {
     "role": "Role A-Z",
     "status": "Decision A-Z",
     "outcome": "Outcome A-Z",
+}
+
+HISTORY_QUICK_FILTERS = {
+    "all": {
+        "decision_filter": "",
+        "outcome_filter": "",
+    },
+    "applied": {
+        "decision_filter": "Applied",
+        "outcome_filter": "",
+    },
+    "passed": {
+        "decision_filter": "Passed",
+        "outcome_filter": "",
+    },
+    "rejected": {
+        "decision_filter": "",
+        "outcome_filter": "Rejected",
+    },
+    "withdrawn": {
+        "decision_filter": "",
+        "outcome_filter": "Withdrawn",
+    },
+    "closed_before_application": {
+        "decision_filter": "",
+        "outcome_filter": "Closed Before Application",
+    },
 }
 
 CANONICAL_DECISION_FILTER_OPTIONS = (
@@ -259,6 +287,16 @@ class TrackerSummaryView:
 
 
 @dataclass(frozen=True)
+class HistorySummaryView:
+    total: int
+    applied: int
+    passed: int
+    withdrawn: int
+    closed_before_application: int
+    rejected: int
+
+
+@dataclass(frozen=True)
 class ReportFileView:
     name: str
     size_bytes: int
@@ -332,6 +370,16 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         search_query = request.args.get("q", "").strip()
         decision_filter = request.args.get("decision_filter", "").strip()
         outcome_filter = request.args.get("outcome_filter", "").strip()
+        quick_filter = request.args.get("quick_filter", "").strip()
+
+        if quick_filter:
+            quick_filter_values = HISTORY_QUICK_FILTERS.get(quick_filter)
+
+            if quick_filter_values is None:
+                abort(404)
+
+            decision_filter = quick_filter_values["decision_filter"]
+            outcome_filter = quick_filter_values["outcome_filter"]
 
         if sort_name not in HISTORY_SORT_OPTIONS:
             abort(404)
@@ -348,15 +396,18 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             filtered_records,
             sort_name,
         )
+        history_summary = _build_history_summary(all_records)
 
         return render_template(
             "history.html",
             database_path=database_path,
             records=sorted_records,
+            history_summary=history_summary,
             active_sort=sort_name,
             search_query=search_query,
             active_decision_filter=decision_filter,
             active_outcome_filter=outcome_filter,
+            active_quick_filter=quick_filter,
             decision_filter_options=CANONICAL_DECISION_FILTER_OPTIONS,
             outcome_filter_options=HISTORY_OUTCOME_FILTER_OPTIONS,
             sort_options=HISTORY_SORT_OPTIONS,
@@ -510,6 +561,10 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
         return send_from_directory(reports_path, report_name)
 
+    @app.get("/tracker/")
+    def tracker_trailing_slash():
+        return redirect(url_for("tracker", **request.args))
+
     @app.get("/tracker")
     def tracker() -> str:
         filter_name = request.args.get("filter", "all")
@@ -573,13 +628,21 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     def save_new_tracker_application():
         database_path = _get_database_path(app)
 
+        company_name = request.form["company_name"].strip()
+        role_title = request.form["role_title"].strip()
+        source_url = _normalize_optional_form_value("source_url")
+
         upsert_application(
             database_path,
             ApplicationRecord(
-                job_radar_id=request.form["job_radar_id"].strip(),
-                company_name=request.form["company_name"].strip(),
-                role_title=request.form["role_title"].strip(),
-                source_url=_normalize_optional_form_value("source_url"),
+                job_radar_id=build_manual_job_radar_id(
+                    company_name=company_name,
+                    role_title=role_title,
+                    source_url=source_url,
+                ),
+                company_name=company_name,
+                role_title=role_title,
+                source_url=source_url,
                 status=request.form["status"].strip(),
                 follow_up_on=_normalize_optional_form_value("follow_up_on"),
                 applied_on=_normalize_optional_form_value("applied_on"),
@@ -812,6 +875,44 @@ def _build_tracker_summary(
     )
 
 
+def _build_history_summary(records: list) -> HistorySummaryView:
+    # These counts summarize the archive itself, not only the current filtered
+    # table. That keeps the page useful as a dashboard while search narrows rows.
+    return HistorySummaryView(
+        total=len(records),
+        applied=sum(
+            1
+            for record in records
+            if _matches_filter_value(record.status, "Applied")
+        ),
+        passed=sum(
+            1
+            for record in records
+            if _matches_filter_value(record.status, "Passed")
+        ),
+        withdrawn=sum(
+            1
+            for record in records
+            if _matches_filter_value(record.status, "Withdrawn")
+            or _matches_filter_value(record.outcome_category, "Withdrawn")
+        ),
+        closed_before_application=sum(
+            1
+            for record in records
+            if _matches_filter_value(
+                record.outcome_category,
+                "Closed Before Application",
+            )
+        ),
+        rejected=sum(
+            1
+            for record in records
+            if _matches_filter_value(record.outcome_category, "Rejected - No Interview")
+            or _matches_filter_value(record.outcome_category, "Rejected - After Interview")
+        ),
+    )
+
+
 def _get_tracker_application_sort_key(
     application_view: TrackerApplicationView,
 ) -> tuple[int, str, str]:
@@ -1035,7 +1136,7 @@ def _filter_history_records(
         filtered_records = [
             record
             for record in filtered_records
-            if _matches_filter_value(record.outcome_category, outcome_filter)
+            if _matches_history_outcome_filter(record, outcome_filter)
         ]
 
     return filtered_records
@@ -1046,6 +1147,22 @@ def _matches_filter_value(value: str | None, selected_filter: str) -> bool:
         return False
 
     return value.strip().casefold() == selected_filter.strip().casefold()
+
+
+def _matches_history_outcome_filter(record, outcome_filter: str) -> bool:
+    if outcome_filter.casefold() == "rejected":
+        return _matches_filter_value(record.outcome_category, "Rejected - No Interview") or _matches_filter_value(
+            record.outcome_category,
+            "Rejected - After Interview",
+        )
+
+    if outcome_filter.casefold() == "withdrawn":
+        return _matches_filter_value(record.status, "Withdrawn") or _matches_filter_value(
+            record.outcome_category,
+            "Withdrawn",
+        )
+
+    return _matches_filter_value(record.outcome_category, outcome_filter)
 
 
 def _sort_history_records(

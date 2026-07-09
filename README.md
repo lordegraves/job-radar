@@ -54,14 +54,20 @@ Job Radar currently supports:
 - app-native application tracker records
 - tracker workflow classification
 - tracker/history mutual-exclusion import partitioning
+- app-owned generated Job Radar IDs for scanned, spreadsheet-imported, and GUI-created tracker records
+- automatic repair of older tracker IDs that used `posting-url:*` as primary identity
 - local Flask GUI for tracker/history/report/scan workflows
 - controlled manual scans from the local GUI
 - GUI profile/resume page with resume upload/replacement support
 - PDF, DOCX, Markdown, and plain-text resume loading
 - clickable Home dashboard cards for tracker workflow navigation
 - clickable Tracker summary cards with active filter highlighting
+- clickable History archive summary cards
 - tracker Needs Review queue guidance
 - grouped tracker quick actions for common workflow updates
+- direct scan completion links to the HTML report, Markdown report, and email preview
+- primary report shortcut cards on the Reports page
+- `/tracker/` trailing-slash redirect to `/tracker`
 
 Implemented source types include:
 
@@ -149,7 +155,7 @@ The workbook is a human job log and transition bridge, not the app's internal sc
 
 Job Radar ID is generated for scanned postings and shown in Markdown, HTML, and email-preview outputs. It is the preferred durable key when present.
 
-Rows without Job Radar ID are still allowed for LinkedIn, referral, recruiter, company-site, and other manual leads. Posting URL is fallback evidence when available.
+Rows without Job Radar ID are still allowed for LinkedIn, referral, recruiter, company-site, and other manual leads. Posting URL remains evidence only; it is not used as the active tracker primary identity. When a spreadsheet-imported active application lacks a real Job Radar ID, the app assigns an app-owned `jr_manual_*` ID.
 
 Spreadsheet import partitions rows into either active tracker records or archived job history records. Tracker and History are mutually exclusive:
 
@@ -200,6 +206,10 @@ The tracker stores:
 - Notes
 - Created/updated timestamps
 
+Job Radar ID is app-owned tracker identity. For scanned postings, it comes from the scan pipeline. For spreadsheet-imported active applications without a scanned Job Radar ID, and for GUI-created manual applications, Job Radar assigns a generated `jr_manual_*` ID. Posting URLs remain in Source URL and should not become tracker primary keys.
+
+Older tracker rows that used `posting-url:*` as the Job Radar ID are repaired to generated `jr_manual_*` IDs during tracker initialization and tracker reads.
+
 The tracker classifies workflow state, including:
 
 - `follow_up_due`
@@ -232,13 +242,13 @@ List records needing review:
 python -m job_radar tracker list --needs-review --settings config/settings.yaml
 ```
 
-Add a manual tracker record:
+Add a manual tracker record through the GUI when possible. The GUI assigns the Job Radar ID when the record is saved.
+
+Existing CLI manual-add/update commands remain available for fallback and testing workflows:
 
 ```powershell
 python -m job_radar tracker add --job-radar-id jr-manual-example --company "Example AI" --role "Senior Infrastructure Engineer" --status Applied --outcome "Pending / In Progress" --settings config/settings.yaml
 ```
-
-Update a tracker record:
 
 ```powershell
 python -m job_radar tracker update jr-manual-example --status Applied --outcome "Interview Scheduled" --follow-up-on 2026-07-10 --settings config/settings.yaml
@@ -271,8 +281,11 @@ Current GUI summary:
 - tracker sorting by workflow, applied date, company, role, status, and outcome
 - tracker Needs Review queue guidance
 - tracker edit page with grouped quick actions
+- tracker edit summary cards with wrapping Job Radar ID display
 - tracker quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history
+- manual Add Application page that assigns Job Radar ID automatically on save
 - imported job history/archive review
+- clickable History archive summary cards for Applied, Passed, Rejected, Withdrawn, and Closed Before Application records
 - history editing
 - history-to-tracker movement for reopened opportunities
 - tracker/history delete actions
@@ -282,8 +295,11 @@ Current GUI summary:
 - profile/resume page
 - resume upload and replacement from the GUI
 - existing generated report and email-preview viewing
+- Reports page with primary output shortcut cards
 - in-app report viewer
 - controlled manual scan execution with GUI email sending disabled
+- scan completion links directly to HTML report, Markdown report, and email preview
+- `/tracker/` redirects to `/tracker`
 
 The local GUI is intentionally read/write only where the app already owns the workflow.
 
@@ -363,7 +379,7 @@ python -m pytest tests
 Expected current result:
 
 ```text
-457 passed
+461 passed
 ```
 
 ## Run full live scan
@@ -429,4 +445,5 @@ False
 - Safe manual review first
 - Spreadsheet import is a bridge, not the final product
 - App-native tracker CLI/GUI is the long-term tracking direction
+- App-owned Job Radar IDs; URLs are evidence, not tracker identity
 - No regression

@@ -28,8 +28,11 @@
         execution does not send email.</p>
 
     {% if scan_result == "success" %}
-    <p><strong>Scan completed.</strong> Open the <a href="{{ url_for('reports') }}">Reports</a> page to view generated
-        output.</p>
+    <p><strong>Scan completed.</strong> Open the latest outputs:
+        <a href="{{ url_for('report_view', report_name='target-scan.html') }}">HTML report</a>,
+        <a href="{{ url_for('report_view', report_name='target-scan.md') }}">Markdown report</a>,
+        or <a href="{{ url_for('report_view', report_name='target-email-preview.txt') }}">email preview</a>.
+    </p>
     {% elif scan_result == "busy" %}
     <p><strong>Scan already running.</strong> Wait for the current scan to finish before starting another one.</p>
     {% elif scan_result == "error" %}
@@ -82,7 +85,8 @@
         <progress></progress>
     </div>
 
-    <p>After running the command, open the <a href="{{ url_for('reports') }}">Reports</a> page to view generated output.
+    <p>After running the command, use the scan completion links above or open the
+        <a href="{{ url_for('reports') }}">Reports</a> page to view all generated output.
     </p>
 </div>
 

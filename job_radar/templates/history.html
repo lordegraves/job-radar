@@ -21,6 +21,46 @@
         width: 100%;
     }
 
+    .history-summary {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(6, minmax(130px, 1fr));
+        margin: 18px 0;
+    }
+
+    .history-summary-card {
+        border: 1px solid #314155;
+        border-radius: 10px;
+        color: var(--text);
+        padding: 12px;
+        text-decoration: none;
+    }
+
+    .history-summary-card:hover,
+    .history-summary-card.is-active {
+        background: var(--surface-muted);
+        border-color: var(--link);
+        color: var(--text);
+    }
+
+    .history-summary-card.is-active {
+        box-shadow: inset 0 0 0 1px rgba(96, 205, 255, 0.35);
+    }
+
+    .history-summary-card strong {
+        display: block;
+        font-size: 1.45rem;
+        margin-bottom: 4px;
+    }
+
+    .history-chip {
+        border: 1px solid #314155;
+        border-radius: 999px;
+        display: inline-block;
+        padding: 3px 8px;
+        white-space: nowrap;
+    }
+
     .page {
         max-width: none;
     }
@@ -45,6 +85,7 @@
     }
 
     @media (max-width: 1000px) {
+        .history-summary,
         .toolbar {
             grid-template-columns: 1fr;
         }
@@ -63,6 +104,41 @@
 
     <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
     <p><strong>History records shown:</strong> {{ records|length }}</p>
+
+    <h2>Archive summary</h2>
+
+    <div class="history-summary" aria-label="Job history archive summary">
+        <a class="history-summary-card {% if not active_decision_filter and not active_outcome_filter %}is-active{% endif %}"
+            href="{{ url_for('history') }}">
+            <strong>{{ history_summary.total }}</strong>
+            <span class="muted">Total archived</span>
+        </a>
+        <a class="history-summary-card {% if active_decision_filter == 'Applied' %}is-active{% endif %}"
+            href="{{ url_for('history', quick_filter='applied') }}">
+            <strong>{{ history_summary.applied }}</strong>
+            <span class="muted">Applied records</span>
+        </a>
+        <a class="history-summary-card {% if active_decision_filter == 'Passed' %}is-active{% endif %}"
+            href="{{ url_for('history', quick_filter='passed') }}">
+            <strong>{{ history_summary.passed }}</strong>
+            <span class="muted">Passed records</span>
+        </a>
+        <a class="history-summary-card {% if active_outcome_filter == 'Rejected' %}is-active{% endif %}"
+            href="{{ url_for('history', quick_filter='rejected') }}">
+            <strong>{{ history_summary.rejected }}</strong>
+            <span class="muted">Rejected records</span>
+        </a>
+        <a class="history-summary-card {% if active_outcome_filter == 'Withdrawn' %}is-active{% endif %}"
+            href="{{ url_for('history', quick_filter='withdrawn') }}">
+            <strong>{{ history_summary.withdrawn }}</strong>
+            <span class="muted">Withdrawn records</span>
+        </a>
+        <a class="history-summary-card {% if active_outcome_filter == 'Closed Before Application' %}is-active{% endif %}"
+            href="{{ url_for('history', quick_filter='closed_before_application') }}">
+            <strong>{{ history_summary.closed_before_application }}</strong>
+            <span class="muted">Closed before apply</span>
+        </a>
+    </div>
 
     <form class="toolbar" method="get" action="{{ url_for('history') }}">
         <div>
@@ -148,9 +224,9 @@
                 <td class="date-cell">{{ record.event_date or "" }}</td>
                 <td>{{ record.company }}</td>
                 <td>{{ record.role }}</td>
-                <td>{{ record.history_type }}</td>
-                <td>{{ record.status or "" }}</td>
-                <td class="outcome-cell">{{ record.outcome_category or "" }}</td>
+                <td><span class="history-chip">{{ record.history_type }}</span></td>
+                <td><span class="history-chip">{{ record.status or "" }}</span></td>
+                <td class="outcome-cell"><span class="history-chip">{{ record.outcome_category or "" }}</span></td>
                 <td>{{ record.source or record.lead_source or "" }}</td>
                 <td>{{ record.recruiter_contact or "" }}</td>
                 <td><code>{{ record.import_key }}</code></td>
