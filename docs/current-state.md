@@ -369,6 +369,7 @@ Current GUI capabilities:
 - Existing generated report and email-preview viewing
 - Reports page for existing generated reports and email previews
 - Reports page latest scan result shortcut cards
+- Read-only Companies page showing configured target companies, source types, enabled status, source details, and notes
 - In-app report viewer
 - Report viewer Copy report text button
 - Report viewer Ctrl+A report-content selection when the viewer has focus
@@ -389,6 +390,7 @@ Current GUI files include:
 - `job_radar/templates/history_edit.html`
 - `job_radar/templates/profile.html`
 - `job_radar/templates/reports.html`
+- `job_radar/templates/companies.html`
 - `job_radar/templates/report_view.html`
 - `job_radar/templates/scan.html`
 - `job_radar/templates/settings.html`
@@ -415,6 +417,8 @@ http://127.0.0.1:5000/
 The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker.
 
 The reports page opens existing generated reports and email previews without starting a scan or sending email. The Reports page now highlights latest scan results with shortcut cards and separates additional files from the primary scan outputs.
+
+The Companies page is currently read-only. It shows configured target companies, source types, enabled/disabled status, source details, and notes from `config/target-companies.yaml` without writing config changes.
 
 The in-app report viewer supports copying report text and selecting only report content with Ctrl+A when the viewer has focus.
 
@@ -443,10 +447,10 @@ Latest verification from this milestone:
 
 ```text
 python -m pytest tests\test_web_app.py
-59 passed
+61 passed
 
 python -m pytest tests
-463 passed
+465 passed
 ```
 
 ## Current project principles
@@ -586,6 +590,7 @@ Completed so far:
 - Report viewer Ctrl+A report-content selection when focused
 - Collector Errors report reassurance for temporary source/network failures
 - Scan page reassurance for temporary company/source errors
+- Read-only Companies page showing configured target companies, source types, enabled status, source details, and notes
 - Read-only Settings page showing runtime paths, retention settings, GUI scan defaults, and email status
 - Manual tracker add form now assigns Job Radar ID on save instead of asking the user
 - Spreadsheet-imported active applications without a Job Radar ID now receive app-owned `jr_manual_*` IDs

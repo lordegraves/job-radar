@@ -56,7 +56,7 @@ Job Radar currently supports:
 - tracker/history mutual-exclusion import partitioning
 - app-owned generated Job Radar IDs for scanned, spreadsheet-imported, and GUI-created tracker records
 - automatic repair of older tracker IDs that used `posting-url:*` as primary identity
-- local Flask GUI for tracker/history/report/scan/settings workflows
+- local Flask GUI for tracker/history/report/companies/scan/settings workflows
 - controlled manual scans from the local GUI
 - GUI profile/resume page with resume upload/replacement support
 - PDF, DOCX, Markdown, and plain-text resume loading
@@ -68,6 +68,7 @@ Job Radar currently supports:
 - direct scan completion links to the HTML report, Markdown report, and email preview
 - latest scan result shortcut cards on the Reports page
 - in-app report viewer with copy button and focused Ctrl+A report-content selection
+- read-only Companies page showing configured target companies, source types, enabled status, source details, and notes
 - read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status
 - scan/report reassurance for temporary company/source or source/network errors
 - `/tracker/` trailing-slash redirect to `/tracker`
@@ -299,6 +300,7 @@ Current GUI summary:
 - resume upload and replacement from the GUI
 - existing generated report and email-preview viewing
 - Reports page with latest scan result shortcut cards
+- Companies page with target company/source summaries and read-only company configuration table
 - in-app report viewer with copy button and focused Ctrl+A report-content selection
 - controlled manual scan execution with GUI email sending disabled
 - scan completion links directly to HTML report, Markdown report, and email preview
@@ -311,6 +313,8 @@ The local GUI is intentionally read/write only where the app already owns the wo
 Report viewing is read-only. It opens existing generated reports and email previews without starting a scan or sending email.
 
 The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled.
+
+The Companies page is read-only for now. It shows the configured target companies, source types, enabled/disabled status, source details, and notes from `config/target-companies.yaml` without writing config changes.
 
 The Settings page is read-only for now. It surfaces the active settings file, database path, reports path, logs path, candidate profile path, retention settings, GUI scan defaults, and email enabled/disabled status without writing config changes.
 
@@ -390,7 +394,7 @@ python -m pytest tests
 Expected current result:
 
 ```text
-463 passed
+465 passed
 ```
 
 ## Run full live scan

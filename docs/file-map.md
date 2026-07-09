@@ -120,7 +120,7 @@ Use the documentation set this way:
 
 | File | Purpose | Keep / Review |
 |---|---|---|
-| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers, including tracker/history/report/scan/settings routes and `/tracker/` trailing-slash redirect. Route handlers should delegate tracker/history workflow actions to service-layer functions. | Keep / watch growth |
+| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers, including tracker/history/report/companies/scan/settings routes and `/tracker/` trailing-slash redirect. Route handlers should delegate tracker/history workflow actions to service-layer functions. | Keep / watch growth |
 | `job_radar/templates/index.html` | Web app landing page with clickable tracker dashboard cards and section navigation. | Keep |
 | `job_radar/templates/tracker.html` | Application tracker list, clickable summary filter cards, workflow filters, search, sorting, workflow display, Needs Review guidance, workflow badges, and edit links. | Keep |
 | `job_radar/templates/tracker_edit.html` | Application tracker edit form, summary cards with wrapping Job Radar ID display, and grouped quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history. | Keep |
@@ -129,6 +129,7 @@ Use the documentation set this way:
 | `job_radar/templates/history_edit.html` | Job history edit form, including save, delete, and move-back-to-tracker workflow. | Keep |
 | `job_radar/templates/profile.html` | Profile/resume page for viewing profile state and uploading/replacing resumes through the GUI. | Keep |
 | `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews, including latest scan result shortcut cards. | Keep |
+| `job_radar/templates/companies.html` | Read-only Companies page showing configured target companies, source types, enabled status, source details, and notes without writing config changes. | Keep |
 | `job_radar/templates/report_view.html` | In-app report viewer shell for opening generated reports inside the GUI with shared dark styling, copy support, and focused Ctrl+A report-content selection. | Keep |
 | `job_radar/templates/scan.html` | Scan page for manual command display, controlled local GUI scan execution, direct completion links to the latest outputs, and temporary source/company error reassurance. | Keep |
 | `job_radar/templates/settings.html` | Read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status without showing secrets or writing config changes. | Keep |
@@ -242,12 +243,13 @@ job_radar/templates/
   history_edit.html
   profile.html
   reports.html
+  companies.html
   report_view.html
   scan.html
   settings.html
 ```
 
-The Settings page is read-only in the current milestone. It belongs to the GUI route/template boundary and should not grow into config-writing business logic inside the template or route handler.
+The Companies and Settings pages are read-only in the current milestones. They belong to the GUI route/template boundary and should not grow into config-writing business logic inside the template or route handler.
 
 The tracker ID helper owns generated app identity for manual/imported tracker records. URLs are evidence and source links, not active tracker primary keys.
 

@@ -930,6 +930,93 @@ def test_index_page_links_to_settings(tmp_path: Path) -> None:
     assert "Review active runtime paths, retention settings, scan defaults, and email status." in html
 
 
+def test_index_page_links_to_companies(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<a href="/companies">Companies</a>' in html
+    assert "Review configured target companies, source types, enabled status, and source details." in html
+
+
+def test_companies_page_shows_read_only_company_config(tmp_path: Path, monkeypatch) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    companies_file = tmp_path / "target-companies.yaml"
+
+    write_settings_file(settings_file, database_file)
+    companies_file.write_text(
+        """
+companies:
+  - company_key: enabled_ai
+    name: Enabled AI
+    source_type: greenhouse
+    source_slug: enabledai
+    enabled: true
+    notes: Strong target.
+  - company_key: disabled_lab
+    name: Disabled Lab
+    source_type: workday
+    source_url: https://example.com/workday/jobs
+    source_base_url: https://example.com/workday
+    enabled: false
+  - company_key: nasa_usajobs
+    name: NASA
+    source_type: usajobs
+    enabled: true
+    query_params:
+      Organization: NN
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        web_app_module,
+        "DEFAULT_SCAN_CONFIG_PATH",
+        str(companies_file),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/companies")
+    html = response.get_data(as_text=True)
+    normalized_html = " ".join(html.split())
+
+    assert response.status_code == 200
+    assert "Companies" in html
+    assert "This page is read-only for now." in html
+    assert f"Config file: <code>{companies_file}</code>" in html
+    assert "<strong>3</strong> <span class=\"muted\">Total companies</span>" in normalized_html
+    assert "<strong>2</strong> <span class=\"muted\">Enabled</span>" in normalized_html
+    assert "<strong>1</strong> <span class=\"muted\">Disabled</span>" in normalized_html
+    assert "<strong>3</strong> <span class=\"muted\">Source types</span>" in normalized_html
+    assert "greenhouse" in html
+    assert "workday" in html
+    assert "usajobs" in html
+    assert "<th>Enabled</th>" in html
+    assert "<th>Disabled</th>" in html
+    assert "<th>Total</th>" in html
+    assert "Enabled AI" in html
+    assert "enabled_ai" in html
+    assert "source_slug: enabledai" in html
+    assert "Strong target." in html
+    assert "Disabled Lab" in html
+    assert "disabled_lab" in html
+    assert "source_url: https://example.com/workday/jobs" in html
+    assert "source_base_url: https://example.com/workday" in html
+    assert "NASA" in html
+    assert "query_params: Organization=NN" in html
+    assert "Save" not in html
+
+
 def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"

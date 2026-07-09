@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Companies - Job Radar{% endblock %}
+
+{% block page_styles %}
+<style>
+    .company-summary-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin: 18px 0;
+    }
+
+    .company-summary-card {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 14px 16px;
+    }
+
+    .company-summary-card strong {
+        color: var(--link);
+        display: block;
+        font-size: 1.45rem;
+    }
+
+    .source-summary-table {
+        margin-top: 12px;
+    }
+
+    .source-summary-table th,
+    .source-summary-table td {
+        white-space: nowrap;
+    }
+
+    .status-enabled {
+        color: #8fdc8f;
+        font-weight: 650;
+    }
+
+    .status-disabled {
+        color: #ffb86c;
+        font-weight: 650;
+    }
+
+    .company-source-detail {
+        max-width: 620px;
+        overflow-wrap: anywhere;
+    }
+
+    .company-notes {
+        max-width: 420px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Companies</h1>
+
+<div class="page-card">
+    <p>This page is read-only for now. It shows the target companies currently configured for scans.</p>
+    <p class="muted">Config file: <code>{{ company_config_path }}</code></p>
+</div>
+
+<section class="company-summary-grid" aria-label="Company configuration summary">
+    <div class="company-summary-card">
+        <strong>{{ total_companies }}</strong>
+        <span class="muted">Total companies</span>
+    </div>
+
+    <div class="company-summary-card">
+        <strong>{{ enabled_companies }}</strong>
+        <span class="muted">Enabled</span>
+    </div>
+
+    <div class="company-summary-card">
+        <strong>{{ disabled_companies }}</strong>
+        <span class="muted">Disabled</span>
+    </div>
+
+    <div class="company-summary-card">
+        <strong>{{ source_summaries|length }}</strong>
+        <span class="muted">Source types</span>
+    </div>
+</section>
+
+<section class="page-card">
+    <h2>Source type summary</h2>
+
+    <table class="source-summary-table">
+        <thead>
+            <tr>
+                <th>Source type</th>
+                <th>Enabled</th>
+                <th>Disabled</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for summary in source_summaries %}
+            <tr>
+                <td><code>{{ summary.source_type }}</code></td>
+                <td>{{ summary.enabled }}</td>
+                <td>{{ summary.disabled }}</td>
+                <td>{{ summary.total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section>
+    <h2>Configured companies</h2>
+
+    {% if companies %}
+    <table>
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Key</th>
+                <th>Source type</th>
+                <th>Status</th>
+                <th>Source detail</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for company in companies %}
+            <tr>
+                <td>{{ company.name }}</td>
+                <td><code>{{ company.company_key }}</code></td>
+                <td><code>{{ company.source_type }}</code></td>
+                <td>
+                    {% if company.enabled %}
+                    <span class="status-enabled">Enabled</span>
+                    {% else %}
+                    <span class="status-disabled">Disabled</span>
+                    {% endif %}
+                </td>
+                <td class="company-source-detail">{{ company.source_detail }}</td>
+                <td class="company-notes">
+                    {% if company.notes %}
+                    {{ company.notes }}
+                    {% else %}
+                    <span class="muted">No notes</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No companies configured.</p>
+    {% endif %}
+</section>
+{% endblock %}
