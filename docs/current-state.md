@@ -178,6 +178,8 @@ Reports include:
 
 The full Markdown and HTML reports keep detailed review information.
 
+Collector Errors sections now explain that some source/network failures are temporary and may clear on a later scan.
+
 Markdown, HTML, and email-preview outputs show stable Job Radar IDs for scanned postings so imported history and tracker records can point back to exact surfaced roles.
 
 The email preview is intentionally capped for readability and excludes tracked applications.
@@ -366,10 +368,13 @@ Current GUI capabilities:
 - Resume upload and replacement from the GUI
 - Existing generated report and email-preview viewing
 - Reports page for existing generated reports and email previews
-- Reports page primary output shortcut cards
+- Reports page latest scan result shortcut cards
 - In-app report viewer
+- Report viewer Copy report text button
+- Report viewer Ctrl+A report-content selection when the viewer has focus
 - Controlled manual scan execution from the local GUI
 - Direct scan completion links to HTML report, Markdown report, and email preview
+- Scan page reassurance that some company/source errors may be temporary and can be retried
 - `/tracker/` trailing-slash redirect
 
 Current GUI files include:
@@ -407,9 +412,11 @@ http://127.0.0.1:5000/
 
 The tracker GUI focuses on active application tracker records. The job history/archive page shows imported historical records from the spreadsheet bridge without adding them to the active application tracker.
 
-The reports page opens existing generated reports and email previews without starting a scan or sending email. The Reports page now highlights primary scan outputs with shortcut cards.
+The reports page opens existing generated reports and email previews without starting a scan or sending email. The Reports page now highlights latest scan results with shortcut cards and separates additional files from the primary scan outputs.
 
-The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled. On success, the Scan page links directly to the latest HTML report, Markdown report, and email preview.
+The in-app report viewer supports copying report text and selecting only report content with Ctrl+A when the viewer has focus.
+
+The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled. On success, the Scan page links directly to the latest HTML report, Markdown report, and email preview. The scan page also explains that some company/source errors are temporary and may clear after a later scan.
 
 ## Current email behavior
 
@@ -431,8 +438,8 @@ Email behavior:
 Latest verification from this milestone:
 
 ```text
-python -m pytest tests\test_web_app.py
-57 passed
+python -m pytest tests\test_reporting.py tests\test_web_app.py
+121 passed
 
 python -m pytest tests
 461 passed
@@ -569,8 +576,12 @@ Completed so far:
 - Rejected history quick filter covering both rejection outcomes
 - Withdrawn history quick filter matching both withdrawn decision and withdrawn outcome
 - History chip styling for archive type, decision/status, and outcome
-- Reports primary output shortcut cards
+- Reports latest scan result shortcut cards
 - Scan completion direct links to HTML report, Markdown report, and email preview
+- Report viewer Copy report text button
+- Report viewer Ctrl+A report-content selection when focused
+- Collector Errors report reassurance for temporary source/network failures
+- Scan page reassurance for temporary company/source errors
 - Manual tracker add form now assigns Job Radar ID on save instead of asking the user
 - Spreadsheet-imported active applications without a Job Radar ID now receive app-owned `jr_manual_*` IDs
 - Existing `posting-url:*` tracker IDs are repaired to app-owned `jr_manual_*` IDs

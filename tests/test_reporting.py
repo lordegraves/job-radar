@@ -78,6 +78,10 @@ def test_render_markdown_report_includes_collector_errors() -> None:
 
     assert "## Collector Errors" in markdown
     assert (
+        "Some collector errors are temporary source or network issues and may clear on a later scan."
+        in markdown
+    )
+    assert (
         "- example_ai (Example AI, greenhouse): Failed to fetch Greenhouse jobs"
         in markdown
     )

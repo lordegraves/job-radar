@@ -65,6 +65,9 @@ Current strengths:
 - GUI tracker quick actions
 - GUI history/archive summary cards and quick filters
 - GUI scan/report flow polish
+- Latest scan result shortcuts
+- Report viewer copy/select support
+- User-facing reassurance for temporary source/company scan errors
 - GUI profile/resume upload support
 - App-assigned tracker IDs for spreadsheet-imported and GUI-created manual application records
 - Legacy `posting-url:*` tracker ID repair
@@ -110,6 +113,7 @@ The user should eventually be able to:
 - Define positive match signals
 - Run scans manually
 - Schedule scans
+- Configure scan history retention
 - Review results
 - Track applications
 - Review job history
@@ -172,6 +176,7 @@ The app should eventually support user-specific configuration for:
 - Employment type preference
 - Resume/profile text
 - Report preferences
+- Scan history retention
 - Email preferences
 - Scan schedule
 
@@ -192,6 +197,7 @@ Required long-term behavior:
 - Show whether the source works
 - Show last scan result per company
 - Show collector errors per company
+- Allow targeted company/source rescan when practical
 - Allow import/export of company lists
 
 The GUI should eventually support a company setup flow:
@@ -302,8 +308,10 @@ Recently completed GUI work:
 
 - History/archive summary cards and quick filters
 - Rejected and withdrawn history quick-filter behavior
-- Reports primary output shortcut cards
+- Reports latest scan result shortcut cards
 - Scan completion links to the main generated outputs
+- Report viewer copy/select support
+- User-facing reassurance for temporary source/company scan errors
 - Manual application add form no longer asks for Job Radar ID
 - Tracker edit summary layout polish for long/generated IDs
 - Legacy `posting-url:*` tracker ID repair surfaced through the GUI
@@ -315,7 +323,7 @@ Near-term GUI priorities:
 2. Company management page
 3. Preference setup page
 4. Email settings page
-5. Scheduled scan settings page
+5. Scheduled scan and scan-history retention settings page
 6. Complete profile/preference setup beyond resume upload
 7. Runtime data location setup
 8. Packaging/launcher preparation
@@ -453,6 +461,8 @@ Linux target:
 - Safe failure behavior
 
 The scheduler should run the same scan pipeline as manual scans.
+
+Scan history retention should be configurable from Settings. The default should favor the latest scan outputs, with optional retention such as latest plus previous scan or a configured number of retained scans.
 
 ## Data ownership and privacy
 

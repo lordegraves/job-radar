@@ -690,6 +690,8 @@ def _append_collector_errors(
         [
             "## Collector Errors",
             "",
+            "Some collector errors are temporary source or network issues and may clear on a later scan.",
+            "",
         ]
     )
 
@@ -1635,6 +1637,7 @@ def _append_html_collector_errors(
     lines.extend(
         [
             "<h2>Collector Errors</h2>",
+            "<p>Some collector errors are temporary source or network issues and may clear on a later scan.</p>",
             "<ul>",
         ]
     )

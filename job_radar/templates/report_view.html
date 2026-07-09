@@ -5,7 +5,15 @@
 {% block page_styles %}
 <style>
     .viewer-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
         margin: 16px 0;
+    }
+
+    .viewer-copy-status {
+        color: var(--muted);
     }
 
     .report-shell {
@@ -142,18 +150,55 @@
 
     <div class="viewer-actions">
         <a href="{{ url_for('reports') }}">Back to Reports</a>
+        <button id="copy-report-text" type="button">Copy report text</button>
+        <span id="copy-report-status" class="viewer-copy-status" aria-live="polite"></span>
     </div>
 </div>
 
-<div class="report-shell">
+<div id="report-shell" class="report-shell" tabindex="0">
     {% if report_kind == "html" %}
-    <div class="report-content {% if is_email_preview %}email-preview-content{% endif %}">
+    <div id="report-content" class="report-content {% if is_email_preview %}email-preview-content{% endif %}">
         {{ report_content|safe }}
     </div>
     {% else %}
-    <div class="report-content">
+    <div id="report-content" class="report-content">
         <pre class="report-text-preview">{{ report_content }}</pre>
     </div>
     {% endif %}
 </div>
+
+<script>
+    const reportShell = document.getElementById("report-shell");
+    const reportContent = document.getElementById("report-content");
+    const copyReportButton = document.getElementById("copy-report-text");
+    const copyReportStatus = document.getElementById("copy-report-status");
+
+    function selectReportContent() {
+        const selection = window.getSelection();
+        const range = document.createRange();
+
+        range.selectNodeContents(reportContent);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+
+    reportShell.addEventListener("keydown", (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+            event.preventDefault();
+            selectReportContent();
+        }
+    });
+
+    copyReportButton.addEventListener("click", async () => {
+        const reportText = reportContent.innerText;
+
+        try {
+            await navigator.clipboard.writeText(reportText);
+            copyReportStatus.textContent = "Copied.";
+        } catch {
+            selectReportContent();
+            copyReportStatus.textContent = "Copy failed. Report text selected instead.";
+        }
+    });
+</script>
 {% endblock %}
