@@ -1014,7 +1014,76 @@ companies:
     assert "source_base_url: https://example.com/workday" in html
     assert "NASA" in html
     assert "query_params: Organization=NN" in html
+    assert 'href="/companies?status=enabled"' in html
+    assert 'href="/companies?status=disabled"' in html
+    assert 'href="/companies?source_type=greenhouse"' in html
     assert "Save" not in html
+
+
+def test_companies_page_filters_company_config(tmp_path: Path, monkeypatch) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    companies_file = tmp_path / "target-companies.yaml"
+
+    write_settings_file(settings_file, database_file)
+    companies_file.write_text(
+        """
+companies:
+  - company_key: enabled_ai
+    name: Enabled AI
+    source_type: greenhouse
+    source_slug: enabledai
+    enabled: true
+  - company_key: disabled_lab
+    name: Disabled Lab
+    source_type: workday
+    source_url: https://example.com/workday/jobs
+    enabled: false
+  - company_key: nasa_usajobs
+    name: NASA
+    source_type: usajobs
+    enabled: true
+    query_params:
+      Organization: NN
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        web_app_module,
+        "DEFAULT_SCAN_CONFIG_PATH",
+        str(companies_file),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    enabled_response = client.get("/companies?status=enabled")
+    enabled_html = enabled_response.get_data(as_text=True)
+
+    assert enabled_response.status_code == 200
+    assert "Showing 2 of 3 configured companies." in enabled_html
+    assert "Enabled AI" in enabled_html
+    assert "NASA" in enabled_html
+    assert "Disabled Lab" not in enabled_html
+    assert "Clear filters" in enabled_html
+
+    disabled_response = client.get("/companies?status=disabled")
+    disabled_html = disabled_response.get_data(as_text=True)
+
+    assert disabled_response.status_code == 200
+    assert "Showing 1 of 3 configured companies." in disabled_html
+    assert "Disabled Lab" in disabled_html
+    assert "Enabled AI" not in disabled_html
+    assert "NASA" not in disabled_html
+
+    source_response = client.get("/companies?source_type=greenhouse")
+    source_html = source_response.get_data(as_text=True)
+
+    assert source_response.status_code == 200
+    assert "Showing 1 of 3 configured companies." in source_html
+    assert "Enabled AI" in source_html
+    assert "Disabled Lab" not in source_html
+    assert "NASA" not in source_html
 
 
 def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:

@@ -367,16 +367,26 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     @app.get("/companies")
     def companies() -> str:
         company_views = _build_company_config_views(DEFAULT_SCAN_CONFIG_PATH)
+        selected_status = request.args.get("status", "")
+        selected_source_type = request.args.get("source_type", "")
+        filtered_companies = _filter_company_config_views(
+            company_views,
+            selected_status=selected_status,
+            selected_source_type=selected_source_type,
+        )
         source_summaries = _build_company_source_summaries(company_views)
 
         return render_template(
             "companies.html",
-            companies=company_views,
+            companies=filtered_companies,
             source_summaries=source_summaries,
             company_config_path=DEFAULT_SCAN_CONFIG_PATH,
             total_companies=len(company_views),
             enabled_companies=sum(1 for company in company_views if company.enabled),
             disabled_companies=sum(1 for company in company_views if not company.enabled),
+            selected_status=selected_status,
+            selected_source_type=selected_source_type,
+            filtered_company_count=len(filtered_companies),
         )
 
     @app.get("/profile")
@@ -828,6 +838,33 @@ def _build_company_config_views(config_path: str) -> list[CompanyConfigView]:
             company.name.lower(),
         ),
     )
+
+
+def _filter_company_config_views(
+    companies: list[CompanyConfigView],
+    *,
+    selected_status: str,
+    selected_source_type: str,
+) -> list[CompanyConfigView]:
+    filtered_companies = companies
+
+    if selected_status == "enabled":
+        filtered_companies = [
+            company for company in filtered_companies if company.enabled
+        ]
+    elif selected_status == "disabled":
+        filtered_companies = [
+            company for company in filtered_companies if not company.enabled
+        ]
+
+    if selected_source_type:
+        filtered_companies = [
+            company
+            for company in filtered_companies
+            if company.source_type == selected_source_type
+        ]
+
+    return filtered_companies
 
 
 def _build_company_source_summaries(
