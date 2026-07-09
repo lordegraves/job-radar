@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Job Radar{% endblock %}
+
+{% block page_styles %}
+<style>
+    .settings-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+
+    .settings-card {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 18px 20px;
+    }
+
+    .settings-card h2 {
+        margin-top: 0;
+    }
+
+    .settings-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .settings-list li {
+        border-top: 1px solid var(--border);
+        padding: 10px 0;
+    }
+
+    .settings-list li:first-child {
+        border-top: 0;
+        padding-top: 0;
+    }
+
+    .settings-label {
+        color: var(--muted);
+        display: block;
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+    }
+
+    .settings-value {
+        overflow-wrap: anywhere;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Settings</h1>
+
+<div class="page-card">
+    <p>This page is read-only for now. It shows the active runtime settings Job Radar is using.</p>
+</div>
+
+<div class="settings-grid">
+    <section class="settings-card">
+        <h2>Runtime paths</h2>
+        <ul class="settings-list">
+            <li>
+                <span class="settings-label">Active settings file</span>
+                <code class="settings-value">{{ settings_view.settings_path }}</code>
+            </li>
+            <li>
+                <span class="settings-label">Database path</span>
+                <code class="settings-value">{{ settings_view.database_path }}</code>
+            </li>
+            <li>
+                <span class="settings-label">Reports path</span>
+                <code class="settings-value">{{ settings_view.reports_path }}</code>
+            </li>
+            <li>
+                <span class="settings-label">Logs path</span>
+                <code class="settings-value">{{ settings_view.logs_path }}</code>
+            </li>
+            <li>
+                <span class="settings-label">Candidate profile path</span>
+                {% if settings_view.candidate_profile_path %}
+                <code class="settings-value">{{ settings_view.candidate_profile_path }}</code>
+                {% else %}
+                <span class="muted">Not configured</span>
+                {% endif %}
+            </li>
+        </ul>
+    </section>
+
+    <section class="settings-card">
+        <h2>GUI scan defaults</h2>
+        <ul class="settings-list">
+            <li>
+                <span class="settings-label">Scan config path</span>
+                <code class="settings-value">{{ settings_view.scan_config_path }}</code>
+            </li>
+            <li>
+                <span class="settings-label">Scan settings path</span>
+                <code class="settings-value">{{ settings_view.scan_settings_path }}</code>
+            </li>
+            <li>
+                <span class="settings-label">Scoring path</span>
+                <code class="settings-value">{{ settings_view.scan_scoring_path }}</code>
+            </li>
+            <li>
+                <span class="settings-label">Markdown report path</span>
+                <code class="settings-value">{{ settings_view.scan_report_path }}</code>
+            </li>
+            <li>
+                <span class="settings-label">Email preview path</span>
+                <code class="settings-value">{{ settings_view.scan_email_preview_path }}</code>
+            </li>
+        </ul>
+    </section>
+
+    <section class="settings-card">
+        <h2>Retention</h2>
+        {% if settings_view.retention_items %}
+        <ul class="settings-list">
+            {% for name, value in settings_view.retention_items %}
+            <li>
+                <span class="settings-label">{{ name }}</span>
+                <code class="settings-value">{{ value }}</code>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted">No retention settings configured.</p>
+        {% endif %}
+    </section>
+
+    <section class="settings-card">
+        <h2>Email</h2>
+        <ul class="settings-list">
+            <li>
+                <span class="settings-label">Email status</span>
+                <span class="settings-value">{{ settings_view.email_status }}</span>
+            </li>
+        </ul>
+        <p class="muted">Secrets are not shown on this page.</p>
+    </section>
+</div>
+{% endblock %}

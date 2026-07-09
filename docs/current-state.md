@@ -375,6 +375,7 @@ Current GUI capabilities:
 - Controlled manual scan execution from the local GUI
 - Direct scan completion links to HTML report, Markdown report, and email preview
 - Scan page reassurance that some company/source errors may be temporary and can be retried
+- Read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status
 - `/tracker/` trailing-slash redirect
 
 Current GUI files include:
@@ -390,6 +391,7 @@ Current GUI files include:
 - `job_radar/templates/reports.html`
 - `job_radar/templates/report_view.html`
 - `job_radar/templates/scan.html`
+- `job_radar/templates/settings.html`
 
 Current tracker module files use the tracker naming convention:
 
@@ -418,6 +420,8 @@ The in-app report viewer supports copying report text and selecting only report 
 
 The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled. On success, the Scan page links directly to the latest HTML report, Markdown report, and email preview. The scan page also explains that some company/source errors are temporary and may clear after a later scan.
 
+The Settings page is currently read-only. It shows active runtime paths, retention settings, GUI scan defaults, and email enabled/disabled status without showing secrets or writing config changes.
+
 ## Current email behavior
 
 Email delivery is guarded behind explicit configuration and an explicit scan flag.
@@ -438,11 +442,11 @@ Email behavior:
 Latest verification from this milestone:
 
 ```text
-python -m pytest tests\test_reporting.py tests\test_web_app.py
-121 passed
+python -m pytest tests\test_web_app.py
+59 passed
 
 python -m pytest tests
-461 passed
+463 passed
 ```
 
 ## Current project principles
@@ -582,6 +586,7 @@ Completed so far:
 - Report viewer Ctrl+A report-content selection when focused
 - Collector Errors report reassurance for temporary source/network failures
 - Scan page reassurance for temporary company/source errors
+- Read-only Settings page showing runtime paths, retention settings, GUI scan defaults, and email status
 - Manual tracker add form now assigns Job Radar ID on save instead of asking the user
 - Spreadsheet-imported active applications without a Job Radar ID now receive app-owned `jr_manual_*` IDs
 - Existing `posting-url:*` tracker IDs are repaired to app-owned `jr_manual_*` IDs

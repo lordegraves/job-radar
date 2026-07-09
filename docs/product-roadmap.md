@@ -59,7 +59,7 @@ Current strengths:
 - Markdown/HTML reports
 - Email preview/send guardrails
 - Application tracker CLI
-- Local Flask tracker/history/report/scan GUI
+- Local Flask tracker/history/report/scan/settings GUI
 - Clickable tracker dashboards and workflow navigation
 - GUI tracker Needs Review queue
 - GUI tracker quick actions
@@ -68,6 +68,7 @@ Current strengths:
 - Latest scan result shortcuts
 - Report viewer copy/select support
 - User-facing reassurance for temporary source/company scan errors
+- Read-only GUI Settings page foundation
 - GUI profile/resume upload support
 - App-assigned tracker IDs for spreadsheet-imported and GUI-created manual application records
 - Legacy `posting-url:*` tracker ID repair
@@ -312,6 +313,7 @@ Recently completed GUI work:
 - Scan completion links to the main generated outputs
 - Report viewer copy/select support
 - User-facing reassurance for temporary source/company scan errors
+- Read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status
 - Manual application add form no longer asks for Job Radar ID
 - Tracker edit summary layout polish for long/generated IDs
 - Legacy `posting-url:*` tracker ID repair surfaced through the GUI
@@ -319,7 +321,7 @@ Recently completed GUI work:
 
 Near-term GUI priorities:
 
-1. Settings page
+1. Editable Settings page
 2. Company management page
 3. Preference setup page
 4. Email settings page

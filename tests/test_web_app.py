@@ -913,6 +913,72 @@ def test_index_page_links_to_scan(tmp_path: Path) -> None:
     assert '<a href="/scan">Scan</a>' in html
 
 
+def test_index_page_links_to_settings(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<a href="/settings">Settings</a>' in html
+    assert "Review active runtime paths, retention settings, scan defaults, and email status." in html
+
+
+def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    profile_file = tmp_path / "profile.yaml"
+
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+    settings_file.write_text(
+        settings_file.read_text(encoding="utf-8")
+        + f"candidate_profile_path: {profile_file}\n",
+        encoding="utf-8",
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/settings")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Settings" in html
+    assert "This page is read-only for now." in html
+    assert "Runtime paths" in html
+    assert "Active settings file" in html
+    assert f"<code class=\"settings-value\">{settings_file}</code>" in html
+    assert "Database path" in html
+    assert f"<code class=\"settings-value\">{database_file}</code>" in html
+    assert "Reports path" in html
+    assert f"<code class=\"settings-value\">{reports_path}</code>" in html
+    assert "Logs path" in html
+    assert f"<code class=\"settings-value\">{tmp_path}</code>" in html
+    assert "Candidate profile path" in html
+    assert f"<code class=\"settings-value\">{profile_file}</code>" in html
+    assert "GUI scan defaults" in html
+    assert "config/target-companies.yaml" in html
+    assert "config/scoring.yaml" in html
+    assert "reports/target-scan.md" in html
+    assert "reports/target-email-preview.txt" in html
+    assert "Retention" in html
+    assert "report_retention_days" in html
+    assert "90" in html
+    assert "raw_capture_enabled" in html
+    assert "False" in html
+    assert "Email" in html
+    assert "Disabled or not configured" in html
+    assert "Secrets are not shown on this page." in html
+    assert "Save" not in html
+
+
 def test_scan_page_shows_manual_scan_command(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"

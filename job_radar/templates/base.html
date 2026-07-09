@@ -340,6 +340,7 @@
                 <a class="{% if request.endpoint in ['profile', 'upload_resume'] %}active-nav{% endif %}" href="{{ url_for('profile') }}">Profile / Resume</a>
                 <a class="{% if request.endpoint in ['reports', 'report_view'] %}active-nav{% endif %}" href="{{ url_for('reports') }}">Reports</a>
                 <a class="{% if request.endpoint in ['scan', 'run_scan'] %}active-nav{% endif %}" href="{{ url_for('scan') }}">Scan</a>
+                <a class="{% if request.endpoint == 'settings' %}active-nav{% endif %}" href="{{ url_for('settings') }}">Settings</a>
             </nav>
         </div>
     </header>

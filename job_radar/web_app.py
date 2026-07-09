@@ -306,6 +306,22 @@ class ReportFileView:
     sort_order: int
 
 
+@dataclass(frozen=True)
+class SettingsView:
+    settings_path: str
+    database_path: str
+    reports_path: str
+    logs_path: str
+    candidate_profile_path: str | None
+    retention_items: list[tuple[str, object]]
+    scan_config_path: str
+    scan_settings_path: str
+    scan_scoring_path: str
+    scan_report_path: str
+    scan_email_preview_path: str
+    email_status: str
+
+
 def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     app = Flask(__name__)
     app.config["JOB_RADAR_SETTINGS_PATH"] = settings_path
@@ -319,6 +335,15 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         return render_template(
             "index.html",
             tracker_summary=tracker_summary,
+        )
+
+    @app.get("/settings")
+    def settings() -> str:
+        settings_view = _build_settings_view(app)
+
+        return render_template(
+            "settings.html",
+            settings_view=settings_view,
         )
 
     @app.get("/profile")
@@ -740,6 +765,37 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         return redirect(url_for("tracker", filter=return_filter))
 
     return app
+
+
+def _build_settings_view(app: Flask) -> SettingsView:
+    settings_path = app.config["JOB_RADAR_SETTINGS_PATH"]
+    settings = load_settings(settings_path)
+    retention = settings.get("retention", {})
+    email_settings = settings.get("email", {})
+
+    email_status = "Disabled or not configured"
+
+    if isinstance(email_settings, dict) and email_settings.get("enabled"):
+        email_status = "Enabled"
+
+    return SettingsView(
+        settings_path=settings_path,
+        database_path=settings["database_path"],
+        reports_path=settings["reports_path"],
+        logs_path=settings["logs_path"],
+        candidate_profile_path=settings.get("candidate_profile_path"),
+        retention_items=(
+            sorted(retention.items())
+            if isinstance(retention, dict)
+            else []
+        ),
+        scan_config_path=DEFAULT_SCAN_CONFIG_PATH,
+        scan_settings_path=settings_path,
+        scan_scoring_path=DEFAULT_SCAN_SCORING_PATH,
+        scan_report_path=DEFAULT_SCAN_REPORT_PATH,
+        scan_email_preview_path=DEFAULT_SCAN_EMAIL_PREVIEW_PATH,
+        email_status=email_status,
+    )
 
 
 def _get_database_path(app: Flask) -> str:
