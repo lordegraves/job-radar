@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ company.name }} - Companies - Job Radar{% endblock %}
+
+{% block page_styles %}
+<style>
+    .company-detail-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin: 18px 0;
+    }
+
+    .company-detail-card {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 14px 16px;
+    }
+
+    .company-detail-card strong {
+        color: var(--link);
+        display: block;
+        font-size: 1.2rem;
+        overflow-wrap: anywhere;
+    }
+
+    .company-config-value {
+        max-width: 760px;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+    }
+
+    .status-enabled {
+        color: #8fdc8f;
+        font-weight: 650;
+    }
+
+    .status-disabled {
+        color: #ffb86c;
+        font-weight: 650;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('companies') }}">&larr; Back to Companies</a></p>
+
+<h1 class="page-title">{{ company.name }}</h1>
+
+<div class="page-card">
+    <p>This page is read-only for now. It shows the full configured company record Job Radar is using.</p>
+    <p class="muted">Config file: <code>{{ company_config_path }}</code></p>
+</div>
+
+<section class="company-detail-grid" aria-label="Company detail summary">
+    <div class="company-detail-card">
+        <strong>{{ company.name }}</strong>
+        <span class="muted">Company</span>
+    </div>
+
+    <div class="company-detail-card">
+        <strong><code>{{ company.company_key }}</code></strong>
+        <span class="muted">Company key</span>
+    </div>
+
+    <div class="company-detail-card">
+        <strong><code>{{ company.source_type }}</code></strong>
+        <span class="muted">Source type</span>
+    </div>
+
+    <div class="company-detail-card">
+        {% if company.enabled %}
+        <strong class="status-enabled">Enabled</strong>
+        {% else %}
+        <strong class="status-disabled">Disabled</strong>
+        {% endif %}
+        <span class="muted">Status</span>
+    </div>
+</section>
+
+<section class="page-card">
+    <h2>Source detail</h2>
+    <p class="company-config-value">{{ company.source_detail }}</p>
+</section>
+
+<section>
+    <h2>Full company config</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Field</th>
+                <th>Configured value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, value in company.config_items %}
+            <tr>
+                <td><code>{{ name }}</code></td>
+                <td class="company-config-value">{{ value }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

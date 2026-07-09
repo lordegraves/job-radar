@@ -129,7 +129,8 @@ Use the documentation set this way:
 | `job_radar/templates/history_edit.html` | Job history edit form, including save, delete, and move-back-to-tracker workflow. | Keep |
 | `job_radar/templates/profile.html` | Profile/resume page for viewing profile state and uploading/replacing resumes through the GUI. | Keep |
 | `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews, including latest scan result shortcut cards. | Keep |
-| `job_radar/templates/companies.html` | Read-only Companies page showing configured target companies, source types, enabled status, source details, and notes without writing config changes. | Keep |
+| `job_radar/templates/companies.html` | Read-only Companies list page showing configured target companies, source types, enabled status, source details, notes, and source/status filters without writing config changes. | Keep |
+| `job_radar/templates/company_detail.html` | Read-only company detail page showing the full YAML-derived company record for inspection before future edit flows. | Keep |
 | `job_radar/templates/report_view.html` | In-app report viewer shell for opening generated reports inside the GUI with shared dark styling, copy support, and focused Ctrl+A report-content selection. | Keep |
 | `job_radar/templates/scan.html` | Scan page for manual command display, controlled local GUI scan execution, direct completion links to the latest outputs, and temporary source/company error reassurance. | Keep |
 | `job_radar/templates/settings.html` | Read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status without showing secrets or writing config changes. | Keep |
@@ -244,12 +245,13 @@ job_radar/templates/
   profile.html
   reports.html
   companies.html
+  company_detail.html
   report_view.html
   scan.html
   settings.html
 ```
 
-The Companies and Settings pages are read-only in the current milestones. They belong to the GUI route/template boundary and should not grow into config-writing business logic inside the template or route handler.
+The Companies list/detail pages and Settings page are read-only in the current milestones. They belong to the GUI route/template boundary and should not grow into config-writing business logic inside the template or route handler.
 
 The tracker ID helper owns generated app identity for manual/imported tracker records. URLs are evidence and source links, not active tracker primary keys.
 

@@ -168,7 +168,7 @@
         <tbody>
             {% for company in companies %}
             <tr>
-                <td>{{ company.name }}</td>
+                <td><a href="{{ url_for('company_detail', company_key=company.company_key) }}">{{ company.name }}</a></td>
                 <td><code>{{ company.company_key }}</code></td>
                 <td><code>{{ company.source_type }}</code></td>
                 <td>

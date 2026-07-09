@@ -330,6 +330,7 @@ class CompanyConfigView:
     enabled: bool
     source_detail: str
     notes: str | None
+    config_items: list[tuple[str, object]]
 
 
 @dataclass(frozen=True)
@@ -387,6 +388,22 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             selected_status=selected_status,
             selected_source_type=selected_source_type,
             filtered_company_count=len(filtered_companies),
+        )
+
+    @app.get("/companies/<company_key>")
+    def company_detail(company_key: str) -> str:
+        company_view = _get_company_config_view(
+            DEFAULT_SCAN_CONFIG_PATH,
+            company_key,
+        )
+
+        if company_view is None:
+            abort(404)
+
+        return render_template(
+            "company_detail.html",
+            company=company_view,
+            company_config_path=DEFAULT_SCAN_CONFIG_PATH,
         )
 
     @app.get("/profile")
@@ -828,6 +845,7 @@ def _build_company_config_views(config_path: str) -> list[CompanyConfigView]:
                 enabled=bool(company.get("enabled", True)),
                 source_detail=_get_company_source_detail(company),
                 notes=company.get("notes"),
+                config_items=_get_company_config_items(company),
             )
         )
 
@@ -838,6 +856,19 @@ def _build_company_config_views(config_path: str) -> list[CompanyConfigView]:
             company.name.lower(),
         ),
     )
+
+
+def _get_company_config_view(
+    config_path: str,
+    company_key: str,
+) -> CompanyConfigView | None:
+    companies = _build_company_config_views(config_path)
+
+    for company in companies:
+        if company.company_key == company_key:
+            return company
+
+    return None
 
 
 def _filter_company_config_views(
@@ -889,6 +920,10 @@ def _build_company_source_summaries(
         )
         for source_type in source_types
     ]
+
+
+def _get_company_config_items(company: dict) -> list[tuple[str, object]]:
+    return sorted(company.items(), key=lambda item: item[0])
 
 
 def _get_company_source_detail(company: dict) -> str:

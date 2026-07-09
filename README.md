@@ -68,7 +68,7 @@ Job Radar currently supports:
 - direct scan completion links to the HTML report, Markdown report, and email preview
 - latest scan result shortcut cards on the Reports page
 - in-app report viewer with copy button and focused Ctrl+A report-content selection
-- read-only Companies page showing configured target companies, source types, enabled status, source details, and notes
+- read-only Companies page showing configured target companies, source types, enabled status, source details, notes, filters, and per-company detail pages
 - read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status
 - scan/report reassurance for temporary company/source or source/network errors
 - `/tracker/` trailing-slash redirect to `/tracker`
@@ -300,7 +300,7 @@ Current GUI summary:
 - resume upload and replacement from the GUI
 - existing generated report and email-preview viewing
 - Reports page with latest scan result shortcut cards
-- Companies page with target company/source summaries and read-only company configuration table
+- Companies page with target company/source summaries, filters, read-only company configuration table, and per-company detail pages
 - in-app report viewer with copy button and focused Ctrl+A report-content selection
 - controlled manual scan execution with GUI email sending disabled
 - scan completion links directly to HTML report, Markdown report, and email preview
@@ -314,7 +314,7 @@ Report viewing is read-only. It opens existing generated reports and email previ
 
 The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled.
 
-The Companies page is read-only for now. It shows the configured target companies, source types, enabled/disabled status, source details, and notes from `config/target-companies.yaml` without writing config changes.
+The Companies page is read-only for now. It shows the configured target companies, source types, enabled/disabled status, source details, notes, source-type/status filters, and per-company detail pages from `config/target-companies.yaml` without writing config changes.
 
 The Settings page is read-only for now. It surfaces the active settings file, database path, reports path, logs path, candidate profile path, retention settings, GUI scan defaults, and email enabled/disabled status without writing config changes.
 

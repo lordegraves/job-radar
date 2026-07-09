@@ -1005,6 +1005,7 @@ companies:
     assert "<th>Disabled</th>" in html
     assert "<th>Total</th>" in html
     assert "Enabled AI" in html
+    assert '<a href="/companies/enabled_ai">Enabled AI</a>' in html
     assert "enabled_ai" in html
     assert "source_slug: enabledai" in html
     assert "Strong target." in html
@@ -1084,6 +1085,88 @@ companies:
     assert "Enabled AI" in source_html
     assert "Disabled Lab" not in source_html
     assert "NASA" not in source_html
+
+
+def test_company_detail_page_shows_read_only_company_config(tmp_path: Path, monkeypatch) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    companies_file = tmp_path / "target-companies.yaml"
+
+    write_settings_file(settings_file, database_file)
+    companies_file.write_text(
+        """
+companies:
+  - company_key: enabled_ai
+    name: Enabled AI
+    source_type: greenhouse
+    source_slug: enabledai
+    enabled: true
+    notes: Strong target.
+  - company_key: nasa_usajobs
+    name: NASA
+    source_type: usajobs
+    enabled: true
+    query_params:
+      Organization: NN
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        web_app_module,
+        "DEFAULT_SCAN_CONFIG_PATH",
+        str(companies_file),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/companies/enabled_ai")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Enabled AI" in html
+    assert "This page is read-only for now." in html
+    assert f"Config file: <code>{companies_file}</code>" in html
+    assert '<a href="/companies">&larr; Back to Companies</a>' in html
+    assert "<code>enabled_ai</code>" in html
+    assert "<code>greenhouse</code>" in html
+    assert "Enabled" in html
+    assert "source_slug: enabledai" in html
+    assert "<code>company_key</code>" in html
+    assert "<code>source_slug</code>" in html
+    assert "Strong target." in html
+    assert "Save" not in html
+
+
+def test_company_detail_page_returns_404_for_missing_company(tmp_path: Path, monkeypatch) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    companies_file = tmp_path / "target-companies.yaml"
+
+    write_settings_file(settings_file, database_file)
+    companies_file.write_text(
+        """
+companies:
+  - company_key: enabled_ai
+    name: Enabled AI
+    source_type: greenhouse
+    source_slug: enabledai
+    enabled: true
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        web_app_module,
+        "DEFAULT_SCAN_CONFIG_PATH",
+        str(companies_file),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/companies/missing_company")
+
+    assert response.status_code == 404
 
 
 def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
