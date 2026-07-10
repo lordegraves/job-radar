@@ -1,19 +1,12 @@
 # Job Radar File Map
 
-This document maps the current Job Radar repository so the project stays understandable as it grows.
+Last updated: 2026-07-10
 
-## Purpose of this document
+## Purpose
 
-This file owns repository structure and file ownership boundaries.
+This document owns repository structure and file ownership boundaries.
 
-It should not duplicate current project state or roadmap details.
-
-Use the documentation set this way:
-
-- `README.md` — quick project overview, common commands, and user-facing capabilities
-- `docs/current-state.md` — detailed current behavior and completed milestone state
-- `docs/product-roadmap.md` — future direction, finish-line definition, and remaining milestones
-- `docs/file-map.md` — repository structure and file ownership boundaries
+It should not duplicate current project state, roadmap details, or milestone history. Current capabilities and commands belong in `README.md`. Future direction belongs in `docs/product-roadmap.md`.
 
 ## Root files
 
@@ -21,7 +14,7 @@ Use the documentation set this way:
 |---|---|---|
 | `.gitignore` | Keeps local runtime data, generated reports, credentials, caches, and build artifacts out of Git. | Keep |
 | `.vscode/settings.json` | Local editor guardrails for the repo, including disabling HTML/Jinja format-on-save to avoid template damage. | Keep |
-| `README.md` | Quick project overview, common commands, and user-facing capabilities. | Keep |
+| `README.md` | Canonical project overview, current MVP state, commands, capabilities, principles, and current verification. | Keep |
 | `pyproject.toml` | Python project metadata, dependencies, package config, and test/tooling config. | Keep |
 
 ## Configuration
@@ -43,6 +36,11 @@ Use the documentation set this way:
 | `data/*.sqlite3` | Local runtime databases. | Local only / ignored |
 | `data/*.db` | Local runtime databases. | Local only / ignored |
 | `data/*.xlsx` | Local spreadsheet inputs, including current job history import files. | Local only / ignored |
+| `reports/.gitkeep` | Preserves generated reports directory in Git. | Keep |
+| `reports/*` | Generated reports, previews, audits, probes, and local run output. | Local only / ignored |
+| `logs/.gitkeep` | Preserves log directory in Git. | Keep |
+| `logs/*.log` | Runtime logs. | Local only / ignored |
+| `logs/*.log.*` | Rotated runtime logs. | Local only / ignored |
 
 ## Examples
 
@@ -54,9 +52,10 @@ Use the documentation set this way:
 
 | File | Purpose | Keep / Review |
 |---|---|---|
-| `docs/current-state.md` | Detailed current project state and completed milestone notes. | Keep |
-| `docs/product-roadmap.md` | Product direction, finish-line definition, and future milestone roadmap. | Keep |
+| `README.md` | Canonical project overview, current state, commands, capabilities, principles, and verification. | Keep |
+| `docs/product-roadmap.md` | MVP finish line, future direction, post-MVP roadmap, and deferred scope. | Keep |
 | `docs/file-map.md` | Repository map and file ownership guide. | Keep |
+| `docs/current-state.md` | Retired as a long-form state ledger. Replace with a short pointer to README or remove after consolidation. | Retire / stub |
 
 ## Core application package
 
@@ -114,14 +113,12 @@ Use the documentation set this way:
 | `job_radar/reporting.py` | Markdown/HTML report rendering and report section logic. | Keep / watch growth |
 | `job_radar/email_summary.py` | Email subject/body/HTML preview generation. | Keep / watch growth |
 | `job_radar/email_sender.py` | Email delivery integration. | Keep |
-| `reports/.gitkeep` | Preserves generated reports directory in Git. | Keep |
-| `reports/*` | Generated reports, previews, audits, probes, and local run output. | Local only / ignored |
 
 ## Web app / GUI
 
 | File | Purpose | Keep / Review |
 |---|---|---|
-| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers, including tracker/history/report/companies/scan/settings routes and `/tracker/` trailing-slash redirect. Route handlers should delegate tracker/history workflow actions and company configuration view/filter logic to service-layer functions | Keep / watch growth |
+| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers, including tracker/history/report/companies/scan/settings routes and `/tracker/` trailing-slash redirect. Route handlers should delegate tracker/history workflow actions and company configuration view/filter logic to service-layer functions. | Keep / watch growth |
 | `job_radar/templates/index.html` | Web app landing page with clickable tracker dashboard cards and section navigation. | Keep |
 | `job_radar/templates/tracker.html` | Application tracker list, clickable summary filter cards, workflow filters, search, sorting, workflow display, Needs Review guidance, workflow badges, and edit links. | Keep |
 | `job_radar/templates/tracker_edit.html` | Application tracker edit form, summary cards with wrapping Job Radar ID display, and grouped quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history. | Keep |
@@ -130,7 +127,7 @@ Use the documentation set this way:
 | `job_radar/templates/history_edit.html` | Job history edit form, including save, delete, and move-back-to-tracker workflow. | Keep |
 | `job_radar/templates/profile.html` | Profile/resume page for viewing profile state and uploading/replacing resumes through the GUI. | Keep |
 | `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews, including latest scan result shortcut cards. | Keep |
-| `job_radar/templates/companies.html` | Read-only Companies list page showing configured target companies, source types, enabled status, source details, notes, and source/status filters without writing config changes. | Keep |
+| `job_radar/templates/companies.html` | Read-only Companies list page showing configured target companies, source types, enabled status, source details, notes, source/status filters, and search without writing config changes. | Keep |
 | `job_radar/templates/company_detail.html` | Read-only company detail page showing the full YAML-derived company record for inspection before future edit flows. | Keep |
 | `job_radar/templates/report_view.html` | In-app report viewer shell for opening generated reports inside the GUI with shared dark styling, copy support, and focused Ctrl+A report-content selection. | Keep |
 | `job_radar/templates/scan.html` | Scan page for manual command display, controlled local GUI scan execution, direct completion links to the latest outputs, and temporary source/company error reassurance. | Keep |
@@ -152,7 +149,7 @@ Each collector should stay isolated by source/ATS type. This keeps source-specif
 | `job_radar/collectors/html.py` | Generic HTML collector. | Keep |
 | `job_radar/collectors/icims.py` | iCIMS collector. | Keep |
 | `job_radar/collectors/jibe.py` | Jibe collector. | Keep |
-| `job_radar/collectors/jobsyn.py` | JobSyn collector. | Keep |
+| `job_radar/collectors/jobsyn.py` | Jobsyn collector. | Keep |
 | `job_radar/collectors/lever.py` | Lever collector. | Keep |
 | `job_radar/collectors/oracle_hcm.py` | Oracle HCM collector. | Keep |
 | `job_radar/collectors/phenom.py` | Phenom collector. | Keep |
@@ -169,14 +166,6 @@ Each collector should stay isolated by source/ATS type. This keeps source-specif
 | File | Purpose | Keep / Review |
 |---|---|---|
 | `scripts/run-daily-scan.ps1` | PowerShell helper for scheduled/manual daily scan runs. | Keep |
-
-## Logs
-
-| File / Pattern | Purpose | Keep / Review |
-|---|---|---|
-| `logs/.gitkeep` | Preserves log directory in Git. | Keep |
-| `logs/*.log` | Runtime logs. | Local only / ignored |
-| `logs/*.log.*` | Rotated runtime logs. | Local only / ignored |
 
 ## Tests
 
@@ -221,47 +210,6 @@ Continue using those boundaries instead of moving tracker behavior into reportin
 
 The spreadsheet is being phased out as the normal application-tracking interface. It remains a bridge for import/history data, but active application tracking now has a dedicated tracker module and a basic Flask GUI.
 
-Current tracker structure:
-
-```text
-job_radar/tracker/
-  __init__.py
-  tracker_ids.py
-  tracker_models.py
-  tracker_storage.py
-  tracker_service.py
-```
-
-Current web UI structure:
-
-```text
-job_radar/web_app.py
-job_radar/templates/
-  index.html
-  tracker.html
-  tracker_edit.html
-  tracker_add.html
-  history.html
-  history_edit.html
-  profile.html
-  reports.html
-  companies.html
-  company_detail.html
-  report_view.html
-  scan.html
-  settings.html
-```
-
-The Companies list/detail pages and Settings page are read-only in the current milestones. They belong to the GUI route/template boundary and should not grow into config-writing business logic inside the template or route handler.
-
-The tracker ID helper owns generated app identity for manual/imported tracker records. URLs are evidence and source links, not active tracker primary keys.
-
-The tracker storage layer owns persistence and legacy repair for older `posting-url:*` tracker IDs.
-
-The tracker service owns application status/decision, follow-up timing, active outcomes, notes, workflow state, manual application tracking rules, tracker-to-history movement, history-to-tracker movement, generated tracker identity for imported active applications, and tracker/history delete workflow actions.
-
-The spreadsheet/history importer owns external history intake, partitioning between active tracker records and archived history records, and historical context. The history GUI owns review/display controls for archived history. The spreadsheet should not be treated as the long-term source of truth for active application workflow.
-
 Tracker and History are expected to be mutually exclusive. Active rows belong in the tracker. Terminal, passed, withdrawn, rejected, closed, or archived rows belong in history.
 
 The tracker should not be mixed into collector code or generic storage.
@@ -270,12 +218,16 @@ Reporting and recommendation code may read tracker state from `ScoredPosting.app
 
 Future GUI growth should keep `job_radar/web_app.py` small by moving workflow/business logic into GUI-neutral service functions. If route/template volume keeps growing, split the Flask interface into a dedicated web package before it becomes hard to maintain.
 
-The long-term packaging direction is:
+## Companies / Settings boundary
 
-```text
-Windows packaged app
-Linux packaged app
-container/server mode
-```
+The Companies list/detail pages and Settings page are read-only in the current MVP.
 
-These launch targets should share the same service layer instead of becoming separate products.
+They belong to the GUI route/template boundary and should not grow into config-writing business logic inside templates or route handlers.
+
+For MVP:
+
+- Companies is scan/source inventory.
+- Settings is runtime visibility.
+- Neither writes config.
+
+Future company management and settings editing should be handled through service-layer functions and explicit validation, not direct template or route mutation.

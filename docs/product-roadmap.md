@@ -1,19 +1,12 @@
 # Job Radar Product Roadmap
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
-## Purpose of this document
+## Purpose
 
-This file owns Job Radar's future direction, finish-line definition, and remaining milestones.
+This document owns Job Radar's future direction, MVP finish line, post-MVP roadmap, and deferred scope.
 
-It should not duplicate the detailed current-state ledger from `docs/current-state.md`.
-
-Use the documentation set this way:
-
-- `README.md` — quick project overview, common commands, and user-facing capabilities
-- `docs/current-state.md` — detailed current behavior and completed milestone state
-- `docs/product-roadmap.md` — future direction, finish-line definition, and remaining milestones
-- `docs/file-map.md` — repository structure and file ownership boundaries
+Current implementation state, setup commands, capabilities, and operating guidance belong in `README.md`. Repository structure belongs in `docs/file-map.md`.
 
 ## Product goal
 
@@ -27,22 +20,34 @@ Job Radar is complete-enough when a user can install it, configure their own job
 
 ## Product principles
 
-Job Radar should remain:
-
-- Local-first
-- User-controlled
-- Configured-company based
-- Safe for manual review
-- Transparent in scoring and recommendations
-- Non-invasive
-- Not dependent on broad crawling
-- Not dependent on LinkedIn scraping
-- Not responsible for contacting employers
-- Not responsible for submitting applications automatically
+Job Radar should remain local-first, user-controlled, configured-company based, safe for manual review, transparent in scoring and recommendations, non-invasive, not dependent on broad crawling, not dependent on LinkedIn scraping, not responsible for contacting employers, and not responsible for submitting applications automatically.
 
 The app should help the user decide where to spend time. It should not pretend to replace the user.
 
-## Current product shape
+## MVP finish line
+
+The immediate MVP target is a single-user local app that demonstrates disciplined execution and practical usefulness.
+
+MVP is complete when:
+
+1. A single local user can launch the GUI reliably.
+2. The user can run or review scans from configured company sources.
+3. The user can review Markdown/HTML reports and email previews.
+4. The user can manage active applications in the GUI.
+5. The user can add manual applications without inventing tracker IDs.
+6. The user can edit tracker records and use common quick actions.
+7. The user can move terminal applications from tracker to history.
+8. The user can reopen history records back to tracker when needed.
+9. The dashboard surfaces application follow-up work clearly.
+10. Resume upload/replacement works through the GUI.
+11. Settings and Companies pages provide safe read-only visibility.
+12. The app preserves tracker/history mutual exclusivity.
+13. The app preserves app-owned Job Radar IDs.
+14. The app keeps private runtime data out of Git.
+15. The test suite remains green.
+16. Documentation is consolidated enough to stay maintainable.
+
+## Current MVP shape
 
 Current shape:
 
@@ -52,35 +57,80 @@ Python CLI + SQLite + local Flask GUI + configured company scanners
 
 Current strengths:
 
-- Configured target-company scanning
-- Multiple ATS/source collectors
+- configured target-company scanning
+- multiple ATS/source collectors
 - SQLite-backed scan and tracker storage
-- Rules-based scoring
+- rules-based scoring
 - Markdown/HTML reports
-- Email preview/send guardrails
-- Application tracker CLI
-- Local Flask tracker/history/report/companies/scan/settings GUI
-- Clickable tracker dashboards and workflow navigation
+- email preview/send guardrails
+- application tracker CLI
+- local Flask tracker/history/report/companies/scan/settings GUI
+- clickable tracker dashboards and workflow navigation
 - GUI tracker Needs Review queue
 - GUI tracker quick actions
 - GUI history/archive summary cards and quick filters
 - GUI scan/report flow polish
-- Latest scan result shortcuts
-- Report viewer copy/select support
-- User-facing reassurance for temporary source/company scan errors
-- Read-only GUI Companies page foundation with card-driven filters, search, service-layer config views, write-strategy readiness checks, and detail pages
-- Read-only GUI Settings page foundation
+- latest scan result shortcuts
+- report viewer copy/select support
+- user-facing reassurance for temporary source/company scan errors
+- read-only GUI Companies page foundation with card-driven filters, search, service-layer config views, write-strategy readiness checks, and detail pages
+- read-only GUI Settings page foundation
 - GUI profile/resume upload support
-- App-assigned tracker IDs for spreadsheet-imported and GUI-created manual application records
-- Legacy `posting-url:*` tracker ID repair
-- Spreadsheet import bridge
-- Sanitized example workbook
+- app-assigned tracker IDs for spreadsheet-imported and GUI-created manual application records
+- legacy `posting-url:*` tracker ID repair
+- spreadsheet import bridge
+- sanitized example workbook
 
-Current limitation:
+The main current limitation is that the app still depends on developer-style configuration and manual file editing for setup tasks such as company management, preference/scoring setup, email setup, scheduling, and runtime data location.
 
-The app still depends on developer-style configuration and manual file editing for too many setup tasks, especially company management, preference/scoring setup, email setup, scheduling, and runtime data location.
+## Near-term MVP priorities
 
-Detailed current state belongs in `docs/current-state.md`.
+1. Dashboard follow-up focus for applications needing action.
+2. MVP polish for the single-user local workflow.
+3. Editable Settings page where safe and low-risk.
+4. Email settings page with secret-safe validation.
+5. Scheduled scan and scan-history retention settings page.
+6. Complete profile/preference setup beyond resume upload.
+7. Runtime data location setup.
+8. Packaging/launcher preparation.
+
+## Deferred until after MVP
+
+The following are valid long-term goals, but are intentionally deferred until the single-user MVP is stable, polished, tested, and portfolio-ready:
+
+- editable company management
+- company/contact relationship tracking
+- database-backed company inventory
+- GUI company add/edit
+- YAML-backed company writes
+- multi-user login/password support
+- full onboarding wizard
+- LLM-assisted strengths/gaps analysis
+- generalized multi-domain job-hunt workflows
+- full knowledge-base attachment system
+- hosted SaaS behavior
+- automatic job applications
+- employer outreach automation
+- LinkedIn scraping
+- mobile app
+- native desktop GUI rewrite
+
+## Long-term product vision
+
+The long-term product vision is a full job-hunt operations system.
+
+It should eventually help users manage the many moving pieces of a job search: profile creation, resume upload and analysis, strengths and gaps, preferred companies, email setup, scheduled scans, dashboard workflow, application tracking, follow-up reminders, company research, contacts, recruiter history, and interview preparation.
+
+The application should eventually behave more like an IT ticket system than a static spreadsheet:
+
+- applications requiring follow-up should be flagged
+- stale items should surface on the dashboard
+- active records should have workflow state
+- terminal records should move to history/archive
+- companies should act like an inventory/knowledge-base area
+- contacts should be tracked when available, but not required
+
+The app should eventually become useful beyond IT job hunts, but the current MVP should stay focused on the existing single-user workflow.
 
 ## Future product shape
 
@@ -102,29 +152,11 @@ The current Flask GUI is the shared web/server interface. It should remain usabl
 
 The final product should hide developer launch commands from normal users. A user should eventually open Job Radar from a Start Menu shortcut, Linux application launcher, packaged executable, or container/service URL depending on how they choose to run it.
 
-The user should eventually be able to:
+The user should eventually be able to install Job Radar, open it from a normal launcher, create/edit their search profile, add target companies, define preferred roles, salary expectations, location rules, blocker rules, positive match signals, run scans manually, schedule scans, configure scan history retention, review results, track applications, review job history, configure email reports, and export or back up local data.
 
-- Install Job Radar
-- Open Job Radar from the Start Menu or application launcher
-- Create or edit their search profile
-- Add target companies
-- Define preferred roles
-- Define salary expectations
-- Define location rules
-- Define blocker rules
-- Define positive match signals
-- Run scans manually
-- Schedule scans
-- Configure scan history retention
-- Review results
-- Track applications
-- Review job history
-- Configure email reports
-- Export or back up local data
+## Complete-enough product definition
 
-## Finish line definition
-
-Job Radar is complete-enough when these are true:
+Longer-term complete-enough means:
 
 1. A non-developer user can install and launch the app.
 2. A user can configure their own companies without editing source code.
@@ -154,53 +186,29 @@ Job Radar is complete-enough when these are true:
 
 Job Radar must stop assuming one hard-coded user profile.
 
-The app should eventually support user-specific configuration for:
-
-- User name or profile label
-- Desired role titles
-- Desired seniority levels
-- Desired companies
-- Excluded companies
-- Preferred industries
-- Excluded industries
-- Positive keywords
-- Negative keywords
-- Hard blockers
-- Soft risk signals
-- Salary floor
-- Ideal salary
-- Acceptable locations
-- Preferred locations
-- Remote/hybrid/on-site rules
-- Relocation openness
-- Travel tolerance
-- Security clearance tolerance
-- Employment type preference
-- Resume/profile text
-- Report preferences
-- Scan history retention
-- Email preferences
-- Scan schedule
+The app should eventually support user-specific configuration for user name/profile label, desired role titles, seniority levels, desired/excluded companies, preferred/excluded industries, positive/negative keywords, hard blockers, soft risk signals, salary floor, ideal salary, acceptable/preferred locations, remote/hybrid/on-site rules, relocation openness, travel tolerance, security clearance tolerance, employment type preference, resume/profile text, report preferences, scan history retention, email preferences, and scan schedule.
 
 ## Desired companies
 
-Users need a way to add desired companies without editing YAML manually.
+For MVP, the Companies page remains read-only scan/source inventory.
+
+Long term, users need a way to add desired companies without editing YAML manually.
 
 Required long-term behavior:
 
-- Add company from GUI
-- Edit company from GUI
-- Disable company without deleting it
-- Delete company if needed
-- Choose source type when known
-- Store company career page URL
-- Store ATS/source-specific identifier when needed
-- Validate company source configuration before saving when possible
-- Show whether the source works
-- Show last scan result per company
-- Show collector errors per company
-- Allow targeted company/source rescan when practical
-- Allow import/export of company lists
+- add company from GUI
+- edit company from GUI
+- disable company without deleting it
+- delete company if needed
+- choose source type when known
+- store company career page URL
+- store ATS/source-specific identifier when needed
+- validate company source configuration before saving when possible
+- show whether the source works
+- show last scan result per company
+- show collector errors per company
+- allow targeted company/source rescan when practical
+- allow import/export of company lists
 
 The GUI should eventually support a company setup flow:
 
@@ -215,45 +223,13 @@ Test source button
 Save
 ```
 
-Near-term version can still write to config files or a local database, but the user should not need to know the internal YAML format.
+Normal GUI company data should eventually live in SQLite or user data, not as risky direct YAML mutation. YAML may remain useful for seed/default source definitions. If YAML writes are ever supported, they require a comment-preserving writer such as `ruamel.yaml`.
 
 ## Preferences and scoring setup
 
-Users need guided preference setup.
-
-Required long-term behavior:
-
-- Set salary floor
-- Set ideal salary
-- Set acceptable locations
-- Set preferred locations
-- Set remote-only or remote-preferred behavior
-- Set target roles
-- Set acceptable seniority levels
-- Set positive keywords
-- Set negative keywords
-- Set blockers
-- Set review-needed signals
-- Set avoid-company or avoid-industry rules
+Users need guided preference setup for salary floor, ideal salary, acceptable/preferred locations, remote-only or remote-preferred behavior, target roles, acceptable seniority levels, positive keywords, negative keywords, blockers, review-needed signals, and avoid-company or avoid-industry rules.
 
 The GUI should eventually explain what each setting does in plain language.
-
-Example setup questions:
-
-```text
-What roles are you looking for?
-What titles should be treated as strong matches?
-What titles should be avoided?
-What locations are acceptable?
-Is remote required?
-What is your minimum salary?
-What salary would make a role especially attractive?
-What technologies or domains are strong positives?
-What technologies or job duties are blockers?
-Are there companies or industries you do not want?
-How much travel is acceptable?
-Are clearance-required roles acceptable?
-```
 
 ## Profile and resume setup
 
@@ -261,16 +237,16 @@ The current profile and resume flow has started moving into the GUI, but broader
 
 Long-term behavior:
 
-- Create a user profile from the GUI
-- Add, paste, upload, or replace resume/profile text from the GUI
-- Preserve the current GUI resume upload/replacement flow
-- Keep PDF, DOCX, Markdown, and plain-text resume loading supported
-- Store resume/profile text in the user data directory
-- Allow the user to update it
-- Use it for match signals
-- Avoid committing private profile/resume data to Git
-- Mirror the existing CLI resume/profile process instead of creating a separate GUI-only resume system
-- Reuse the same resume loader/profile logic used by scans and CLI commands
+- create a user profile from the GUI
+- add, paste, upload, or replace resume/profile text from the GUI
+- preserve the current GUI resume upload/replacement flow
+- keep PDF, DOCX, Markdown, and plain-text resume loading supported
+- store resume/profile text in the user data directory
+- allow the user to update it
+- use it for match signals
+- avoid committing private profile/resume data to Git
+- mirror the existing CLI resume/profile process instead of creating a separate GUI-only resume system
+- reuse the same resume loader/profile logic used by scans and CLI commands
 
 Future user-data layout should separate shipped app files from personal data.
 
@@ -302,42 +278,6 @@ Linux target:
   logs/
 ```
 
-## GUI roadmap
-
-The current Flask GUI should continue as the near-term interface.
-
-Recently completed GUI work:
-
-- History/archive summary cards and quick filters
-- Rejected and withdrawn history quick-filter behavior
-- Reports latest scan result shortcut cards
-- Scan completion links to the main generated outputs
-- Report viewer copy/select support
-- User-facing reassurance for temporary source/company scan errors
-- Read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status
-- Read-only Companies page showing configured target companies, source types, enabled status, source details, notes, card-driven filters, search, write-strategy readiness checks, and per-company detail pages
-- Manual application add form no longer asks for Job Radar ID
-- Tracker edit summary layout polish for long/generated IDs
-- Legacy `posting-url:*` tracker ID repair surfaced through the GUI
-- `/tracker/` redirect to `/tracker`
-
-Near-term GUI priorities:
-
-1. Editable company management page after adopting a comment-preserving YAML writer
-2. Editable Settings page
-3. Preference setup page
-4. Email settings page
-5. Scheduled scan and scan-history retention settings page
-6. Complete profile/preference setup beyond resume upload
-7. Runtime data location setup
-8. Packaging/launcher preparation
-
-The GUI should keep using the same service layer as the CLI.
-
-The GUI must not become a separate source of truth.
-
-Resume/profile GUI work must follow this same rule. Uploading or updating a resume through the GUI should feed the same profile/resume path and loader used by CLI scans.
-
 ## Cross-platform app direction
 
 Job Radar should be built as one core application with multiple launch targets, not as separate desktop, web, and server products.
@@ -349,8 +289,6 @@ Supported target modes:
 - Container/server mode
 - Developer CLI mode
 
-The current Flask GUI remains the near-term shared interface because it works for both local browser use and server/container use. A future desktop launcher or wrapper can start the same local app and display it in a normal desktop window.
-
 Recommended path:
 
 1. Keep Flask as the shared web/server UI.
@@ -361,35 +299,11 @@ Recommended path:
 6. Add desktop wrapper or packaged launcher for Windows and Linux.
 7. Package Windows and Linux distributions.
 
-This preserves current work while moving toward normal click-to-open desktop use and always-on server/container operation.
-
 ## Installer and packaging roadmap
 
-The long-term Windows target is:
-
-```text
-JobRadarSetup.exe
-```
+The long-term Windows target is `JobRadarSetup.exe`.
 
 The Windows installation path should be simple enough for a non-developer user to install, launch, configure, and run a first scan without manually editing source files.
-
-The installer should eventually:
-
-- Install Job Radar
-- Create a Start Menu shortcut
-- Create required local user data folders
-- Install default/example config files
-- Avoid overwriting existing user config
-- Include the sanitized example workbook only as an import/template bridge
-- Provide an `.exe` entry point or launcher
-- Support first-run setup
-- Support desired company setup
-- Support ATS/source setup
-- Support preference, compensation, and location setup
-- Support email setup
-- Support manual scan from the GUI
-- Optionally configure scheduled scans
-- Store runtime data outside the install directory
 
 Likely Windows packaging path:
 
@@ -397,72 +311,23 @@ Likely Windows packaging path:
 PyInstaller + Inno Setup
 ```
 
-Possible later alternatives:
+Possible later alternatives include Nuitka, Briefcase, MSIX, NSIS, and WiX Toolset.
 
-- Nuitka
-- Briefcase
-- MSIX
-- NSIS
-- WiX Toolset
-
-## Linux roadmap
-
-Linux should remain a supported direction, but Windows packaging comes first.
-
-The required Linux packaging path is a `.tar` or tarball-based distribution.
-
-Possible later Linux formats:
-
-- AppImage
-- .deb package
-- systemd user service/timer
-- Docker/container deployment
-
-Linux needs:
-
-- Documented install path
-- User config under `~/.config/job-radar/`
-- User data under `~/.local/share/job-radar/`
-- `.tar` / tarball install documentation
-- Optional systemd timer for scheduled scans
-- Optional service-style operation
-- Clear no-root local mode where possible
+Linux should remain supported, but Windows packaging comes first. The required Linux packaging path is a `.tar` or tarball-based distribution. Possible later Linux formats include AppImage, `.deb`, systemd user service/timer, and Docker/container deployment.
 
 ## Deployment flexibility roadmap
 
-Job Radar should be flexible enough to run in different user-controlled environments.
-
-Supported target modes:
-
-- Windows packaged desktop/local app
-- Linux packaged desktop/local app
-- unattended service on a local machine or small server
-- containerized web/server mode
-- Kubernetes service in a user-managed cluster
-- developer CLI mode
-
-The app does not need to support more than one user at a time. Multiple profiles may be useful later, but multi-user SaaS behavior is not required.
+Job Radar should be flexible enough to run in different user-controlled environments: Windows packaged desktop/local app, Linux packaged desktop/local app, unattended service on a local machine or small server, containerized web/server mode, Kubernetes service in a user-managed cluster, and developer CLI mode.
 
 Deployment work must preserve one core service layer so CLI, Flask UI, desktop launcher/wrapper, scheduler, packaged deployments, and container/server deployments do not become separate products.
-
-Flask is the current UI/server interface, not the whole product. Business workflow logic should live in reusable services that can be called by CLI commands, web routes, future desktop launchers, and scheduled jobs.
 
 ## Scheduler roadmap
 
 Scheduled scans should eventually be configurable without editing scripts.
 
-Windows target:
+Windows target: Task Scheduler integration, user-selectable schedule, local logs, and safe failure behavior.
 
-- Task Scheduler integration
-- User-selectable schedule
-- Local logs
-- Safe failure behavior
-
-Linux target:
-
-- systemd user timer
-- Local logs
-- Safe failure behavior
+Linux target: systemd user timer, local logs, and safe failure behavior.
 
 The scheduler should run the same scan pipeline as manual scans.
 
@@ -472,41 +337,22 @@ Scan history retention should be configurable from Settings. The default should 
 
 Job Radar should assume job search data is private.
 
-Private data includes:
-
-- User profile
-- Resume text
-- Target companies
-- Application history
-- Tracker notes
-- Recruiter/contact details
-- Email settings
-- Local reports
-- Logs that may contain job/application details
+Private data includes user profile, resume text, target companies, application history, tracker notes, recruiter/contact details, email settings, local reports, and logs that may contain job/application details.
 
 Private data should live in the user data directory and stay out of Git.
 
-The repo may include:
+The repo may include demo config, example config, sanitized workbook, documentation, tests, and non-private sample data.
 
-- Demo config
-- Example config
-- Sanitized workbook
-- Documentation
-- Tests
-- Non-private sample data
-
-## Complete-enough milestones
-
-The finish line can be reached in stages.
+## Staged roadmap
 
 ### Stage 1: Finish Current GUI Workflow
 
 - Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
-- Preserve the completed tracker workflow improvements: clickable dashboard cards, Needs Review queue, grouped quick actions, tracker-to-history movement, history-to-tracker reopening, history/archive quick filters, scan/report flow shortcuts, and app-assigned manual tracker IDs.
+- Preserve completed tracker workflow improvements.
 - Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
-- Preserve Tracker/History mutual exclusivity: active rows belong in Tracker, archived or terminal rows belong in History.
-- Preserve app-owned tracker identity: posting URLs are evidence/source links, not tracker primary keys.
-- Keep tracker/history workflow actions in GUI-neutral services so Flask, CLI, desktop launcher/wrapper, scheduler, and container/server mode can reuse them.
+- Preserve Tracker/History mutual exclusivity.
+- Preserve app-owned tracker identity.
+- Keep tracker/history workflow actions in GUI-neutral services.
 - Decide the final role of the spreadsheet bridge.
 - Keep scan/report behavior stable while GUI tracker/history behavior improves.
 
@@ -557,18 +403,3 @@ The finish line can be reached in stages.
 - Add installation and operations documentation for Windows desktop, Linux standalone/server, and Kubernetes service modes.
 - Add release validation for packaged builds.
 - Run no-regression validation.
-
-## Not yet required
-
-The following are not required for complete-enough:
-
-- Hosted SaaS
-- Multi-user server
-- Employer outreach automation
-- Automatic job applications
-- LinkedIn scraping
-- Mobile app
-- Native desktop GUI rewrite
-- LLM-driven scoring as the primary scoring engine
-
-LLM-assisted review can be added later, but rules-based behavior should remain stable and explainable first.
