@@ -369,7 +369,7 @@ Current GUI capabilities:
 - Existing generated report and email-preview viewing
 - Reports page for existing generated reports and email previews
 - Reports page latest scan result shortcut cards
-- Read-only Companies page showing configured target companies, source types, enabled status, source details, notes, filters, and per-company detail pages
+- Read-only Companies page showing configured target companies, source types, enabled status, source details, notes, card-driven filters, search, and per-company detail pages
 - In-app report viewer
 - Report viewer Copy report text button
 - Report viewer Ctrl+A report-content selection when the viewer has focus
@@ -419,7 +419,7 @@ The tracker GUI focuses on active application tracker records. The job history/a
 
 The reports page opens existing generated reports and email previews without starting a scan or sending email. The Reports page now highlights latest scan results with shortcut cards and separates additional files from the primary scan outputs.
 
-The Companies page is currently read-only. It shows configured target companies, source types, enabled/disabled status, source details, notes, source-type/status filters, and per-company detail pages from `config/target-companies.yaml` without writing config changes.
+The Companies page is currently read-only. It shows configured target companies, source types, enabled/disabled status, source details, notes, card-driven source-type/status filters, search, and per-company detail pages from `config/target-companies.yaml` without writing config changes.
 
 The in-app report viewer supports copying report text and selecting only report content with Ctrl+A when the viewer has focus.
 
@@ -447,11 +447,11 @@ Email behavior:
 Latest verification from this milestone:
 
 ```text
-python -m pytest tests\test_web_app.py
-64 passed
+python -m pytest tests\test_company_config_service.py tests\test_web_app.py
+68 passed
 
 python -m pytest tests
-465 passed
+472 passed
 ```
 
 ## Current project principles

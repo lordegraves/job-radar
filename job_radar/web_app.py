@@ -8,7 +8,13 @@ from threading import Lock
 from flask import Flask, abort, redirect, render_template, request, send_from_directory, url_for
 
 from job_radar.cli import handle_scan
-from job_radar.config import ConfigError, load_settings, load_yaml_file
+from job_radar.company_config_service import (
+    build_company_config_views,
+    build_company_source_summaries,
+    filter_company_config_views,
+    get_company_config_view,
+)
+from job_radar.config import ConfigError, load_settings
 from job_radar.profile_service import build_candidate_profile_view, save_uploaded_resume
 from job_radar.storage import (
     fetch_included_job_history_records,
@@ -322,25 +328,6 @@ class SettingsView:
     email_status: str
 
 
-@dataclass(frozen=True)
-class CompanyConfigView:
-    company_key: str
-    name: str
-    source_type: str
-    enabled: bool
-    source_detail: str
-    notes: str | None
-    config_items: list[tuple[str, object]]
-
-
-@dataclass(frozen=True)
-class CompanySourceSummaryView:
-    source_type: str
-    total: int
-    enabled: int
-    disabled: int
-
-
 def create_app(settings_path: str = "config/settings.yaml") -> Flask:
     app = Flask(__name__)
     app.config["JOB_RADAR_SETTINGS_PATH"] = settings_path
@@ -367,15 +354,17 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
     @app.get("/companies")
     def companies() -> str:
-        company_views = _build_company_config_views(DEFAULT_SCAN_CONFIG_PATH)
+        company_views = build_company_config_views(DEFAULT_SCAN_CONFIG_PATH)
         selected_status = request.args.get("status", "")
         selected_source_type = request.args.get("source_type", "")
-        filtered_companies = _filter_company_config_views(
+        search_query = request.args.get("q", "").strip()
+        filtered_companies = filter_company_config_views(
             company_views,
             selected_status=selected_status,
             selected_source_type=selected_source_type,
+            search_query=search_query,
         )
-        source_summaries = _build_company_source_summaries(company_views)
+        source_summaries = build_company_source_summaries(company_views)
 
         return render_template(
             "companies.html",
@@ -387,12 +376,13 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             disabled_companies=sum(1 for company in company_views if not company.enabled),
             selected_status=selected_status,
             selected_source_type=selected_source_type,
+            search_query=search_query,
             filtered_company_count=len(filtered_companies),
         )
 
     @app.get("/companies/<company_key>")
     def company_detail(company_key: str) -> str:
-        company_view = _get_company_config_view(
+        company_view = get_company_config_view(
             DEFAULT_SCAN_CONFIG_PATH,
             company_key,
         )
@@ -825,141 +815,6 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         return redirect(url_for("tracker", filter=return_filter))
 
     return app
-
-
-def _build_company_config_views(config_path: str) -> list[CompanyConfigView]:
-    data = load_yaml_file(config_path)
-    companies = data.get("companies", [])
-
-    company_views: list[CompanyConfigView] = []
-
-    for company in companies:
-        if not isinstance(company, dict):
-            continue
-
-        company_views.append(
-            CompanyConfigView(
-                company_key=str(company.get("company_key", "")),
-                name=str(company.get("name", "")),
-                source_type=str(company.get("source_type", "")),
-                enabled=bool(company.get("enabled", True)),
-                source_detail=_get_company_source_detail(company),
-                notes=company.get("notes"),
-                config_items=_get_company_config_items(company),
-            )
-        )
-
-    return sorted(
-        company_views,
-        key=lambda company: (
-            company.source_type.lower(),
-            company.name.lower(),
-        ),
-    )
-
-
-def _get_company_config_view(
-    config_path: str,
-    company_key: str,
-) -> CompanyConfigView | None:
-    companies = _build_company_config_views(config_path)
-
-    for company in companies:
-        if company.company_key == company_key:
-            return company
-
-    return None
-
-
-def _filter_company_config_views(
-    companies: list[CompanyConfigView],
-    *,
-    selected_status: str,
-    selected_source_type: str,
-) -> list[CompanyConfigView]:
-    filtered_companies = companies
-
-    if selected_status == "enabled":
-        filtered_companies = [
-            company for company in filtered_companies if company.enabled
-        ]
-    elif selected_status == "disabled":
-        filtered_companies = [
-            company for company in filtered_companies if not company.enabled
-        ]
-
-    if selected_source_type:
-        filtered_companies = [
-            company
-            for company in filtered_companies
-            if company.source_type == selected_source_type
-        ]
-
-    return filtered_companies
-
-
-def _build_company_source_summaries(
-    companies: list[CompanyConfigView],
-) -> list[CompanySourceSummaryView]:
-    source_types = sorted({company.source_type for company in companies})
-
-    return [
-        CompanySourceSummaryView(
-            source_type=source_type,
-            total=sum(1 for company in companies if company.source_type == source_type),
-            enabled=sum(
-                1
-                for company in companies
-                if company.source_type == source_type and company.enabled
-            ),
-            disabled=sum(
-                1
-                for company in companies
-                if company.source_type == source_type and not company.enabled
-            ),
-        )
-        for source_type in source_types
-    ]
-
-
-def _get_company_config_items(company: dict) -> list[tuple[str, object]]:
-    return sorted(company.items(), key=lambda item: item[0])
-
-
-def _get_company_source_detail(company: dict) -> str:
-    detail_keys = (
-        "source_slug",
-        "source_url",
-        "source_base_url",
-        "domain_name",
-        "company_identifier",
-        "origin_url",
-        "referer_url",
-        "job_base_url",
-        "site_number",
-    )
-
-    details = [
-        f"{key}: {company[key]}"
-        for key in detail_keys
-        if company.get(key)
-    ]
-
-    query_params = company.get("query_params")
-
-    if isinstance(query_params, dict) and query_params:
-        details.append(
-            "query_params: "
-            + ", ".join(
-                f"{key}={value}"
-                for key, value in sorted(query_params.items())
-            )
-        )
-
-    if not details:
-        return "No source detail configured."
-
-    return " | ".join(details)
 
 
 def _build_settings_view(app: Flask) -> SettingsView:

@@ -66,6 +66,7 @@ Use the documentation set this way:
 | `job_radar/__main__.py` | Allows running the package with `python -m job_radar`. | Keep |
 | `job_radar/cli.py` | Command-line entry points and user-facing commands. | Keep / watch growth |
 | `job_radar/config.py` | Loads and validates app configuration. | Keep |
+| `job_radar/company_config_service.py` | Company configuration view models, read-only company config loading, source summaries, filtering, search text, and detail-page lookup helpers. | Keep |
 | `job_radar/models.py` | Core shared data models such as job postings. | Keep |
 | `job_radar/storage.py` | SQLite persistence for collected/scored job data. | Keep |
 | `job_radar/validation.py` | Validation helpers. | Keep |
@@ -120,7 +121,7 @@ Use the documentation set this way:
 
 | File | Purpose | Keep / Review |
 |---|---|---|
-| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers, including tracker/history/report/companies/scan/settings routes and `/tracker/` trailing-slash redirect. Route handlers should delegate tracker/history workflow actions to service-layer functions. | Keep / watch growth |
+| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers, including tracker/history/report/companies/scan/settings routes and `/tracker/` trailing-slash redirect. Route handlers should delegate tracker/history workflow actions and company configuration view/filter logic to service-layer functions | Keep / watch growth |
 | `job_radar/templates/index.html` | Web app landing page with clickable tracker dashboard cards and section navigation. | Keep |
 | `job_radar/templates/tracker.html` | Application tracker list, clickable summary filter cards, workflow filters, search, sorting, workflow display, Needs Review guidance, workflow badges, and edit links. | Keep |
 | `job_radar/templates/tracker_edit.html` | Application tracker edit form, summary cards with wrapping Job Radar ID display, and grouped quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history. | Keep |
@@ -184,7 +185,7 @@ Collector tests intentionally mirror collector files. This makes source-specific
 | Test Area | Files | Keep / Review |
 |---|---|---|
 | Collector tests | `tests/test_*_collector.py`, plus `tests/test_collector_registry.py` | Keep |
-| Config/CLI/storage tests | `tests/test_config.py`, `tests/test_cli.py`, `tests/test_storage.py` | Keep |
+| Config/CLI/storage/service tests | `tests/test_config.py`, `tests/test_company_config_service.py`, `tests/test_cli.py`, `tests/test_storage.py` | Keep |
 | Scoring/recommendation/report tests | `tests/test_scoring.py`, `tests/test_reporting.py`, `tests/test_email_summary.py` | Keep |
 | Profile/resume/history tests | `tests/test_candidate_profile.py`, `tests/test_resume_loader.py`, `tests/test_resume_match.py`, `tests/test_job_history.py`, `tests/test_history_match.py`, `tests/test_history_context.py`, `tests/test_history_summary.py` | Keep |
 | Tracker tests | `tests/test_tracker_service.py`, `tests/test_tracker_storage.py` | Keep |

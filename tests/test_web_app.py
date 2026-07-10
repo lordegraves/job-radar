@@ -58,7 +58,7 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
             role_title="Senior Site Reliability Engineer",
             source_url="https://example.com/jobs/stack-av-sre",
             status="applied",
-            follow_up_on="2026-07-10",
+            follow_up_on="2099-07-10",
             applied_on="2026-07-03",
             last_activity_on="2026-07-05",
             outcome="Interviewing",
@@ -94,7 +94,7 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "workflow-badge workflow-follow_up_scheduled" in html
     assert "2026-07-03" in html
     assert "2026-07-05" in html
-    assert "2026-07-10" in html
+    assert "2099-07-10" in html
     assert "Interview Scheduled" in html
     assert "outcome-cell" in html
     assert "jr-stack-av-12345678" in html
@@ -1015,9 +1015,11 @@ companies:
     assert "source_base_url: https://example.com/workday" in html
     assert "NASA" in html
     assert "query_params: Organization=NN" in html
-    assert 'href="/companies?status=enabled"' in html
-    assert 'href="/companies?status=disabled"' in html
-    assert 'href="/companies?source_type=greenhouse"' in html
+    assert 'href="/companies?status=enabled&amp;q="' in html
+    assert 'href="/companies?status=disabled&amp;q="' in html
+    assert 'href="/companies?source_type=greenhouse&amp;status=&amp;q="' in html
+    assert "Search companies" in html
+    assert 'name="q"' in html
     assert "Save" not in html
 
 
@@ -1085,6 +1087,28 @@ companies:
     assert "Enabled AI" in source_html
     assert "Disabled Lab" not in source_html
     assert "NASA" not in source_html
+
+    search_response = client.get("/companies?q=organization")
+    search_html = search_response.get_data(as_text=True)
+
+    assert search_response.status_code == 200
+    assert "Showing 1 of 3 configured companies." in search_html
+    assert "NASA" in search_html
+    assert "Enabled AI" not in search_html
+    assert "Disabled Lab" not in search_html
+    assert 'value="organization"' in search_html
+    assert "Clear filters" in search_html
+
+    combined_response = client.get("/companies?status=enabled&source_type=usajobs&q=nn")
+    combined_html = combined_response.get_data(as_text=True)
+
+    assert combined_response.status_code == 200
+    assert "Showing 1 of 3 configured companies." in combined_html
+    assert "NASA" in combined_html
+    assert "Enabled AI" not in combined_html
+    assert "Disabled Lab" not in combined_html
+    assert 'href="/companies?status=enabled&amp;q=nn"' in combined_html
+    assert 'href="/companies?source_type=usajobs&amp;status=enabled&amp;q=nn"' in combined_html
 
 
 def test_company_detail_page_shows_read_only_company_config(tmp_path: Path, monkeypatch) -> None:
@@ -2021,7 +2045,7 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
             role_title="Senior Site Reliability Engineer",
             source_url="https://example.com/jobs/stack-av-sre",
             status="Applied",
-            follow_up_on="2026-07-10",
+            follow_up_on="2099-07-10",
             applied_on="2026-07-03",
             last_activity_on="2026-07-05",
             outcome="Interview Scheduled",
@@ -2046,7 +2070,7 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert "word-break: break-word;" in html
     assert 'name="return_filter" value="needs_action"' in html
     assert '<option value="Applied" selected>' in html
-    assert 'name="follow_up_on" value="2026-07-10"' in html
+    assert 'name="follow_up_on" value="2099-07-10"' in html
     assert 'name="applied_on" value="2026-07-03"' in html
     assert 'name="last_activity_on" value="2026-07-05"' in html
     assert '<option value="Interview Scheduled" selected>' in html
@@ -2071,7 +2095,7 @@ def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
             role_title="Senior Site Reliability Engineer",
             source_url="https://example.com/jobs/stack-av-sre",
             status="Applied",
-            follow_up_on="2026-07-10",
+            follow_up_on="2099-07-10",
             applied_on="2026-07-03",
             last_activity_on="2026-07-05",
             outcome="Interview Scheduled",

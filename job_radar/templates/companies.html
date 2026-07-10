@@ -34,6 +34,23 @@
         font-size: 1.45rem;
     }
 
+    .company-filter-form {
+        align-items: flex-end;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 16px 0 4px;
+    }
+
+    .company-filter-form label {
+        display: grid;
+        gap: 6px;
+    }
+
+    .company-filter-form input {
+        min-width: min(420px, 78vw);
+    }
+
     .source-summary-table {
         margin-top: 12px;
     }
@@ -92,63 +109,50 @@
 </div>
 
 <section class="company-summary-grid" aria-label="Company configuration summary">
-    <a class="company-summary-card {% if not selected_status and not selected_source_type %}active-filter{% endif %}" href="{{ url_for('companies') }}">
+    <a class="company-summary-card {% if not selected_status and not selected_source_type and not search_query %}active-filter{% endif %}" href="{{ url_for('companies') }}">
         <strong>{{ total_companies }}</strong>
         <span class="muted">Total companies</span>
     </a>
 
-    <a class="company-summary-card {% if selected_status == 'enabled' and not selected_source_type %}active-filter{% endif %}" href="{{ url_for('companies', status='enabled') }}">
+    <a class="company-summary-card {% if selected_status == 'enabled' and not selected_source_type %}active-filter{% endif %}" href="{{ url_for('companies', status='enabled', q=search_query) }}">
         <strong>{{ enabled_companies }}</strong>
         <span class="muted">Enabled</span>
     </a>
 
-    <a class="company-summary-card {% if selected_status == 'disabled' and not selected_source_type %}active-filter{% endif %}" href="{{ url_for('companies', status='disabled') }}">
+    <a class="company-summary-card {% if selected_status == 'disabled' and not selected_source_type %}active-filter{% endif %}" href="{{ url_for('companies', status='disabled', q=search_query) }}">
         <strong>{{ disabled_companies }}</strong>
         <span class="muted">Disabled</span>
     </a>
 
-    <a class="company-summary-card {% if selected_source_type %}active-filter{% endif %}" href="{{ url_for('companies') }}#source-type-summary">
+    <a class="company-summary-card {% if selected_source_type %}active-filter{% endif %}" href="{{ url_for('companies', q=search_query) }}#source-type-summary">
         <strong>{{ source_summaries|length }}</strong>
         <span class="muted">Source types</span>
         <span class="muted">Jump to source filters</span>
     </a>
 </section>
 
-{% if selected_status or selected_source_type %}
+<form class="company-filter-form" method="get" action="{{ url_for('companies') }}">
+    {% if selected_status %}
+    <input type="hidden" name="status" value="{{ selected_status }}">
+    {% endif %}
+    {% if selected_source_type %}
+    <input type="hidden" name="source_type" value="{{ selected_source_type }}">
+    {% endif %}
+
+    <label>
+        <span>Search companies</span>
+        <input type="search" name="q" value="{{ search_query }}" placeholder="Search name, key, source, notes, or config values">
+    </label>
+
+    <button type="submit">Search</button>
+</form>
+
+{% if selected_status or selected_source_type or search_query %}
 <p class="muted filter-summary">
     Showing {{ filtered_company_count }} of {{ total_companies }} configured companies.
     <a href="{{ url_for('companies') }}">Clear filters</a>
 </p>
 {% endif %}
-
-<section class="page-card source-summary-section" id="source-type-summary">
-    <h2>Source type summary</h2>
-
-    <table class="source-summary-table">
-        <thead>
-            <tr>
-                <th>Source type</th>
-                <th>Enabled</th>
-                <th>Disabled</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for summary in source_summaries %}
-            <tr>
-                <td>
-                    <a class="source-filter-link {% if selected_source_type == summary.source_type %}active-filter{% endif %}" href="{{ url_for('companies', source_type=summary.source_type) }}">
-                        <code>{{ summary.source_type }}</code>
-                    </a>
-                </td>
-                <td>{{ summary.enabled }}</td>
-                <td>{{ summary.disabled }}</td>
-                <td>{{ summary.total }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</section>
 
 <section>
     <h2>Configured companies</h2>
@@ -191,7 +195,36 @@
         </tbody>
     </table>
     {% else %}
-    <p class="muted">No companies configured.</p>
+    <p class="muted">No companies match the current filters.</p>
     {% endif %}
+</section>
+
+<section class="page-card source-summary-section" id="source-type-summary">
+    <h2>Source type summary</h2>
+
+    <table class="source-summary-table">
+        <thead>
+            <tr>
+                <th>Source type</th>
+                <th>Enabled</th>
+                <th>Disabled</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for summary in source_summaries %}
+            <tr>
+                <td>
+                    <a class="source-filter-link {% if selected_source_type == summary.source_type %}active-filter{% endif %}" href="{{ url_for('companies', source_type=summary.source_type, status=selected_status, q=search_query) }}">
+                        <code>{{ summary.source_type }}</code>
+                    </a>
+                </td>
+                <td>{{ summary.enabled }}</td>
+                <td>{{ summary.disabled }}</td>
+                <td>{{ summary.total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </section>
 {% endblock %}

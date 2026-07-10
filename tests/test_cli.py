@@ -973,7 +973,7 @@ top_matches:
             role_title="Senior Infrastructure Engineer",
             source_url="https://boards.greenhouse.io/exampleai/jobs/123",
             status="applied",
-            follow_up_on="2026-07-10",
+            follow_up_on="2099-07-10",
             outcome="interviewing",
             notes="Already applied through company site.",
         ),
@@ -1001,7 +1001,7 @@ top_matches:
     assert "- Track Status:" in report_text
     assert "  - Status: applied" in report_text
     assert "  - Workflow: follow_up_scheduled" in report_text
-    assert "  - Follow up on: 2026-07-10" in report_text
+    assert "  - Follow up on: 2099-07-10" in report_text
     assert "  - Outcome: interviewing" in report_text
     assert "  - Notes: Already applied through company site." in report_text
     assert "- Tracker workflow summary:" in report_text
@@ -1612,7 +1612,7 @@ retention:
             role_title="Senior Site Reliability Engineer",
             source_url="https://example.com/jobs/stack-av-sre",
             status="applied",
-            follow_up_on="2026-07-10",
+            follow_up_on="2099-07-10",
             outcome=None,
             notes="Applied through company site.",
         ),
@@ -1629,7 +1629,7 @@ retention:
     assert "Job Radar ID: jr-stack-av-12345678" in output
     assert "Status: applied" in output
     assert "Workflow: follow_up_scheduled" in output
-    assert "Follow up on: 2026-07-10" in output
+    assert "Follow up on: 2099-07-10" in output
     assert "URL: https://example.com/jobs/stack-av-sre" in output
     assert "Notes: Applied through company site." in output
 
@@ -1646,7 +1646,7 @@ def test_parser_accepts_tracker_update_command() -> None:
             "--status",
             "applied",
             "--follow-up-on",
-            "2026-07-10",
+            "2099-07-10",
             "--applied-on",
             "2026-07-03",
             "--last-activity-on",
@@ -1664,7 +1664,7 @@ def test_parser_accepts_tracker_update_command() -> None:
     assert args.tracker_command == "update"
     assert args.job_radar_id == "jr-stack-av-12345678"
     assert args.status == "applied"
-    assert args.follow_up_on == "2026-07-10"
+    assert args.follow_up_on == "2099-07-10"
     assert args.applied_on == "2026-07-03"
     assert args.last_activity_on == "2026-07-05"
     assert args.outcome == "interviewing"
@@ -1903,7 +1903,7 @@ retention:
         settings_path=str(settings_file),
         job_radar_id="jr-stack-av-12345678",
         status="applied",
-        follow_up_on="2026-07-10",
+        follow_up_on="2099-07-10",
         applied_on="2026-07-03",
         last_activity_on="2026-07-05",
         outcome="interviewing",
@@ -1916,7 +1916,7 @@ retention:
     assert f"Database: {database_file}" in output
     assert "Job Radar ID: jr-stack-av-12345678" in output
     assert "Status: applied" in output
-    assert "Follow up on: 2026-07-10" in output
+    assert "Follow up on: 2099-07-10" in output
     assert "Applied on: 2026-07-03" in output
     assert "Last activity on: 2026-07-05" in output
     assert "Outcome: interviewing" in output
@@ -1928,7 +1928,7 @@ retention:
     assert "Applications tracked: 1" in list_output
     assert "Status: applied" in list_output
     assert "Workflow: follow_up_scheduled" in list_output
-    assert "Follow up on: 2026-07-10" in list_output
+    assert "Follow up on: 2099-07-10" in list_output
     assert "Applied on: 2026-07-03" in list_output
     assert "Last activity on: 2026-07-05" in list_output
     assert "Outcome: interviewing" in list_output
@@ -1991,7 +1991,7 @@ def test_parser_accepts_tracker_add_command() -> None:
             "--status",
             "applied",
             "--follow-up-on",
-            "2026-07-10",
+            "2099-07-10",
             "--applied-on",
             "2026-07-03",
             "--last-activity-on",
@@ -2012,7 +2012,7 @@ def test_parser_accepts_tracker_add_command() -> None:
     assert args.role == "Senior Site Reliability Engineer"
     assert args.url == "https://example.com/jobs/123"
     assert args.status == "applied"
-    assert args.follow_up_on == "2026-07-10"
+    assert args.follow_up_on == "2099-07-10"
     assert args.applied_on == "2026-07-03"
     assert args.last_activity_on == "2026-07-05"
     assert args.outcome == "interviewing"
@@ -2051,7 +2051,7 @@ retention:
         role_title="Senior Site Reliability Engineer",
         source_url="https://example.com/jobs/123",
         status="applied",
-        follow_up_on="2026-07-10",
+        follow_up_on="2099-07-10",
         applied_on="2026-07-03",
         last_activity_on="2026-07-05",
         outcome="interviewing",
@@ -2067,7 +2067,7 @@ retention:
     assert "Company: Example AI" in output
     assert "Role: Senior Site Reliability Engineer" in output
     assert "Status: applied" in output
-    assert "Follow up on: 2026-07-10" in output
+    assert "Follow up on: 2099-07-10" in output
     assert "Applied on: 2026-07-03" in output
     assert "Last activity on: 2026-07-05" in output
     assert "Outcome: interviewing" in output
