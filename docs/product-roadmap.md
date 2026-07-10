@@ -68,7 +68,7 @@ Current strengths:
 - Latest scan result shortcuts
 - Report viewer copy/select support
 - User-facing reassurance for temporary source/company scan errors
-- Read-only GUI Companies page foundation with card-driven filters, search, service-layer config views, and detail pages
+- Read-only GUI Companies page foundation with card-driven filters, search, service-layer config views, write-strategy readiness checks, and detail pages
 - Read-only GUI Settings page foundation
 - GUI profile/resume upload support
 - App-assigned tracker IDs for spreadsheet-imported and GUI-created manual application records
@@ -315,7 +315,7 @@ Recently completed GUI work:
 - Report viewer copy/select support
 - User-facing reassurance for temporary source/company scan errors
 - Read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status
-- Read-only Companies page showing configured target companies, source types, enabled status, source details, notes, card-driven filters, search, and per-company detail pages
+- Read-only Companies page showing configured target companies, source types, enabled status, source details, notes, card-driven filters, search, write-strategy readiness checks, and per-company detail pages
 - Manual application add form no longer asks for Job Radar ID
 - Tracker edit summary layout polish for long/generated IDs
 - Legacy `posting-url:*` tracker ID repair surfaced through the GUI
@@ -323,7 +323,7 @@ Recently completed GUI work:
 
 Near-term GUI priorities:
 
-1. Editable company management page
+1. Editable company management page after adopting a comment-preserving YAML writer
 2. Editable Settings page
 3. Preference setup page
 4. Email settings page

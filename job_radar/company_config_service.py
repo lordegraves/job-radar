@@ -1,3 +1,5 @@
+import importlib.util
+
 from dataclasses import dataclass
 
 from job_radar.config import load_yaml_file
@@ -20,6 +22,48 @@ class CompanySourceSummaryView:
     total: int
     enabled: int
     disabled: int
+
+
+@dataclass(frozen=True)
+class CompanyConfigWriteStrategyView:
+    writer_name: str
+    dependency_available: bool
+    preserves_comments: bool
+    supports_gui_writes: bool
+    reason: str
+
+
+def build_company_config_write_strategy() -> CompanyConfigWriteStrategyView:
+    if _is_ruamel_yaml_available():
+        return CompanyConfigWriteStrategyView(
+            writer_name="ruamel.yaml",
+            dependency_available=True,
+            preserves_comments=True,
+            supports_gui_writes=True,
+            reason=(
+                "ruamel.yaml is available, so future company config writes can "
+                "preserve comments, ordering, and source grouping."
+            ),
+        )
+
+    return CompanyConfigWriteStrategyView(
+        writer_name="none",
+        dependency_available=False,
+        preserves_comments=False,
+        supports_gui_writes=False,
+        reason=(
+            "Company config writes are disabled because only read-oriented YAML "
+            "support is available. PyYAML can read target-companies.yaml, but it "
+            "does not preserve comments or source grouping when writing."
+        ),
+    )
+
+
+def _is_ruamel_yaml_available() -> bool:
+    try:
+        return importlib.util.find_spec("ruamel.yaml") is not None
+    except ModuleNotFoundError:
+        return False
 
 
 def build_company_config_views(config_path: str) -> list[CompanyConfigView]:

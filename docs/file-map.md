@@ -66,7 +66,7 @@ Use the documentation set this way:
 | `job_radar/__main__.py` | Allows running the package with `python -m job_radar`. | Keep |
 | `job_radar/cli.py` | Command-line entry points and user-facing commands. | Keep / watch growth |
 | `job_radar/config.py` | Loads and validates app configuration. | Keep |
-| `job_radar/company_config_service.py` | Company configuration view models, read-only company config loading, source summaries, filtering, search text, and detail-page lookup helpers. | Keep |
+| `job_radar/company_config_service.py` | Company configuration view models, read-only company config loading, source summaries, filtering, search text, detail-page lookup helpers, and write-strategy readiness checks. | Keep |
 | `job_radar/models.py` | Core shared data models such as job postings. | Keep |
 | `job_radar/storage.py` | SQLite persistence for collected/scored job data. | Keep |
 | `job_radar/validation.py` | Validation helpers. | Keep |

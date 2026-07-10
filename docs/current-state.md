@@ -421,6 +421,8 @@ The reports page opens existing generated reports and email previews without sta
 
 The Companies page is currently read-only. It shows configured target companies, source types, enabled/disabled status, source details, notes, card-driven source-type/status filters, search, and per-company detail pages from `config/target-companies.yaml` without writing config changes.
 
+Company config GUI writes remain intentionally disabled until Job Radar has a comment-preserving YAML writer. The current write-strategy check allows future GUI writes only when `ruamel.yaml` is available, because PyYAML can read the config but does not preserve comments or source grouping on write.
+
 The in-app report viewer supports copying report text and selecting only report content with Ctrl+A when the viewer has focus.
 
 The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled. On success, the Scan page links directly to the latest HTML report, Markdown report, and email preview. The scan page also explains that some company/source errors are temporary and may clear after a later scan.
@@ -448,10 +450,10 @@ Latest verification from this milestone:
 
 ```text
 python -m pytest tests\test_company_config_service.py tests\test_web_app.py
-68 passed
+70 passed
 
 python -m pytest tests
-472 passed
+474 passed
 ```
 
 ## Current project principles

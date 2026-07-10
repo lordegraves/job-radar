@@ -2,6 +2,7 @@ from pathlib import Path
 
 from job_radar.company_config_service import (
     build_company_config_views,
+    build_company_config_write_strategy,
     build_company_source_summaries,
     filter_company_config_views,
     get_company_config_view,
@@ -138,3 +139,34 @@ def test_build_company_source_summaries_counts_enabled_disabled_and_total(tmp_pa
         ("usajobs", 1, 0, 1),
         ("workday", 0, 1, 1),
     ]
+
+
+def test_build_company_config_write_strategy_blocks_writes_without_ruamel(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "job_radar.company_config_service.importlib.util.find_spec",
+        lambda name: None,
+    )
+
+    strategy = build_company_config_write_strategy()
+
+    assert strategy.writer_name == "none"
+    assert strategy.dependency_available is False
+    assert strategy.preserves_comments is False
+    assert strategy.supports_gui_writes is False
+    assert "PyYAML can read target-companies.yaml" in strategy.reason
+    assert "does not preserve comments or source grouping" in strategy.reason
+
+
+def test_build_company_config_write_strategy_allows_writes_with_ruamel(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "job_radar.company_config_service.importlib.util.find_spec",
+        lambda name: object(),
+    )
+
+    strategy = build_company_config_write_strategy()
+
+    assert strategy.writer_name == "ruamel.yaml"
+    assert strategy.dependency_available is True
+    assert strategy.preserves_comments is True
+    assert strategy.supports_gui_writes is True
+    assert "preserve comments, ordering, and source grouping" in strategy.reason
