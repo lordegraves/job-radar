@@ -223,11 +223,13 @@ def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert '<a href="/history">Job history archive</a>' in html
     assert "Application tracker dashboard" in html
-    assert "Total tracked applications" in html
+    assert "Tracked applications" in html
     assert "Need action" in html
     assert "Need review" in html
     assert "Active pipeline" in html
     assert "Closed" in html
+    assert "Latest scan" in html
+    assert "Needs attention" in html
 
 
 def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:
@@ -281,7 +283,7 @@ def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert "Application tracker dashboard" in html
     assert '<a class="dashboard-card" href="/tracker?filter=all">' in normalized_html
-    assert "<strong>3</strong> <span class=\"muted\">Total tracked applications</span>" in normalized_html
+    assert '<strong>3</strong> <span class="muted">Tracked applications</span>' in normalized_html
     assert '<a class="dashboard-card is-action" href="/tracker?filter=needs_action">' in normalized_html
     assert '<strong>2</strong> <span class="muted">Need action</span>' in normalized_html
     assert '<a class="dashboard-card" href="/tracker?filter=needs_review">' in normalized_html
@@ -290,6 +292,283 @@ def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:
     assert '<strong>2</strong> <span class="muted">Active pipeline</span>' in normalized_html
     assert '<a class="dashboard-card" href="/tracker?filter=closed">' in normalized_html
     assert '<strong>1</strong> <span class="muted">Closed</span>' in normalized_html
+    assert "Latest scan" in html
+    assert "Top Matches" in html
+    assert "Review Needed" in html
+    assert "Tracked in report" in html
+    assert "New jobs" in html
+    assert "Actionable stored" in html
+    assert "Collector errors" in html
+    assert "Needs attention" in html
+    assert "ActionCo — SRE" in html
+    assert 'href="/tracker/jr-action-12345678/edit?filter=needs_review"' in html
+
+
+def test_index_page_surfaces_dashboard_follow_up_work(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-due-12345678",
+            company_name="DueCo",
+            role_title="Linux Engineer",
+            status="Applied",
+            follow_up_on="2026-01-01",
+            applied_on="2026-01-01",
+            outcome="Pending / In Progress",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-date-review-12345678",
+            company_name="ReviewCo",
+            role_title="Platform Engineer",
+            status="Applied",
+            follow_up_on="not-a-date",
+            applied_on="2026-01-02",
+            outcome="Pending / In Progress",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-dormant-12345678",
+            company_name="DormantCo",
+            role_title="Infrastructure Engineer",
+            status="Applied",
+            applied_on="2026-01-03",
+            outcome="Dormant",
+        ),
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-active-12345678",
+            company_name="ActiveCo",
+            role_title="Senior SRE",
+            status="Applied",
+            applied_on="2026-01-04",
+            outcome="Interview Scheduled",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "What do I need to act on today?" not in html
+    assert "Dashboard overview" in html
+    assert "Needs attention" in html
+    assert "DueCo — Linux Engineer" in html
+    assert "Follow-up: 2026-01-01" in html
+    assert "ReviewCo — Platform Engineer" in html
+    assert "Follow-up: not-a-date" in html
+    assert "DormantCo — Infrastructure Engineer" in html
+    assert "ActiveCo — Senior SRE" not in html
+    assert 'href="/tracker/jr-due-12345678/edit?filter=needs_review"' in html
+    assert 'href="/tracker/jr-date-review-12345678/edit?filter=needs_review"' in html
+    assert 'href="/tracker/jr-dormant-12345678/edit?filter=needs_review"' in html
+
+
+def test_index_page_summarizes_latest_scan_report(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+
+    reports_path.mkdir()
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    (reports_path / "target-scan.html").write_text(
+        "<html><body><h1>Job Radar Report</h1></body></html>",
+        encoding="utf-8",
+    )
+    (reports_path / "target-scan.md").write_text(
+        """
+# Job Radar Report
+
+## Summary
+
+- Generated at: 2026-07-11 11:57 UTC
+- New jobs: 3
+- Collector errors: 0
+- Actionable jobs stored: 13
+
+## Top Matches
+
+### Quick View
+
+- **122** - [Site Reliability Engineer](https://example.com/top)
+
+### [Site Reliability Engineer](https://example.com/top)
+
+## Northern Colorado Highlights
+
+No Northern Colorado highlights found.
+
+## Review Needed
+
+### [Senior Systems Software Engineer, GPU Compute](https://example.com/review-one)
+
+### [Hardware Operations Engineer](https://example.com/review-two)
+
+## Tracked Applications
+
+### [Site Reliability Engineer](https://example.com/tracked)
+
+## Passed / Not Recommended
+
+No passed jobs.
+""",
+        encoding="utf-8",
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/")
+    html = response.get_data(as_text=True)
+    normalized_html = " ".join(html.split())
+
+    assert response.status_code == 200
+    assert "Generated at 2026-07-11 11:57 UTC" in html
+    assert '<a href="/reports/view/target-scan.html">Open HTML report</a>' in html
+    assert '<a class="scan-card" href="/reports/section/top_matches">' in normalized_html
+    assert '<strong>1</strong> <span class="muted">Top Matches</span>' in normalized_html
+    assert '<a class="scan-card" href="/reports/section/review_needed">' in normalized_html
+    assert '<strong>2</strong> <span class="muted">Review Needed</span>' in normalized_html
+    assert '<a class="scan-card" href="/reports/section/tracked_applications">' in normalized_html
+    assert '<strong>1</strong> <span class="muted">Tracked in report</span>' in normalized_html
+    assert '<strong>3</strong> <span class="muted">New jobs</span>' in normalized_html
+    assert '<strong>13</strong> <span class="muted">Actionable stored</span>' in normalized_html
+    assert '<strong>0</strong> <span class="muted">Collector errors</span>' in normalized_html
+
+
+def test_report_section_view_shows_structured_job_cards_for_requested_section(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+
+    reports_path.mkdir()
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    (reports_path / "target-scan.html").write_text(
+        "<html><body><h1>Job Radar Report</h1></body></html>",
+        encoding="utf-8",
+    )
+    (reports_path / "target-scan.md").write_text(
+        """
+# Job Radar Report
+
+## Summary
+
+- Generated at: 2026-07-11 11:57 UTC
+
+## Top Matches
+
+### Quick View
+
+- **122** - [Site Reliability Engineer](https://example.com/top)
+  - Company: RunPod
+  - Location: Remote - USA
+
+### [Site Reliability Engineer](https://example.com/top)
+
+- Score: 122
+- Why it is a top match: score 122 meets top-match threshold 120
+- Why this matched: linux, infrastructure, sre, gpu, observability
+- Technical match: Very Strong
+- Resume match: Very Strong
+- Resume evidence: Linux infrastructure; reliability engineering
+- Resume gaps: None
+- Compensation: Unknown
+- Compensation range: Unknown
+- Hiring probability: High
+- Recommended action: Apply
+- Action rationale: Clean apply: very strong technical match, very strong resume match, high hiring probability, and no hiring risks.
+- Hiring risks: None
+- History context: Prior similar role at Runpod; outcome: Rejected - No Interview
+- History risk: neutral: prior_similar_role
+- Work location fit: remote
+- Company: RunPod
+- Source: ashby
+- Location: Remote - USA
+- URL: https://example.com/top
+- Job Radar ID: `jr-runpod-655a542b`
+- Canonical key: runpod:site-reliability-engineer:remote-usa
+
+## Review Needed
+
+### [Hardware Operations Engineer](https://example.com/review)
+
+- Company: OpenAI
+- Location: Remote - US
+- Recommended action: Network First
+
+## Tracked Applications
+
+### [Tracked SRE](https://example.com/tracked)
+
+- Company: Nebius
+""",
+        encoding="utf-8",
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports/section/top_matches")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Top Matches" in html
+    assert "Cleanest roles from the latest scan" in html
+    assert "RunPod" in html
+    assert "Site Reliability Engineer" in html
+    assert "Remote - USA" in html
+    assert "Hiring probability: High" in html
+    assert "Recommended action" in html
+    assert "Apply" in html
+    assert "Why this is worth acting on" in html
+    assert "Clean apply: very strong technical match" in html
+    assert "Matched because" in html
+    assert "linux, infrastructure, sre, gpu, observability" in html
+    assert "Technical match" in html
+    assert "Very Strong" in html
+    assert "Resume evidence" in html
+    assert "Linux infrastructure; reliability engineering" in html
+    assert "History context" in html
+    assert "Prior similar role at Runpod" in html
+    assert "Job Radar ID" in html
+    assert "jr-runpod-655a542b" in html
+    assert "Score: 122" not in html
+    assert "score 122 meets top-match threshold 120" not in html
+    assert "Work location fit" not in html
+    assert "Canonical key" not in html
+    assert "Hardware Operations Engineer" not in html
+    assert "Tracked SRE" not in html
+
+
+def test_report_section_view_rejects_unknown_section(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports/section/unknown")
+
+    assert response.status_code == 404
 
 
 def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
@@ -927,7 +1206,7 @@ def test_index_page_links_to_settings(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert '<a href="/settings">Settings</a>' in html
-    assert "Review active runtime paths, retention settings, scan defaults, and email status." in html
+    assert "Runtime paths, retention, scan defaults, and email status." in html
 
 
 def test_index_page_links_to_companies(tmp_path: Path) -> None:
@@ -944,7 +1223,7 @@ def test_index_page_links_to_companies(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert '<a href="/companies">Companies</a>' in html
-    assert "Review configured target companies, source types, enabled status, and source details." in html
+    assert "Configured target companies and sources." in html
 
 
 def test_companies_page_shows_read_only_company_config(tmp_path: Path, monkeypatch) -> None:

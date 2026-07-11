@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}{{ section_title }} - Job Radar{% endblock %}
+
+{% block page_styles %}
+<style>
+    .section-hero {
+        margin-bottom: 22px;
+    }
+
+    .section-hero h1 {
+        font-size: 2rem;
+        letter-spacing: -0.03em;
+        margin: 0 0 8px 0;
+    }
+
+    .section-hero p {
+        color: var(--muted);
+        margin: 0;
+        max-width: 860px;
+    }
+
+    .section-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .job-card-grid {
+        display: grid;
+        gap: 18px;
+    }
+
+    .job-card {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 22px 24px;
+    }
+
+    .job-card-header {
+        align-items: flex-start;
+        display: flex;
+        gap: 20px;
+        justify-content: space-between;
+        margin-bottom: 14px;
+    }
+
+    .job-company {
+        color: var(--accent);
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        margin: 0 0 4px 0;
+        text-transform: uppercase;
+    }
+
+    .job-title {
+        font-size: 1.45rem;
+        line-height: 1.2;
+        margin: 0;
+    }
+
+    .job-meta {
+        color: var(--muted);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .job-meta span {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 4px 10px;
+    }
+
+    .job-action {
+        background: rgba(96, 205, 255, 0.1);
+        border: 1px solid rgba(96, 205, 255, 0.35);
+        border-radius: 12px;
+        min-width: 180px;
+        padding: 12px 14px;
+        text-align: right;
+    }
+
+    .job-action-label {
+        color: var(--muted);
+        display: block;
+        font-size: 0.82rem;
+        margin-bottom: 2px;
+    }
+
+    .job-action strong {
+        color: var(--text);
+        font-size: 1rem;
+    }
+
+    .job-section {
+        border-top: 1px solid var(--border);
+        margin-top: 14px;
+        padding-top: 14px;
+    }
+
+    .job-section h2 {
+        font-size: 1rem;
+        margin: 0 0 6px 0;
+    }
+
+    .job-section p {
+        color: var(--text);
+        margin: 0;
+    }
+
+    .job-signal-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        margin-top: 14px;
+    }
+
+    .job-signal {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 14px;
+    }
+
+    .job-signal span {
+        color: var(--muted);
+        display: block;
+        font-size: 0.82rem;
+        margin-bottom: 3px;
+    }
+
+    .job-signal strong {
+        color: var(--text);
+    }
+
+    .job-links {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 18px;
+    }
+
+    .job-links a.primary-link {
+        background: var(--button-bg);
+        border-radius: 8px;
+        color: var(--button-text);
+        font-weight: 700;
+        padding: 9px 13px;
+        text-decoration: none;
+    }
+
+    .empty-panel {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        color: var(--muted);
+        padding: 22px 24px;
+    }
+
+    @media (max-width: 760px) {
+        .job-card-header {
+            display: block;
+        }
+
+        .job-action {
+            margin-top: 14px;
+            text-align: left;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section-hero">
+    <h1>{{ section_title }}</h1>
+    <p>{{ section_description }}</p>
+
+    <div class="section-actions">
+        <a href="{{ url_for('index') }}">Back to dashboard</a>
+        <a href="{{ url_for('reports') }}">Open reports</a>
+        {% if html_report_exists %}
+        <a href="{{ url_for('report_view', report_name=html_report_name) }}">Open full HTML report</a>
+        {% endif %}
+    </div>
+</section>
+
+{% if job_cards %}
+<section class="job-card-grid" aria-label="{{ section_title }} job cards">
+    {% for job in job_cards %}
+    <article class="job-card">
+        <div class="job-card-header">
+            <div>
+                {% if job.company %}
+                <p class="job-company">{{ job.company }}</p>
+                {% endif %}
+
+                <h2 class="job-title">
+                    {% if job.url %}
+                    <a href="{{ job.url }}">{{ job.title }}</a>
+                    {% else %}
+                    {{ job.title }}
+                    {% endif %}
+                </h2>
+
+                <div class="job-meta">
+                    {% if job.location %}
+                    <span>{{ job.location }}</span>
+                    {% endif %}
+                    {% if job.compensation %}
+                    <span>{{ job.compensation }}</span>
+                    {% endif %}
+                    {% if job.hiring_probability %}
+                    <span>Hiring probability: {{ job.hiring_probability }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if job.recommended_action %}
+            <div class="job-action">
+                <span class="job-action-label">Recommended action</span>
+                <strong>{{ job.recommended_action }}</strong>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if job.action_rationale %}
+        <section class="job-section">
+            <h2>Why this is worth acting on</h2>
+            <p>{{ job.action_rationale }}</p>
+        </section>
+        {% endif %}
+
+        {% if job.why_matched %}
+        <section class="job-section">
+            <h2>Matched because</h2>
+            <p>{{ job.why_matched }}</p>
+        </section>
+        {% endif %}
+
+        <div class="job-signal-grid">
+            {% if job.technical_match %}
+            <div class="job-signal">
+                <span>Technical match</span>
+                <strong>{{ job.technical_match }}</strong>
+            </div>
+            {% endif %}
+
+            {% if job.resume_match %}
+            <div class="job-signal">
+                <span>Resume match</span>
+                <strong>{{ job.resume_match }}</strong>
+            </div>
+            {% endif %}
+
+            {% if job.hiring_risks %}
+            <div class="job-signal">
+                <span>Hiring risks</span>
+                <strong>{{ job.hiring_risks }}</strong>
+            </div>
+            {% endif %}
+
+            {% if job.history_risk %}
+            <div class="job-signal">
+                <span>History risk</span>
+                <strong>{{ job.history_risk }}</strong>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if job.resume_evidence or job.resume_gaps or job.history_context %}
+        <section class="job-section">
+            <h2>Context</h2>
+            {% if job.resume_evidence %}
+            <p><strong>Resume evidence:</strong> {{ job.resume_evidence }}</p>
+            {% endif %}
+            {% if job.resume_gaps %}
+            <p><strong>Resume gaps:</strong> {{ job.resume_gaps }}</p>
+            {% endif %}
+            {% if job.history_context %}
+            <p><strong>History context:</strong> {{ job.history_context }}</p>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        <div class="job-links">
+            {% if job.url %}
+            <a class="primary-link" href="{{ job.url }}">Open job posting</a>
+            {% endif %}
+            {% if job.job_radar_id %}
+            <span class="muted">Job Radar ID: <code>{{ job.job_radar_id }}</code></span>
+            {% endif %}
+        </div>
+    </article>
+    {% endfor %}
+</section>
+{% else %}
+<div class="empty-panel">
+    {{ empty_message }}
+</div>
+{% endif %}
+{% endblock %}

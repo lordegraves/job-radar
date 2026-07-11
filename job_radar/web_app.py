@@ -266,6 +266,33 @@ PRIMARY_REPORT_FILE_DETAILS = {
     },
 }
 
+REPORT_SECTION_DETAILS = {
+    "top_matches": {
+        "title": "Top Matches",
+        "page_title": "Top Matches",
+        "description": "Cleanest roles from the latest scan. These should be the fastest apply/review decisions.",
+        "empty_message": "No Top Matches were found in the latest scan.",
+    },
+    "review_needed": {
+        "title": "Review Needed",
+        "page_title": "Review Needed",
+        "description": "Relevant roles that need a closer look before deciding whether to apply, network, or pass.",
+        "empty_message": "No Review Needed roles were found in the latest scan.",
+    },
+    "tracked_applications": {
+        "title": "Tracked Applications",
+        "page_title": "Tracked Applications",
+        "description": "Roles from the latest scan that are already in the application tracker.",
+        "empty_message": "No tracked applications were found in the latest scan.",
+    },
+    "passed_not_recommended": {
+        "title": "Passed / Not Recommended",
+        "page_title": "Passed / Not Recommended",
+        "description": "Jobs the scan did not recommend, including the subset most worth reviewing.",
+        "empty_message": "No passed or not-recommended jobs were found in the latest scan.",
+    },
+}
+
 DEFAULT_REPORT_FILE_DESCRIPTION = "Additional file in the reports directory."
 
 DEFAULT_SCAN_CONFIG_PATH = "config/target-companies.yaml"
@@ -290,6 +317,40 @@ class TrackerSummaryView:
     needs_review: int
     active: int
     closed: int
+
+
+@dataclass(frozen=True)
+class LatestReportSummaryView:
+    generated_at: str | None
+    html_report_name: str
+    html_report_exists: bool
+    top_matches: int
+    review_needed: int
+    tracked_applications: int
+    new_jobs: int
+    actionable_jobs: int
+    collector_errors: int
+
+
+@dataclass(frozen=True)
+class ReportJobCardView:
+    title: str
+    url: str | None
+    company: str | None
+    location: str | None
+    compensation: str | None
+    hiring_probability: str | None
+    recommended_action: str | None
+    action_rationale: str | None
+    why_matched: str | None
+    technical_match: str | None
+    resume_match: str | None
+    resume_evidence: str | None
+    resume_gaps: str | None
+    hiring_risks: str | None
+    history_context: str | None
+    history_risk: str | None
+    job_radar_id: str | None
 
 
 @dataclass(frozen=True)
@@ -337,10 +398,14 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         database_path = _get_database_path(app)
         applications = _get_tracker_application_views(database_path)
         tracker_summary = _build_tracker_summary(applications)
+        attention_applications = _get_dashboard_attention_applications(applications)
+        latest_report = _build_latest_report_summary(app)
 
         return render_template(
             "index.html",
             tracker_summary=tracker_summary,
+            attention_applications=attention_applications,
+            latest_report=latest_report,
         )
 
     @app.get("/settings")
@@ -593,6 +658,41 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             SCAN_RUN_LOCK.release()
 
         return redirect(url_for("scan", scan_result="success"))
+
+    @app.get("/reports/section/<section_name>")
+    def report_section_view(section_name: str) -> str:
+        section_details = REPORT_SECTION_DETAILS.get(section_name)
+
+        if section_details is None:
+            abort(404)
+
+        reports_path = Path(_get_reports_path(app)).resolve()
+        markdown_report_path = reports_path / "target-scan.md"
+        html_report_name = "target-scan.html"
+        html_report_path = reports_path / html_report_name
+
+        if not markdown_report_path.is_file():
+            abort(404)
+
+        report_text = markdown_report_path.read_text(
+            encoding="utf-8",
+            errors="replace",
+        )
+        job_cards = _build_report_job_cards(
+            report_text,
+            section_details["title"],
+        )
+
+        return render_template(
+            "report_section.html",
+            section_name=section_name,
+            section_title=section_details["page_title"],
+            section_description=section_details["description"],
+            empty_message=section_details["empty_message"],
+            job_cards=job_cards,
+            html_report_name=html_report_name,
+            html_report_exists=html_report_path.is_file(),
+        )
 
     @app.get("/reports")
     def reports() -> str:
@@ -979,6 +1079,225 @@ def _build_tracker_summary(
             if application.workflow_state == "closed"
         ),
     )
+
+
+def _get_dashboard_attention_applications(
+    applications: list[TrackerApplicationView],
+) -> list[TrackerApplicationView]:
+    attention_states = {
+        "follow_up_due",
+        "needs_date_review",
+        "dormant",
+        "stale",
+        "presumed_closed",
+    }
+
+    return [
+        application
+        for application in sorted(applications, key=_get_tracker_application_sort_key)
+        if application.workflow_state in attention_states
+    ][:5]
+
+
+def _build_latest_report_summary(app: Flask) -> LatestReportSummaryView:
+    reports_path = Path(_get_reports_path(app))
+    markdown_report_path = reports_path / "target-scan.md"
+    html_report_name = "target-scan.html"
+    html_report_path = reports_path / html_report_name
+
+    report_text = ""
+
+    if markdown_report_path.is_file():
+        report_text = markdown_report_path.read_text(
+            encoding="utf-8",
+            errors="replace",
+        )
+
+    return LatestReportSummaryView(
+        generated_at=_extract_report_summary_value(report_text, "Generated at"),
+        html_report_name=html_report_name,
+        html_report_exists=html_report_path.is_file(),
+        top_matches=_count_report_section_entries(report_text, "Top Matches"),
+        review_needed=_count_report_section_entries(report_text, "Review Needed"),
+        tracked_applications=_count_report_section_entries(
+            report_text,
+            "Tracked Applications",
+        ),
+        new_jobs=_extract_report_summary_int(report_text, "New jobs"),
+        actionable_jobs=_extract_report_summary_int(
+            report_text,
+            "Actionable jobs stored",
+        ),
+        collector_errors=_extract_report_summary_int(report_text, "Collector errors"),
+    )
+
+
+def _extract_report_summary_value(report_text: str, label: str) -> str | None:
+    prefix = f"- {label}: "
+
+    for line in report_text.splitlines():
+        if line.startswith(prefix):
+            return line.removeprefix(prefix).strip()
+
+    return None
+
+
+def _extract_report_summary_int(report_text: str, label: str) -> int:
+    value = _extract_report_summary_value(report_text, label)
+
+    if value is None:
+        return 0
+
+    try:
+        return int(value.replace(",", ""))
+    except ValueError:
+        return 0
+
+
+def _count_report_section_entries(report_text: str, section_title: str) -> int:
+    section_lines = _extract_report_section_lines(report_text, section_title)
+
+    return sum(
+        1
+        for line in section_lines
+        if line.startswith("### [")
+    )
+
+
+def _build_report_job_cards(
+    report_text: str,
+    section_title: str,
+) -> list[ReportJobCardView]:
+    section_lines = _extract_report_section_lines(report_text, section_title)
+    parsed_jobs: list[tuple[str, str | None, dict[str, str]]] = []
+    current_title: str | None = None
+    current_url: str | None = None
+    current_fields: dict[str, str] = {}
+
+    for line in section_lines:
+        heading = _parse_report_job_heading(line)
+
+        if heading is not None:
+            if current_title is not None:
+                parsed_jobs.append((current_title, current_url, current_fields))
+
+            current_title, current_url = heading
+            current_fields = {}
+            continue
+
+        if current_title is None:
+            continue
+
+        field = _parse_report_field_line(line)
+
+        if field is not None:
+            label, value = field
+            current_fields[label] = value
+
+    if current_title is not None:
+        parsed_jobs.append((current_title, current_url, current_fields))
+
+    return [
+        _build_report_job_card(title, url, fields)
+        for title, url, fields in parsed_jobs
+    ]
+
+
+def _parse_report_job_heading(line: str) -> tuple[str, str | None] | None:
+    heading_prefixes = ("### [", "#### [")
+
+    if not line.startswith(heading_prefixes):
+        return None
+
+    title_start = line.find("[") + 1
+    title_end = line.find("](", title_start)
+
+    if title_end == -1:
+        return None
+
+    url_start = title_end + 2
+    url_end = line.find(")", url_start)
+    title = line[title_start:title_end].strip()
+
+    if url_end == -1:
+        return title, None
+
+    return title, line[url_start:url_end].strip()
+
+
+def _parse_report_field_line(line: str) -> tuple[str, str] | None:
+    if not line.startswith("- "):
+        return None
+
+    field_text = line.removeprefix("- ").strip()
+
+    if ": " not in field_text:
+        return None
+
+    label, value = field_text.split(": ", 1)
+
+    return label.strip(), value.strip()
+
+
+def _build_report_job_card(
+    title: str,
+    url: str | None,
+    fields: dict[str, str],
+) -> ReportJobCardView:
+    return ReportJobCardView(
+        title=title,
+        url=url or _clean_unknown_value(fields.get("URL")),
+        company=_clean_unknown_value(fields.get("Company")),
+        location=_clean_unknown_value(fields.get("Location")),
+        compensation=_clean_unknown_value(fields.get("Compensation range"))
+        or _clean_unknown_value(fields.get("Compensation")),
+        hiring_probability=_clean_unknown_value(fields.get("Hiring probability")),
+        recommended_action=_clean_unknown_value(fields.get("Recommended action")),
+        action_rationale=_clean_unknown_value(fields.get("Action rationale")),
+        why_matched=_clean_unknown_value(fields.get("Why this matched")),
+        technical_match=_clean_unknown_value(fields.get("Technical match")),
+        resume_match=_clean_unknown_value(fields.get("Resume match")),
+        resume_evidence=_clean_unknown_value(fields.get("Resume evidence")),
+        resume_gaps=_clean_unknown_value(fields.get("Resume gaps")),
+        hiring_risks=_clean_unknown_value(fields.get("Hiring risks")),
+        history_context=_clean_unknown_value(fields.get("History context")),
+        history_risk=_clean_unknown_value(fields.get("History risk")),
+        job_radar_id=_clean_unknown_value(fields.get("Job Radar ID")),
+    )
+
+
+def _clean_unknown_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    cleaned_value = value.strip().strip("`")
+
+    if cleaned_value.lower() in {"", "unknown", "none", "n/a"}:
+        return None
+
+    return cleaned_value
+
+
+def _extract_report_section_lines(
+    report_text: str,
+    section_title: str,
+) -> list[str]:
+    section_header = f"## {section_title}"
+    section_lines: list[str] = []
+    in_section = False
+
+    for line in report_text.splitlines():
+        if line == section_header:
+            in_section = True
+            continue
+
+        if in_section and line.startswith("## "):
+            break
+
+        if in_section:
+            section_lines.append(line)
+
+    return section_lines
 
 
 def _build_history_summary(records: list) -> HistorySummaryView:

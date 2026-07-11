@@ -6,16 +6,12 @@ It scans configured company job boards, normalizes postings, stores them in SQLi
 
 Job Radar does not apply to jobs automatically. It does not contact employers. It does not scrape LinkedIn. It does not broadly crawl the internet.
 
-## Documentation set
+## Documentation policy
 
-This README is the canonical project document. It owns the current MVP state, setup commands, capabilities, operating principles, MVP boundary, and immediate direction.
+This README is the single source of truth for project documentation. It owns current state, commands, current capabilities, verification, repository structure, ownership boundaries, MVP scope, deferred scope, and long-term roadmap.
 
-Additional docs are intentionally limited in scope:
+Do not duplicate current-state details, test counts, completed milestone summaries, or user-facing documentation into separate Markdown files.
 
-- `docs/product-roadmap.md` owns future direction, MVP finish line, post-MVP vision, and deferred scope.
-- `docs/file-map.md` owns repository structure and file ownership boundaries.
-
-`docs/current-state.md` is retired as a standalone long-form ledger. Current state belongs here.
 
 ## Product direction
 
@@ -81,6 +77,7 @@ Job Radar currently supports:
 - GUI profile/resume page with resume upload/replacement support
 - PDF, DOCX, Markdown, and plain-text resume loading
 - clickable Home dashboard cards for tracker workflow navigation
+- dashboard follow-up work panels for follow-ups due, date review, stale/dormant applications, and recent active applications
 - clickable Tracker summary cards with active filter highlighting
 - clickable History archive summary cards
 - tracker Needs Review queue guidance
@@ -351,19 +348,19 @@ python -m pytest tests
 Expected current result:
 
 ```text
-474 passed
+475 passed
 ```
 
-Last verified focused/company-web suite:
+Latest verified focused web-app suite:
 
 ```powershell
-python -m pytest tests\test_company_config_service.py tests\test_web_app.py
+python -m pytest tests\test_web_app.py
 ```
 
 Expected current result:
 
 ```text
-70 passed
+65 passed
 ```
 
 ## Run full live scan
@@ -427,6 +424,586 @@ Do not work on these unless explicitly requested and documented as a new milesto
 - company add/edit GUI
 - multi-user support
 
+## Repository map and ownership boundaries
+
+## Root files
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `.gitignore` | Keeps local runtime data, generated reports, credentials, caches, and build artifacts out of Git. | Keep |
+| `.vscode/settings.json` | Local editor guardrails for the repo, including disabling HTML/Jinja format-on-save to avoid template damage. | Keep |
+| `README.md` | Canonical project overview, current MVP state, commands, capabilities, principles, and current verification. | Keep |
+| `pyproject.toml` | Python project metadata, dependencies, package config, and test/tooling config. | Keep |
+
+## Configuration
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `config/settings.yaml` | Main application settings used by the local GUI and normal app runs. | Keep |
+| `config/scoring.yaml` | Scoring thresholds and scoring-related configuration. | Keep |
+| `config/target-companies.yaml` | Primary target company/source list used by scans. | Keep |
+| `config/demo-companies.yaml` | Small/demo-safe company config for development and examples. | Keep |
+| `config/live-test-settings.yaml` | Live test scan settings. | Keep |
+| `config/local-*.yaml` | Local/private config files, ignored by Git. | Local only / ignored |
+
+## Runtime data
+
+| File / Pattern | Purpose | Keep / Review |
+|---|---|---|
+| `data/.gitkeep` | Preserves the runtime data directory in Git. | Keep |
+| `data/*.sqlite3` | Local runtime databases. | Local only / ignored |
+| `data/*.db` | Local runtime databases. | Local only / ignored |
+| `data/*.xlsx` | Local spreadsheet inputs, including current job history import files. | Local only / ignored |
+| `reports/.gitkeep` | Preserves generated reports directory in Git. | Keep |
+| `reports/*` | Generated reports, previews, audits, probes, and local run output. | Local only / ignored |
+| `logs/.gitkeep` | Preserves log directory in Git. | Keep |
+| `logs/*.log` | Runtime logs. | Local only / ignored |
+| `logs/*.log.*` | Rotated runtime logs. | Local only / ignored |
+
+## Examples
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `examples/job-history-template.xlsx` | Sanitized example workbook for the simplified Job Log import format. Contains headers, formatting, validation lists, and one fake sample row. | Keep |
+
+## Core application package
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `job_radar/__init__.py` | Package marker. | Keep |
+| `job_radar/__main__.py` | Allows running the package with `python -m job_radar`. | Keep |
+| `job_radar/cli.py` | Command-line entry points and user-facing commands. | Keep / watch growth |
+| `job_radar/config.py` | Loads and validates app configuration. | Keep |
+| `job_radar/company_config_service.py` | Company configuration view models, read-only company config loading, source summaries, filtering, search text, detail-page lookup helpers, and write-strategy readiness checks. | Keep |
+| `job_radar/models.py` | Core shared data models such as job postings. | Keep |
+| `job_radar/storage.py` | SQLite persistence for collected/scored job data. | Keep |
+| `job_radar/validation.py` | Validation helpers. | Keep |
+| `job_radar/normalize.py` | Text/key normalization helpers. | Keep |
+
+## Profile, resume, and match context
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `job_radar/candidate_profile.py` | Candidate preference/profile loading and interpretation. | Keep |
+| `job_radar/profile_service.py` | Profile/resume service helpers, including GUI-safe resume upload/replacement and normalized resume regeneration. | Keep |
+| `job_radar/resume_loader.py` | Loads Markdown, plain-text, PDF, and DOCX resume/profile text for matching. | Keep |
+| `job_radar/resume_match.py` | Resume-to-posting match logic. | Keep |
+| `profiles/clayton/profile.yaml` | Clayton-specific target profile and avoid/preference signals. | Keep / review before public release |
+| `profiles/clayton/resume.md` | Clayton-specific resume source used by Job Radar. | Keep / review before public release |
+| `profiles/clayton/resume.normalized.txt` | Normalized resume text for matching. | Keep / review whether generated |
+
+## Scoring, recommendations, and history
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `job_radar/scoring.py` | Base score calculation and top-match eligibility signals. | Keep |
+| `job_radar/recommendations.py` | Technical match, hiring probability, risk flags, recommended actions, and display eligibility. | Keep / watch growth |
+| `job_radar/recommendation_constants.py` | Shared labels for actions, risks, recommendation ordering, and history reasons. | Keep |
+| `job_radar/compensation.py` | Compensation parsing and compensation-floor evaluation. | Keep |
+| `job_radar/job_history.py` | Imports and represents external job/application history from the spreadsheet bridge. Posting URLs are import evidence; active tracker identity is assigned by Job Radar when needed. | Keep |
+| `job_radar/history_match.py` | Matches current postings against prior application/review history. | Keep |
+| `job_radar/history_context.py` | Adds history context to scored postings/reports. | Keep |
+| `job_radar/history_summary.py` | Summarizes imported history for reports. | Keep |
+
+## Application tracker
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `job_radar/tracker/__init__.py` | Tracker package marker. | Keep |
+| `job_radar/tracker/tracker_ids.py` | App-owned manual Job Radar ID generation for spreadsheet-imported and GUI-created tracker records that did not come from a scan. | Keep |
+| `job_radar/tracker/tracker_models.py` | Application tracker data model. | Keep |
+| `job_radar/tracker/tracker_storage.py` | SQLite persistence for application tracker records, including repair of legacy `posting-url:*` tracker IDs to app-owned `jr_manual_*` IDs. | Keep |
+| `job_radar/tracker/tracker_service.py` | Tracker workflow classification, tracker/history conversion, tracker/history update and delete workflow actions, import partitioning, generated tracker identity rules, and tracker business rules. | Keep |
+
+## Reporting and email
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `job_radar/reporting.py` | Markdown/HTML report rendering and report section logic. | Keep / watch growth |
+| `job_radar/email_summary.py` | Email subject/body/HTML preview generation. | Keep / watch growth |
+| `job_radar/email_sender.py` | Email delivery integration. | Keep |
+
+## Web app / GUI
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `job_radar/web_app.py` | Flask web application entry point and GUI route handlers, including tracker/history/report/companies/scan/settings routes and `/tracker/` trailing-slash redirect. Route handlers should delegate tracker/history workflow actions and company configuration view/filter logic to service-layer functions. | Keep / watch growth |
+| `job_radar/templates/index.html` | Web app landing page with clickable tracker dashboard cards and section navigation. | Keep |
+| `job_radar/templates/tracker.html` | Application tracker list, clickable summary filter cards, workflow filters, search, sorting, workflow display, Needs Review guidance, workflow badges, and edit links. | Keep |
+| `job_radar/templates/tracker_edit.html` | Application tracker edit form, summary cards with wrapping Job Radar ID display, and grouped quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history. | Keep |
+| `job_radar/templates/tracker_add.html` | Manual application tracker add form. Job Radar assigns the tracker ID when the record is saved. | Keep |
+| `job_radar/templates/history.html` | Job history/archive page for archived/history records, including summary cards, quick filters, search, filtering, sorting, chip display, and edit links. | Keep |
+| `job_radar/templates/history_edit.html` | Job history edit form, including save, delete, and move-back-to-tracker workflow. | Keep |
+| `job_radar/templates/profile.html` | Profile/resume page for viewing profile state and uploading/replacing resumes through the GUI. | Keep |
+| `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews, including latest scan result shortcut cards. | Keep |
+| `job_radar/templates/companies.html` | Read-only Companies list page showing configured target companies, source types, enabled status, source details, notes, source/status filters, and search without writing config changes. | Keep |
+| `job_radar/templates/company_detail.html` | Read-only company detail page showing the full YAML-derived company record for inspection before future edit flows. | Keep |
+| `job_radar/templates/report_view.html` | In-app report viewer shell for opening generated reports inside the GUI with shared dark styling, copy support, and focused Ctrl+A report-content selection. | Keep |
+| `job_radar/templates/scan.html` | Scan page for manual command display, controlled local GUI scan execution, direct completion links to the latest outputs, and temporary source/company error reassurance. | Keep |
+| `job_radar/templates/settings.html` | Read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status without showing secrets or writing config changes. | Keep |
+
+## Collectors
+
+Each collector should stay isolated by source/ATS type. This keeps source-specific behavior from becoming one large collector file.
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `job_radar/collectors/__init__.py` | Collector package marker. | Keep |
+| `job_radar/collectors/registry.py` | Maps configured source types to collector implementations. | Keep |
+| `job_radar/collectors/activate.py` | Activate source collector. | Keep |
+| `job_radar/collectors/adp.py` | ADP collector. | Keep |
+| `job_radar/collectors/ashby.py` | Ashby collector. | Keep |
+| `job_radar/collectors/dayforce.py` | Dayforce collector. | Keep |
+| `job_radar/collectors/greenhouse.py` | Greenhouse collector. | Keep |
+| `job_radar/collectors/html.py` | Generic HTML collector. | Keep |
+| `job_radar/collectors/icims.py` | iCIMS collector. | Keep |
+| `job_radar/collectors/jibe.py` | Jibe collector. | Keep |
+| `job_radar/collectors/jobsyn.py` | Jobsyn collector. | Keep |
+| `job_radar/collectors/lever.py` | Lever collector. | Keep |
+| `job_radar/collectors/oracle_hcm.py` | Oracle HCM collector. | Keep |
+| `job_radar/collectors/phenom.py` | Phenom collector. | Keep |
+| `job_radar/collectors/rippling.py` | Rippling collector. | Keep |
+| `job_radar/collectors/schoolspring.py` | SchoolSpring collector. | Keep |
+| `job_radar/collectors/selectminds.py` | SelectMinds collector. | Keep |
+| `job_radar/collectors/smartrecruiters.py` | SmartRecruiters collector. | Keep |
+| `job_radar/collectors/usajobs.py` | USAJobs collector. | Keep |
+| `job_radar/collectors/weka.py` | WEKA-specific collector. | Keep / review if more company-specific collectors appear |
+| `job_radar/collectors/workday.py` | Workday collector. | Keep |
+
+## Scripts
+
+| File | Purpose | Keep / Review |
+|---|---|---|
+| `scripts/run-daily-scan.ps1` | PowerShell helper for scheduled/manual daily scan runs. | Keep |
+
+## Tests
+
+Collector tests intentionally mirror collector files. This makes source-specific failures easier to identify.
+
+| Test Area | Files | Keep / Review |
+|---|---|---|
+| Collector tests | `tests/test_*_collector.py`, plus `tests/test_collector_registry.py` | Keep |
+| Config/CLI/storage/service tests | `tests/test_config.py`, `tests/test_company_config_service.py`, `tests/test_cli.py`, `tests/test_storage.py` | Keep |
+| Scoring/recommendation/report tests | `tests/test_scoring.py`, `tests/test_reporting.py`, `tests/test_email_summary.py` | Keep |
+| Profile/resume/history tests | `tests/test_candidate_profile.py`, `tests/test_resume_loader.py`, `tests/test_resume_match.py`, `tests/test_job_history.py`, `tests/test_history_match.py`, `tests/test_history_context.py`, `tests/test_history_summary.py` | Keep |
+| Tracker tests | `tests/test_tracker_service.py`, `tests/test_tracker_storage.py` | Keep |
+| Web app tests | `tests/test_web_app.py` | Keep |
+| Utility tests | `tests/test_normalize.py`, `tests/test_compensation.py`, `tests/test_email_sender.py` | Keep |
+| Integration tests | `tests/test_phase1a_integration.py` | Keep |
+
+## Simplification guidance
+
+The project is not needlessly complicated yet. The apparent file count comes from three mostly healthy choices:
+
+1. Each collector has its own file and test.
+2. Runtime/generated data is separated under `data/`, `logs/`, and `reports/`.
+3. Scoring, recommendations, history, resume matching, reporting, and email output are separate concerns.
+
+The main risk is future feature growth landing in already-large files. Avoid adding tracker or web UI logic into:
+
+- `job_radar/reporting.py`
+- `job_radar/email_summary.py`
+- `job_radar/recommendations.py`
+- `job_radar/storage.py`
+- `job_radar/cli.py`
+
+Current tracker and GUI logic already have dedicated boundaries:
+
+- `job_radar/tracker/`
+- `job_radar/web_app.py`
+- `job_radar/templates/`
+
+Continue using those boundaries instead of moving tracker behavior into reporting, recommendations, collectors, or generic storage.
+
+## Tracker / GUI boundary
+
+The spreadsheet is being phased out as the normal application-tracking interface. It remains a bridge for import/history data, but active application tracking now has a dedicated tracker module and a basic Flask GUI.
+
+Tracker and History are expected to be mutually exclusive. Active rows belong in the tracker. Terminal, passed, withdrawn, rejected, closed, or archived rows belong in history.
+
+The tracker should not be mixed into collector code or generic storage.
+
+Reporting and recommendation code may read tracker state from `ScoredPosting.application` for display/routing, but tracker workflow behavior should stay in the tracker service layer.
+
+Future GUI growth should keep `job_radar/web_app.py` small by moving workflow/business logic into GUI-neutral service functions. If route/template volume keeps growing, split the Flask interface into a dedicated web package before it becomes hard to maintain.
+
+## Companies / Settings boundary
+
+The Companies list/detail pages and Settings page are read-only in the current MVP.
+
+They belong to the GUI route/template boundary and should not grow into config-writing business logic inside templates or route handlers.
+
+For MVP:
+
+- Companies is scan/source inventory.
+- Settings is runtime visibility.
+- Neither writes config.
+
+Future company management and settings editing should be handled through service-layer functions and explicit validation, not direct template or route mutation.
+
+## Roadmap and long-term direction
+
+## Product goal
+
+Job Radar started as a personal job discovery, scoring, reporting, and application-tracking tool.
+
+The long-term product direction is to make Job Radar a configurable local-first job search assistant that another user can install, configure, and use without editing source code.
+
+The finish line is not a hosted SaaS product and not an automated job-application bot.
+
+Job Radar is complete-enough when a user can install it, configure their own job search profile, add desired companies, run scans, review scored jobs, track applications, and receive reports without editing source code.
+
+## Product principles
+
+Job Radar should remain local-first, user-controlled, configured-company based, safe for manual review, transparent in scoring and recommendations, non-invasive, not dependent on broad crawling, not dependent on LinkedIn scraping, not responsible for contacting employers, and not responsible for submitting applications automatically.
+
+The app should help the user decide where to spend time. It should not pretend to replace the user.
+
+## MVP finish line
+
+The immediate MVP target is a single-user local app that demonstrates disciplined execution and practical usefulness.
+
+MVP is complete when:
+
+1. A single local user can launch the GUI reliably.
+2. The user can run or review scans from configured company sources.
+3. The user can review Markdown/HTML reports and email previews.
+4. The user can manage active applications in the GUI.
+5. The user can add manual applications without inventing tracker IDs.
+6. The user can edit tracker records and use common quick actions.
+7. The user can move terminal applications from tracker to history.
+8. The user can reopen history records back to tracker when needed.
+9. The dashboard surfaces application follow-up work clearly.
+10. Resume upload/replacement works through the GUI.
+11. Settings and Companies pages provide safe read-only visibility.
+12. The app preserves tracker/history mutual exclusivity.
+13. The app preserves app-owned Job Radar IDs.
+14. The app keeps private runtime data out of Git.
+15. The test suite remains green.
+16. Documentation is consolidated enough to stay maintainable.
+
+
+## Near-term MVP priorities
+
+1. MVP polish for the single-user local workflow.
+2. Dashboard follow-up display refinement after real tracker use.
+3. Editable Settings page where safe and low-risk.
+4. Email settings page with secret-safe validation.
+5. Scheduled scan and scan-history retention settings page.
+6. Complete profile/preference setup beyond resume upload.
+7. Runtime data location setup.
+8. Packaging/launcher preparation.
+
+## Deferred until after MVP
+
+The following are valid long-term goals, but are intentionally deferred until the single-user MVP is stable, polished, tested, and portfolio-ready:
+
+- editable company management
+- company/contact relationship tracking
+- database-backed company inventory
+- GUI company add/edit
+- YAML-backed company writes
+- multi-user login/password support
+- full onboarding wizard
+- LLM-assisted strengths/gaps analysis
+- generalized multi-domain job-hunt workflows
+- full knowledge-base attachment system
+- hosted SaaS behavior
+- automatic job applications
+- employer outreach automation
+- LinkedIn scraping
+- mobile app
+- native desktop GUI rewrite
+
+## Long-term product vision
+
+The long-term product vision is a full job-hunt operations system.
+
+It should eventually help users manage the many moving pieces of a job search: profile creation, resume upload and analysis, strengths and gaps, preferred companies, email setup, scheduled scans, dashboard workflow, application tracking, follow-up reminders, company research, contacts, recruiter history, and interview preparation.
+
+The application should eventually behave more like an IT ticket system than a static spreadsheet:
+
+- applications requiring follow-up should be flagged
+- stale items should surface on the dashboard
+- active records should have workflow state
+- terminal records should move to history/archive
+- companies should act like an inventory/knowledge-base area
+- contacts should be tracked when available, but not required
+
+The app should eventually become useful beyond IT job hunts, but the current MVP should stay focused on the existing single-user workflow.
+
+## Future product shape
+
+Target shape:
+
+```text
+Cross-platform local-first application + SQLite + guided setup + configurable job search profile
+```
+
+Job Radar should support three launch/deployment targets without becoming three separate products:
+
+```text
+Windows packaged app
+Linux packaged app
+Container/server mode
+```
+
+The current Flask GUI is the shared web/server interface. It should remain usable directly in browser/server mode and should also be able to sit behind a future desktop wrapper or launcher for normal click-to-open desktop use.
+
+The final product should hide developer launch commands from normal users. A user should eventually open Job Radar from a Start Menu shortcut, Linux application launcher, packaged executable, or container/service URL depending on how they choose to run it.
+
+The user should eventually be able to install Job Radar, open it from a normal launcher, create/edit their search profile, add target companies, define preferred roles, salary expectations, location rules, blocker rules, positive match signals, run scans manually, schedule scans, configure scan history retention, review results, track applications, review job history, configure email reports, and export or back up local data.
+
+## Complete-enough product definition
+
+Longer-term complete-enough means:
+
+1. A non-developer user can install and launch the app.
+2. A user can configure their own companies without editing source code.
+3. A user can configure their own ATS/source settings without editing source code.
+4. A user can configure their own preferences without editing source code.
+5. A user can configure their own salary floor and ideal salary.
+6. A user can configure their own acceptable locations and remote/hybrid/on-site rules.
+7. A user can configure their own role interests, seniority targets, and avoid rules.
+8. A user can configure email reporting through a user-friendly setup flow.
+9. A user can run a scan from the GUI.
+10. A user can review scan results from the GUI.
+11. A user can track active applications from the GUI.
+12. A user can review historical, passed, skipped, rejected, and archived jobs from the GUI.
+13. A user can create manual applications from the GUI without manually inventing tracker IDs.
+14. A user can schedule recurring scans.
+15. Runtime data is stored outside the source/repo directory.
+16. Real user data is not committed to Git.
+17. The app can run as a standalone program on a user's PC.
+18. The app can run unattended as a service on a user-controlled system.
+19. The app can run in Kubernetes when that matches the user's setup.
+20. The app can be packaged for Windows with an `.exe` entry point and installer.
+21. The app can be packaged for Linux using a `.tar` or tarball-based distribution.
+22. Documentation clearly separates developer setup from user setup.
+23. Existing CLI/test/report behavior does not regress.
+
+## User configuration requirements
+
+Job Radar must stop assuming one hard-coded user profile.
+
+The app should eventually support user-specific configuration for user name/profile label, desired role titles, seniority levels, desired/excluded companies, preferred/excluded industries, positive/negative keywords, hard blockers, soft risk signals, salary floor, ideal salary, acceptable/preferred locations, remote/hybrid/on-site rules, relocation openness, travel tolerance, security clearance tolerance, employment type preference, resume/profile text, report preferences, scan history retention, email preferences, and scan schedule.
+
+## Desired companies
+
+For MVP, the Companies page remains read-only scan/source inventory.
+
+Long term, users need a way to add desired companies without editing YAML manually.
+
+Required long-term behavior:
+
+- add company from GUI
+- edit company from GUI
+- disable company without deleting it
+- delete company if needed
+- choose source type when known
+- store company career page URL
+- store ATS/source-specific identifier when needed
+- validate company source configuration before saving when possible
+- show whether the source works
+- show last scan result per company
+- show collector errors per company
+- allow targeted company/source rescan when practical
+- allow import/export of company lists
+
+The GUI should eventually support a company setup flow:
+
+```text
+Company name
+Career page URL
+Source type
+Remote/location relevance
+Notes
+Enabled yes/no
+Test source button
+Save
+```
+
+Normal GUI company data should eventually live in SQLite or user data, not as risky direct YAML mutation. YAML may remain useful for seed/default source definitions. If YAML writes are ever supported, they require a comment-preserving writer such as `ruamel.yaml`.
+
+## Preferences and scoring setup
+
+Users need guided preference setup for salary floor, ideal salary, acceptable/preferred locations, remote-only or remote-preferred behavior, target roles, acceptable seniority levels, positive keywords, negative keywords, blockers, review-needed signals, and avoid-company or avoid-industry rules.
+
+The GUI should eventually explain what each setting does in plain language.
+
+## Profile and resume setup
+
+The current profile and resume flow has started moving into the GUI, but broader profile setup is still too user-specific.
+
+Long-term behavior:
+
+- create a user profile from the GUI
+- add, paste, upload, or replace resume/profile text from the GUI
+- preserve the current GUI resume upload/replacement flow
+- keep PDF, DOCX, Markdown, and plain-text resume loading supported
+- store resume/profile text in the user data directory
+- allow the user to update it
+- use it for match signals
+- avoid committing private profile/resume data to Git
+- mirror the existing CLI resume/profile process instead of creating a separate GUI-only resume system
+- reuse the same resume loader/profile logic used by scans and CLI commands
+
+Future user-data layout should separate shipped app files from personal data.
+
+Windows target:
+
+```text
+%LOCALAPPDATA%\JobRadar\
+  settings.yaml
+  profile.yaml
+  companies.yaml
+  preferences.yaml
+  job_radar.sqlite3
+  reports\
+  logs\
+```
+
+Linux target:
+
+```text
+~/.config/job-radar/
+  settings.yaml
+  profile.yaml
+  companies.yaml
+  preferences.yaml
+
+~/.local/share/job-radar/
+  job_radar.sqlite3
+  reports/
+  logs/
+```
+
+## Cross-platform app direction
+
+Job Radar should be built as one core application with multiple launch targets, not as separate desktop, web, and server products.
+
+Supported target modes:
+
+- Windows packaged app
+- Linux packaged app
+- Container/server mode
+- Developer CLI mode
+
+Recommended path:
+
+1. Keep Flask as the shared web/server UI.
+2. Keep workflow/business logic in GUI-neutral services.
+3. Add a friendly GUI launch command.
+4. Add a local launcher that starts the app and opens the UI automatically.
+5. Add container/server deployment.
+6. Add desktop wrapper or packaged launcher for Windows and Linux.
+7. Package Windows and Linux distributions.
+
+## Installer and packaging roadmap
+
+The long-term Windows target is `JobRadarSetup.exe`.
+
+The Windows installation path should be simple enough for a non-developer user to install, launch, configure, and run a first scan without manually editing source files.
+
+Likely Windows packaging path:
+
+```text
+PyInstaller + Inno Setup
+```
+
+Possible later alternatives include Nuitka, Briefcase, MSIX, NSIS, and WiX Toolset.
+
+Linux should remain supported, but Windows packaging comes first. The required Linux packaging path is a `.tar` or tarball-based distribution. Possible later Linux formats include AppImage, `.deb`, systemd user service/timer, and Docker/container deployment.
+
+## Deployment flexibility roadmap
+
+Job Radar should be flexible enough to run in different user-controlled environments: Windows packaged desktop/local app, Linux packaged desktop/local app, unattended service on a local machine or small server, containerized web/server mode, Kubernetes service in a user-managed cluster, and developer CLI mode.
+
+Deployment work must preserve one core service layer so CLI, Flask UI, desktop launcher/wrapper, scheduler, packaged deployments, and container/server deployments do not become separate products.
+
+## Scheduler roadmap
+
+Scheduled scans should eventually be configurable without editing scripts.
+
+Windows target: Task Scheduler integration, user-selectable schedule, local logs, and safe failure behavior.
+
+Linux target: systemd user timer, local logs, and safe failure behavior.
+
+The scheduler should run the same scan pipeline as manual scans.
+
+Scan history retention should be configurable from Settings. The default should favor the latest scan outputs, with optional retention such as latest plus previous scan or a configured number of retained scans.
+
+## Data ownership and privacy
+
+Job Radar should assume job search data is private.
+
+Private data includes user profile, resume text, target companies, application history, tracker notes, recruiter/contact details, email settings, local reports, and logs that may contain job/application details.
+
+Private data should live in the user data directory and stay out of Git.
+
+The repo may include demo config, example config, sanitized workbook, documentation, tests, and non-private sample data.
+
+## Staged roadmap
+
+### Stage 1: Finish Current GUI Workflow
+
+- Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
+- Preserve completed tracker workflow improvements.
+- Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
+- Preserve Tracker/History mutual exclusivity.
+- Preserve app-owned tracker identity.
+- Keep tracker/history workflow actions in GUI-neutral services.
+- Decide the final role of the spreadsheet bridge.
+- Keep scan/report behavior stable while GUI tracker/history behavior improves.
+
+### Stage 2: User Configuration
+
+- Build user-friendly configuration for desired companies, ATS sources, role preferences, compensation, location rules, exclusions, and email settings.
+- Add configuration screens or guided setup so users do not need to hand-edit YAML for basic use.
+- Add preference setup page.
+- Add company management page.
+- Add salary/location setup.
+- Add resume/profile setup that mirrors the existing CLI resume/profile process.
+- Move user-specific runtime config out of repo assumptions.
+
+### Stage 3: Scheduling and Email
+
+- Add email setup flow.
+- Configure email from GUI.
+- Support SMTP settings, sender/recipient configuration, safe test email, and clear failure messages.
+- Configure scheduled scans from GUI.
+- Keep secrets out of config files.
+- Add clear validation and failure messages.
+
+### Stage 4: Packaging and Deployment
+
+- Prepare the app to run as a standalone desktop/local program.
+- Keep the Flask GUI usable as the shared web/server interface.
+- Add a friendly GUI launch command.
+- Add a launcher that starts Job Radar and opens the UI automatically.
+- Store user data in OS-appropriate location.
+- Build Windows executable.
+- Build Windows installer.
+- Build Linux `.tar` / tarball distribution.
+- Add container/server deployment.
+- Support standalone PC operation.
+- Support service-style operation.
+- Support Kubernetes deployment.
+- Add deployment-friendly configuration for persistent data, reports, logs, backups, retention, and safe upgrades.
+
+### Stage 5: First-Run Experience and Stabilization
+
+- Keep the app single-user by default, while leaving room for multiple profiles if useful.
+- Create a simple first-run experience from installation to first scan/report.
+- Improve user-facing error messages.
+- Add backup/export path.
+- Add import path for companies/preferences.
+- Add onboarding documentation.
+- Add recovery/troubleshooting documentation.
+- Add installation and operations documentation for Windows desktop, Linux standalone/server, and Kubernetes service modes.
+- Add release validation for packaged builds.
+- Run no-regression validation.
+
 ## Completed milestone summary
 
-Completed areas include project scaffold, all current source collectors, SQLite storage, scan/report pipeline, Markdown/HTML/email outputs, guarded email sending, scoring/location/recommendation behavior, history import, Job Radar ID history matching, tracker storage/CLI/GUI, tracker workflow classification, tracker/history movement, tracker/history mutual exclusion, GUI report viewer, GUI scan flow, GUI profile/resume upload, read-only Companies page with filters/search/detail page, read-only Settings page, app-owned manual tracker ID generation, legacy `posting-url:*` repair, company config service layer, and company config write-strategy readiness checks.
+Completed areas include project scaffold, all current source collectors, SQLite storage, scan/report pipeline, Markdown/HTML/email outputs, guarded email sending, scoring/location/recommendation behavior, history import, Job Radar ID history matching, tracker storage/CLI/GUI, tracker workflow classification, tracker/history movement, tracker/history mutual exclusion, GUI report viewer, GUI scan flow, GUI profile/resume upload, read-only Companies page with filters/search/detail page, read-only Settings page, app-owned manual tracker ID generation, legacy `posting-url:*` repair, company config service layer, company config write-strategy readiness checks, and dashboard follow-up work panels.
