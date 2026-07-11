@@ -548,6 +548,15 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "History context" in html
     assert "Prior similar role at Runpod" in html
     assert "Job Radar ID" in html
+    assert 'target="_blank" rel="noopener noreferrer"' in html
+    assert "Track this application" in html
+    assert "/tracker/add?" in html
+    assert "job_radar_id=jr-runpod-655a542b" in html
+    assert "company_name=RunPod" in html
+    assert "role_title=Site+Reliability+Engineer" in html
+    assert "source_url=https://example.com/top" in html
+    assert "status=Applied" in html
+    assert "outcome=Pending+%2F+In+Progress" in html or "outcome=Pending+/+In+Progress" in html
     assert "jr-runpod-655a542b" in html
     assert "Score: 122" not in html
     assert "score 122 meets top-match threshold 120" not in html
@@ -569,6 +578,79 @@ def test_report_section_view_rejects_unknown_section(tmp_path: Path) -> None:
     response = client.get("/reports/section/unknown")
 
     assert response.status_code == 404
+
+
+def test_tracker_add_prefills_from_report_card_query_params(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get(
+        "/tracker/add",
+        query_string={
+            "job_radar_id": "jr-runpod-655a542b",
+            "company_name": "RunPod",
+            "role_title": "Site Reliability Engineer",
+            "source_url": "https://example.com/top",
+            "status": "Applied",
+            "outcome": "Pending / In Progress",
+            "applied_on": "2026-07-11",
+        },
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert 'id="job_radar_id" name="job_radar_id" value="jr-runpod-655a542b" readonly' in html
+    assert 'id="company_name" name="company_name" value="RunPod" required' in html
+    assert 'id="role_title" name="role_title" value="Site Reliability Engineer" required' in html
+    assert 'id="source_url" name="source_url" value="https://example.com/top"' in html
+    assert '<option value="Applied" selected>' in html
+    assert '<option value="Pending / In Progress" selected>' in html
+    assert 'id="applied_on" name="applied_on" type="date" value="2026-07-11"' in html
+    assert 'id="follow_up_on" name="follow_up_on" type="date" value=""' in html
+    assert 'id="last_activity_on" name="last_activity_on" type="date" value=""' in html
+
+
+def test_tracker_add_saves_prefilled_scan_job_radar_id(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/tracker/add",
+        data={
+            "job_radar_id": "jr-runpod-655a542b",
+            "company_name": "RunPod",
+            "role_title": "Site Reliability Engineer",
+            "source_url": "https://example.com/top",
+            "status": "Applied",
+            "outcome": "Pending / In Progress",
+            "applied_on": "2026-07-11",
+            "follow_up_on": "",
+            "last_activity_on": "",
+            "notes": "",
+        },
+    )
+
+    assert response.status_code == 302
+
+    application = get_application(database_file, "jr-runpod-655a542b")
+
+    assert application is not None
+    assert application.company_name == "RunPod"
+    assert application.role_title == "Site Reliability Engineer"
+    assert application.source_url == "https://example.com/top"
+    assert application.status == "Applied"
+    assert application.outcome == "Pending / In Progress"
+    assert application.applied_on == "2026-07-11"
 
 
 def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
@@ -2616,8 +2698,8 @@ def test_tracker_add_page_shows_application_form(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Add Application" in html
-    assert "Job Radar assigns the ID when the record is saved." in html
-    assert 'name="job_radar_id"' not in html
+    assert "Job Radar assigns the ID when one is not already linked from a scan result." in html
+    assert 'id="job_radar_id" name="job_radar_id" value="" readonly' in html
     assert 'name="company_name"' in html
     assert 'name="role_title"' in html
     assert 'name="source_url"' in html

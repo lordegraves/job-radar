@@ -351,6 +351,7 @@ class ReportJobCardView:
     history_context: str | None
     history_risk: str | None
     job_radar_id: str | None
+    tracker_add_url: str
 
 
 @dataclass(frozen=True)
@@ -793,10 +794,26 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
     @app.get("/tracker/add")
     def add_tracker_application() -> str:
+        prefill_values = {
+            "job_radar_id": request.args.get("job_radar_id", "").strip(),
+            "company_name": request.args.get("company_name", "").strip(),
+            "role_title": request.args.get("role_title", "").strip(),
+            "source_url": request.args.get("source_url", "").strip(),
+            "status": request.args.get("status", "Applied").strip() or "Applied",
+            "outcome": (
+                request.args.get("outcome", "Pending / In Progress").strip()
+                or "Pending / In Progress"
+            ),
+            "applied_on": request.args.get("applied_on", "").strip(),
+            "follow_up_on": request.args.get("follow_up_on", "").strip(),
+            "last_activity_on": request.args.get("last_activity_on", "").strip(),
+        }
+
         return render_template(
             "tracker_add.html",
             status_options=TRACKER_STATUS_OPTIONS,
             outcome_options=TRACKER_OUTCOME_OPTIONS,
+            prefill_values=prefill_values,
         )
 
     @app.post("/tracker/add")
@@ -807,14 +824,19 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         role_title = request.form["role_title"].strip()
         source_url = _normalize_optional_form_value("source_url")
 
+        job_radar_id = request.form.get("job_radar_id", "").strip()
+
+        if not job_radar_id:
+            job_radar_id = build_manual_job_radar_id(
+                company_name=company_name,
+                role_title=role_title,
+                source_url=source_url,
+            )
+
         upsert_application(
             database_path,
             ApplicationRecord(
-                job_radar_id=build_manual_job_radar_id(
-                    company_name=company_name,
-                    role_title=role_title,
-                    source_url=source_url,
-                ),
+                job_radar_id=job_radar_id,
                 company_name=company_name,
                 role_title=role_title,
                 source_url=source_url,
@@ -1244,10 +1266,14 @@ def _build_report_job_card(
     url: str | None,
     fields: dict[str, str],
 ) -> ReportJobCardView:
+    source_url = url or _clean_unknown_value(fields.get("URL"))
+    company = _clean_unknown_value(fields.get("Company"))
+    job_radar_id = _clean_unknown_value(fields.get("Job Radar ID"))
+
     return ReportJobCardView(
         title=title,
-        url=url or _clean_unknown_value(fields.get("URL")),
-        company=_clean_unknown_value(fields.get("Company")),
+        url=source_url,
+        company=company,
         location=_clean_unknown_value(fields.get("Location")),
         compensation=_clean_unknown_value(fields.get("Compensation range"))
         or _clean_unknown_value(fields.get("Compensation")),
@@ -1262,7 +1288,17 @@ def _build_report_job_card(
         hiring_risks=_clean_unknown_value(fields.get("Hiring risks")),
         history_context=_clean_unknown_value(fields.get("History context")),
         history_risk=_clean_unknown_value(fields.get("History risk")),
-        job_radar_id=_clean_unknown_value(fields.get("Job Radar ID")),
+        job_radar_id=job_radar_id,
+        tracker_add_url=url_for(
+            "add_tracker_application",
+            job_radar_id=job_radar_id or "",
+            company_name=company or "",
+            role_title=title,
+            source_url=source_url or "",
+            status="Applied",
+            outcome="Pending / In Progress",
+            applied_on=date.today().isoformat(),
+        ),
     )
 
 

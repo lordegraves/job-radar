@@ -6,40 +6,44 @@
 <div class="page-card form-page">
     <h1 class="page-title">Add Application</h1>
 
-    <p class="muted">Create a manual tracker record for an application or external lead. Job Radar assigns the ID when the record is saved.</p>
+    <p class="muted">Create a tracker record for an application or external lead. Job Radar assigns the ID when one is not already linked from a scan result.</p>
 
     <form method="post">
+        <label for="job_radar_id">Job Radar ID</label>
+        <input id="job_radar_id" name="job_radar_id" value="{{ prefill_values.job_radar_id }}" readonly>
+        <p class="muted">Leave blank for Job Radar to assign a manual tracker ID.</p>
+
         <label for="company_name">Company</label>
-        <input id="company_name" name="company_name" required>
+        <input id="company_name" name="company_name" value="{{ prefill_values.company_name }}" required>
 
         <label for="role_title">Role</label>
-        <input id="role_title" name="role_title" required>
+        <input id="role_title" name="role_title" value="{{ prefill_values.role_title }}" required>
 
         <label for="source_url">Posting URL</label>
-        <input id="source_url" name="source_url">
+        <input id="source_url" name="source_url" value="{{ prefill_values.source_url }}">
 
         <label for="status">Status</label>
         <select id="status" name="status" required>
             {% for status_option in status_options %}
-            <option value="{{ status_option }}" {% if status_option=="Applied" %}selected{% endif %}>
+            <option value="{{ status_option }}" {% if status_option==prefill_values.status %}selected{% endif %}>
                 {{ status_option }}
             </option>
             {% endfor %}
         </select>
 
         <label for="follow_up_on">Follow-up date</label>
-        <input id="follow_up_on" name="follow_up_on" placeholder="YYYY-MM-DD">
+        <input class="date-picker-input" id="follow_up_on" name="follow_up_on" type="date" value="{{ prefill_values.follow_up_on }}">
 
         <label for="applied_on">Applied date</label>
-        <input id="applied_on" name="applied_on" placeholder="YYYY-MM-DD">
+        <input class="date-picker-input" id="applied_on" name="applied_on" type="date" value="{{ prefill_values.applied_on }}">
 
         <label for="last_activity_on">Last activity date</label>
-        <input id="last_activity_on" name="last_activity_on" placeholder="YYYY-MM-DD">
+        <input class="date-picker-input" id="last_activity_on" name="last_activity_on" type="date" value="{{ prefill_values.last_activity_on }}">
 
         <label for="outcome">Outcome</label>
         <select id="outcome" name="outcome">
             {% for outcome_option in outcome_options %}
-            <option value="{{ outcome_option }}" {% if outcome_option=="Pending / In Progress" %}selected{% endif %}>
+            <option value="{{ outcome_option }}" {% if outcome_option==prefill_values.outcome %}selected{% endif %}>
                 {{ outcome_option or "None" }}
             </option>
             {% endfor %}
@@ -54,4 +58,20 @@
         </div>
     </form>
 </div>
+
+<script>
+    document.querySelectorAll(".date-picker-input").forEach((dateInput) => {
+        dateInput.addEventListener("click", () => {
+            if (typeof dateInput.showPicker === "function") {
+                dateInput.showPicker();
+            }
+        });
+
+        dateInput.addEventListener("focus", () => {
+            if (typeof dateInput.showPicker === "function") {
+                dateInput.showPicker();
+            }
+        });
+    });
+</script>
 {% endblock %}

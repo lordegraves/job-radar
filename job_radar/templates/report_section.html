@@ -149,13 +149,20 @@
         margin-top: 18px;
     }
 
-    .job-links a.primary-link {
-        background: var(--button-bg);
-        border-radius: 8px;
-        color: var(--button-text);
-        font-weight: 700;
-        padding: 9px 13px;
-        text-decoration: none;
+    .job-links .button-link {
+        align-items: center;
+        display: inline-flex;
+        justify-content: center;
+    }
+
+    .job-id-pill {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--muted);
+        display: inline-flex;
+        gap: 6px;
+        padding: 6px 10px;
     }
 
     .empty-panel {
@@ -206,7 +213,7 @@
 
                 <h2 class="job-title">
                     {% if job.url %}
-                    <a href="{{ job.url }}">{{ job.title }}</a>
+                    <a href="{{ job.url }}" target="_blank" rel="noopener noreferrer">{{ job.title }}</a>
                     {% else %}
                     {{ job.title }}
                     {% endif %}
@@ -293,11 +300,12 @@
         {% endif %}
 
         <div class="job-links">
+            <a class="button-link" href="{{ job.tracker_add_url }}">Track this application</a>
             {% if job.url %}
-            <a class="primary-link" href="{{ job.url }}">Open job posting</a>
+            <a class="button-link button-secondary" href="{{ job.url }}" target="_blank" rel="noopener noreferrer">Open job posting</a>
             {% endif %}
             {% if job.job_radar_id %}
-            <span class="muted">Job Radar ID: <code>{{ job.job_radar_id }}</code></span>
+            <span class="job-id-pill">Job Radar ID: <code>{{ job.job_radar_id }}</code></span>
             {% endif %}
         </div>
     </article>
