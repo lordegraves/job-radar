@@ -546,6 +546,32 @@ def _build_tracker_workflow_summary(database_path: str) -> dict[str, int]:
     return workflow_summary
 
 
+def _get_application_for_posting(
+    *,
+    database_path: str,
+    tracked_applications: list[ApplicationRecord],
+    posting,
+) -> ApplicationRecord | None:
+    application = get_application(database_path, posting.job_radar_id)
+
+    if application is not None:
+        return application
+
+    if not posting.source_url:
+        return None
+
+    posting_source_url = posting.source_url.strip()
+
+    for tracked_application in tracked_applications:
+        if tracked_application.source_url is None:
+            continue
+
+        if tracked_application.source_url.strip() == posting_source_url:
+            return tracked_application
+
+    return None
+
+
 def handle_scan(
     config_path: str,
     settings_path: str,
@@ -611,6 +637,7 @@ def handle_scan(
     history_context = build_history_context(history_summary)
     history_records = fetch_included_job_history_records(database_path)
     tracker_workflow_summary = _build_tracker_workflow_summary(database_path)
+    tracked_applications = list_applications(database_path)
 
     scored_postings = []
 
@@ -640,7 +667,11 @@ def handle_scan(
         history_risk_level, history_risk_reasons = summarize_history_risk(
             history_matches
         )
-        application = get_application(database_path, posting.job_radar_id)
+        application = _get_application_for_posting(
+            database_path=database_path,
+            tracked_applications=tracked_applications,
+            posting=posting,
+        )
 
         scored_postings.append(
             ScoredPosting(

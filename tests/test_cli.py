@@ -1008,6 +1008,131 @@ top_matches:
     assert "  - follow_up_scheduled: 1" in report_text
 
 
+def test_handle_scan_matches_tracked_application_by_source_url_when_ids_differ(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    config_file = tmp_path / "companies.yaml"
+    settings_file = tmp_path / "settings.yaml"
+    scoring_file = tmp_path / "scoring.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    report_file = tmp_path / "today.md"
+
+    config_file.write_text(
+        """
+companies:
+  - company_key: runpod
+    name: RunPod
+    source_type: ashby
+    source_slug: runpod
+    enabled: true
+""",
+        encoding="utf-8",
+    )
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+    scoring_file.write_text(
+        """
+title_keywords:
+  infrastructure: 100
+  reliability: 100
+
+body_keywords:
+  linux: 100
+
+location:
+  allowed:
+    remote: 100
+  conditional: {}
+  skipped: {}
+
+top_matches:
+  min_score: 1
+  excluded_title_keywords: []
+  strong_signals:
+    - title:reliability
+""",
+        encoding="utf-8",
+    )
+
+    fake_posting = JobPosting(
+        company_key="runpod",
+        company_name="RunPod",
+        source_type="ashby",
+        source_job_id="1d14340c-c9bd-4754-80f4-5c83980cd413",
+        source_url="https://jobs.ashbyhq.com/RunPod/1d14340c-c9bd-4754-80f4-5c83980cd413",
+        title="Site Reliability Engineer",
+        location="Remote",
+        description="Build Linux infrastructure.",
+        canonical_key="runpod:site-reliability-engineer:remote",
+        content_hash="hash-runpod-sre",
+    )
+
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr_manual_runpod_site_reliability_engineer_a614aac51c",
+            company_name="RunPod",
+            role_title="Site Reliability Engineer",
+            source_url="https://jobs.ashbyhq.com/RunPod/1d14340c-c9bd-4754-80f4-5c83980cd413",
+            status="Applied",
+            follow_up_on="2026-07-25",
+            applied_on="2026-07-11",
+            last_activity_on="2026-07-11",
+            outcome="Pending / In Progress",
+            notes="Applied through company site.",
+        ),
+    )
+
+    def fake_collect_jobs_for_company(company_config):
+        return [fake_posting]
+
+    monkeypatch.setattr(
+        "job_radar.cli.collect_jobs_for_company",
+        fake_collect_jobs_for_company,
+    )
+
+    handle_scan(
+        config_path=str(config_file),
+        settings_path=str(settings_file),
+        report_path=str(report_file),
+        scoring_path=str(scoring_file),
+    )
+
+    capsys.readouterr()
+    report_text = report_file.read_text(encoding="utf-8")
+
+    top_matches_section = report_text.split("## Northern Colorado Highlights")[0]
+    tracked_section = report_text.split("## Tracked Applications")[1].split(
+        "## Passed / Not Recommended"
+    )[0]
+
+    assert "### [Site Reliability Engineer]" not in top_matches_section
+    assert "### [Site Reliability Engineer]" in tracked_section
+    assert "- Recommended action: Track Status" in tracked_section
+    assert "- Track Status:" in tracked_section
+    assert "  - Status: Applied" in tracked_section
+    assert "  - Workflow: follow_up_scheduled" in tracked_section
+    assert "  - Follow up on: 2026-07-25" in tracked_section
+    assert "  - Outcome: Pending / In Progress" in tracked_section
+
+
 def test_handle_scan_omits_track_status_for_untracked_job(
     tmp_path: Path,
     monkeypatch,
