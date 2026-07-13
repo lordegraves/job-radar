@@ -2439,8 +2439,155 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert "Schedule follow-up next week" in html
     assert "Applied through company site." in html
     assert "Next action" in html
-    assert "Follow-up is scheduled." in html
+    assert "This application is active." in html
     assert 'target="_blank" rel="noopener noreferrer"' in html
+
+
+def test_tracker_edit_page_shows_follow_up_due_next_action(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-due-12345678",
+            company_name="DueCo",
+            role_title="SRE",
+            status="Applied",
+            follow_up_on="2026-01-01",
+            applied_on="2026-01-01",
+            outcome="Pending / In Progress",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker/jr-due-12345678/edit")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Next action" in html
+    assert "Follow-up is due. Refresh activity today or schedule the next follow-up." in html
+
+
+def test_tracker_edit_page_shows_missing_follow_up_next_action(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-missing-follow-up-12345678",
+            company_name="MissingCo",
+            role_title="Platform Engineer",
+            status="Applied",
+            applied_on=date.today().isoformat(),
+            last_activity_on=date.today().isoformat(),
+            outcome="Pending / In Progress",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker/jr-missing-follow-up-12345678/edit")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Next action" in html
+    assert "No follow-up date is set. Schedule a follow-up so this application does not go stale." in html
+
+
+def test_tracker_edit_page_shows_date_review_next_action(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-date-review-12345678",
+            company_name="DateReviewCo",
+            role_title="Infrastructure Engineer",
+            status="Applied",
+            follow_up_on="not-a-date",
+            applied_on="2026-07-01",
+            outcome="Pending / In Progress",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker/jr-date-review-12345678/edit")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Next action" in html
+    assert "The follow-up date needs review. Use the date picker or a quick action to repair it." in html
+
+
+def test_tracker_edit_page_shows_stale_next_action(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-stale-12345678",
+            company_name="StaleCo",
+            role_title="Linux Engineer",
+            status="Applied",
+            last_activity_on="2026-03-01",
+            outcome="Pending / In Progress",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker/jr-stale-12345678/edit")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Next action" in html
+    assert "This application has gone stale. Refresh activity, schedule follow-up, or move it to history if it is effectively closed." in html
+
+
+def test_tracker_edit_page_shows_dormant_next_action(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-dormant-12345678",
+            company_name="DormantCo",
+            role_title="Systems Engineer",
+            status="Applied",
+            outcome="Dormant",
+        ),
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/tracker/jr-dormant-12345678/edit")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Next action" in html
+    assert "This application is dormant. Decide whether to revive it, leave it dormant, or move it to history." in html
 
 
 def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(

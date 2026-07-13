@@ -882,7 +882,10 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
             quick_actions=TRACKER_QUICK_ACTIONS,
             tracker_notice=request.args.get("tracked", "").strip(),
-            next_action_message=_build_tracker_next_action_message(application),
+            next_action_message=_build_tracker_next_action_message(
+                application,
+                workflow_state,
+            ),
         )
 
     @app.post("/tracker/<path:job_radar_id>/edit")
@@ -1715,7 +1718,31 @@ def _parse_tracker_sort_date(value: str | None) -> date | None:
         return None
 
 
-def _build_tracker_next_action_message(application: ApplicationRecord) -> str:
+def _build_tracker_next_action_message(
+    application: ApplicationRecord,
+    workflow_state: str,
+) -> str:
+    if workflow_state == "active_pipeline":
+        return "This application is active. Keep interview or recruiter notes current and record the next follow-up date."
+
+    if workflow_state == "needs_date_review":
+        return "The follow-up date needs review. Use the date picker or a quick action to repair it."
+
+    if workflow_state == "follow_up_due":
+        return "Follow-up is due. Refresh activity today or schedule the next follow-up."
+
+    if workflow_state == "dormant":
+        return "This application is dormant. Decide whether to revive it, leave it dormant, or move it to history."
+
+    if workflow_state == "stale":
+        return "This application has gone stale. Refresh activity, schedule follow-up, or move it to history if it is effectively closed."
+
+    if workflow_state == "presumed_closed":
+        return "This application is probably closed. Confirm the outcome and move it to history if there is no active path forward."
+
+    if workflow_state == "closed":
+        return "This application is closed. It should stay in history unless you need to correct the record."
+
     if not application.follow_up_on:
         return "No follow-up date is set. Schedule a follow-up so this application does not go stale."
 
