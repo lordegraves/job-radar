@@ -19,11 +19,23 @@ Job Radar started as a personal job discovery and application-tracking tool.
 
 The long-term direction is a configurable local-first cross-platform application that another user can install, configure, and use without editing source code. Long-term targets are Windows packaged app, Linux packaged app, and container/server mode for always-on use.
 
-The near-term MVP target is narrower: a disciplined single-user local workflow that can scan target companies, score roles, manage active applications, surface follow-ups, preserve history, and produce useful reports without risky architecture expansion.
+The near-term MVP target is narrower: a disciplined single-user local workflow that can scan target companies, score roles, manage active applications, surface follow-ups, preserve history, maintain resume/profile input, and produce useful reports without risky architecture expansion.
 
-Complete-enough for the current MVP means one user can run Job Radar locally, maintain their resume/profile input, scan configured companies, review scored results, manage active applications and archived history through the GUI, and know what needs action next.
+Projected MVP completion target: **2026-07-31**.
+
+Complete-enough for the current MVP means one user can run Job Radar locally, maintain their resume/profile input, scan configured companies, review scored results, manage active applications and archived history through the GUI, and know what needs action next without treating the spreadsheet or command line as the primary daily interface.
+
+The projected full-project completion target is **2026-09-30**. Full-project completion means Job Radar becomes a configurable local-first app with multiple launch targets, profile-aware configuration, user-managed companies/preferences/email/schedule, and no normal-use dependency on editing repo files by hand.
 
 ## MVP boundary
+
+Projected MVP completion target: **2026-07-31**.
+
+MVP means the local GUI supports the normal daily loop:
+
+```text
+scan -> review report -> track application -> update application -> review history -> manage resume/profile basics
+```
 
 MVP includes:
 
@@ -32,7 +44,10 @@ MVP includes:
 - existing scan/report/email-preview flow
 - existing application tracker and history/archive
 - GUI-managed active application workflow
+- workflow-aware tracker next-action guidance
 - follow-up dates and dashboard flags
+- report card to tracker-add workflow
+- tracked scan job matching by Job Radar ID and source URL
 - read-only Companies page as scan/source inventory
 - read-only Settings page as runtime visibility
 - manual application tracking
@@ -53,8 +68,43 @@ MVP does not include:
 - knowledge-base attachment system
 - generalized multi-domain job-hunt workflows
 - hosted SaaS behavior
+- Windows packaged installer
+- Linux packaged distribution
+- container/server deployment
+- multi-profile/profile-switching support
+- LLM resume tailoring or cover-letter generation
 
 These deferred items remain valid long-term goals, but they should not hijack the current MVP.
+
+## Full project boundary
+
+Projected full-project completion target: **2026-09-30**.
+
+Full-project completion means a non-developer user can install or run Job Radar, configure their own profile, resume, preferences, target companies, scan settings, email settings, schedule, and application tracker without editing source files or YAML by hand.
+
+Full project includes:
+
+- everything in MVP
+- profile creation and switching
+- different resumes per profile
+- different target companies per profile
+- different role preferences per profile
+- different scoring/preferences per profile
+- user-added companies
+- first-run setup flow
+- user-friendly company add/edit/disable workflows
+- email settings setup that does not expose secrets
+- scheduled scan settings
+- scan-history retention settings
+- Windows packaged app target
+- Linux packaged app target
+- container/server mode
+- developer CLI mode
+- shared service layer across GUI, CLI, and packaged modes
+- clear backup/export strategy for SQLite/user data
+- no dependency on spreadsheet for normal use
+
+Full project does not include automatic applications, automatic recruiter contact, LinkedIn scraping, bypassing authentication or anti-bot controls, or becoming a generic job board crawler.
 
 ## Current capabilities
 
@@ -89,6 +139,9 @@ Job Radar currently supports:
 - read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status
 - scan/report reassurance for temporary company/source or source/network errors
 - `/tracker/` trailing-slash redirect to `/tracker`
+- post-tracking redirect to the tracked application's edit/detail page
+- workflow-aware Next action guidance on tracker edit/detail pages
+- tracked scan job matching by exact Job Radar ID first, then source URL fallback, so manually tracked scanned jobs do not keep reappearing as new Top Matches
 
 ## Source coverage
 
@@ -348,7 +401,7 @@ python -m pytest tests
 Expected current result:
 
 ```text
-475 passed
+486 passed
 ```
 
 Latest verified focused web-app suite:
@@ -360,7 +413,7 @@ python -m pytest tests\test_web_app.py
 Expected current result:
 
 ```text
-65 passed
+75 passed
 ```
 
 ## Run full live scan
@@ -663,6 +716,8 @@ The app should help the user decide where to spend time. It should not pretend t
 
 The immediate MVP target is a single-user local app that demonstrates disciplined execution and practical usefulness.
 
+Projected MVP completion target: **2026-07-31**.
+
 MVP is complete when:
 
 1. A single local user can launch the GUI reliably.
@@ -686,13 +741,13 @@ MVP is complete when:
 ## Near-term MVP priorities
 
 1. MVP polish for the single-user local workflow.
-2. Dashboard follow-up display refinement after real tracker use.
-3. Editable Settings page where safe and low-risk.
-4. Email settings page with secret-safe validation.
-5. Scheduled scan and scan-history retention settings page.
-6. Complete profile/preference setup beyond resume upload.
-7. Runtime data location setup.
-8. Packaging/launcher preparation.
+2. Resume/profile upload and preview polish.
+3. Tracker edit/detail page workflow-layout polish after real tracker use.
+4. Dashboard follow-up display refinement after real tracker use.
+5. Settings visibility improvements where they remove real user friction.
+6. Documentation alignment for local GUI use, scan use, and safe email behavior.
+7. Company add/edit only if it can be done safely without corrupting source grouping.
+8. Packaging/launcher preparation remains post-MVP unless explicitly pulled forward.
 
 ## Deferred until after MVP
 
@@ -717,6 +772,8 @@ The following are valid long-term goals, but are intentionally deferred until th
 
 ## Long-term product vision
 
+Projected full-project completion target: **2026-09-30**.
+
 The long-term product vision is a full job-hunt operations system.
 
 It should eventually help users manage the many moving pieces of a job search: profile creation, resume upload and analysis, strengths and gaps, preferred companies, email setup, scheduled scans, dashboard workflow, application tracking, follow-up reminders, company research, contacts, recruiter history, and interview preparation.
@@ -730,9 +787,11 @@ The application should eventually behave more like an IT ticket system than a st
 - companies should act like an inventory/knowledge-base area
 - contacts should be tracked when available, but not required
 
-The app should eventually become useful beyond IT job hunts, but the current MVP should stay focused on the existing single-user workflow.
+The app should eventually become useful beyond IT job hunts, but the current MVP should stay focused on the existing single-user workflow. Profile creation and switching should eventually support different users, resumes, target companies, role preferences, and scoring/preferences without forcing separate code paths.
 
 ## Future product shape
+
+Full-project completion means Job Radar is configurable and profile-aware enough that a normal user can install or run it, configure their own search, and use it without editing repo files by hand.
 
 Target shape:
 
@@ -1006,4 +1065,4 @@ The repo may include demo config, example config, sanitized workbook, documentat
 
 ## Completed milestone summary
 
-Completed areas include project scaffold, all current source collectors, SQLite storage, scan/report pipeline, Markdown/HTML/email outputs, guarded email sending, scoring/location/recommendation behavior, history import, Job Radar ID history matching, tracker storage/CLI/GUI, tracker workflow classification, tracker/history movement, tracker/history mutual exclusion, GUI report viewer, GUI scan flow, GUI profile/resume upload, read-only Companies page with filters/search/detail page, read-only Settings page, app-owned manual tracker ID generation, legacy `posting-url:*` repair, company config service layer, company config write-strategy readiness checks, and dashboard follow-up work panels.
+Completed areas include project scaffold, all current source collectors, SQLite storage, scan/report pipeline, Markdown/HTML/email outputs, guarded email sending, scoring/location/recommendation behavior, history import, Job Radar ID history matching, tracker storage/CLI/GUI, tracker workflow classification, tracker/history movement, tracker/history mutual exclusion, GUI report viewer, GUI scan flow, GUI profile/resume upload, read-only Companies page with filters/search/detail page, read-only Settings page, app-owned manual tracker ID generation, legacy `posting-url:*` repair, company config service layer, company config write-strategy readiness checks, dashboard follow-up work panels, company detail page, documentation consolidation, dashboard scan/follow-up summary, report-card-to-tracker-add workflow, post-tracking edit/detail redirect, tracked scan job source-URL matching, and workflow-aware tracker next-action guidance.
