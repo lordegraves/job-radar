@@ -149,8 +149,20 @@
         </div>
     </div>
 
+    {% if tracker_notice == "created" %}
+    <div class="review-helper-panel">
+        <h2>Application tracked</h2>
+        <p class="muted">This application is now in Job Radar. Review the next action, add notes, or use a quick action to schedule follow-up.</p>
+    </div>
+    {% endif %}
+
+    <div class="review-helper-panel">
+        <h2>Next action</h2>
+        <p class="muted">{{ next_action_message }}</p>
+    </div>
+
     {% if application.source_url %}
-    <p><strong>Posting:</strong> <a href="{{ application.source_url }}">View posting</a></p>
+    <p><strong>Posting:</strong> <a href="{{ application.source_url }}" target="_blank" rel="noopener noreferrer">View posting</a></p>
     {% endif %}
 
     {% if return_filter == "needs_review" %}
@@ -173,15 +185,13 @@
         </select>
 
         <label for="follow_up_on">Follow-up date</label>
-        <input id="follow_up_on" name="follow_up_on" value="{{ application.follow_up_on or '' }}"
-            placeholder="YYYY-MM-DD">
+        <input class="date-picker-input" id="follow_up_on" name="follow_up_on" type="date" value="{{ application.follow_up_on or '' }}">
 
         <label for="applied_on">Applied date</label>
-        <input id="applied_on" name="applied_on" value="{{ application.applied_on or '' }}" placeholder="YYYY-MM-DD">
+        <input class="date-picker-input" id="applied_on" name="applied_on" type="date" value="{{ application.applied_on or '' }}">
 
         <label for="last_activity_on">Last activity date</label>
-        <input id="last_activity_on" name="last_activity_on" value="{{ application.last_activity_on or '' }}"
-            placeholder="YYYY-MM-DD">
+        <input class="date-picker-input" id="last_activity_on" name="last_activity_on" type="date" value="{{ application.last_activity_on or '' }}">
 
         <label for="outcome">Outcome</label>
         <select id="outcome" name="outcome">
@@ -248,4 +258,20 @@
         </div>
     </form>
 </div>
+
+<script>
+    document.querySelectorAll(".date-picker-input").forEach((dateInput) => {
+        dateInput.addEventListener("click", () => {
+            if (typeof dateInput.showPicker === "function") {
+                dateInput.showPicker();
+            }
+        });
+
+        dateInput.addEventListener("focus", () => {
+            if (typeof dateInput.showPicker === "function") {
+                dateInput.showPicker();
+            }
+        });
+    });
+</script>
 {% endblock %}

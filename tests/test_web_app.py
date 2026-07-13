@@ -2431,13 +2431,16 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert "word-break: break-word;" in html
     assert 'name="return_filter" value="needs_action"' in html
     assert '<option value="Applied" selected>' in html
-    assert 'name="follow_up_on" value="2099-07-10"' in html
-    assert 'name="applied_on" value="2026-07-03"' in html
-    assert 'name="last_activity_on" value="2026-07-05"' in html
+    assert 'id="follow_up_on" name="follow_up_on" type="date" value="2099-07-10"' in html
+    assert 'id="applied_on" name="applied_on" type="date" value="2026-07-03"' in html
+    assert 'id="last_activity_on" name="last_activity_on" type="date" value="2026-07-05"' in html
     assert '<option value="Interview Scheduled" selected>' in html
     assert "Refresh activity today" in html
     assert "Schedule follow-up next week" in html
     assert "Applied through company site." in html
+    assert "Next action" in html
+    assert "Follow-up is scheduled." in html
+    assert 'target="_blank" rel="noopener noreferrer"' in html
 
 
 def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
@@ -2740,7 +2743,8 @@ def test_tracker_add_page_saves_application_and_redirects(
     applications = list_applications(database_file)
 
     assert response.status_code == 302
-    assert response.headers["Location"].endswith("/tracker?filter=all")
+    assert "/tracker/jr_manual_manualco_senior_infrastructure_engineer_" in response.headers["Location"]
+    assert response.headers["Location"].endswith("/edit?filter=all&tracked=created")
     assert len(applications) == 1
 
     application = applications[0]
@@ -2756,6 +2760,13 @@ def test_tracker_add_page_saves_application_and_redirects(
     assert application.last_activity_on == "2026-07-05"
     assert application.outcome == "Pending / In Progress"
     assert application.notes == "Added manually from GUI."
+
+    edit_response = client.get(response.headers["Location"])
+    edit_html = edit_response.get_data(as_text=True)
+
+    assert edit_response.status_code == 200
+    assert "Application tracked" in edit_html
+    assert "Next action" in edit_html
 
 
 def test_tracker_edit_page_deletes_application_and_redirects(

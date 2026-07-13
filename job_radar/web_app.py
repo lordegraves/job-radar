@@ -849,7 +849,14 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             ),
         )
 
-        return redirect(url_for("tracker", filter="all"))
+        return redirect(
+            url_for(
+                "edit_tracker_application",
+                job_radar_id=job_radar_id,
+                filter="all",
+                tracked="created",
+            )
+        )
 
 
     @app.get("/tracker/<path:job_radar_id>/edit")
@@ -874,6 +881,8 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             status_options=TRACKER_STATUS_OPTIONS,
             outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
             quick_actions=TRACKER_QUICK_ACTIONS,
+            tracker_notice=request.args.get("tracked", "").strip(),
+            next_action_message=_build_tracker_next_action_message(application),
         )
 
     @app.post("/tracker/<path:job_radar_id>/edit")
@@ -1704,7 +1713,22 @@ def _parse_tracker_sort_date(value: str | None) -> date | None:
         return date.fromisoformat(value)
     except ValueError:
         return None
-    
+
+
+def _build_tracker_next_action_message(application: ApplicationRecord) -> str:
+    if not application.follow_up_on:
+        return "No follow-up date is set. Schedule a follow-up so this application does not go stale."
+
+    follow_up_date = _parse_tracker_sort_date(application.follow_up_on)
+
+    if follow_up_date is None:
+        return "The follow-up date needs review. Use the date picker or a quick action to repair it."
+
+    if follow_up_date <= date.today():
+        return "Follow-up is due. Refresh activity today or schedule the next follow-up."
+
+    return "Follow-up is scheduled. Keep this page updated as the application moves through the pipeline."
+
 
 def _resolve_quick_action_date(
     quick_action_value: str | None,
