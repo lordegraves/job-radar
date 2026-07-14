@@ -122,7 +122,8 @@ Job Radar currently supports:
 - tracker/history mutual-exclusion import partitioning
 - app-owned generated Job Radar IDs for scanned, spreadsheet-imported, and GUI-created tracker records
 - automatic repair of older tracker IDs that used `posting-url:*` as primary identity
-- local Flask GUI for tracker/history/report/companies/scan/settings workflows
+- local Flask GUI for Active Applications, Application History, reports, companies, scan, settings, and profile/resume workflows
+- shared navigation-aligned page width across the GUI for consistent left/right boundaries
 - controlled manual scans from the local GUI
 - GUI profile/resume page with candidate readiness summary, fit-profile signals, readable resume preview, safe resume upload/replacement, and collapsed troubleshooting paths
 - PDF, DOCX, Markdown, and plain-text resume loading
@@ -140,7 +141,7 @@ Job Radar currently supports:
 - scan/report reassurance for temporary company/source or source/network errors
 - `/tracker/` trailing-slash redirect to `/tracker`
 - post-tracking redirect to the tracked application's edit/detail page
-- workflow-aware Next action guidance on tracker edit/detail pages
+- operational Active Applications edit/detail workspace with clear application identity, canonical workflow badge, prominent Next action guidance, grouped quick actions, structured application details, and an isolated delete action
 - tracked scan job matching by exact Job Radar ID first, then source URL fallback, so manually tracked scanned jobs do not keep reappearing as new Top Matches
 
 ## Source coverage
@@ -291,7 +292,7 @@ The tracker classifies workflow state:
 - `presumed_closed`
 - `closed`
 
-The tracker GUI supports summary cards, active filters, workflow/search/status/outcome filters, sorting, manual add with app-assigned Job Radar ID, edit/update, grouped quick actions, Needs Review guidance, workflow badges, stale/dormant/presumed-closed emphasis, moving terminal records to history, deleting records, notes display, and wrapping Job Radar ID display.
+The Active Applications GUI supports summary cards, active filters, workflow/search/status/outcome filters, sorting, manual add with app-assigned Job Radar ID, an operational edit/detail workspace, grouped quick actions, prominent Next action guidance, Needs Review guidance, canonical workflow badges, stale/dormant/presumed-closed emphasis, moving terminal records to Application History, deleting records through an isolated danger zone, notes display, and wrapping Job Radar ID display.
 
 List tracker records:
 
@@ -582,10 +583,10 @@ Do not work on these unless explicitly requested and documented as a new milesto
 |---|---|---|
 | `job_radar/web_app.py` | Flask web application entry point and GUI route handlers, including tracker/history/report/companies/scan/settings routes and `/tracker/` trailing-slash redirect. Route handlers should delegate tracker/history workflow actions and company configuration view/filter logic to service-layer functions. | Keep / watch growth |
 | `job_radar/templates/index.html` | Web app landing page with clickable tracker dashboard cards and section navigation. | Keep |
-| `job_radar/templates/tracker.html` | Application tracker list, clickable summary filter cards, workflow filters, search, sorting, workflow display, Needs Review guidance, workflow badges, and edit links. | Keep |
-| `job_radar/templates/tracker_edit.html` | Application tracker edit form, summary cards with wrapping Job Radar ID display, and grouped quick actions for refreshing activity, scheduling follow-up, marking workflow state, and moving terminal records to history. | Keep |
+| `job_radar/templates/tracker.html` | Active Applications list with clickable summary filter cards, workflow filters, search, sorting, workflow display, Needs Review guidance, workflow badges, and edit links. | Keep |
+| `job_radar/templates/tracker_edit.html` | Active Applications edit/detail workspace with application identity, canonical workflow badge, prominent Next action guidance, grouped quick actions, structured application details, and isolated destructive controls. | Keep |
 | `job_radar/templates/tracker_add.html` | Manual application tracker add form. Job Radar assigns the tracker ID when the record is saved. | Keep |
-| `job_radar/templates/history.html` | Job history/archive page for archived/history records, including summary cards, quick filters, search, filtering, sorting, chip display, and edit links. | Keep |
+| `job_radar/templates/history.html` | Application History page for terminal, passed, withdrawn, rejected, closed, and archived records, including summary cards, quick filters, search, filtering, sorting, chip display, and edit links. | Keep |
 | `job_radar/templates/history_edit.html` | Job history edit form, including save, delete, and move-back-to-tracker workflow. | Keep |
 | `job_radar/templates/profile.html` | Profile/resume page for viewing profile state and uploading/replacing resumes through the GUI. | Keep |
 | `job_radar/templates/reports.html` | Reports page for viewing existing generated reports and email previews, including latest scan result shortcut cards. | Keep |
@@ -741,12 +742,11 @@ MVP is complete when:
 ## Near-term MVP priorities
 
 1. MVP polish for the single-user local workflow.
-2. Tracker edit/detail page workflow-layout polish after real tracker use.
-3. Dashboard follow-up display refinement after real tracker use.
-4. Settings visibility improvements where they remove real user friction.
-5. Documentation alignment for local GUI use, scan use, and safe email behavior.
-6. Company add/edit only if it can be done safely without corrupting source grouping.
-7. Packaging/launcher preparation remains post-MVP unless explicitly pulled forward.
+2. Dashboard follow-up display refinement after real tracker use.
+3. Settings visibility improvements where they remove real user friction.
+4. Documentation alignment for local GUI use, scan use, and safe email behavior.
+5. Company add/edit only if it can be done safely without corrupting source grouping.
+6. Packaging/launcher preparation remains post-MVP unless explicitly pulled forward.
 
 ## Deferred until after MVP
 
@@ -1064,4 +1064,23 @@ The repo may include demo config, example config, sanitized workbook, documentat
 
 ## Completed milestone summary
 
-Completed areas include project scaffold, all current source collectors, SQLite storage, scan/report pipeline, Markdown/HTML/email outputs, guarded email sending, scoring/location/recommendation behavior, history import, Job Radar ID history matching, tracker storage/CLI/GUI, tracker workflow classification, tracker/history movement, tracker/history mutual exclusion, GUI report viewer, GUI scan flow, GUI profile/resume upload, read-only Companies page with filters/search/detail page, read-only Settings page, app-owned manual tracker ID generation, legacy `posting-url:*` repair, company config service layer, company config write-strategy readiness checks, dashboard follow-up work panels, company detail page, documentation consolidation, dashboard scan/follow-up summary, report-card-to-tracker-add workflow, post-tracking edit/detail redirect, tracked scan job source-URL matching, workflow-aware tracker next-action guidance, and Profile / Resume page MVP polish with a candidate overview, fit-profile summary, readable resume preview, safer replacement presentation, and collapsed technical details.
+Completed areas include:
+
+- project scaffold and repository structure
+- current source collectors and source registry
+- SQLite-backed scan, job, tracker, and history storage
+- scan, scoring, recommendation, reporting, and guarded email workflows
+- Markdown, HTML, plain-text email, and HTML email outputs
+- spreadsheet history import with tracker/history mutual exclusion
+- app-owned Job Radar IDs and repair of legacy `posting-url:*` tracker IDs
+- tracker storage, CLI support, workflow classification, quick actions, and tracker/history movement
+- Flask GUI for Home, Active Applications, Application History, Profile / Resume, Reports, Companies, Scan, and Settings
+- dashboard scan summaries, workflow counts, follow-up work, and attention queues
+- report-card-to-tracker-add workflow and post-tracking edit/detail redirect
+- tracked scan job matching by Job Radar ID and source URL
+- read-only Companies list/detail views and Settings visibility
+- controlled GUI scans and in-app report viewing
+- Profile / Resume MVP polish with candidate overview, fit-profile summary, readable resume preview, safer replacement flow, and collapsed technical details
+- Active Applications edit/detail workspace with clear application identity, canonical workflow labeling, prominent Next action guidance, grouped quick actions, structured application details, and isolated destructive controls
+- shared navigation-aligned page width and user-facing Active Applications/Application History terminology
+- consolidated documentation and no-regression test coverage

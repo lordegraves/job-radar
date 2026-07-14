@@ -73,10 +73,10 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Application Tracker" in html
+    assert "Active Applications" in html
     assert f"<code>{database_file}</code>" in html
     assert "Applications shown:</strong> 1" in html
-    assert "Application tracker summary" in html
+    assert "Active Applications summary" in html
     assert "Total tracked" in html
     assert "Needs action" in html
     assert "Needs review" in html
@@ -90,7 +90,7 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "Stack AV" in html
     assert "Senior Site Reliability Engineer" in html
     assert "Applied" in html
-    assert "Follow-up Scheduled" in html
+    assert "Waiting" in html
     assert "workflow-badge workflow-follow_up_scheduled" in html
     assert "2026-07-03" in html
     assert "2026-07-05" in html
@@ -162,7 +162,7 @@ def test_tracker_page_summarizes_workflow_counts(tmp_path: Path) -> None:
     normalized_html = " ".join(html.split())
 
     assert response.status_code == 200
-    assert "Application tracker summary" in html
+    assert "Active Applications summary" in html
     assert '<a class="tracker-summary-card is-active" href="/tracker?filter=all' in normalized_html
     assert '<strong>4</strong> <span class="muted">Total tracked</span>' in normalized_html
     assert '<a class="tracker-summary-card is-action " href="/tracker?filter=needs_action' in normalized_html
@@ -188,7 +188,7 @@ def test_tracker_page_handles_empty_tracker(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Application Tracker" in html
+    assert "Active Applications" in html
     assert "Applications shown:</strong> 0" in html
     assert "No tracked applications." in html
 
@@ -221,8 +221,8 @@ def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert '<a href="/history">Job history archive</a>' in html
-    assert "Application tracker dashboard" in html
+    assert '<a href="/history">Application History</a>' in html
+    assert "Active Applications dashboard" in html
     assert "Tracked applications" in html
     assert "Need action" in html
     assert "Need review" in html
@@ -281,7 +281,7 @@ def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:
     normalized_html = " ".join(html.split())
 
     assert response.status_code == 200
-    assert "Application tracker dashboard" in html
+    assert "Active Applications dashboard" in html
     assert '<a class="dashboard-card" href="/tracker?filter=all">' in normalized_html
     assert '<strong>3</strong> <span class="muted">Tracked applications</span>' in normalized_html
     assert '<a class="dashboard-card is-action" href="/tracker?filter=needs_action">' in normalized_html
@@ -693,7 +693,7 @@ def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Job History Archive" in html
+    assert "Application History" in html
     assert f"<code>{database_file}</code>" in html
     assert "History records shown:</strong> 1" in html
     assert "Archive summary" in html
@@ -720,7 +720,7 @@ def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
     assert "Example Recruiter" in html
     assert "manual:archiveco:senior-linux-engineer" in html
     assert "Skipped because the role was onsite outside target area." in html
-    assert "Viewing these records does not add them to the active application tracker." in html
+    assert "Viewing these records does not add them to Active Applications." in html
 
 
 def test_history_page_sorts_by_company_status_role_outcome_and_date(tmp_path: Path) -> None:
@@ -1091,7 +1091,7 @@ def test_history_page_handles_empty_history(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Job History Archive" in html
+    assert "Application History" in html
     assert "History records shown:</strong> 0" in html
     assert "No imported job history records." in html
 
@@ -2422,12 +2422,15 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Edit Application" in html
+    assert "Application details" in html
     assert "Stack AV" in html
     assert "Senior Site Reliability Engineer" in html
     assert "Job Radar ID" in html
     assert "jr-stack-av-12345678" in html
-    assert "grid-template-columns: repeat(4, minmax(0, 1fr));" in html
+    assert "application-header" in html
+    assert "quick-action-grid" in html
+    assert "date-grid" in html
+    assert "Waiting" in html
     assert "overflow-wrap: anywhere;" in html
     assert "word-break: break-word;" in html
     assert 'name="return_filter" value="needs_action"' in html
@@ -3295,8 +3298,8 @@ candidate:
 
         assert response.status_code == 200
         assert 'href="/">Home</a>' in normalized_html
-        assert 'href="/tracker">Application tracker</a>' in normalized_html
-        assert 'href="/history">Job history archive</a>' in normalized_html
+        assert 'href="/tracker">Active Applications</a>' in normalized_html
+        assert 'href="/history">Application History</a>' in normalized_html
         assert 'href="/profile">Profile / Resume</a>' in normalized_html
         assert 'href="/reports">Reports</a>' in normalized_html
         assert 'href="/scan">Scan</a>' in normalized_html
@@ -3338,8 +3341,8 @@ candidate:
 
     expected_active_links = {
         "/": '<a class="active-nav" href="/">Home</a>',
-        "/tracker": '<a class="active-nav" href="/tracker">Application tracker</a>',
-        "/history": '<a class="active-nav" href="/history">Job history archive</a>',
+        "/tracker": '<a class="active-nav" href="/tracker">Active Applications</a>',
+        "/history": '<a class="active-nav" href="/history">Application History</a>',
         "/profile": '<a class="active-nav" href="/profile">Profile / Resume</a>',
         "/reports": '<a class="active-nav" href="/reports">Reports</a>',
         "/scan": '<a class="active-nav" href="/scan">Scan</a>',

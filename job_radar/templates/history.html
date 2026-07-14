@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Job History Archive - Job Radar{% endblock %}
+{% block title %}Application History - Job Radar{% endblock %}
 
 {% block page_styles %}
 <style>
@@ -61,10 +61,6 @@
         white-space: nowrap;
     }
 
-    .page {
-        max-width: none;
-    }
-
     .table-wrap {
         max-width: calc(100vw - 56px);
         overflow-x: auto;
@@ -95,11 +91,11 @@
 
 {% block content %}
 <div class="page-card">
-    <h1 class="page-title">Job History Archive</h1>
+    <h1 class="page-title">Application History</h1>
 
     <p class="muted">
         This page shows imported job history records from the spreadsheet bridge.
-        <span>Viewing these records does not add them to the active application tracker.</span>
+        <span>Viewing these records does not add them to Active Applications.</span>
     </p>
 
     <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
@@ -107,7 +103,7 @@
 
     <h2>Archive summary</h2>
 
-    <div class="history-summary" aria-label="Job history archive summary">
+    <div class="history-summary" aria-label="Application History summary">
         <a class="history-summary-card {% if not active_decision_filter and not active_outcome_filter %}is-active{% endif %}"
             href="{{ url_for('history') }}">
             <strong>{{ history_summary.total }}</strong>

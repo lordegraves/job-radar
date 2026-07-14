@@ -187,7 +187,7 @@
         local dashboard.</p>
 </section>
 
-<section class="dashboard-grid" aria-label="Application tracker dashboard">
+<section class="dashboard-grid" aria-label="Active Applications dashboard">
     <a class="dashboard-card" href="{{ url_for('tracker', filter='all') }}">
         <strong>{{ tracker_summary.total }}</strong>
         <span class="muted">Tracked applications</span>
@@ -298,12 +298,12 @@
 
         <div class="quick-link-grid">
             <div class="quick-link">
-                <strong><a href="{{ url_for('tracker') }}">Application tracker</a></strong>
+                <strong><a href="{{ url_for('tracker') }}">Active Applications</a></strong>
                 <span>Active applications and workflow status.</span>
             </div>
 
             <div class="quick-link">
-                <strong><a href="{{ url_for('history') }}">Job history archive</a></strong>
+                <strong><a href="{{ url_for('history') }}">Application History</a></strong>
                 <span>Archived, rejected, passed, and historical records.</span>
             </div>
 

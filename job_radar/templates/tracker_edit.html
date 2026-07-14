@@ -1,103 +1,163 @@
 {% extends "base.html" %}
 
-{% block title %}Edit Application - Job Radar{% endblock %}
+{% block title %}{{ application.company_name }} - {{ application.role_title }} - Job Radar{% endblock %}
 
 {% block page_styles %}
 <style>
-    .record-summary {
-        display: grid;
+
+    .application-header {
+        align-items: flex-start;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        justify-content: space-between;
+    }
+
+    .application-identity {
+        min-width: 0;
+    }
+
+    .application-company {
+        color: var(--muted);
+        font-size: 1rem;
+        font-weight: 700;
+        margin: 0 0 6px 0;
+    }
+
+    .application-role {
+        font-size: 2rem;
+        line-height: 1.2;
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .application-header-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
         gap: 10px;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        margin: 16px 0;
     }
 
-    .summary-item {
-        background: var(--surface-muted);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 10px 12px;
+    .workflow-badge {
+        background: rgba(96, 205, 255, 0.12);
+        border: 1px solid rgba(96, 205, 255, 0.45);
+        border-radius: 999px;
+        color: var(--text);
+        display: inline-flex;
+        font-size: 0.9rem;
+        font-weight: 700;
+        padding: 7px 11px;
     }
 
-    .summary-item strong {
-        display: block;
-        margin-bottom: 4px;
+    .application-meta {
+        align-items: flex-start;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 20px;
+        margin-top: 16px;
     }
 
-    .summary-item code {
-        display: inline-block;
-        max-width: 100%;
+    .application-meta-item {
+        color: var(--muted);
+        font-size: 0.92rem;
+        min-width: 0;
+    }
+
+    .application-meta-item strong {
+        color: var(--text);
+    }
+
+    .application-meta-item code {
         overflow-wrap: anywhere;
         white-space: normal;
         word-break: break-word;
     }
 
-    .primary-actions {
-        border-top: 1px solid var(--border);
-        margin-top: 20px;
-        padding-top: 18px;
-    }
-
-    .review-helper-panel {
-        background: rgba(96, 205, 255, 0.08);
-        border: 1px solid rgba(96, 205, 255, 0.35);
+    .notice-panel {
+        background: rgba(26, 127, 55, 0.15);
+        border: 1px solid rgba(46, 160, 67, 0.6);
         border-radius: 10px;
         margin-top: 18px;
         padding: 14px 16px;
     }
 
-    .review-helper-panel h2 {
+    .notice-panel h2,
+    .next-action-panel h2 {
         font-size: 1rem;
         margin: 0 0 6px 0;
     }
 
-    .review-helper-panel p {
+    .notice-panel p,
+    .next-action-panel p {
         margin: 0;
     }
 
-    .quick-action-panel {
-        background: rgba(43, 43, 49, 0.62);
-        border: 1px solid var(--border);
-        border-radius: 10px;
+    .next-action-panel {
+        background: rgba(96, 205, 255, 0.1);
+        border: 1px solid rgba(96, 205, 255, 0.48);
+        border-radius: 12px;
         margin-top: 18px;
-        padding: 14px 16px;
+        padding: 18px 20px;
     }
 
-    .quick-action-panel h2 {
-        font-size: 1rem;
-        margin: 0 0 6px 0;
+    .next-action-panel h2 {
+        font-size: 1.05rem;
     }
 
-    .quick-action-panel p {
-        margin: 0 0 12px 0;
+    .next-action-panel p {
+        color: var(--text);
+        font-size: 1.05rem;
+        line-height: 1.55;
+    }
+
+    .workspace-section {
+        margin-top: 20px;
+    }
+
+    .workspace-section h2 {
+        margin-bottom: 6px;
+    }
+
+    .quick-action-panel {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px;
+    }
+
+    .quick-action-intro {
+        margin: 0 0 16px 0;
+    }
+
+    .quick-action-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .quick-action-group {
-        border-top: 1px solid var(--border);
-        margin-top: 14px;
-        padding-top: 14px;
-    }
-
-    .quick-action-group:first-of-type {
-        border-top: 0;
-        margin-top: 0;
-        padding-top: 0;
+        background: rgba(43, 43, 49, 0.62);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
     }
 
     .quick-action-group h3 {
-        color: var(--muted);
-        font-size: 0.92rem;
-        margin: 0 0 8px 0;
+        font-size: 0.95rem;
+        margin: 0 0 10px 0;
     }
 
     .quick-actions {
-        align-items: center;
+        align-items: stretch;
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
         gap: 8px;
     }
 
     .quick-actions button {
-        font-size: 0.92rem;
+        font-size: 0.9rem;
+        text-align: left;
+        width: 100%;
     }
 
     .terminal-actions button {
@@ -112,15 +172,75 @@
         color: var(--text);
     }
 
-    .danger-zone {
+    .details-panel {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .form-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .form-field {
+        min-width: 0;
+    }
+
+    .form-field label {
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .date-grid {
+        display: grid;
+        gap: 16px;
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .notes-field {
+        grid-column: 1 / -1;
+    }
+
+    .notes-field textarea {
+        min-height: 180px;
+    }
+
+    .primary-actions {
         border-top: 1px solid var(--border);
-        margin-top: 18px;
+        margin-top: 20px;
         padding-top: 18px;
     }
 
+    .danger-zone {
+        background: rgba(218, 54, 51, 0.06);
+        border: 1px solid rgba(218, 54, 51, 0.3);
+        border-radius: 12px;
+        margin-top: 24px;
+        padding: 18px;
+    }
+
+    .danger-zone h2 {
+        font-size: 1rem;
+        margin: 0 0 6px 0;
+    }
+
+    .danger-zone p {
+        margin: 0 0 14px 0;
+    }
+
     @media (max-width: 900px) {
-        .record-summary {
+        .quick-action-grid,
+        .date-grid,
+        .form-grid {
             grid-template-columns: 1fr;
+        }
+
+        .application-role {
+            font-size: 1.65rem;
         }
     }
 </style>
@@ -128,131 +248,167 @@
 
 {% block content %}
 <div class="page-card form-page">
-    <h1 class="page-title">Edit Application</h1>
+    <div class="application-header">
+        <div class="application-identity">
+            <p class="application-company">{{ application.company_name }}</p>
+            <h1 class="application-role">{{ application.role_title }}</h1>
+        </div>
 
-    <div class="record-summary">
-        <div class="summary-item">
-            <strong>Company</strong>
-            {{ application.company_name }}
+        <div class="application-header-actions">
+            <span class="workflow-badge">{{ workflow_label }}</span>
+
+            {% if application.source_url %}
+            <a class="button-link button-secondary" href="{{ application.source_url }}" target="_blank" rel="noopener noreferrer">View posting</a>
+            {% endif %}
         </div>
-        <div class="summary-item">
-            <strong>Role</strong>
-            {{ application.role_title }}
+    </div>
+
+    <div class="application-meta">
+        <div class="application-meta-item">
+            <strong>Status:</strong> {{ application.status }}
         </div>
-        <div class="summary-item">
-            <strong>Workflow</strong>
-            {{ workflow_state }}
+
+        <div class="application-meta-item">
+            <strong>Outcome:</strong> {{ application.outcome or "None" }}
         </div>
-        <div class="summary-item">
-            <strong>Job Radar ID</strong>
-            <code>{{ application.job_radar_id }}</code>
+
+        <div class="application-meta-item">
+            <strong>Job Radar ID:</strong> <code>{{ application.job_radar_id }}</code>
         </div>
     </div>
 
     {% if tracker_notice == "created" %}
-    <div class="review-helper-panel">
+    <div class="notice-panel">
         <h2>Application tracked</h2>
-        <p class="muted">This application is now in Job Radar. Review the next action, add notes, or use a quick action to schedule follow-up.</p>
+        <p>This application is now in Job Radar. Review the next action, add notes, or schedule follow-up.</p>
     </div>
     {% endif %}
 
-    <div class="review-helper-panel">
+    <div class="next-action-panel">
         <h2>Next action</h2>
-        <p class="muted">{{ next_action_message }}</p>
+        <p>{{ next_action_message }}</p>
     </div>
-
-    {% if application.source_url %}
-    <p><strong>Posting:</strong> <a href="{{ application.source_url }}" target="_blank" rel="noopener noreferrer">View posting</a></p>
-    {% endif %}
 
     {% if return_filter == "needs_review" %}
-    <div class="review-helper-panel">
-        <h2>Needs Review helper</h2>
-        <p class="muted">Use quick actions to refresh activity, schedule a follow-up, mark dormant, or move terminal outcomes to history without manually editing every field.</p>
+    <div class="notice-panel">
+        <h2>Needs Review</h2>
+        <p>Refresh activity, schedule follow-up, mark the application dormant, or move a terminal outcome to history.</p>
     </div>
     {% endif %}
 
     <form method="post">
         <input type="hidden" name="return_filter" value="{{ return_filter }}">
 
-        <label for="status">Status</label>
-        <select id="status" name="status" required>
-            {% for status_option in status_options %}
-            <option value="{{ status_option }}" {% if status_option==application.status %}selected{% endif %}>
-                {{ status_option }}
-            </option>
-            {% endfor %}
-        </select>
+        <div class="workspace-section">
+            <h2>Quick actions</h2>
+            <p class="muted quick-action-intro">Use these for common updates without manually changing every field.</p>
 
-        <label for="follow_up_on">Follow-up date</label>
-        <input class="date-picker-input" id="follow_up_on" name="follow_up_on" type="date" value="{{ application.follow_up_on or '' }}">
+            <div class="quick-action-panel">
+                <div class="quick-action-grid">
+                    <div class="quick-action-group">
+                        <h3>Dates and follow-up</h3>
 
-        <label for="applied_on">Applied date</label>
-        <input class="date-picker-input" id="applied_on" name="applied_on" type="date" value="{{ application.applied_on or '' }}">
+                        <div class="quick-actions">
+                            {% for quick_action_name in ["refresh_activity_today", "follow_up_next_week", "follow_up_due"] %}
+                            {% set quick_action = quick_actions[quick_action_name] %}
+                            <button type="submit" name="quick_action" value="{{ quick_action_name }}">
+                                {{ quick_action.label }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
 
-        <label for="last_activity_on">Last activity date</label>
-        <input class="date-picker-input" id="last_activity_on" name="last_activity_on" type="date" value="{{ application.last_activity_on or '' }}">
+                    <div class="quick-action-group">
+                        <h3>Pipeline status</h3>
 
-        <label for="outcome">Outcome</label>
-        <select id="outcome" name="outcome">
-            {% for outcome_option in outcome_options %}
-            <option value="{{ outcome_option }}" {% if outcome_option==(application.outcome or '' ) %}selected{% endif
-                %}>
-                {{ outcome_option or "None" }}
-            </option>
-            {% endfor %}
-        </select>
+                        <div class="quick-actions">
+                            {% for quick_action_name in ["dormant", "interview_scheduled", "waiting_for_feedback", "offer"] %}
+                            {% set quick_action = quick_actions[quick_action_name] %}
+                            <button type="submit" name="quick_action" value="{{ quick_action_name }}">
+                                {{ quick_action.label }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
 
-        <label for="notes">Notes</label>
-        <textarea id="notes" name="notes">{{ application.notes or '' }}</textarea>
+                    <div class="quick-action-group terminal-actions">
+                        <h3>Close active tracking</h3>
 
-        <div class="actions primary-actions">
-            <button type="submit" name="action" value="save">Save</button>
-            <a class="button-link button-secondary" href="{{ url_for('tracker', filter=return_filter) }}">Cancel</a>
+                        <div class="quick-actions">
+                            {% for quick_action_name in ["rejected_no_interview", "withdrawn"] %}
+                            {% set quick_action = quick_actions[quick_action_name] %}
+                            <button type="submit" name="quick_action" value="{{ quick_action_name }}">
+                                {{ quick_action.label }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="quick-action-panel">
-            <h2>Quick actions</h2>
-            <p class="muted">Use these to update common tracker states. Some actions also update follow-up or last-activity dates automatically.</p>
+        <div class="workspace-section">
+            <h2>Application details</h2>
+            <p class="muted">Update the current pipeline state, important dates, and working notes.</p>
 
-            <div class="quick-action-group">
-                <h3>Dates and follow-up</h3>
-                <div class="quick-actions">
-                    {% for quick_action_name in ["refresh_activity_today", "follow_up_next_week", "follow_up_due"] %}
-                    {% set quick_action = quick_actions[quick_action_name] %}
-                    <button type="submit" name="quick_action" value="{{ quick_action_name }}">
-                        {{ quick_action.label }}
-                    </button>
-                    {% endfor %}
+            <div class="details-panel">
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="status">Status</label>
+                        <select id="status" name="status" required>
+                            {% for status_option in status_options %}
+                            <option value="{{ status_option }}" {% if status_option==application.status %}selected{% endif %}>
+                                {{ status_option }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="outcome">Outcome</label>
+                        <select id="outcome" name="outcome">
+                            {% for outcome_option in outcome_options %}
+                            <option value="{{ outcome_option }}" {% if outcome_option==(application.outcome or '') %}selected{% endif %}>
+                                {{ outcome_option or "None" }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="date-grid">
+                        <div class="form-field">
+                            <label for="applied_on">Applied date</label>
+                            <input class="date-picker-input" id="applied_on" name="applied_on" type="date" value="{{ application.applied_on or '' }}">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="last_activity_on">Last activity date</label>
+                            <input class="date-picker-input" id="last_activity_on" name="last_activity_on" type="date" value="{{ application.last_activity_on or '' }}">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="follow_up_on">Follow-up date</label>
+                            <input class="date-picker-input" id="follow_up_on" name="follow_up_on" type="date" value="{{ application.follow_up_on or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="form-field notes-field">
+                        <label for="notes">Notes</label>
+                        <textarea id="notes" name="notes">{{ application.notes or '' }}</textarea>
+                    </div>
                 </div>
-            </div>
 
-            <div class="quick-action-group">
-                <h3>Pipeline status</h3>
-                <div class="quick-actions">
-                    {% for quick_action_name in ["dormant", "interview_scheduled", "waiting_for_feedback", "offer"] %}
-                    {% set quick_action = quick_actions[quick_action_name] %}
-                    <button type="submit" name="quick_action" value="{{ quick_action_name }}">
-                        {{ quick_action.label }}
-                    </button>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="quick-action-group terminal-actions">
-                <h3>Move out of active tracker</h3>
-                <div class="quick-actions">
-                    {% for quick_action_name in ["rejected_no_interview", "withdrawn"] %}
-                    {% set quick_action = quick_actions[quick_action_name] %}
-                    <button type="submit" name="quick_action" value="{{ quick_action_name }}">
-                        {{ quick_action.label }}
-                    </button>
-                    {% endfor %}
+                <div class="actions primary-actions">
+                    <button type="submit" name="action" value="save">Save application</button>
+                    <a class="button-link button-secondary" href="{{ url_for('tracker', filter=return_filter) }}">Cancel</a>
                 </div>
             </div>
         </div>
 
         <div class="danger-zone">
+            <h2>Delete application record</h2>
+            <p class="muted">This permanently removes the tracker row. Use a terminal quick action instead when the application should remain in history.</p>
+
             <button class="button-danger" type="submit" name="action" value="delete"
                 onclick="return confirmDestructiveAction('Delete this tracker row?')">Delete tracker row</button>
         </div>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Application Tracker - Job Radar{% endblock %}
+{% block title %}Active Applications - Job Radar{% endblock %}
 
 {% block page_styles %}
 <style>
@@ -153,10 +153,6 @@
         border-left: 4px solid #f7c948;
     }
 
-    .page {
-        max-width: none;
-    }
-
     .table-wrap {
         max-width: calc(100vw - 56px);
         overflow-x: auto;
@@ -186,7 +182,7 @@
 
 {% block content %}
 <div class="page-card">
-    <h1 class="page-title">Application Tracker</h1>
+    <h1 class="page-title">Active Applications</h1>
 
     <p class="muted">Review active applications, search notes, sort by workflow/date/company, and update application
         status.</p>
@@ -195,7 +191,7 @@
     <p><strong>Applications shown:</strong> {{ applications|length }}</p>
     <p><a href="{{ url_for('add_tracker_application') }}">Add application</a></p>
 
-    <div class="tracker-summary-grid" aria-label="Application tracker summary">
+    <div class="tracker-summary-grid" aria-label="Active Applications summary">
         <a class="tracker-summary-card {% if active_filter == 'all' %}is-active{% endif %}"
             href="{{ url_for('tracker', filter='all', sort=active_sort, q=search_query, status_filter=active_status_filter, outcome_filter=active_outcome_filter) }}">
             <strong>{{ tracker_summary.total }}</strong>

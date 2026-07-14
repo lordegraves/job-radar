@@ -877,6 +877,10 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             "tracker_edit.html",
             application=application,
             workflow_state=workflow_state,
+            workflow_label=TRACKER_WORKFLOW_LABELS.get(
+                workflow_state,
+                workflow_state.replace("_", " ").title(),
+            ),
             return_filter=return_filter,
             status_options=TRACKER_STATUS_OPTIONS,
             outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
