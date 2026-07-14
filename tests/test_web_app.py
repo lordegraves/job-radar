@@ -2,6 +2,7 @@ from datetime import date
 from io import BytesIO
 from pathlib import Path
 
+from job_radar.collectors import html
 import job_radar.web_app as web_app_module
 
 from job_radar.job_history import JobHistoryRecord
@@ -221,7 +222,8 @@ def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert '<a href="/history">Application History</a>' in html
+    assert 'href="/history"' in html
+    assert "Application History" in html
     assert "Active Applications dashboard" in html
     assert "Tracked applications" in html
     assert "Need action" in html
@@ -295,10 +297,9 @@ def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:
     assert "Latest scan" in html
     assert "Top Matches" in html
     assert "Review Needed" in html
-    assert "Tracked in report" in html
-    assert "New jobs" in html
-    assert "Actionable stored" in html
-    assert "Collector errors" in html
+    assert "Tracked Applications" in html
+    assert "New Jobs" in html
+    assert "Collector Errors" in html
     assert "Needs attention" in html
     assert "ActionCo — SRE" in html
     assert 'href="/tracker/jr-action-12345678/edit?filter=needs_review"' in html
@@ -446,10 +447,12 @@ No passed jobs.
     assert '<a class="scan-card" href="/reports/section/review_needed">' in normalized_html
     assert '<strong>2</strong> <span class="muted">Review Needed</span>' in normalized_html
     assert '<a class="scan-card" href="/reports/section/tracked_applications">' in normalized_html
-    assert '<strong>1</strong> <span class="muted">Tracked in report</span>' in normalized_html
-    assert '<strong>3</strong> <span class="muted">New jobs</span>' in normalized_html
-    assert '<strong>13</strong> <span class="muted">Actionable stored</span>' in normalized_html
-    assert '<strong>0</strong> <span class="muted">Collector errors</span>' in normalized_html
+    assert '<strong>1</strong> <span class="muted">Tracked Applications</span>' in normalized_html
+    assert '<a class="scan-card" href="/reports/section/new_jobs">' in normalized_html
+    assert '<strong>3</strong> <span class="muted">New Jobs</span>' in normalized_html
+    assert "Actionable stored" not in html
+    assert '<a class="scan-card" href="/reports/section/collector_errors">' in normalized_html
+    assert '<strong>0</strong> <span class="muted">Collector Errors</span>' in normalized_html
 
 
 def test_report_section_view_shows_structured_job_cards_for_requested_section(tmp_path: Path) -> None:
@@ -564,6 +567,149 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "Canonical key" not in html
     assert "Hardware Operations Engineer" not in html
     assert "Tracked SRE" not in html
+
+
+def test_report_section_view_shows_new_jobs_from_latest_scan(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+
+    reports_path.mkdir()
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    (reports_path / "target-scan.html").write_text(
+        "<html><body><h1>Job Radar Report</h1></body></html>",
+        encoding="utf-8",
+    )
+    (reports_path / "target-scan.md").write_text(
+        """
+# Job Radar Report
+
+## Summary
+
+- Generated at: 2026-07-14 14:20 UTC
+- New jobs: 1
+
+## New Jobs
+
+### [Senior Linux Infrastructure Engineer](https://example.com/new-job)
+
+- Company: NewCo
+- Location: Remote - USA
+- Compensation range: $180,000 - $220,000
+- Hiring probability: Medium
+- Recommended action: Tailor Resume
+- Action rationale: Strong infrastructure fit, but the resume should emphasize large-scale Linux operations.
+- Why this matched: linux, infrastructure, automation, reliability
+- Technical match: Very Strong
+- Resume match: Strong
+- Resume evidence: Large-scale Linux; Ansible; infrastructure reliability
+- Resume gaps: Production Kubernetes
+- Hiring risks: Production Kubernetes translation
+- Job Radar ID: `jr-newco-12345678`
+
+## Passed / Not Recommended
+
+No passed jobs.
+""",
+        encoding="utf-8",
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports/section/new_jobs")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "New Jobs" in html
+    assert "Actionable roles first discovered during the latest scan." in html
+    assert "NewCo" in html
+    assert "Senior Linux Infrastructure Engineer" in html
+    assert "Remote - USA" in html
+    assert "$180,000 - $220,000" in html
+    assert "Hiring probability: Medium" in html
+    assert "Tailor Resume" in html
+    assert "Strong infrastructure fit" in html
+    assert "linux, infrastructure, automation, reliability" in html
+    assert "Production Kubernetes translation" in html
+    assert "Track this application" in html
+    assert "job_radar_id=jr-newco-12345678" in html
+    assert "source_url=https://example.com/new-job" in html
+
+
+def test_report_section_view_shows_collector_errors_and_clean_empty_state(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+
+    reports_path.mkdir()
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    (reports_path / "target-scan.html").write_text(
+        "<html><body><h1>Job Radar Report</h1></body></html>",
+        encoding="utf-8",
+    )
+    markdown_report_path = reports_path / "target-scan.md"
+    markdown_report_path.write_text(
+        """
+# Job Radar Report
+
+## Summary
+
+- Generated at: 2026-07-14 14:20 UTC
+- Collector errors: 1
+
+## Collector Errors
+
+Some collector errors are temporary source or network issues and may clear on a later scan.
+
+- example-company (Example Company, greenhouse): Request timed out while contacting the job board.
+
+## Top Matches
+
+No top matches found.
+""",
+        encoding="utf-8",
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports/section/collector_errors")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Collector Errors" in html
+    assert "Company sources that could not be collected successfully during the latest scan." in html
+    assert "Example Company" in html
+    assert "greenhouse" in html
+    assert "Request timed out while contacting the job board." in html
+    assert "example-company" in html
+    assert "Track this application" not in html
+
+    markdown_report_path.write_text(
+        """
+# Job Radar Report
+
+## Summary
+
+- Generated at: 2026-07-14 15:00 UTC
+- Collector errors: 0
+
+## Top Matches
+
+No top matches found.
+""",
+        encoding="utf-8",
+    )
+
+    empty_response = client.get("/reports/section/collector_errors")
+    empty_html = empty_response.get_data(as_text=True)
+
+    assert empty_response.status_code == 200
+    assert "No collector errors were reported in the latest scan." in empty_html
+    assert "Example Company" not in empty_html
 
 
 def test_report_section_view_rejects_unknown_section(tmp_path: Path) -> None:
@@ -1272,7 +1418,8 @@ def test_index_page_links_to_scan(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert '<a href="/scan">Scan</a>' in html
+    assert 'href="/scan"' in html
+    assert ">Scan</a>" in html
 
 
 def test_index_page_links_to_settings(tmp_path: Path) -> None:
@@ -1288,8 +1435,8 @@ def test_index_page_links_to_settings(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert '<a href="/settings">Settings</a>' in html
-    assert "Runtime paths, retention, scan defaults, and email status." in html
+    assert 'href="/settings"' in html
+    assert ">Settings</a>" in html
 
 
 def test_index_page_links_to_companies(tmp_path: Path) -> None:
@@ -1305,8 +1452,8 @@ def test_index_page_links_to_companies(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert '<a href="/companies">Companies</a>' in html
-    assert "Configured target companies and sources." in html
+    assert 'href="/companies"' in html
+    assert ">Companies</a>" in html
 
 
 def test_companies_page_shows_read_only_company_config(tmp_path: Path, monkeypatch) -> None:
@@ -1620,9 +1767,12 @@ def test_scan_page_shows_manual_scan_command(tmp_path: Path) -> None:
     normalized_html = " ".join(html.split())
 
     assert "Scan" in html
-    assert "This page shows the safe manual scan command" in normalized_html
-    assert "GUI scan execution does not send email." in normalized_html
-    assert "Run scan now" in html
+    assert "Review the current scan settings or start a manual scan." in normalized_html
+    assert "<h2>Run scan</h2>" in normalized_html
+    assert "Email sending is disabled for manual scans started here." in normalized_html
+    assert ">Run scan</button>" in normalized_html
+    assert "Run scan from GUI" not in html
+    assert ">Run scan</button>" in normalized_html
     assert "Scan is running. This may take a few minutes." in normalized_html
     assert "Some company/source errors are temporary." in normalized_html
     assert "After running a scan, use the latest scan links here" in normalized_html
@@ -1736,7 +1886,8 @@ def test_index_page_links_to_reports(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert '<a href="/reports">Reports</a>' in html
+    assert 'href="/reports"' in html
+    assert ">Reports</a>" in html
 
 
 def test_reports_page_lists_existing_report_files(tmp_path: Path) -> None:
@@ -3172,7 +3323,8 @@ def test_index_page_links_to_profile(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert '<a href="/profile">Profile / Resume</a>' in html
+    assert 'href="/profile"' in html
+    assert ">Profile / Resume</a>" in html
 
 
 def test_profile_page_shows_candidate_profile_and_resume_summary(

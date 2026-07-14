@@ -285,6 +285,18 @@ REPORT_SECTION_DETAILS = {
         "description": "Roles from the latest scan that are already in the application tracker.",
         "empty_message": "No tracked applications were found in the latest scan.",
     },
+    "new_jobs": {
+        "title": "New Jobs",
+        "page_title": "New Jobs",
+        "description": "Actionable roles first discovered during the latest scan.",
+        "empty_message": "No new actionable jobs were found in the latest scan.",
+    },
+    "collector_errors": {
+        "title": "Collector Errors",
+        "page_title": "Collector Errors",
+        "description": "Company sources that could not be collected successfully during the latest scan.",
+        "empty_message": "No collector errors were reported in the latest scan.",
+    },
     "passed_not_recommended": {
         "title": "Passed / Not Recommended",
         "page_title": "Passed / Not Recommended",
@@ -328,7 +340,6 @@ class LatestReportSummaryView:
     review_needed: int
     tracked_applications: int
     new_jobs: int
-    actionable_jobs: int
     collector_errors: int
 
 
@@ -352,6 +363,14 @@ class ReportJobCardView:
     history_risk: str | None
     job_radar_id: str | None
     tracker_add_url: str
+
+
+@dataclass(frozen=True)
+class ReportCollectorErrorView:
+    company_key: str
+    company_name: str
+    source_type: str
+    message: str
 
 
 @dataclass(frozen=True)
@@ -679,10 +698,16 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             encoding="utf-8",
             errors="replace",
         )
-        job_cards = _build_report_job_cards(
-            report_text,
-            section_details["title"],
-        )
+        job_cards: list[ReportJobCardView] = []
+        collector_errors: list[ReportCollectorErrorView] = []
+
+        if section_name == "collector_errors":
+            collector_errors = _build_report_collector_errors(report_text)
+        else:
+            job_cards = _build_report_job_cards(
+                report_text,
+                section_details["title"],
+            )
 
         return render_template(
             "report_section.html",
@@ -691,6 +716,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             section_description=section_details["description"],
             empty_message=section_details["empty_message"],
             job_cards=job_cards,
+            collector_errors=collector_errors,
             html_report_name=html_report_name,
             html_report_exists=html_report_path.is_file(),
         )
@@ -1162,10 +1188,6 @@ def _build_latest_report_summary(app: Flask) -> LatestReportSummaryView:
             "Tracked Applications",
         ),
         new_jobs=_extract_report_summary_int(report_text, "New jobs"),
-        actionable_jobs=_extract_report_summary_int(
-            report_text,
-            "Actionable jobs stored",
-        ),
         collector_errors=_extract_report_summary_int(report_text, "Collector errors"),
     )
 
@@ -1200,6 +1222,38 @@ def _count_report_section_entries(report_text: str, section_title: str) -> int:
         for line in section_lines
         if line.startswith("### [")
     )
+
+
+def _build_report_collector_errors(
+    report_text: str,
+) -> list[ReportCollectorErrorView]:
+    section_lines = _extract_report_section_lines(
+        report_text,
+        "Collector Errors",
+    )
+    collector_errors: list[ReportCollectorErrorView] = []
+    error_pattern = re.compile(
+        r"^- (?P<company_key>.+?) "
+        r"\((?P<company_name>.+), (?P<source_type>[^)]+)\): "
+        r"(?P<message>.+)$"
+    )
+
+    for line in section_lines:
+        match = error_pattern.match(line)
+
+        if match is None:
+            continue
+
+        collector_errors.append(
+            ReportCollectorErrorView(
+                company_key=match.group("company_key").strip(),
+                company_name=match.group("company_name").strip(),
+                source_type=match.group("source_type").strip(),
+                message=match.group("message").strip(),
+            )
+        )
+
+    return collector_errors
 
 
 def _build_report_job_cards(

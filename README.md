@@ -128,6 +128,8 @@ Job Radar currently supports:
 - GUI profile/resume page with candidate readiness summary, fit-profile signals, readable resume preview, safe resume upload/replacement, and collapsed troubleshooting paths
 - PDF, DOCX, Markdown, and plain-text resume loading
 - clickable Home dashboard cards for tracker workflow navigation
+- focused latest-scan dashboard drill-downs for Top Matches, Review Needed, Tracked Applications, New Jobs, and Collector Errors
+- human-readable Collector Errors cards with a clean zero-error state
 - dashboard follow-up work panels for follow-ups due, date review, stale/dormant applications, and recent active applications
 - clickable Tracker summary cards with active filter highlighting
 - clickable History archive summary cards
@@ -216,7 +218,7 @@ Generic Remote Competition is a risk signal only. It must not block or reject a 
 
 Job Radar generates Markdown reports, HTML reports, plain-text email previews, and HTML email previews.
 
-Reports include Summary, Companies scanned, Source type counts, Work location fit, Recommendation summary, History risk summary, Tracker action summary, Tracker workflow summary, Omitted jobs audit, Top Matches, Top Matches Quick View, Northern Colorado Highlights, Review Needed, Tracked Applications, and Passed / Not Recommended.
+Reports include Summary, Companies scanned, Source type counts, Work location fit, Recommendation summary, History risk summary, Tracker action summary, Tracker workflow summary, Omitted jobs audit, Top Matches, Top Matches Quick View, Northern Colorado Highlights, Review Needed, Tracked Applications, New Jobs, and Passed / Not Recommended.
 
 Collector Errors sections explain that some source/network failures are temporary and may clear on a later scan.
 
@@ -340,7 +342,7 @@ The local GUI is intentionally read/write only where the app already owns the wo
 
 Report viewing is read-only. It opens existing generated reports and email previews without starting a scan or sending email.
 
-The scan page can run a controlled manual scan from the local Flask process, with GUI email sending disabled.
+The Scan page can run a controlled manual scan using the current Job Radar settings. Email sending remains disabled for manual scans started from the GUI.
 
 The Companies page is read-only for MVP. It shows configured target companies, source types, enabled/disabled status, source details, notes, card-driven source-type/status filters, search, and per-company detail pages from `config/target-companies.yaml` without writing config changes.
 
@@ -402,7 +404,7 @@ python -m pytest tests
 Expected current result:
 
 ```text
-486 passed
+488 passed
 ```
 
 Latest verified focused web-app suite:
@@ -414,7 +416,7 @@ python -m pytest tests\test_web_app.py
 Expected current result:
 
 ```text
-75 passed
+77 passed
 ```
 
 ## Run full live scan
@@ -582,7 +584,7 @@ Do not work on these unless explicitly requested and documented as a new milesto
 | File | Purpose | Keep / Review |
 |---|---|---|
 | `job_radar/web_app.py` | Flask web application entry point and GUI route handlers, including tracker/history/report/companies/scan/settings routes and `/tracker/` trailing-slash redirect. Route handlers should delegate tracker/history workflow actions and company configuration view/filter logic to service-layer functions. | Keep / watch growth |
-| `job_radar/templates/index.html` | Web app landing page with clickable tracker dashboard cards and section navigation. | Keep |
+| `job_radar/templates/index.html` | Web app landing page with tracker workflow cards, latest-scan drill-down cards, and the Needs attention queue. | Keep |
 | `job_radar/templates/tracker.html` | Active Applications list with clickable summary filter cards, workflow filters, search, sorting, workflow display, Needs Review guidance, workflow badges, and edit links. | Keep |
 | `job_radar/templates/tracker_edit.html` | Active Applications edit/detail workspace with application identity, canonical workflow badge, prominent Next action guidance, grouped quick actions, structured application details, and isolated destructive controls. | Keep |
 | `job_radar/templates/tracker_add.html` | Manual application tracker add form. Job Radar assigns the tracker ID when the record is saved. | Keep |
@@ -593,6 +595,7 @@ Do not work on these unless explicitly requested and documented as a new milesto
 | `job_radar/templates/companies.html` | Read-only Companies list page showing configured target companies, source types, enabled status, source details, notes, source/status filters, and search without writing config changes. | Keep |
 | `job_radar/templates/company_detail.html` | Read-only company detail page showing the full YAML-derived company record for inspection before future edit flows. | Keep |
 | `job_radar/templates/report_view.html` | In-app report viewer shell for opening generated reports inside the GUI with shared dark styling, copy support, and focused Ctrl+A report-content selection. | Keep |
+| `job_radar/templates/report_section.html` | Focused latest-scan section view for structured job cards and human-readable Collector Errors details. | Keep |
 | `job_radar/templates/scan.html` | Scan page for manual command display, controlled local GUI scan execution, direct completion links to the latest outputs, and temporary source/company error reassurance. | Keep |
 | `job_radar/templates/settings.html` | Read-only Settings page showing active runtime paths, retention settings, GUI scan defaults, and email status without showing secrets or writing config changes. | Keep |
 
@@ -1083,4 +1086,5 @@ Completed areas include:
 - Profile / Resume MVP polish with candidate overview, fit-profile summary, readable resume preview, safer replacement flow, and collapsed technical details
 - Active Applications edit/detail workspace with clear application identity, canonical workflow labeling, prominent Next action guidance, grouped quick actions, structured application details, and isolated destructive controls
 - shared navigation-aligned page width and user-facing Active Applications/Application History terminology
+- MVP scan/dashboard acceptance polish with redundant Home quick links removed, focused New Jobs and Collector Errors drill-downs, clearer scan labels, and user-facing latest-scan terminology
 - consolidated documentation and no-regression test coverage

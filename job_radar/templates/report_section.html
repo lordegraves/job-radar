@@ -165,6 +165,50 @@
         padding: 6px 10px;
     }
 
+    .error-card-grid {
+        display: grid;
+        gap: 16px;
+    }
+
+    .error-card {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 20px 22px;
+    }
+
+    .error-card-header {
+        align-items: flex-start;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .error-card h2 {
+        font-size: 1.2rem;
+        margin: 0;
+    }
+
+    .error-source {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--muted);
+        padding: 5px 10px;
+    }
+
+    .error-message {
+        margin: 0;
+    }
+
+    .error-key {
+        color: var(--muted);
+        margin: 10px 0 0 0;
+    }
+
     .empty-panel {
         background: rgba(31, 31, 35, 0.94);
         border: 1px solid var(--border);
@@ -201,7 +245,21 @@
     </div>
 </section>
 
-{% if job_cards %}
+{% if collector_errors %}
+<section class="error-card-grid" aria-label="Collector error details">
+    {% for error in collector_errors %}
+    <article class="error-card">
+        <div class="error-card-header">
+            <h2>{{ error.company_name }}</h2>
+            <span class="error-source">{{ error.source_type }}</span>
+        </div>
+
+        <p class="error-message">{{ error.message }}</p>
+        <p class="error-key">Company key: <code>{{ error.company_key }}</code></p>
+    </article>
+    {% endfor %}
+</section>
+{% elif job_cards %}
 <section class="job-card-grid" aria-label="{{ section_title }} job cards">
     {% for job in job_cards %}
     <article class="job-card">

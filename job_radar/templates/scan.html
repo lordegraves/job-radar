@@ -42,8 +42,7 @@
 <div class="page-card">
     <h1 class="page-title">Scan</h1>
 
-    <p class="muted">This page shows the safe manual scan command and can run that scan from the local GUI. GUI scan
-        execution does not send email.</p>
+    <p class="muted">Review the current scan settings or start a manual scan.</p>
 
     {% if scan_result == "busy" %}
     <p><strong>Scan already running.</strong> Wait for the current scan to finish before starting another one.</p>
@@ -83,15 +82,15 @@
     </tbody>
 </table>
 
-<h2>Run scan from GUI</h2>
+<h2>Run scan</h2>
 
 <div class="page-card">
-    <p>This runs the same scan from the local Flask process. Email sending remains disabled from the GUI.</p>
+    <p>Run a scan using the current Job Radar settings. Email sending is disabled for manual scans started here.</p>
 
     <p class="muted">Some company/source errors are temporary. If a company failed or looks stale, rerun the scan later.</p>
 
     <form id="scan-form" method="post" action="{{ url_for('run_scan') }}">
-        <button id="scan-submit-button" type="submit">Run scan now</button>
+        <button id="scan-submit-button" type="submit">Run scan</button>
     </form>
 
     <div id="scan-running" class="scan-running" role="status" aria-live="polite">

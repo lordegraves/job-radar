@@ -729,6 +729,7 @@ def handle_scan(
 
     jobs_stored = 0
     jobs_omitted = total_jobs - len(relevant_scored_postings)
+    new_scored_postings: list[ScoredPosting] = []
 
     for scored_posting in relevant_scored_postings:
         result = upsert_job_posting(database_path, scored_posting.posting)
@@ -736,6 +737,7 @@ def handle_scan(
 
         if result == "new":
             jobs_new += 1
+            new_scored_postings.append(scored_posting)
         elif result == "seen":
             jobs_seen += 1
         elif result == "changed":
@@ -752,6 +754,7 @@ def handle_scan(
         collector_errors=collector_errors,
         postings=collected_postings,
         scored_postings=relevant_scored_postings,
+        new_scored_postings=new_scored_postings,
         omitted_scored_postings=omitted_scored_postings,
         generated_at=generated_at,
         top_match_min_score=scoring_config["top_matches"]["min_score"],

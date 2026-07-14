@@ -121,6 +121,7 @@ class ScanReport:
     collector_errors: list[ScanError]
     postings: list[JobPosting]
     scored_postings: list[ScoredPosting] | None = None
+    new_scored_postings: list[ScoredPosting] | None = None
     omitted_scored_postings: list[ScoredPosting] | None = None
     generated_at: str | None = None
     top_match_min_score: int | None = None
@@ -191,6 +192,7 @@ def render_markdown_report(report: ScanReport) -> str:
         _append_scored_sections(
             lines,
             scored_postings=report.scored_postings,
+            new_scored_postings=report.new_scored_postings,
             omitted_scored_postings=report.omitted_scored_postings,
         )
     else:
@@ -315,6 +317,7 @@ def render_html_report(report: ScanReport) -> str:
         _append_html_scored_sections(
             lines,
             scored_postings=report.scored_postings,
+            new_scored_postings=report.new_scored_postings,
             omitted_scored_postings=report.omitted_scored_postings,
         )
     else:
@@ -709,6 +712,7 @@ def _append_collector_errors(
 def _append_scored_sections(
     lines: list[str],
     scored_postings: list[ScoredPosting],
+    new_scored_postings: list[ScoredPosting] | None = None,
     omitted_scored_postings: list[ScoredPosting] | None = None,
 ) -> None:
     report_scored_postings = list(scored_postings)
@@ -720,6 +724,10 @@ def _append_scored_sections(
     _append_northern_colorado_highlights_section(lines, report_scored_postings)
     _append_review_needed_section(lines, report_scored_postings)
     _append_tracked_applications_section(lines, report_scored_postings)
+    _append_new_jobs_section(
+        lines,
+        new_scored_postings or [],
+    )
     _append_omitted_jobs_section(
         lines,
         scored_postings=(
@@ -836,6 +844,30 @@ def _append_tracked_applications_section(
         return
 
     for scored_posting in tracked_applications:
+        _append_scored_posting(lines, scored_posting)
+
+
+def _append_new_jobs_section(
+    lines: list[str],
+    new_scored_postings: list[ScoredPosting],
+) -> None:
+    lines.extend(
+        [
+            "## New Jobs",
+            "",
+        ]
+    )
+
+    if not new_scored_postings:
+        lines.extend(
+            [
+                "No new actionable jobs were found in the latest scan.",
+                "",
+            ]
+        )
+        return
+
+    for scored_posting in new_scored_postings:
         _append_scored_posting(lines, scored_posting)
 
 
@@ -1657,6 +1689,7 @@ def _append_html_collector_errors(
 def _append_html_scored_sections(
     lines: list[str],
     scored_postings: list[ScoredPosting],
+    new_scored_postings: list[ScoredPosting] | None = None,
     omitted_scored_postings: list[ScoredPosting] | None = None,
 ) -> None:
     report_scored_postings = list(scored_postings)
@@ -1668,6 +1701,10 @@ def _append_html_scored_sections(
     _append_html_northern_colorado_highlights_section(lines, report_scored_postings)
     _append_html_review_needed_section(lines, report_scored_postings)
     _append_html_tracked_applications_section(lines, report_scored_postings)
+    _append_html_new_jobs_section(
+        lines,
+        new_scored_postings or [],
+    )
     _append_html_omitted_jobs_section(
         lines,
         scored_postings=(
@@ -1765,6 +1802,20 @@ def _append_html_tracked_applications_section(
         return
 
     for scored_posting in tracked_applications:
+        _append_html_scored_posting(lines, scored_posting)
+
+
+def _append_html_new_jobs_section(
+    lines: list[str],
+    new_scored_postings: list[ScoredPosting],
+) -> None:
+    lines.append("<h2>New Jobs</h2>")
+
+    if not new_scored_postings:
+        lines.append("<p>No new actionable jobs were found in the latest scan.</p>")
+        return
+
+    for scored_posting in new_scored_postings:
         _append_html_scored_posting(lines, scored_posting)
 
 
