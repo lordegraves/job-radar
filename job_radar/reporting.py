@@ -1704,7 +1704,8 @@ def _append_html_top_matches_section(
         lines.append(
             "<li>"
             f"<strong>{scored_posting.score}</strong> - "
-            f'<a href="{escape(posting.source_url, quote=True)}">'
+            f'<a href="{escape(posting.source_url, quote=True)}" '
+            'target="_blank" rel="noopener noreferrer">'
             f"{escape(posting.title)}</a>"
             f"<br>Company: {escape(posting.company_name)}"
             f"<br>Location: {escape(posting.location or 'Unknown')}"
@@ -1830,7 +1831,8 @@ def _append_html_passed_posting(
     lines.extend(
         [
             '<section class="job-card">',
-            f'<h3><a href="{escape(posting.source_url, quote=True)}">'
+            f'<h3><a href="{escape(posting.source_url, quote=True)}" '
+            'target="_blank" rel="noopener noreferrer">'
             f"{escape(posting.title)}</a></h3>",
             "<ul>",
             f"<li><strong>Company:</strong> {escape(posting.company_name)}</li>",
@@ -1846,7 +1848,8 @@ def _append_html_passed_posting(
             f"<li><strong>Job Radar ID:</strong> "
             f"<code>{escape(posting.job_radar_id)}</code></li>",
             f"<li><strong>Posting:</strong> "
-            f'<a href="{escape(posting.source_url, quote=True)}">'
+            f'<a href="{escape(posting.source_url, quote=True)}" '
+            'target="_blank" rel="noopener noreferrer">'
             "View posting</a></li>",
             "</ul>",
             "</section>",
@@ -1895,7 +1898,8 @@ def _append_html_unscored_jobs_section(
         lines.extend(
             [
                 '<section class="job-card">',
-                f'<h3><a href="{escape(posting.source_url, quote=True)}">'
+                f'<h3><a href="{escape(posting.source_url, quote=True)}" '
+                'target="_blank" rel="noopener noreferrer">'
                 f"{escape(posting.title)}</a></h3>",
                 "<ul>",
                 f"<li><strong>Company:</strong> "
@@ -1906,7 +1910,8 @@ def _append_html_unscored_jobs_section(
                 f"<li><strong>Job Radar ID:</strong> "
                 f"<code>{escape(posting.job_radar_id)}</code></li>",
                 f"<li><strong>Posting:</strong> "
-                f'<a href="{escape(posting.source_url, quote=True)}">'
+                f'<a href="{escape(posting.source_url, quote=True)}" '
+                'target="_blank" rel="noopener noreferrer">'
                 "View posting</a></li>",
                 "</ul>",
                 "</section>",
@@ -1934,7 +1939,8 @@ def _append_html_scored_posting(
     lines.extend(
         [
             f'<section class="{section_class}">',
-            f'<h3><a href="{escape(posting.source_url, quote=True)}">'
+            f'<h3><a href="{escape(posting.source_url, quote=True)}" '
+            'target="_blank" rel="noopener noreferrer">'
             f"{escape(posting.title)}</a></h3>",
             "<ul>",
             f"<li><strong>Score:</strong> {scored_posting.score}</li>",
@@ -1988,7 +1994,8 @@ def _append_html_scored_posting(
             f"<li><strong>Location:</strong> "
             f"{escape(posting.location or 'Unknown')}</li>",
             f"<li><strong>Posting:</strong> "
-            f'<a href="{escape(posting.source_url, quote=True)}">'
+            f'<a href="{escape(posting.source_url, quote=True)}" '
+            'target="_blank" rel="noopener noreferrer">'
             "View posting</a></li>",
         ]
     )

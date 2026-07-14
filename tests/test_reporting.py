@@ -1323,7 +1323,8 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     assert "<strong>Jobs not actionable:</strong> 0" in html
     assert "Data Center Design Execution Lead" in html
     assert (
-        '<a href="https://boards.greenhouse.io/exampleai/jobs/123">'
+        '<a href="https://boards.greenhouse.io/exampleai/jobs/123" '
+        'target="_blank" rel="noopener noreferrer">'
         "Data Center Design Execution Lead</a>"
         in html
     )
@@ -1334,7 +1335,11 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     assert 'class="quick-view"' in html
     assert 'class="job-card top-match"' in html
     assert "<strong>Posting:</strong>" in html
-    assert "View posting</a>" in html
+    assert (
+        '<a href="https://boards.greenhouse.io/exampleai/jobs/123" '
+        'target="_blank" rel="noopener noreferrer">View posting</a>'
+        in html
+    )
     assert "<strong>Job Radar ID:</strong>" in html
     assert "<strong>URL:</strong>" not in html
 
@@ -1415,7 +1420,11 @@ def test_render_html_report_includes_passed_job_details() -> None:
     assert "<strong>Score:</strong> -60" in html
     assert "<strong>Recommended action:</strong> Pass" in html
     assert "<strong>Why not recommended:</strong>" in html
-    assert "View posting</a>" in html
+    assert (
+        '<a href="https://boards.greenhouse.io/exampleai/jobs/123" '
+        'target="_blank" rel="noopener noreferrer">View posting</a>'
+        in html
+    )
 
 
 def test_render_html_report_escapes_html_special_characters() -> None:
