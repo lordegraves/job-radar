@@ -19,19 +19,19 @@ Job Radar started as a personal job discovery and application-tracking tool.
 
 The long-term direction is a configurable local-first cross-platform application that another user can install, configure, and use without editing source code. Long-term targets are Windows packaged app, Linux packaged app, and container/server mode for always-on use.
 
-The near-term MVP target is narrower: a disciplined single-user local workflow that can scan target companies, score roles, manage active applications, surface follow-ups, preserve history, maintain resume/profile input, and produce useful reports without risky architecture expansion.
+The completed MVP is a disciplined single-user local workflow that can scan target companies, score roles, manage active applications, surface follow-ups, preserve history, maintain resume/profile input, and produce useful reports without risky architecture expansion.
 
-Projected MVP completion target: **2026-07-31**.
+MVP completed and acceptance-tested: **2026-07-14**.
 
-Complete-enough for the current MVP means one user can run Job Radar locally, maintain their resume/profile input, scan configured companies, review scored results, manage active applications and archived history through the GUI, and know what needs action next without treating the spreadsheet or command line as the primary daily interface.
+The current MVP allows one user to run Job Radar locally, maintain resume/profile input, scan configured companies, review scored results, manage active applications and archived history through the GUI, and know what needs action next without treating the spreadsheet or command line as the primary daily interface.
 
 The projected full-project completion target is **2026-09-30**. Full-project completion means Job Radar becomes a configurable local-first app with multiple launch targets, profile-aware configuration, user-managed companies/preferences/email/schedule, and no normal-use dependency on editing repo files by hand.
 
 ## MVP boundary
 
-Projected MVP completion target: **2026-07-31**.
+MVP status: **Complete and acceptance-tested as of 2026-07-14**.
 
-MVP means the local GUI supports the normal daily loop:
+MVP supports the normal local GUI daily loop:
 
 ```text
 scan -> review report -> track application -> update application -> review history -> manage resume/profile basics
@@ -143,7 +143,13 @@ Job Radar currently supports:
 - scan/report reassurance for temporary company/source or source/network errors
 - `/tracker/` trailing-slash redirect to `/tracker`
 - post-tracking redirect to the tracked application's edit/detail page
-- operational Active Applications edit/detail workspace with clear application identity, canonical workflow badge, prominent Next action guidance, grouped quick actions, structured application details, and an isolated delete action
+- operational Active Applications edit/detail workspace with clear application identity, canonical workflow badge, date-aware Next action guidance, grouped quick actions, structured application details, back navigation, and an isolated delete action
+- focused Active Applications list showing workflow-critical summary fields while keeping posting URLs, Job Radar IDs, and notes in the dedicated record workspace
+- focused Application History list with summary fields and a dedicated History Record workspace for source, recruiter/contact, import identity, notes, editing, and deletion
+- History Record quick action for restoring archived applications to Active Applications
+- tracker/history round-trip preservation for applied date, last activity date, follow-up date, company, role, posting URL, source/contact context, and notes
+- guarded destructive actions requiring explicit `DELETE` confirmation
+- automatic SQLite migration of older `job_history` tables to preserve tracker workflow dates
 - tracked scan job matching by exact Job Radar ID first, then source URL fallback, so manually tracked scanned jobs do not keep reappearing as new Top Matches
 
 ## Source coverage
@@ -294,7 +300,7 @@ The tracker classifies workflow state:
 - `presumed_closed`
 - `closed`
 
-The Active Applications GUI supports summary cards, active filters, workflow/search/status/outcome filters, sorting, manual add with app-assigned Job Radar ID, an operational edit/detail workspace, grouped quick actions, prominent Next action guidance, Needs Review guidance, canonical workflow badges, stale/dormant/presumed-closed emphasis, moving terminal records to Application History, deleting records through an isolated danger zone, notes display, and wrapping Job Radar ID display.
+The Active Applications GUI supports summary cards, active filters, workflow/search/status/outcome filters, sorting, manual add with app-assigned Job Radar ID, a focused list view, an operational record workspace, grouped quick actions, date-aware Next action guidance, Needs Review guidance, canonical workflow badges, stale/dormant/presumed-closed emphasis, moving terminal records to Application History, restoring archived records to Active Applications, preserving application dates across the complete tracker/history round trip, and deleting records through an isolated danger zone with explicit confirmation.
 
 List tracker records:
 
@@ -716,13 +722,11 @@ Job Radar should remain local-first, user-controlled, configured-company based, 
 
 The app should help the user decide where to spend time. It should not pretend to replace the user.
 
-## MVP finish line
+## MVP completion
 
-The immediate MVP target is a single-user local app that demonstrates disciplined execution and practical usefulness.
+The single-user local MVP was completed and acceptance-tested on **2026-07-14**.
 
-Projected MVP completion target: **2026-07-31**.
-
-MVP is complete when:
+The completed MVP satisfies the following acceptance criteria:
 
 1. A single local user can launch the GUI reliably.
 2. The user can run or review scans from configured company sources.
@@ -741,15 +745,26 @@ MVP is complete when:
 15. The test suite remains green.
 16. Documentation is consolidated enough to stay maintainable.
 
+All MVP acceptance criteria have been met. The final manual acceptance workflow verified application creation, quick actions, tracker-to-history movement, history-to-tracker restoration, preservation of workflow dates and record details, guarded deletion, and cleanup of the temporary acceptance record.
 
-## Near-term MVP priorities
+Final MVP verification:
 
-1. MVP polish for the single-user local workflow.
-2. Dashboard follow-up display refinement after real tracker use.
-3. Settings visibility improvements where they remove real user friction.
-4. Documentation alignment for local GUI use, scan use, and safe email behavior.
-5. Company add/edit only if it can be done safely without corrupting source grouping.
-6. Packaging/launcher preparation remains post-MVP unless explicitly pulled forward.
+```text
+Full test suite: 488 passed
+Focused web-app suite: 77 passed
+Manual tracker/history acceptance workflow: passed
+Repository state after MVP implementation: clean and synchronized with origin/main
+MVP completion commit: edcbf94 polish application tracking workflows
+```
+
+## Immediate post-MVP priorities
+
+1. Tag and document the `v0.1.0` MVP release.
+2. Deploy Job Radar to the intended local server/container environment.
+3. Configure and verify scheduled scans and guarded email delivery.
+4. Observe real tracker use and refine dashboard follow-up behavior only where actual friction appears.
+5. Add user-configurable scan-history retention.
+6. Begin profile-aware configuration and company management as separate post-MVP milestones without regressing the completed single-user workflow.
 
 ## Deferred until after MVP
 
@@ -1006,16 +1021,19 @@ The repo may include demo config, example config, sanitized workbook, documentat
 
 ## Staged roadmap
 
-### Stage 1: Finish Current GUI Workflow
+### Stage 1: Current GUI Workflow — Complete
 
-- Finish GUI-native tracker/history workflows so normal application tracking no longer depends on the spreadsheet.
-- Preserve completed tracker workflow improvements.
-- Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state.
-- Preserve Tracker/History mutual exclusivity.
-- Preserve app-owned tracker identity.
-- Keep tracker/history workflow actions in GUI-neutral services.
-- Decide the final role of the spreadsheet bridge.
-- Keep scan/report behavior stable while GUI tracker/history behavior improves.
+Completed for MVP:
+
+- GUI-native tracker/history workflows now support normal application tracking without using the spreadsheet as the daily interface.
+- The GUI is the source of truth for active applications, archived history, rejected applications, dormant roles, and follow-up state.
+- Tracker/History mutual exclusivity is enforced.
+- App-owned tracker identity is preserved.
+- Terminal applications move to history and can be restored through a dedicated quick action.
+- Applied, last-activity, and follow-up dates survive tracker/history round trips.
+- Tracker/history workflow actions remain in GUI-neutral services.
+- The spreadsheet remains an import and bulk-intake bridge.
+- Scan and report behavior remained stable through the completed GUI work.
 
 ### Stage 2: User Configuration
 
@@ -1088,3 +1106,11 @@ Completed areas include:
 - shared navigation-aligned page width and user-facing Active Applications/Application History terminology
 - MVP scan/dashboard acceptance polish with redundant Home quick links removed, focused New Jobs and Collector Errors drill-downs, clearer scan labels, and user-facing latest-scan terminology
 - consolidated documentation and no-regression test coverage
+- focused Active Applications and Application History list views with detailed record workspaces
+- History Record restore quick action with invalid-action safeguards
+- date-aware tracker Next action guidance
+- complete tracker-to-history-to-tracker data preservation, including applied, activity, and follow-up dates
+- automatic migration support for new history date fields in existing SQLite databases
+- successful manual MVP acceptance workflow covering quick actions, archive movement, restoration, destructive confirmation, and cleanup
+- final MVP verification with 488 passing tests and a clean synchronized repository
+- MVP implementation completed and pushed in commit `edcbf94`
