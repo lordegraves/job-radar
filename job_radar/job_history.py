@@ -78,6 +78,9 @@ class JobHistoryRecord:
     job_radar_id: str | None = None
     posting_url: str | None = None
     lead_source: str | None = None
+    applied_on: str | None = None
+    last_activity_on: str | None = None
+    follow_up_on: str | None = None
 
 
 @dataclass(frozen=True)

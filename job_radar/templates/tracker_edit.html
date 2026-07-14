@@ -5,6 +5,10 @@
 {% block page_styles %}
 <style>
 
+    .workspace-navigation {
+        margin-bottom: 18px;
+    }
+
     .application-header {
         align-items: flex-start;
         display: flex;
@@ -248,6 +252,10 @@
 
 {% block content %}
 <div class="page-card form-page">
+    <div class="workspace-navigation">
+        <a href="{{ url_for('tracker', filter=return_filter) }}">Back to Active Applications</a>
+    </div>
+
     <div class="application-header">
         <div class="application-identity">
             <p class="application-company">{{ application.company_name }}</p>

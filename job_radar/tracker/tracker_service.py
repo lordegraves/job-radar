@@ -138,8 +138,9 @@ def build_application_record_from_history_record(
         status=_tracker_status_from_history_record(record),
         outcome=record.outcome_category,
         notes=_clean_history_notes_for_tracker(record.notes),
-        applied_on=record.event_date,
-        last_activity_on=record.event_date,
+        applied_on=record.applied_on or record.event_date,
+        last_activity_on=record.last_activity_on or record.event_date,
+        follow_up_on=record.follow_up_on,
     )
 
 
@@ -161,6 +162,9 @@ def build_history_record_from_application_record(
     status: str,
     outcome: str,
     event_date: str | None = None,
+    applied_on: str | None = None,
+    last_activity_on: str | None = None,
+    follow_up_on: str | None = None,
     notes: str | None = None,
 ) -> JobHistoryRecord:
     return JobHistoryRecord(
@@ -193,6 +197,17 @@ def build_history_record_from_application_record(
         job_radar_id=application.job_radar_id,
         posting_url=application.source_url,
         lead_source="Job Radar Tracker",
+        applied_on=applied_on if applied_on is not None else application.applied_on,
+        last_activity_on=(
+            last_activity_on
+            if last_activity_on is not None
+            else application.last_activity_on
+        ),
+        follow_up_on=(
+            follow_up_on
+            if follow_up_on is not None
+            else application.follow_up_on
+        ),
     )
 
 
@@ -230,6 +245,9 @@ def update_tracker_application_workflow(
             status=status,
             outcome=outcome or "",
             event_date=last_activity_on or applied_on,
+            applied_on=applied_on,
+            last_activity_on=last_activity_on,
+            follow_up_on=follow_up_on,
             notes=notes,
         )
 
@@ -314,8 +332,11 @@ def update_history_record_workflow(
         import_key=record.import_key,
         notes=notes,
         job_radar_id=_job_radar_id_from_history_import_key(record.import_key),
-        posting_url=None,
+        posting_url=record.posting_url,
         lead_source=source,
+        applied_on=record.applied_on,
+        last_activity_on=record.last_activity_on,
+        follow_up_on=record.follow_up_on,
     )
 
     if should_track_history_record(updated_record):

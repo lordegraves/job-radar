@@ -137,6 +137,9 @@ CREATE TABLE IF NOT EXISTS job_history (
     include_in_job_radar INTEGER NOT NULL DEFAULT 1,
     import_key TEXT NOT NULL UNIQUE,
     notes TEXT,
+    applied_on TEXT,
+    last_activity_on TEXT,
+    follow_up_on TEXT,
     imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -162,6 +165,7 @@ def initialize_database(database_path: str | Path) -> Path:
     with sqlite3.connect(db_path) as connection:
         connection.executescript(SCHEMA_SQL)
         _migrate_scan_runs_table(connection)
+        _migrate_job_history_table(connection)
 
     initialize_tracker_tables(db_path)
 
@@ -192,6 +196,27 @@ def _migrate_scan_runs_table(connection: sqlite3.Connection) -> None:
 
         connection.execute(
             f"ALTER TABLE scan_runs ADD COLUMN {column_name} {column_definition}"
+        )
+
+
+def _migrate_job_history_table(connection: sqlite3.Connection) -> None:
+    existing_columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(job_history)").fetchall()
+    }
+
+    required_columns = {
+        "applied_on": "TEXT",
+        "last_activity_on": "TEXT",
+        "follow_up_on": "TEXT",
+    }
+
+    for column_name, column_definition in required_columns.items():
+        if column_name in existing_columns:
+            continue
+
+        connection.execute(
+            f"ALTER TABLE job_history ADD COLUMN {column_name} {column_definition}"
         )
 
 
@@ -444,6 +469,9 @@ def upsert_job_history_record(
             1 if record.include_in_job_radar else 0,
             record.import_key,
             record.notes,
+            record.applied_on,
+            record.last_activity_on,
+            record.follow_up_on,
         )
 
         if existing is None:
@@ -470,9 +498,12 @@ def upsert_job_history_record(
                     revisit,
                     include_in_job_radar,
                     import_key,
-                    notes
+                    notes,
+                    applied_on,
+                    last_activity_on,
+                    follow_up_on
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 values,
             )
@@ -503,10 +534,13 @@ def upsert_job_history_record(
                 revisit = ?,
                 include_in_job_radar = ?,
                 notes = ?,
+                applied_on = ?,
+                last_activity_on = ?,
+                follow_up_on = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE import_key = ?
             """,
-            values[:-2] + (record.notes, record.import_key),
+            values[:19] + values[20:] + (record.import_key,),
         )
 
         return "updated"
@@ -561,7 +595,10 @@ def fetch_included_job_history_records(
                 revisit,
                 include_in_job_radar,
                 import_key,
-                notes
+                notes,
+                applied_on,
+                last_activity_on,
+                follow_up_on
             FROM job_history
             WHERE include_in_job_radar = 1
             ORDER BY event_date DESC, company ASC, role ASC
@@ -591,6 +628,9 @@ def fetch_included_job_history_records(
             include_in_job_radar=bool(row["include_in_job_radar"]),
             import_key=row["import_key"],
             notes=row["notes"],
+            applied_on=row["applied_on"],
+            last_activity_on=row["last_activity_on"],
+            follow_up_on=row["follow_up_on"],
         )
         for row in rows
     ]

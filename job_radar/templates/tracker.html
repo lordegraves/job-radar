@@ -154,22 +154,70 @@
     }
 
     .table-wrap {
-        max-width: calc(100vw - 56px);
+        max-width: 100%;
         overflow-x: auto;
     }
 
     .table-wrap table {
         table-layout: fixed;
+        width: 100%;
     }
 
     .table-wrap th,
     .table-wrap td {
-        overflow-wrap: anywhere;
+        overflow-wrap: break-word;
+        vertical-align: top;
     }
 
-    .table-wrap code {
-        white-space: normal;
-        word-break: break-word;
+    .table-wrap th:nth-child(1),
+    .table-wrap td:nth-child(1) {
+        width: 7%;
+        white-space: nowrap;
+    }
+
+    .table-wrap th:nth-child(2),
+    .table-wrap td:nth-child(2) {
+        width: 12%;
+    }
+
+    .table-wrap th:nth-child(3),
+    .table-wrap td:nth-child(3) {
+        width: 19%;
+    }
+
+    .table-wrap th:nth-child(4),
+    .table-wrap td:nth-child(4) {
+        width: 9%;
+        white-space: nowrap;
+    }
+
+    .table-wrap th:nth-child(5),
+    .table-wrap td:nth-child(5) {
+        width: 14%;
+        white-space: nowrap;
+    }
+
+    .table-wrap th:nth-child(6),
+    .table-wrap td:nth-child(6) {
+        width: 9%;
+        white-space: nowrap;
+    }
+
+    .table-wrap th:nth-child(7),
+    .table-wrap td:nth-child(7) {
+        width: 10%;
+        white-space: nowrap;
+    }
+
+    .table-wrap th:nth-child(8),
+    .table-wrap td:nth-child(8) {
+        width: 9%;
+        white-space: nowrap;
+    }
+
+    .table-wrap th:nth-child(9),
+    .table-wrap td:nth-child(9) {
+        width: 11%;
     }
 
     @media (max-width: 1000px) {
@@ -187,7 +235,6 @@
     <p class="muted">Review active applications, search notes, sort by workflow/date/company, and update application
         status.</p>
 
-    <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
     <p><strong>Applications shown:</strong> {{ applications|length }}</p>
     <p><a href="{{ url_for('add_tracker_application') }}">Add application</a></p>
 
@@ -281,7 +328,7 @@
 {% if active_filter == "needs_review" %}
 <div class="tracker-review-panel">
     <h2>Needs review queue</h2>
-    <p class="muted">Review these applications for stale dates, dormant status, presumed closure, or invalid date fields. Use Edit to refresh dates, mark dormant, move closed outcomes to history, or add notes.</p>
+    <p class="muted">Review these applications for stale dates, dormant status, presumed closure, or invalid date fields. Open a record to refresh dates, mark it dormant, move closed outcomes to history, or add notes.</p>
 </div>
 {% endif %}
 
@@ -303,9 +350,6 @@
                 <th>Last activity</th>
                 <th>Follow-up</th>
                 <th>Outcome</th>
-                <th>Job Radar ID</th>
-                <th>Posting</th>
-                <th>Notes</th>
             </tr>
         </thead>
         <tbody>
@@ -313,7 +357,7 @@
             <tr class="workflow-row workflow-{{ row.workflow_state }}">
                 <td>
                     <a
-                        href="{{ url_for('edit_tracker_application', job_radar_id=row.application.job_radar_id, filter=active_filter) }}">{% if active_filter == "needs_review" %}Review{% else %}Edit{% endif %}</a>
+                        href="{{ url_for('edit_tracker_application', job_radar_id=row.application.job_radar_id, filter=active_filter) }}">{% if active_filter == "needs_review" %}Review{% else %}Open{% endif %}</a>
                 </td>
                 <td>{{ row.application.company_name }}</td>
                 <td>{{ row.application.role_title }}</td>
@@ -323,25 +367,6 @@
                 <td class="date-cell">{{ row.application.last_activity_on or "" }}</td>
                 <td class="date-cell">{{ row.application.follow_up_on or "" }}</td>
                 <td class="outcome-cell">{{ row.application.outcome or "" }}</td>
-                <td><code>{{ row.application.job_radar_id }}</code></td>
-                <td>
-                    {% if row.application.source_url %}
-                    <a href="{{ row.application.source_url }}" target="_blank" rel="noopener noreferrer">View posting</a>
-                    {% endif %}
-                </td>
-                <td class="notes-cell">
-                    {% if row.application.notes %}
-                    <div class="notes-preview">
-                        {{ row.application.notes[:120] }}{% if row.application.notes|length > 120 %}...{% endif %}
-                    </div>
-                    {% if row.application.notes|length > 120 %}
-                    <details>
-                        <summary>Show full note</summary>
-                        <div class="notes-full">{{ row.application.notes }}</div>
-                    </details>
-                    {% endif %}
-                    {% endif %}
-                </td>
             </tr>
             {% endfor %}
         </tbody>

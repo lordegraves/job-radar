@@ -187,6 +187,14 @@ TRACKER_OUTCOME_OPTIONS = (
 
 TRACKER_EDIT_OUTCOME_OPTIONS = TRACKER_OUTCOME_OPTIONS + TRACKER_TERMINAL_OUTCOME_OPTIONS
 
+HISTORY_QUICK_ACTIONS = {
+    "restore_to_tracker": {
+        "label": "Restore to Active Applications",
+        "status": "Applied",
+        "outcome": "Pending / In Progress",
+    },
+}
+
 TRACKER_QUICK_ACTIONS = {
     "refresh_activity_today": {
         "label": "Refresh activity today",
@@ -586,6 +594,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             record=record,
             decision_options=CANONICAL_DECISION_FILTER_OPTIONS,
             outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
+            quick_actions=HISTORY_QUICK_ACTIONS,
         )
 
     @app.post("/history/<path:import_key>/edit")
@@ -606,6 +615,19 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
             return redirect(url_for("history"))
 
+        status = request.form["status"].strip()
+        outcome = _normalize_optional_form_value("outcome")
+        quick_action = request.form.get("quick_action", "").strip()
+
+        if quick_action:
+            quick_action_values = HISTORY_QUICK_ACTIONS.get(quick_action)
+
+            if quick_action_values is None:
+                abort(400)
+
+            status = quick_action_values["status"]
+            outcome = quick_action_values["outcome"]
+
         result = update_history_record_workflow(
             database_path,
             import_key=import_key,
@@ -613,8 +635,8 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             role=request.form["role"].strip(),
             source=_normalize_optional_form_value("source"),
             event_date=_normalize_optional_form_value("event_date"),
-            status=request.form["status"].strip(),
-            outcome=_normalize_optional_form_value("outcome"),
+            status=status,
+            outcome=outcome,
             recruiter_contact=_normalize_optional_form_value("recruiter_contact"),
             notes=_normalize_optional_form_value("notes"),
         )
@@ -1776,23 +1798,74 @@ def _parse_tracker_sort_date(value: str | None) -> date | None:
         return None
 
 
+def _format_tracker_action_date(value: str | None) -> str | None:
+    parsed_date = _parse_tracker_sort_date(value)
+
+    if parsed_date is None:
+        return None
+
+    return f"{parsed_date:%B} {parsed_date.day}, {parsed_date.year}"
+
+
 def _build_tracker_next_action_message(
     application: ApplicationRecord,
     workflow_state: str,
 ) -> str:
-    if workflow_state == "active_pipeline":
-        return "This application is active. Keep interview or recruiter notes current and record the next follow-up date."
+    follow_up_date = _parse_tracker_sort_date(application.follow_up_on)
+    formatted_follow_up_date = _format_tracker_action_date(application.follow_up_on)
+    formatted_last_activity_date = _format_tracker_action_date(
+        application.last_activity_on
+    )
 
     if workflow_state == "needs_date_review":
         return "The follow-up date needs review. Use the date picker or a quick action to repair it."
 
     if workflow_state == "follow_up_due":
+        if formatted_follow_up_date is not None:
+            return (
+                f"Follow-up was due on {formatted_follow_up_date}. "
+                "Refresh activity today or schedule the next follow-up."
+            )
+
         return "Follow-up is due. Refresh activity today or schedule the next follow-up."
+
+    if workflow_state == "follow_up_scheduled":
+        if formatted_follow_up_date is not None:
+            return (
+                f"Follow up on {formatted_follow_up_date}. "
+                "Keep this page updated as the application moves through the pipeline."
+            )
+
+        return "Follow-up is scheduled. Keep this page updated as the application moves through the pipeline."
+
+    if workflow_state == "active_pipeline":
+        if formatted_last_activity_date is not None:
+            return (
+                f"Last activity was recorded on {formatted_last_activity_date}. "
+                "Keep interview or recruiter notes current and record the next follow-up date."
+            )
+
+        return "This application is active. Keep interview or recruiter notes current and record the next follow-up date."
+
+    if workflow_state == "waiting":
+        if formatted_last_activity_date is not None:
+            return (
+                f"Waiting for an update since {formatted_last_activity_date}. "
+                "Record the next follow-up date when appropriate."
+            )
+
+        return "This application is waiting for an update. Record the next follow-up date when appropriate."
 
     if workflow_state == "dormant":
         return "This application is dormant. Decide whether to revive it, leave it dormant, or move it to history."
 
     if workflow_state == "stale":
+        if formatted_last_activity_date is not None:
+            return (
+                f"No activity has been recorded since {formatted_last_activity_date}. "
+                "Refresh activity, schedule follow-up, or move it to history if it is effectively closed."
+            )
+
         return "This application has gone stale. Refresh activity, schedule follow-up, or move it to history if it is effectively closed."
 
     if workflow_state == "presumed_closed":
@@ -1804,15 +1877,19 @@ def _build_tracker_next_action_message(
     if not application.follow_up_on:
         return "No follow-up date is set. Schedule a follow-up so this application does not go stale."
 
-    follow_up_date = _parse_tracker_sort_date(application.follow_up_on)
-
     if follow_up_date is None:
         return "The follow-up date needs review. Use the date picker or a quick action to repair it."
 
     if follow_up_date <= date.today():
-        return "Follow-up is due. Refresh activity today or schedule the next follow-up."
+        return (
+            f"Follow-up was due on {formatted_follow_up_date}. "
+            "Refresh activity today or schedule the next follow-up."
+        )
 
-    return "Follow-up is scheduled. Keep this page updated as the application moves through the pipeline."
+    return (
+        f"Follow up on {formatted_follow_up_date}. "
+        "Keep this page updated as the application moves through the pipeline."
+    )
 
 
 def _resolve_quick_action_date(

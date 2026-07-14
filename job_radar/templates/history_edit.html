@@ -1,9 +1,47 @@
 {% extends "base.html" %}
 
-{% block title %}Edit History Record - Job Radar{% endblock %}
+{% block title %}History Record - Job Radar{% endblock %}
 
 {% block page_styles %}
 <style>
+    .workspace-navigation {
+        margin-bottom: 18px;
+    }
+
+    .workspace-section {
+        margin-top: 20px;
+    }
+
+    .workspace-section h2 {
+        margin-bottom: 6px;
+    }
+
+    .quick-action-panel {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px;
+    }
+
+    .quick-action-intro {
+        margin: 0 0 16px 0;
+    }
+
+    .quick-actions {
+        align-items: flex-start;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .details-panel {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-top: 20px;
+        padding: 20px;
+    }
+
     .danger-zone {
         border-top: 1px solid var(--border);
         margin-top: 18px;
@@ -14,11 +52,30 @@
 
 {% block content %}
 <div class="page-card form-page">
-    <h1 class="page-title">Edit History Record</h1>
+    <div class="workspace-navigation">
+        <a href="{{ url_for('history') }}">Back to Application History</a>
+    </div>
+
+    <h1 class="page-title">History Record</h1>
 
     <p><strong>Import Key:</strong> <code>{{ record.import_key }}</code></p>
 
     <form method="post">
+        <div class="workspace-section">
+            <h2>Quick actions</h2>
+            <p class="muted quick-action-intro">Use this to reopen an archived application without manually changing its workflow fields.</p>
+
+            <div class="quick-action-panel">
+                <div class="quick-actions">
+                    {% set restore_action = quick_actions["restore_to_tracker"] %}
+                    <button type="submit" name="quick_action" value="restore_to_tracker">
+                        {{ restore_action.label }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="details-panel">
         <label for="company">Company</label>
         <input id="company" name="company" value="{{ record.company }}" required>
 
@@ -57,8 +114,9 @@
         <textarea id="notes" name="notes">{{ record.notes or '' }}</textarea>
 
         <div class="actions">
-            <button type="submit" name="action" value="save">Save</button>
+            <button type="submit" name="action" value="save">Save history record</button>
             <a class="button-link button-secondary" href="{{ url_for('history') }}">Cancel</a>
+        </div>
         </div>
 
         <div class="danger-zone">

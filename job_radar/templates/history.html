@@ -62,22 +62,51 @@
     }
 
     .table-wrap {
-        max-width: calc(100vw - 56px);
+        max-width: 100%;
         overflow-x: auto;
     }
 
     .table-wrap table {
         table-layout: fixed;
+        width: 100%;
     }
 
     .table-wrap th,
     .table-wrap td {
-        overflow-wrap: anywhere;
+        overflow-wrap: break-word;
+        vertical-align: top;
     }
 
-    .table-wrap code {
-        white-space: normal;
-        word-break: break-word;
+    .table-wrap th:nth-child(1),
+    .table-wrap td:nth-child(1) {
+        width: 8%;
+        white-space: nowrap;
+    }
+
+    .table-wrap th:nth-child(2),
+    .table-wrap td:nth-child(2) {
+        width: 12%;
+        white-space: nowrap;
+    }
+
+    .table-wrap th:nth-child(3),
+    .table-wrap td:nth-child(3) {
+        width: 19%;
+    }
+
+    .table-wrap th:nth-child(4),
+    .table-wrap td:nth-child(4) {
+        width: 25%;
+    }
+
+    .table-wrap th:nth-child(5),
+    .table-wrap td:nth-child(5) {
+        width: 14%;
+    }
+
+    .table-wrap th:nth-child(6),
+    .table-wrap td:nth-child(6) {
+        width: 22%;
     }
 
     @media (max-width: 1000px) {
@@ -98,7 +127,6 @@
         <span>Viewing these records does not add them to Active Applications.</span>
     </p>
 
-    <p><strong>Database:</strong> <code>{{ database_path }}</code></p>
     <p><strong>History records shown:</strong> {{ records|length }}</p>
 
     <h2>Archive summary</h2>
@@ -202,35 +230,21 @@
                 <th>Date</th>
                 <th>Company</th>
                 <th>Role</th>
-                <th>History Type</th>
                 <th>Decision</th>
                 <th>Outcome</th>
-                <th>Lead Source</th>
-                <th>Recruiter / Contact</th>
-                <th>Import Key</th>
-                <th>Notes</th>
             </tr>
         </thead>
         <tbody>
             {% for record in records %}
             <tr>
                 <td>
-                    <a href="{{ url_for('edit_history_record', import_key=record.import_key) }}">Edit</a>
+                    <a href="{{ url_for('edit_history_record', import_key=record.import_key) }}">Open</a>
                 </td>
                 <td class="date-cell">{{ record.event_date or "" }}</td>
                 <td>{{ record.company }}</td>
                 <td>{{ record.role }}</td>
-                <td><span class="history-chip">{{ record.history_type }}</span></td>
                 <td><span class="history-chip">{{ record.status or "" }}</span></td>
                 <td class="outcome-cell"><span class="history-chip">{{ record.outcome_category or "" }}</span></td>
-                <td>{{ record.source or record.lead_source or "" }}</td>
-                <td>{{ record.recruiter_contact or "" }}</td>
-                <td><code>{{ record.import_key }}</code></td>
-                <td class="notes-cell">
-                    {% if record.notes %}
-                    <div class="notes-full">{{ record.notes }}</div>
-                    {% endif %}
-                </td>
             </tr>
             {% endfor %}
         </tbody>

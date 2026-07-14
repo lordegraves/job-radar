@@ -72,10 +72,10 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
 
     response = client.get("/tracker")
     html = response.get_data(as_text=True)
+    normalized_html = " ".join(html.split())
 
     assert response.status_code == 200
     assert "Active Applications" in html
-    assert f"<code>{database_file}</code>" in html
     assert "Applications shown:</strong> 1" in html
     assert "Active Applications summary" in html
     assert "Total tracked" in html
@@ -99,8 +99,8 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "Interview Scheduled" in html
     assert "outcome-cell" in html
     assert "jr-stack-av-12345678" in html
-    assert "https://example.com/jobs/stack-av-sre" in html
-    assert "Applied through company site." in html
+    assert 'href="/tracker/jr-stack-av-12345678/edit?filter=all"' in normalized_html
+    assert ">Open</a>" in normalized_html
 
 
 def test_tracker_page_summarizes_workflow_counts(tmp_path: Path) -> None:
@@ -840,7 +840,6 @@ def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Application History" in html
-    assert f"<code>{database_file}</code>" in html
     assert "History records shown:</strong> 1" in html
     assert "Archive summary" in html
     assert "Total archived" in html
@@ -858,14 +857,14 @@ def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
     assert "history-chip" in html
     assert "ArchiveCo" in html
     assert "Senior Linux Engineer" in html
-    assert "Reviewed" in html
     assert "Skipped" in html
     assert "Skipped / Avoid" in html
     assert "outcome-cell" in html
-    assert "LinkedIn" in html
-    assert "Example Recruiter" in html
-    assert "manual:archiveco:senior-linux-engineer" in html
-    assert "Skipped because the role was onsite outside target area." in html
+    assert 'href="/history/manual:archiveco:senior-linux-engineer/edit"' in html
+    assert ">Open</a>" in html
+    assert "LinkedIn" not in html
+    assert "Example Recruiter" not in html
+    assert "Skipped because the role was onsite outside target area." not in html
     assert "Viewing these records does not add them to Active Applications." in html
 
 
@@ -2049,12 +2048,12 @@ def test_report_file_rejects_non_report_file(tmp_path: Path) -> None:
     assert response.status_code == 404
 
 
-def test_tracker_page_expands_long_notes(tmp_path: Path) -> None:
+def test_tracker_page_keeps_long_notes_in_application_workspace(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     long_note = (
         "This is a long tracker note with important context. "
-        "It should not be hidden from the GUI because the notes field often "
+        "It should remain available in the application workspace because the notes field often "
         "contains fit concerns, recruiter context, rejection details, and "
         "manual review comments."
     )
@@ -2075,13 +2074,20 @@ def test_tracker_page_expands_long_notes(tmp_path: Path) -> None:
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    response = client.get("/tracker?sort=workflow")
-    html = response.get_data(as_text=True)
+    tracker_response = client.get("/tracker?sort=workflow")
+    tracker_html = tracker_response.get_data(as_text=True)
 
-    assert response.status_code == 200
-    assert "Show full note" in html
-    assert "This is a long tracker note with important context." in html
-    assert "manual review comments." in html
+    assert tracker_response.status_code == 200
+    assert "NotesCo" in tracker_html
+    assert "Show full note" not in tracker_html
+    assert long_note not in tracker_html
+    assert 'href="/tracker/jr-notes-12345678/edit?filter=all"' in tracker_html
+
+    workspace_response = client.get("/tracker/jr-notes-12345678/edit")
+    workspace_html = workspace_response.get_data(as_text=True)
+
+    assert workspace_response.status_code == 200
+    assert long_note in workspace_html
 
 
 def test_tracker_page_sorts_by_workflow_priority(tmp_path: Path) -> None:
@@ -2532,12 +2538,15 @@ def test_tracker_page_filters_to_needs_review(tmp_path: Path) -> None:
 
     response = client.get("/tracker?filter=needs_review")
     html = response.get_data(as_text=True)
+    normalized_html = " ".join(html.split())
 
     assert response.status_code == 200
     assert "Applications shown:</strong> 1" in html
     assert "Needs review queue" in html
     assert "Review these applications for stale dates, dormant status, presumed closure, or invalid date fields." in html
-    assert "Review</a>" in html
+    assert "Open a record to refresh dates" in html
+    assert 'href="/tracker/jr-stale-12345678/edit?filter=needs_review"' in normalized_html
+    assert ">Review</a>" in normalized_html
     assert "workflow-badge workflow-stale" in html
     assert "Stale" in html
     assert "StaleCo" in html
@@ -2594,7 +2603,9 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert "Schedule follow-up next week" in html
     assert "Applied through company site." in html
     assert "Next action" in html
-    assert "This application is active." in html
+    assert "Last activity was recorded on July 5, 2026." in html
+    assert "Keep interview or recruiter notes current and record the next follow-up date." in html
+    assert 'href="/tracker?filter=needs_action">Back to Active Applications</a>' in html
     assert 'target="_blank" rel="noopener noreferrer"' in html
 
 
@@ -2625,7 +2636,8 @@ def test_tracker_edit_page_shows_follow_up_due_next_action(tmp_path: Path) -> No
 
     assert response.status_code == 200
     assert "Next action" in html
-    assert "Follow-up is due. Refresh activity today or schedule the next follow-up." in html
+    assert "Follow-up was due on January 1, 2026." in html
+    assert "Refresh activity today or schedule the next follow-up." in html
 
 
 def test_tracker_edit_page_shows_missing_follow_up_next_action(tmp_path: Path) -> None:
@@ -2655,7 +2667,8 @@ def test_tracker_edit_page_shows_missing_follow_up_next_action(tmp_path: Path) -
 
     assert response.status_code == 200
     assert "Next action" in html
-    assert "No follow-up date is set. Schedule a follow-up so this application does not go stale." in html
+    assert "Waiting for an update since July 14, 2026." in html
+    assert "Record the next follow-up date when appropriate." in html
 
 
 def test_tracker_edit_page_shows_date_review_next_action(tmp_path: Path) -> None:
@@ -2714,7 +2727,8 @@ def test_tracker_edit_page_shows_stale_next_action(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Next action" in html
-    assert "This application has gone stale. Refresh activity, schedule follow-up, or move it to history if it is effectively closed." in html
+    assert "No activity has been recorded since March 1, 2026." in html
+    assert "Refresh activity, schedule follow-up, or move it to history if it is effectively closed." in html
 
 
 def test_tracker_edit_page_shows_dormant_next_action(tmp_path: Path) -> None:
@@ -2777,7 +2791,7 @@ def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
         data={
             "return_filter": "needs_action",
             "status": "Applied",
-            "follow_up_on": "",
+            "follow_up_on": "2026-07-20",
             "applied_on": "2026-07-03",
             "last_activity_on": "2026-07-12",
             "outcome": "Rejected - No Interview",
@@ -2803,6 +2817,9 @@ def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
     assert history_record.outcome_category == "Rejected - No Interview"
     assert history_record.import_key == "job-radar-id:jr-stack-av-12345678"
     assert history_record.notes == "Rejected by email."
+    assert history_record.applied_on == "2026-07-03"
+    assert history_record.last_activity_on == "2026-07-12"
+    assert history_record.follow_up_on == "2026-07-20"
 
 
 def test_tracker_edit_quick_action_marks_application_dormant(
@@ -3192,7 +3209,7 @@ def test_history_page_links_to_history_edit(tmp_path: Path) -> None:
     assert "/history/job-radar-id:jr-reopenco-senior-sre/edit" in html
 
 
-def test_history_edit_page_moves_live_record_back_to_tracker(
+def test_history_edit_page_restores_record_with_quick_action(
     tmp_path: Path,
 ) -> None:
     settings_file = tmp_path / "settings.yaml"
@@ -3224,23 +3241,55 @@ def test_history_edit_page_moves_live_record_back_to_tracker(
             include_in_job_radar=True,
             import_key="job-radar-id:jr-reopenco-senior-sre",
             notes="Opportunity reopened.",
+            applied_on="2026-06-20",
+            last_activity_on="2026-07-01",
+            follow_up_on="2026-07-08",
         ),
     )
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
+    history_edit_url = "/history/job-radar-id:jr-reopenco-senior-sre/edit"
 
-    response = client.post(
-        "/history/job-radar-id:jr-reopenco-senior-sre/edit",
+    page_response = client.get(history_edit_url)
+    page_html = page_response.get_data(as_text=True)
+
+    assert page_response.status_code == 200
+    assert "Quick actions" in page_html
+    assert "Restore to Active Applications" in page_html
+    assert 'name="quick_action" value="restore_to_tracker"' in page_html
+
+    invalid_response = client.post(
+        history_edit_url,
         data={
             "company": "ReopenCo",
             "role": "Senior SRE",
             "event_date": "2026-07-15",
             "status": "Applied",
-            "outcome": "Pending / In Progress",
+            "outcome": "Rejected - No Interview",
             "source": "Recruiter",
             "recruiter_contact": "Recruiter",
             "notes": "Opportunity reopened.",
+            "quick_action": "unknown_history_action",
+        },
+    )
+
+    assert invalid_response.status_code == 400
+    assert get_application(database_file, "jr-reopenco-senior-sre") is None
+    assert len(fetch_included_job_history_records(database_file)) == 1
+
+    response = client.post(
+        history_edit_url,
+        data={
+            "company": "ReopenCo",
+            "role": "Senior SRE",
+            "event_date": "2026-07-15",
+            "status": "Applied",
+            "outcome": "Rejected - No Interview",
+            "source": "Recruiter",
+            "recruiter_contact": "Recruiter",
+            "notes": "Opportunity reopened.",
+            "quick_action": "restore_to_tracker",
         },
     )
 
@@ -3255,6 +3304,9 @@ def test_history_edit_page_moves_live_record_back_to_tracker(
     assert application.status == "Applied"
     assert application.outcome == "Pending / In Progress"
     assert application.notes == "Opportunity reopened."
+    assert application.applied_on == "2026-06-20"
+    assert application.last_activity_on == "2026-07-01"
+    assert application.follow_up_on == "2026-07-08"
     assert history_records == []
 
 
