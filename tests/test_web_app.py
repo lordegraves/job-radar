@@ -1133,8 +1133,8 @@ candidate:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Upload resume" in html
-    assert "Current resume" in html
+    assert "Replace resume" in html
+    assert "Current file" in html
     assert "resume.md" in html
     assert "Choose resume file" in html
     assert "No file selected" in html
@@ -1145,7 +1145,8 @@ candidate:
     assert 'enctype="multipart/form-data"' in html
     assert 'accept=".md,.txt,.pdf,.docx"' in html
     assert "Upload and normalize resume" in html
-    assert "Supported formats: .md, .txt, .pdf, .docx." in html
+    assert "Supported formats: .md, .txt, .pdf, and .docx." in html
+    assert "validates and extracts the new file before replacing" in html
 
 
 def test_profile_resume_upload_updates_resume_and_normalized_text(tmp_path: Path) -> None:
@@ -3224,16 +3225,20 @@ candidate:
 
     assert response.status_code == 200
     assert "Profile / Resume" in html
-    assert "Job Radar profile summary" in html
-    assert "This is the candidate context currently available to scans and fit scoring." in html
-    assert "Candidate profile" in html
-    assert "Resume source" in html
-    assert "Normalized resume" in html
-    assert "Active resume file" in html
+    assert "Confirm the candidate profile and resume Job Radar currently uses" in html
+    assert "Active candidate" in html
+    assert "Compensation floor" in html
+    assert "Preferred base" in html
+    assert "Active resume" in html
+    assert "Profile and resume available" in html
+    assert "Candidate fit profile" in html
     assert "Core strengths" in html
     assert "Credible adjacent areas" in html
     assert "Learning / gap areas" in html
     assert "Avoid signals" in html
+    assert "Resume preview" in html
+    assert "Technical details" in html
+    assert "Show configured profile and resume paths" in html
     assert str(settings_file) in html
     assert str(profile_file) in html
     assert str(resume_file) in html

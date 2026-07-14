@@ -124,7 +124,7 @@ Job Radar currently supports:
 - automatic repair of older tracker IDs that used `posting-url:*` as primary identity
 - local Flask GUI for tracker/history/report/companies/scan/settings workflows
 - controlled manual scans from the local GUI
-- GUI profile/resume page with resume upload/replacement support
+- GUI profile/resume page with candidate readiness summary, fit-profile signals, readable resume preview, safe resume upload/replacement, and collapsed troubleshooting paths
 - PDF, DOCX, Markdown, and plain-text resume loading
 - clickable Home dashboard cards for tracker workflow navigation
 - dashboard follow-up work panels for follow-ups due, date review, stale/dormant applications, and recent active applications
@@ -741,13 +741,12 @@ MVP is complete when:
 ## Near-term MVP priorities
 
 1. MVP polish for the single-user local workflow.
-2. Resume/profile upload and preview polish.
-3. Tracker edit/detail page workflow-layout polish after real tracker use.
-4. Dashboard follow-up display refinement after real tracker use.
-5. Settings visibility improvements where they remove real user friction.
-6. Documentation alignment for local GUI use, scan use, and safe email behavior.
-7. Company add/edit only if it can be done safely without corrupting source grouping.
-8. Packaging/launcher preparation remains post-MVP unless explicitly pulled forward.
+2. Tracker edit/detail page workflow-layout polish after real tracker use.
+3. Dashboard follow-up display refinement after real tracker use.
+4. Settings visibility improvements where they remove real user friction.
+5. Documentation alignment for local GUI use, scan use, and safe email behavior.
+6. Company add/edit only if it can be done safely without corrupting source grouping.
+7. Packaging/launcher preparation remains post-MVP unless explicitly pulled forward.
 
 ## Deferred until after MVP
 
@@ -1065,4 +1064,4 @@ The repo may include demo config, example config, sanitized workbook, documentat
 
 ## Completed milestone summary
 
-Completed areas include project scaffold, all current source collectors, SQLite storage, scan/report pipeline, Markdown/HTML/email outputs, guarded email sending, scoring/location/recommendation behavior, history import, Job Radar ID history matching, tracker storage/CLI/GUI, tracker workflow classification, tracker/history movement, tracker/history mutual exclusion, GUI report viewer, GUI scan flow, GUI profile/resume upload, read-only Companies page with filters/search/detail page, read-only Settings page, app-owned manual tracker ID generation, legacy `posting-url:*` repair, company config service layer, company config write-strategy readiness checks, dashboard follow-up work panels, company detail page, documentation consolidation, dashboard scan/follow-up summary, report-card-to-tracker-add workflow, post-tracking edit/detail redirect, tracked scan job source-URL matching, and workflow-aware tracker next-action guidance.
+Completed areas include project scaffold, all current source collectors, SQLite storage, scan/report pipeline, Markdown/HTML/email outputs, guarded email sending, scoring/location/recommendation behavior, history import, Job Radar ID history matching, tracker storage/CLI/GUI, tracker workflow classification, tracker/history movement, tracker/history mutual exclusion, GUI report viewer, GUI scan flow, GUI profile/resume upload, read-only Companies page with filters/search/detail page, read-only Settings page, app-owned manual tracker ID generation, legacy `posting-url:*` repair, company config service layer, company config write-strategy readiness checks, dashboard follow-up work panels, company detail page, documentation consolidation, dashboard scan/follow-up summary, report-card-to-tracker-add workflow, post-tracking edit/detail redirect, tracked scan job source-URL matching, workflow-aware tracker next-action guidance, and Profile / Resume page MVP polish with a candidate overview, fit-profile summary, readable resume preview, safer replacement presentation, and collapsed technical details.
