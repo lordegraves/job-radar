@@ -39,7 +39,7 @@ from job_radar.recommendation_policy import (
 from job_radar.scoring import (
     classify_location,
     load_scoring_config,
-    score_posting,
+    score_posting_with_evidence,
 )
 from job_radar.storage import (
     complete_scan_run,
@@ -442,7 +442,14 @@ def _handle_scan_unlocked(
         scored_postings = []
 
         for posting in collected_postings:
-            score, reasons = score_posting(posting, scoring_config)
+            score, score_evidence = score_posting_with_evidence(
+                posting,
+                scoring_config,
+            )
+            reasons = [
+                evidence.to_legacy_reason()
+                for evidence in score_evidence
+            ]
             location_status = classify_location(posting, scoring_config)
             top_match_eligible, top_match_reasons = evaluate_top_match_eligibility(
                 posting=posting,
@@ -478,6 +485,7 @@ def _handle_scan_unlocked(
                     posting=posting,
                     score=score,
                     score_reasons=reasons,
+                    score_evidence=score_evidence,
                     location_status=location_status,
                     top_match_eligible=top_match_eligible,
                     review_needed_eligible=review_needed_eligible,

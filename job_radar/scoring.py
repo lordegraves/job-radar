@@ -5,6 +5,7 @@ import yaml
 
 from job_radar.models import JobPosting
 from job_radar.normalize import clean_text
+from job_radar.score_evidence import ScoreEvidence
 from job_radar.recommendation_policy import (
     evaluate_review_needed_eligibility,
     evaluate_top_match_eligibility,
@@ -185,61 +186,124 @@ def score_posting(
     posting: JobPosting,
     scoring_config: dict[str, Any],
 ) -> tuple[int, list[str]]:
+    score, evidence = score_posting_with_evidence(posting, scoring_config)
+
+    return score, [item.to_legacy_reason() for item in evidence]
+
+
+def score_posting_with_evidence(
+    posting: JobPosting,
+    scoring_config: dict[str, Any],
+) -> tuple[int, list[ScoreEvidence]]:
     title_text = clean_text(posting.title).lower()
     body_text = _build_body_text(posting)
     location_text = clean_text(posting.location).lower()
 
     score = 0
-    reasons: list[str] = []
+    evidence: list[ScoreEvidence] = []
 
     for keyword, points in scoring_config["positive_keywords"].items():
         if keyword in title_text:
             weighted_points = points * TITLE_WEIGHT
             score += weighted_points
-            reasons.append(f"+{weighted_points} title:{keyword}")
+            evidence.append(
+                ScoreEvidence(
+                    points=weighted_points,
+                    category="positive_keyword",
+                    source="title",
+                    keyword=keyword,
+                )
+            )
         elif keyword in body_text:
             weighted_points = points * BODY_WEIGHT
             score += weighted_points
-            reasons.append(f"+{weighted_points} body:{keyword}")
+            evidence.append(
+                ScoreEvidence(
+                    points=weighted_points,
+                    category="positive_keyword",
+                    source="body",
+                    keyword=keyword,
+                )
+            )
 
     for keyword, points in scoring_config["negative_keywords"].items():
         if keyword in title_text:
             weighted_points = points * TITLE_WEIGHT
             score += weighted_points
-            reasons.append(f"{weighted_points} title:{keyword}")
+            evidence.append(
+                ScoreEvidence(
+                    points=weighted_points,
+                    category="negative_keyword",
+                    source="title",
+                    keyword=keyword,
+                )
+            )
 
-    location_score, location_reasons = _score_location(
+    location_score, location_evidence = _score_location_with_evidence(
         location_text=location_text,
         location_preferences=scoring_config["location_preferences"],
     )
     score += location_score
-    reasons.extend(location_reasons)
+    evidence.extend(location_evidence)
 
-    return score, reasons
+    return score, evidence
 
 
 def _score_location(
     location_text: str,
     location_preferences: dict[str, dict[str, int]],
 ) -> tuple[int, list[str]]:
+    score, evidence = _score_location_with_evidence(
+        location_text=location_text,
+        location_preferences=location_preferences,
+    )
+
+    return score, [item.to_legacy_reason() for item in evidence]
+
+
+def _score_location_with_evidence(
+    location_text: str,
+    location_preferences: dict[str, dict[str, int]],
+) -> tuple[int, list[ScoreEvidence]]:
     score = 0
-    reasons: list[str] = []
+    evidence: list[ScoreEvidence] = []
 
     for keyword in location_preferences["allowed"]:
         if keyword in location_text:
-            reasons.append(f"+0 location_allowed:{keyword}")
+            evidence.append(
+                ScoreEvidence(
+                    points=0,
+                    category="location_allowed",
+                    source="location",
+                    keyword=keyword,
+                )
+            )
 
     for keyword, points in location_preferences["conditional"].items():
         if keyword in location_text:
             score += points
-            reasons.append(f"{points} location_conditional:{keyword}")
+            evidence.append(
+                ScoreEvidence(
+                    points=points,
+                    category="location_conditional",
+                    source="location",
+                    keyword=keyword,
+                )
+            )
 
     for keyword, points in location_preferences["skipped"].items():
         if keyword in location_text:
             score += points
-            reasons.append(f"{points} location_skipped:{keyword}")
+            evidence.append(
+                ScoreEvidence(
+                    points=points,
+                    category="location_skipped",
+                    source="location",
+                    keyword=keyword,
+                )
+            )
 
-    return score, reasons
+    return score, evidence
 
 
 def classify_location(

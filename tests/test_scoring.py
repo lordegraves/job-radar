@@ -10,6 +10,7 @@ from job_radar.scoring import (
     evaluate_review_needed_eligibility,
     load_scoring_config,
     score_posting,
+    score_posting_with_evidence,
 )
 
 
@@ -239,6 +240,96 @@ def test_score_posting_weights_title_matches_more_than_body_matches() -> None:
     assert "+30 title:linux" in reasons
     assert "+30 title:infrastructure" in reasons
     assert "+8 body:kubernetes" in reasons
+
+
+def test_score_posting_with_evidence_returns_structured_signals() -> None:
+    posting = make_posting(
+        title="Senior Linux Infrastructure Engineer",
+        description="Run Kubernetes clusters.",
+        location="Remote",
+    )
+
+    config = {
+        "positive_keywords": {
+            "linux": 10,
+            "infrastructure": 10,
+            "kubernetes": 8,
+        },
+        "negative_keywords": {},
+        "location_preferences": {
+            "allowed": {
+                "remote": 100,
+            },
+            "conditional": {},
+            "skipped": {},
+        },
+    }
+
+    score, evidence = score_posting_with_evidence(posting, config)
+
+    assert score == 68
+    assert [
+        (
+            item.points,
+            item.category,
+            item.source,
+            item.keyword,
+            item.signal_label,
+            item.to_legacy_reason(),
+        )
+        for item in evidence
+    ] == [
+        (
+            30,
+            "positive_keyword",
+            "title",
+            "linux",
+            "title:linux",
+            "+30 title:linux",
+        ),
+        (
+            30,
+            "positive_keyword",
+            "title",
+            "infrastructure",
+            "title:infrastructure",
+            "+30 title:infrastructure",
+        ),
+        (
+            8,
+            "positive_keyword",
+            "body",
+            "kubernetes",
+            "body:kubernetes",
+            "+8 body:kubernetes",
+        ),
+        (
+            0,
+            "location_allowed",
+            "location",
+            "remote",
+            "location_allowed:remote",
+            "+0 location_allowed:remote",
+        ),
+    ]
+
+
+def test_score_posting_legacy_wrapper_matches_structured_evidence() -> None:
+    posting = make_posting(
+        title="Infrastructure Customer Success Engineer",
+        description="Linux troubleshooting for customers.",
+        location="Remote",
+    )
+    config = make_scoring_config()
+
+    legacy_score, legacy_reasons = score_posting(posting, config)
+    structured_score, evidence = score_posting_with_evidence(posting, config)
+
+    assert legacy_score == structured_score
+    assert legacy_reasons == [
+        item.to_legacy_reason()
+        for item in evidence
+    ]
 
 
 def test_score_posting_applies_negative_keyword_scores_to_title_only() -> None:
