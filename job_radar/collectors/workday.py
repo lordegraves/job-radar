@@ -3,11 +3,13 @@ from typing import Any
 import requests
 
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.pagination import get_max_pages, get_page_size
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
 
 
 DEFAULT_WORKDAY_LIMIT = 20
+DEFAULT_WORKDAY_MAX_PAGES = 50
 
 
 WORKDAY_HEADERS = {
@@ -170,11 +172,18 @@ def collect_workday_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
             f"Workday company {company_config.get('company_key')} is missing source_url"
         )
 
-    limit = int(company_config.get("page_size", DEFAULT_WORKDAY_LIMIT))
+    limit = get_page_size(
+        company_config,
+        default=DEFAULT_WORKDAY_LIMIT,
+    )
+    max_pages = get_max_pages(
+        company_config,
+        default=DEFAULT_WORKDAY_MAX_PAGES,
+    )
     offset = 0
     postings: list[JobPosting] = []
 
-    while True:
+    for _page_index in range(max_pages):
         payload = _build_workday_payload(offset=offset, limit=limit)
 
         try:

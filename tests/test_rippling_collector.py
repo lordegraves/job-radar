@@ -1,3 +1,4 @@
+import copy
 import json
 
 import pytest
@@ -5,6 +6,7 @@ import pytest
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.rippling import (
     build_rippling_jobs_url,
+    collect_rippling_jobs,
     extract_rippling_next_data,
     get_rippling_total_pages,
     parse_rippling_jobs,
@@ -195,3 +197,38 @@ def test_parse_rippling_jobs_rejects_payload_without_job_posts() -> None:
 
     with pytest.raises(CollectorError, match="job-posts"):
         parse_rippling_jobs(make_company_config(), payload)
+
+
+def test_collect_rippling_jobs_stops_at_configured_max_pages(
+    monkeypatch,
+) -> None:
+    company_config = {
+        **make_company_config(),
+        "max_pages": 2,
+    }
+    requested_urls: list[str] = []
+
+    def fake_fetch_payload(url: str) -> dict[str, object]:
+        requested_urls.append(url)
+        payload = copy.deepcopy(make_payload())
+
+        job_posts_query = payload["props"]["pageProps"]["dehydratedState"][
+            "queries"
+        ][0]
+        job_posts_query["state"]["data"]["totalPages"] = 500
+
+        return payload
+
+    monkeypatch.setattr(
+        "job_radar.collectors.rippling._fetch_rippling_payload",
+        fake_fetch_payload,
+    )
+
+    postings = collect_rippling_jobs(company_config)
+
+    assert requested_urls == [
+        "https://ats.rippling.com/cbts/jobs?page=0",
+        "https://ats.rippling.com/cbts/jobs?page=1",
+    ]
+    assert len(postings) == 2
+    

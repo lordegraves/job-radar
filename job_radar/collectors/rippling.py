@@ -6,11 +6,13 @@ from typing import Any
 import requests
 
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.pagination import get_max_pages
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
 
 
 RIPPLING_BASE_URL = "https://ats.rippling.com"
+DEFAULT_MAX_PAGES = 25
 NEXT_DATA_PATTERN = re.compile(
     r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
     re.DOTALL,
@@ -293,7 +295,12 @@ def collect_rippling_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     first_payload = _fetch_rippling_payload(
         build_rippling_jobs_url(str(board_slug), page=0)
     )
-    total_pages = get_rippling_total_pages(first_payload)
+    reported_total_pages = get_rippling_total_pages(first_payload)
+    max_pages = get_max_pages(
+        company_config,
+        default=DEFAULT_MAX_PAGES,
+    )
+    total_pages = min(reported_total_pages, max_pages)
 
     all_postings = parse_rippling_jobs(company_config, first_payload)
 
