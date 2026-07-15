@@ -2,6 +2,8 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
+from job_radar.database import connect_database
+
 
 @dataclass(frozen=True)
 class HistorySummary:
@@ -15,7 +17,7 @@ class HistorySummary:
 def build_history_summary(database_path: str | Path) -> HistorySummary:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         return HistorySummary(
             total_records=_count_all_records(connection),
             history_type_counts=_count_grouped_values(connection, "history_type"),

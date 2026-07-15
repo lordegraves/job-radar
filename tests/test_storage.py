@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 
+from job_radar.database import connect_database
 from job_radar.job_history import JobHistoryRecord
 from job_radar.storage import (
     initialize_database,
@@ -73,7 +74,48 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
             """
         ).fetchall()
 
-    assert migration_rows == [(1, "baseline current schema")]
+    assert migration_rows == [
+        (1, "baseline current schema"),
+        (2, "backfill companies for stored jobs"),
+    ]
+
+
+def test_initialize_database_backfills_companies_for_existing_jobs(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+    upsert_job_posting(database_path, make_posting())
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys = OFF")
+        connection.execute("DELETE FROM companies")
+        connection.execute(
+            "DELETE FROM schema_migrations WHERE version = 2"
+        )
+
+    initialize_database(database_path)
+
+    with connect_database(database_path) as connection:
+        company_row = connection.execute(
+            """
+            SELECT company_key, name, source_type
+            FROM companies
+            WHERE company_key = ?
+            """,
+            ("example_ai",),
+        ).fetchone()
+
+        foreign_key_errors = connection.execute(
+            "PRAGMA foreign_key_check"
+        ).fetchall()
+
+    assert company_row == (
+        "example_ai",
+        "example_ai",
+        "greenhouse",
+    )
+    assert foreign_key_errors == []
 
 
 def test_record_scan_run_inserts_scan_summary(tmp_path: Path) -> None:
@@ -159,15 +201,48 @@ def get_job_row(database_path: Path) -> sqlite3.Row:
         return row
 
 
-def test_upsert_job_posting_inserts_new_job_and_status(tmp_path: Path) -> None:
+def test_upsert_job_posting_inserts_new_job_company_and_status(
+    tmp_path: Path,
+) -> None:
     database_path = tmp_path / "job_radar.sqlite3"
     initialize_database(database_path)
 
     result = upsert_job_posting(database_path, make_posting())
 
     assert result == "new"
+    assert count_rows(database_path, "companies") == 1
     assert count_rows(database_path, "job_postings") == 1
     assert count_rows(database_path, "job_status") == 1
+
+
+def test_connect_database_enforces_foreign_keys(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    with connect_database(database_path) as connection:
+        foreign_keys_enabled = connection.execute(
+            "PRAGMA foreign_keys"
+        ).fetchone()[0]
+
+        assert foreign_keys_enabled == 1
+
+        try:
+            connection.execute(
+                """
+                INSERT INTO job_status (
+                    job_posting_id,
+                    status
+                )
+                VALUES (?, ?)
+                """,
+                (999999, "new"),
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError(
+                "Foreign-key enforcement allowed an orphaned job-status record."
+            )
 
 
 def test_upsert_job_posting_returns_seen_for_same_content(tmp_path: Path) -> None:

@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 
+from job_radar.database import connect_database
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
 from job_radar.tracker.tracker_storage import (
@@ -170,14 +171,11 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 """
 
 
-CURRENT_SCHEMA_VERSION = 1
-
-
 def initialize_database(database_path: str | Path) -> Path:
     db_path = Path(database_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         connection.executescript(SCHEMA_SQL)
         initialize_tracker_schema(connection)
         connection.executescript(SCHEMA_MIGRATIONS_SQL)
@@ -189,9 +187,14 @@ def initialize_database(database_path: str | Path) -> Path:
 def _apply_schema_migrations(connection: sqlite3.Connection) -> None:
     migrations = (
         (
-            CURRENT_SCHEMA_VERSION,
+            1,
             "baseline current schema",
             _migrate_baseline_schema,
+        ),
+        (
+            2,
+            "backfill companies for stored jobs",
+            _backfill_companies_for_stored_jobs,
         ),
     )
 
@@ -223,6 +226,31 @@ def _migrate_baseline_schema(connection: sqlite3.Connection) -> None:
     _migrate_scan_runs_table(connection)
     _migrate_job_history_table(connection)
     migrate_tracker_schema(connection)
+
+
+def _backfill_companies_for_stored_jobs(
+    connection: sqlite3.Connection,
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO companies (
+            company_key,
+            name,
+            source_type,
+            enabled
+        )
+        SELECT DISTINCT
+            company_key,
+            company_key,
+            source_type,
+            1
+        FROM job_postings
+        WHERE company_key NOT IN (
+            SELECT company_key
+            FROM companies
+        )
+        """
+    )
 
 
 def _migrate_scan_runs_table(connection: sqlite3.Connection) -> None:
@@ -290,7 +318,7 @@ def record_scan_run(
 ) -> int:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         cursor = connection.execute(
             """
             INSERT INTO scan_runs (
@@ -373,12 +401,40 @@ def _find_existing_job(
     ).fetchone()
 
 
+def _upsert_company_for_posting(
+    connection: sqlite3.Connection,
+    posting: JobPosting,
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO companies (
+            company_key,
+            name,
+            source_type,
+            enabled
+        )
+        VALUES (?, ?, ?, 1)
+        ON CONFLICT(company_key) DO UPDATE SET
+            name = excluded.name,
+            source_type = excluded.source_type,
+            enabled = 1,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            posting.company_key,
+            posting.company_name,
+            posting.source_type,
+        ),
+    )
+
+
 def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         connection.row_factory = sqlite3.Row
 
+        _upsert_company_for_posting(connection, posting)
         existing = _find_existing_job(connection, posting)
 
         if existing is None:
@@ -490,7 +546,7 @@ def upsert_job_history_record(
 ) -> str:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         existing = connection.execute(
             """
             SELECT id
@@ -605,7 +661,7 @@ def delete_job_history_record(
 ) -> bool:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         cursor = connection.execute(
             """
             DELETE FROM job_history
@@ -622,7 +678,7 @@ def fetch_included_job_history_records(
 ) -> list[JobHistoryRecord]:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         connection.row_factory = sqlite3.Row
 
         rows = connection.execute(

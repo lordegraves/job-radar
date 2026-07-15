@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 
+from job_radar.database import connect_database
 from job_radar.tracker.tracker_ids import build_manual_job_radar_id
 from job_radar.tracker.tracker_models import ApplicationRecord
 
@@ -43,7 +44,7 @@ def initialize_tracker_tables(database_path: str | Path) -> Path:
     db_path = Path(database_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         initialize_tracker_schema(connection)
         migrate_tracker_schema(connection)
 
@@ -115,7 +116,7 @@ def upsert_application(
 ) -> str:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         existing = connection.execute(
             """
             SELECT job_radar_id
@@ -197,7 +198,7 @@ def delete_application(
 ) -> bool:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         cursor = connection.execute(
             """
             DELETE FROM application_tracker
@@ -222,7 +223,7 @@ def update_application_status(
 ) -> bool:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         cursor = connection.execute(
             """
             UPDATE application_tracker
@@ -253,7 +254,7 @@ def update_application_status(
 def list_applications(database_path: str | Path) -> list[ApplicationRecord]:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         _repair_url_backed_tracker_ids(connection)
         connection.row_factory = sqlite3.Row
 
@@ -286,7 +287,7 @@ def get_application(
 ) -> ApplicationRecord | None:
     db_path = Path(database_path)
 
-    with sqlite3.connect(db_path) as connection:
+    with connect_database(db_path) as connection:
         _repair_url_backed_tracker_ids(connection)
         connection.row_factory = sqlite3.Row
 
