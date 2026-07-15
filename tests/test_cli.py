@@ -686,7 +686,7 @@ top_matches:
     assert len(error_rows) == 1
     assert error_rows[0]["company_key"] == "example_ai"
     assert error_rows[0]["source_type"] == "greenhouse"
-    assert error_rows[0]["error_type"] == "collector_error"
+    assert error_rows[0]["error_type"] == "collection_error"
     assert error_rows[0]["error_message"] == "temporary collector failure"
 
 
@@ -756,8 +756,119 @@ retention:
     assert scan_row["failure_summary"] == "invalid scoring configuration"
     assert scan_row["finished_at"] is not None
     assert len(error_rows) == 1
-    assert error_rows[0]["error_type"] == "scan_stage_failure"
+    assert error_rows[0]["error_type"] == "configuration_failure"
     assert error_rows[0]["error_message"] == "invalid scoring configuration"
+
+
+def test_handle_scan_records_report_generation_failure(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_file = tmp_path / "companies.yaml"
+    settings_file = tmp_path / "settings.yaml"
+    scoring_file = tmp_path / "scoring.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    report_file = tmp_path / "today.md"
+
+    config_file.write_text(
+        """
+companies:
+  - company_key: example_ai
+    name: Example AI
+    source_type: greenhouse
+    source_slug: exampleai
+    enabled: true
+""",
+        encoding="utf-8",
+    )
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {tmp_path}
+logs_path: {tmp_path}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    scoring_file.write_text(
+        """
+positive_keywords:
+  infrastructure: 10
+
+negative_keywords: {}
+
+location_preferences:
+  allowed:
+    remote: 100
+  conditional: {}
+  skipped: {}
+
+top_matches:
+  min_score: 1
+  excluded_title_keywords: []
+  strong_signals:
+    - title:infrastructure
+""",
+        encoding="utf-8",
+    )
+
+    fake_posting = JobPosting(
+        company_key="example_ai",
+        company_name="Example AI",
+        source_type="greenhouse",
+        source_job_id="123",
+        source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description="Build Linux infrastructure.",
+        canonical_key="example-ai:senior-infrastructure-engineer:remote",
+        content_hash="hash-linux-infrastructure",
+    )
+
+    monkeypatch.setattr(
+        "job_radar.scan_service.collect_jobs_for_company",
+        lambda company_config: [fake_posting],
+    )
+
+    def fail_report_generation(report_path, report):
+        raise RuntimeError("report writer failed")
+
+    monkeypatch.setattr(
+        "job_radar.scan_service.write_markdown_report",
+        fail_report_generation,
+    )
+
+    try:
+        handle_scan(
+            config_path=str(config_file),
+            settings_path=str(settings_file),
+            report_path=str(report_file),
+            scoring_path=str(scoring_file),
+        )
+    except RuntimeError as error:
+        assert str(error) == "report writer failed"
+    else:
+        raise AssertionError("Expected report generation to fail.")
+
+    scan_row = fetch_latest_scan_run(database_file)
+    error_rows = fetch_scan_errors(database_file)
+
+    assert scan_row["status"] == "failed"
+    assert scan_row["current_stage"] == "report_generation"
+    assert scan_row["failure_summary"] == "report writer failed"
+    assert scan_row["report_status"] == "not_started"
+    assert len(error_rows) == 1
+    assert error_rows[0]["error_type"] == "report_generation_failure"
+    assert error_rows[0]["error_message"] == "report writer failed"
 
 
 def test_handle_scan_collects_stores_scores_and_reports_jobs(

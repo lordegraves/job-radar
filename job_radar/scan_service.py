@@ -271,6 +271,15 @@ def _get_application_for_posting(
     return None
 
 
+def _build_scan_failure_type(stage: str) -> str:
+    normalized_stage = stage.strip().lower().replace("-", "_").replace(" ", "_")
+
+    if not normalized_stage:
+        return "scan_failure"
+
+    return f"{normalized_stage}_failure"
+
+
 def handle_scan(
     config_path: str,
     settings_path: str,
@@ -384,7 +393,7 @@ def _handle_scan_unlocked(
                     scan_run_id=scan_run_id,
                     company_key=company_key,
                     source_type=source_type,
-                    error_type="collector_error",
+                    error_type="collection_error",
                     error_message=str(error),
                 )
                 companies_scanned += 1
@@ -678,7 +687,7 @@ def _handle_scan_unlocked(
         record_scan_error(
             database_path,
             scan_run_id=scan_run_id,
-            error_type="scan_stage_failure",
+            error_type=_build_scan_failure_type(current_stage),
             error_message=str(error),
         )
         fail_scan_run(
