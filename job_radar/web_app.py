@@ -1,7 +1,7 @@
 import argparse
 import re
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from flask import Flask, abort, redirect, render_template, request, send_from_directory, url_for
@@ -16,6 +16,11 @@ from job_radar.company_config_service import (
 )
 from job_radar.config import ConfigError, load_settings
 from job_radar.profile_service import build_candidate_profile_view, save_uploaded_resume
+from job_radar.report_snapshot import (
+    ReportSnapshotCollectorError,
+    ReportSnapshotJob,
+    load_report_snapshot,
+)
 from job_radar.storage import (
     fetch_included_job_history_records,
     initialize_database,
@@ -704,27 +709,28 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             abort(404)
 
         reports_path = Path(_get_reports_path(app)).resolve()
-        markdown_report_path = reports_path / "target-scan.md"
+        snapshot_path = reports_path / "target-scan.json"
         html_report_name = "target-scan.html"
         html_report_path = reports_path / html_report_name
 
-        if not markdown_report_path.is_file():
+        if not snapshot_path.is_file():
             abort(404)
 
-        report_text = markdown_report_path.read_text(
-            encoding="utf-8",
-            errors="replace",
-        )
+        snapshot = load_report_snapshot(snapshot_path)
         job_cards: list[ReportJobCardView] = []
         collector_errors: list[ReportCollectorErrorView] = []
 
         if section_name == "collector_errors":
-            collector_errors = _build_report_collector_errors(report_text)
+            collector_errors = [
+                _build_report_collector_error_view(error)
+                for error in snapshot.collector_errors
+            ]
         else:
-            job_cards = _build_report_job_cards(
-                report_text,
-                section_details["title"],
-            )
+            snapshot_jobs = getattr(snapshot, section_name)
+            job_cards = [
+                _build_report_job_card(job)
+                for job in snapshot_jobs
+            ]
 
         return render_template(
             "report_section.html",
@@ -1182,245 +1188,98 @@ def _get_dashboard_attention_applications(
 
 def _build_latest_report_summary(app: Flask) -> LatestReportSummaryView:
     reports_path = Path(_get_reports_path(app))
-    markdown_report_path = reports_path / "target-scan.md"
+    snapshot_path = reports_path / "target-scan.json"
     html_report_name = "target-scan.html"
     html_report_path = reports_path / html_report_name
 
-    report_text = ""
-
-    if markdown_report_path.is_file():
-        report_text = markdown_report_path.read_text(
-            encoding="utf-8",
-            errors="replace",
+    if not snapshot_path.is_file():
+        return LatestReportSummaryView(
+            generated_at=None,
+            html_report_name=html_report_name,
+            html_report_exists=html_report_path.is_file(),
+            top_matches=0,
+            review_needed=0,
+            tracked_applications=0,
+            new_jobs=0,
+            collector_errors=0,
         )
+
+    snapshot = load_report_snapshot(snapshot_path)
 
     return LatestReportSummaryView(
-        generated_at=_extract_report_summary_value(report_text, "Generated at"),
+        generated_at=_format_snapshot_generated_at(
+            snapshot.summary.generated_at
+        ),
         html_report_name=html_report_name,
         html_report_exists=html_report_path.is_file(),
-        top_matches=_count_report_section_entries(report_text, "Top Matches"),
-        review_needed=_count_report_section_entries(report_text, "Review Needed"),
-        tracked_applications=_count_report_section_entries(
-            report_text,
-            "Tracked Applications",
-        ),
-        new_jobs=_extract_report_summary_int(report_text, "New jobs"),
-        collector_errors=_extract_report_summary_int(report_text, "Collector errors"),
+        top_matches=snapshot.summary.top_matches,
+        review_needed=snapshot.summary.review_needed,
+        tracked_applications=snapshot.summary.tracked_applications,
+        new_jobs=snapshot.summary.new_jobs,
+        collector_errors=snapshot.summary.collector_errors,
     )
 
 
-def _extract_report_summary_value(report_text: str, label: str) -> str | None:
-    prefix = f"- {label}: "
-
-    for line in report_text.splitlines():
-        if line.startswith(prefix):
-            return line.removeprefix(prefix).strip()
-
-    return None
-
-
-def _extract_report_summary_int(report_text: str, label: str) -> int:
-    value = _extract_report_summary_value(report_text, label)
-
-    if value is None:
-        return 0
+def _format_snapshot_generated_at(generated_at: str | None) -> str | None:
+    if generated_at is None:
+        return None
 
     try:
-        return int(value.replace(",", ""))
+        parsed_timestamp = datetime.fromisoformat(generated_at)
     except ValueError:
-        return 0
+        return generated_at
+
+    timezone_name = "UTC"
+
+    if parsed_timestamp.tzinfo is None:
+        timezone_name = "local"
+
+    return f"{parsed_timestamp:%Y-%m-%d %H:%M} {timezone_name}"
 
 
-def _count_report_section_entries(report_text: str, section_title: str) -> int:
-    section_lines = _extract_report_section_lines(report_text, section_title)
-
-    return sum(
-        1
-        for line in section_lines
-        if line.startswith("### [")
+def _build_report_collector_error_view(
+    error: ReportSnapshotCollectorError,
+) -> ReportCollectorErrorView:
+    return ReportCollectorErrorView(
+        company_key=error.company_key,
+        company_name=error.company_name,
+        source_type=error.source_type,
+        message=error.message,
     )
-
-
-def _build_report_collector_errors(
-    report_text: str,
-) -> list[ReportCollectorErrorView]:
-    section_lines = _extract_report_section_lines(
-        report_text,
-        "Collector Errors",
-    )
-    collector_errors: list[ReportCollectorErrorView] = []
-    error_pattern = re.compile(
-        r"^- (?P<company_key>.+?) "
-        r"\((?P<company_name>.+), (?P<source_type>[^)]+)\): "
-        r"(?P<message>.+)$"
-    )
-
-    for line in section_lines:
-        match = error_pattern.match(line)
-
-        if match is None:
-            continue
-
-        collector_errors.append(
-            ReportCollectorErrorView(
-                company_key=match.group("company_key").strip(),
-                company_name=match.group("company_name").strip(),
-                source_type=match.group("source_type").strip(),
-                message=match.group("message").strip(),
-            )
-        )
-
-    return collector_errors
-
-
-def _build_report_job_cards(
-    report_text: str,
-    section_title: str,
-) -> list[ReportJobCardView]:
-    section_lines = _extract_report_section_lines(report_text, section_title)
-    parsed_jobs: list[tuple[str, str | None, dict[str, str]]] = []
-    current_title: str | None = None
-    current_url: str | None = None
-    current_fields: dict[str, str] = {}
-
-    for line in section_lines:
-        heading = _parse_report_job_heading(line)
-
-        if heading is not None:
-            if current_title is not None:
-                parsed_jobs.append((current_title, current_url, current_fields))
-
-            current_title, current_url = heading
-            current_fields = {}
-            continue
-
-        if current_title is None:
-            continue
-
-        field = _parse_report_field_line(line)
-
-        if field is not None:
-            label, value = field
-            current_fields[label] = value
-
-    if current_title is not None:
-        parsed_jobs.append((current_title, current_url, current_fields))
-
-    return [
-        _build_report_job_card(title, url, fields)
-        for title, url, fields in parsed_jobs
-    ]
-
-
-def _parse_report_job_heading(line: str) -> tuple[str, str | None] | None:
-    heading_prefixes = ("### [", "#### [")
-
-    if not line.startswith(heading_prefixes):
-        return None
-
-    title_start = line.find("[") + 1
-    title_end = line.find("](", title_start)
-
-    if title_end == -1:
-        return None
-
-    url_start = title_end + 2
-    url_end = line.find(")", url_start)
-    title = line[title_start:title_end].strip()
-
-    if url_end == -1:
-        return title, None
-
-    return title, line[url_start:url_end].strip()
-
-
-def _parse_report_field_line(line: str) -> tuple[str, str] | None:
-    if not line.startswith("- "):
-        return None
-
-    field_text = line.removeprefix("- ").strip()
-
-    if ": " not in field_text:
-        return None
-
-    label, value = field_text.split(": ", 1)
-
-    return label.strip(), value.strip()
 
 
 def _build_report_job_card(
-    title: str,
-    url: str | None,
-    fields: dict[str, str],
+    job: ReportSnapshotJob,
 ) -> ReportJobCardView:
-    source_url = url or _clean_unknown_value(fields.get("URL"))
-    company = _clean_unknown_value(fields.get("Company"))
-    job_radar_id = _clean_unknown_value(fields.get("Job Radar ID"))
-
     return ReportJobCardView(
-        title=title,
-        url=source_url,
-        company=company,
-        location=_clean_unknown_value(fields.get("Location")),
-        compensation=_clean_unknown_value(fields.get("Compensation range"))
-        or _clean_unknown_value(fields.get("Compensation")),
-        hiring_probability=_clean_unknown_value(fields.get("Hiring probability")),
-        recommended_action=_clean_unknown_value(fields.get("Recommended action")),
-        action_rationale=_clean_unknown_value(fields.get("Action rationale")),
-        why_matched=_clean_unknown_value(fields.get("Why this matched")),
-        technical_match=_clean_unknown_value(fields.get("Technical match")),
-        resume_match=_clean_unknown_value(fields.get("Resume match")),
-        resume_evidence=_clean_unknown_value(fields.get("Resume evidence")),
-        resume_gaps=_clean_unknown_value(fields.get("Resume gaps")),
-        hiring_risks=_clean_unknown_value(fields.get("Hiring risks")),
-        history_context=_clean_unknown_value(fields.get("History context")),
-        history_risk=_clean_unknown_value(fields.get("History risk")),
-        job_radar_id=job_radar_id,
+        title=job.title,
+        url=job.url,
+        company=job.company,
+        location=job.location,
+        compensation=job.compensation,
+        hiring_probability=job.hiring_probability,
+        recommended_action=job.recommended_action,
+        action_rationale=job.action_rationale,
+        why_matched=job.why_matched,
+        technical_match=job.technical_match,
+        resume_match=job.resume_match,
+        resume_evidence=job.resume_evidence,
+        resume_gaps=job.resume_gaps,
+        hiring_risks=job.hiring_risks,
+        history_context=job.history_context,
+        history_risk=job.history_risk,
+        job_radar_id=job.job_radar_id,
         tracker_add_url=url_for(
             "add_tracker_application",
-            job_radar_id=job_radar_id or "",
-            company_name=company or "",
-            role_title=title,
-            source_url=source_url or "",
+            job_radar_id=job.job_radar_id,
+            company_name=job.company,
+            role_title=job.title,
+            source_url=job.url or "",
             status="Applied",
             outcome="Pending / In Progress",
             applied_on=date.today().isoformat(),
         ),
     )
-
-
-def _clean_unknown_value(value: str | None) -> str | None:
-    if value is None:
-        return None
-
-    cleaned_value = value.strip().strip("`")
-
-    if cleaned_value.lower() in {"", "unknown", "none", "n/a"}:
-        return None
-
-    return cleaned_value
-
-
-def _extract_report_section_lines(
-    report_text: str,
-    section_title: str,
-) -> list[str]:
-    section_header = f"## {section_title}"
-    section_lines: list[str] = []
-    in_section = False
-
-    for line in report_text.splitlines():
-        if line == section_header:
-            in_section = True
-            continue
-
-        if in_section and line.startswith("## "):
-            break
-
-        if in_section:
-            section_lines.append(line)
-
-    return section_lines
 
 
 def _build_history_summary(records: list) -> HistorySummaryView:

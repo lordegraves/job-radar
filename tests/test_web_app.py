@@ -1,8 +1,8 @@
+import json
 from datetime import date
 from io import BytesIO
 from pathlib import Path
 
-from job_radar.collectors import html
 import job_radar.web_app as web_app_module
 
 from job_radar.job_history import JobHistoryRecord
@@ -42,6 +42,96 @@ retention:
   raw_capture_enabled: false
   raw_capture_retention_days: 7
 """,
+        encoding="utf-8",
+    )
+
+
+def make_report_snapshot_job(
+    *,
+    title: str,
+    url: str,
+    company: str,
+    location: str | None = None,
+    compensation: str | None = None,
+    hiring_probability: str = "Unknown",
+    recommended_action: str = "Review",
+    action_rationale: str = "",
+    why_matched: str = "",
+    technical_match: str = "Unknown",
+    resume_match: str = "Unknown",
+    resume_evidence: str = "None",
+    resume_gaps: str = "None",
+    hiring_risks: str = "None",
+    history_context: str = "None",
+    history_risk: str | None = None,
+    job_radar_id: str = "",
+) -> dict[str, object]:
+    return {
+        "title": title,
+        "url": url,
+        "company": company,
+        "location": location,
+        "compensation": compensation,
+        "hiring_probability": hiring_probability,
+        "recommended_action": recommended_action,
+        "action_rationale": action_rationale,
+        "why_matched": why_matched,
+        "technical_match": technical_match,
+        "resume_match": resume_match,
+        "resume_evidence": resume_evidence,
+        "resume_gaps": resume_gaps,
+        "hiring_risks": hiring_risks,
+        "history_context": history_context,
+        "history_risk": history_risk,
+        "job_radar_id": job_radar_id,
+    }
+
+
+def write_report_snapshot_file(
+    snapshot_path: Path,
+    *,
+    generated_at: str,
+    top_matches: list[dict[str, object]] | None = None,
+    review_needed: list[dict[str, object]] | None = None,
+    tracked_applications: list[dict[str, object]] | None = None,
+    new_jobs: list[dict[str, object]] | None = None,
+    passed_not_recommended: list[dict[str, object]] | None = None,
+    collector_errors: list[dict[str, str]] | None = None,
+    new_jobs_count: int | None = None,
+) -> None:
+    top_matches = top_matches or []
+    review_needed = review_needed or []
+    tracked_applications = tracked_applications or []
+    new_jobs = new_jobs or []
+    passed_not_recommended = passed_not_recommended or []
+    collector_errors = collector_errors or []
+
+    snapshot_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "summary": {
+                    "generated_at": generated_at,
+                    "top_matches": len(top_matches),
+                    "review_needed": len(review_needed),
+                    "tracked_applications": len(tracked_applications),
+                    "new_jobs": (
+                        len(new_jobs)
+                        if new_jobs_count is None
+                        else new_jobs_count
+                    ),
+                    "collector_errors": len(collector_errors),
+                },
+                "top_matches": top_matches,
+                "review_needed": review_needed,
+                "tracked_applications": tracked_applications,
+                "new_jobs": new_jobs,
+                "passed_not_recommended": passed_not_recommended,
+                "collector_errors": collector_errors,
+            },
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -432,6 +522,37 @@ No passed jobs.
 """,
         encoding="utf-8",
     )
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-11T11:57:00+00:00",
+        top_matches=[
+            make_report_snapshot_job(
+                title="Site Reliability Engineer",
+                url="https://example.com/top",
+                company="Example",
+            )
+        ],
+        review_needed=[
+            make_report_snapshot_job(
+                title="Senior Systems Software Engineer, GPU Compute",
+                url="https://example.com/review-one",
+                company="Example",
+            ),
+            make_report_snapshot_job(
+                title="Hardware Operations Engineer",
+                url="https://example.com/review-two",
+                company="Example",
+            ),
+        ],
+        tracked_applications=[
+            make_report_snapshot_job(
+                title="Site Reliability Engineer",
+                url="https://example.com/tracked",
+                company="Example",
+            )
+        ],
+        new_jobs_count=3,
+    )
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
@@ -525,6 +646,52 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
 """,
         encoding="utf-8",
     )
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-11T11:57:00+00:00",
+        top_matches=[
+            make_report_snapshot_job(
+                title="Site Reliability Engineer",
+                url="https://example.com/top",
+                company="RunPod",
+                location="Remote - USA",
+                hiring_probability="High",
+                recommended_action="Apply",
+                action_rationale=(
+                    "Clean apply: very strong technical match, very strong "
+                    "resume match, high hiring probability, and no hiring risks."
+                ),
+                why_matched="linux, infrastructure, sre, gpu, observability",
+                technical_match="Very Strong",
+                resume_match="Very Strong",
+                resume_evidence=(
+                    "Linux infrastructure; reliability engineering"
+                ),
+                history_context=(
+                    "Prior similar role at Runpod; outcome: "
+                    "Rejected - No Interview"
+                ),
+                history_risk="neutral: prior_similar_role",
+                job_radar_id="jr-runpod-655a542b",
+            )
+        ],
+        review_needed=[
+            make_report_snapshot_job(
+                title="Hardware Operations Engineer",
+                url="https://example.com/review",
+                company="OpenAI",
+                location="Remote - US",
+                recommended_action="Network First",
+            )
+        ],
+        tracked_applications=[
+            make_report_snapshot_job(
+                title="Tracked SRE",
+                url="https://example.com/tracked",
+                company="Nebius",
+            )
+        ],
+    )
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
@@ -615,6 +782,36 @@ No passed jobs.
 """,
         encoding="utf-8",
     )
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-14T14:20:00+00:00",
+        new_jobs=[
+            make_report_snapshot_job(
+                title="Senior Linux Infrastructure Engineer",
+                url="https://example.com/new-job",
+                company="NewCo",
+                location="Remote - USA",
+                compensation="$180,000 - $220,000",
+                hiring_probability="Medium",
+                recommended_action="Tailor Resume",
+                action_rationale=(
+                    "Strong infrastructure fit, but the resume should "
+                    "emphasize large-scale Linux operations."
+                ),
+                why_matched=(
+                    "linux, infrastructure, automation, reliability"
+                ),
+                technical_match="Very Strong",
+                resume_match="Strong",
+                resume_evidence=(
+                    "Large-scale Linux; Ansible; infrastructure reliability"
+                ),
+                resume_gaps="Production Kubernetes",
+                hiring_risks="Production Kubernetes translation",
+                job_radar_id="jr-newco-12345678",
+            )
+        ],
+    )
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
@@ -673,6 +870,21 @@ No top matches found.
 """,
         encoding="utf-8",
     )
+    snapshot_path = reports_path / "target-scan.json"
+    write_report_snapshot_file(
+        snapshot_path,
+        generated_at="2026-07-14T14:20:00+00:00",
+        collector_errors=[
+            {
+                "company_key": "example-company",
+                "company_name": "Example Company",
+                "source_type": "greenhouse",
+                "message": (
+                    "Request timed out while contacting the job board."
+                ),
+            }
+        ],
+    )
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
@@ -703,6 +915,11 @@ No top matches found.
 No top matches found.
 """,
         encoding="utf-8",
+    )
+
+    write_report_snapshot_file(
+        snapshot_path,
+        generated_at="2026-07-14T15:00:00+00:00",
     )
 
     empty_response = client.get("/reports/section/collector_errors")
