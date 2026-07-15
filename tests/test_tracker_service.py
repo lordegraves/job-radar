@@ -1,8 +1,12 @@
+import sqlite3
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
+from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import (
     build_application_record_from_history_record,
@@ -11,6 +15,8 @@ from job_radar.tracker.tracker_service import (
     should_track_history_record,
     track_application_from_posting,
     track_application_from_posting_if_missing,
+    update_history_record_workflow,
+    update_tracker_application_workflow,
 )
 from job_radar.tracker.tracker_storage import get_application, initialize_tracker_tables
 
@@ -663,3 +669,167 @@ def test_get_application_workflow_state_marks_future_activity_date_for_review() 
         )
         == "needs_date_review"
     )
+
+
+def test_update_tracker_application_workflow_moves_record_to_history(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+    posting = make_posting()
+
+    track_application_from_posting(
+        str(database_path),
+        posting,
+        status="Applied",
+        outcome="Pending / In Progress",
+    )
+
+    result = update_tracker_application_workflow(
+        str(database_path),
+        job_radar_id=posting.job_radar_id,
+        status="Applied",
+        outcome="Rejected - No Interview",
+        last_activity_on="2026-07-15",
+        notes="Application rejected.",
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        tracker_count = connection.execute(
+            "SELECT COUNT(*) FROM application_tracker"
+        ).fetchone()[0]
+        history_count = connection.execute(
+            "SELECT COUNT(*) FROM job_history"
+        ).fetchone()[0]
+
+    assert result == "moved_to_history"
+    assert tracker_count == 0
+    assert history_count == 1
+
+
+def test_update_tracker_application_workflow_rolls_back_failed_move(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+    posting = make_posting()
+
+    track_application_from_posting(
+        str(database_path),
+        posting,
+        status="Applied",
+        outcome="Pending / In Progress",
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            CREATE TRIGGER fail_tracker_delete
+            BEFORE DELETE ON application_tracker
+            BEGIN
+                SELECT RAISE(ABORT, 'forced tracker delete failure');
+            END
+            """
+        )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        update_tracker_application_workflow(
+            str(database_path),
+            job_radar_id=posting.job_radar_id,
+            status="Applied",
+            outcome="Rejected - No Interview",
+            last_activity_on="2026-07-15",
+        )
+
+    with sqlite3.connect(database_path) as connection:
+        tracker_count = connection.execute(
+            "SELECT COUNT(*) FROM application_tracker"
+        ).fetchone()[0]
+        history_count = connection.execute(
+            "SELECT COUNT(*) FROM job_history"
+        ).fetchone()[0]
+
+    assert tracker_count == 1
+    assert history_count == 0
+
+
+def test_update_history_record_workflow_moves_record_to_tracker(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+    record = make_history_record(
+        decision="Applied",
+        outcome="Rejected - No Interview",
+    )
+    upsert_job_history_record(database_path, record)
+
+    result = update_history_record_workflow(
+        str(database_path),
+        import_key=record.import_key,
+        company=record.company,
+        role=record.role,
+        source=record.source,
+        event_date=record.event_date,
+        status="Applied",
+        outcome="Pending / In Progress",
+        notes="Application reopened.",
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        tracker_count = connection.execute(
+            "SELECT COUNT(*) FROM application_tracker"
+        ).fetchone()[0]
+        history_count = connection.execute(
+            "SELECT COUNT(*) FROM job_history"
+        ).fetchone()[0]
+
+    assert result == "moved_to_tracker"
+    assert tracker_count == 1
+    assert history_count == 0
+
+
+def test_update_history_record_workflow_rolls_back_failed_move(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+    record = make_history_record(
+        decision="Applied",
+        outcome="Rejected - No Interview",
+    )
+    upsert_job_history_record(database_path, record)
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            CREATE TRIGGER fail_history_delete
+            BEFORE DELETE ON job_history
+            BEGIN
+                SELECT RAISE(ABORT, 'forced history delete failure');
+            END
+            """
+        )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        update_history_record_workflow(
+            str(database_path),
+            import_key=record.import_key,
+            company=record.company,
+            role=record.role,
+            source=record.source,
+            event_date=record.event_date,
+            status="Applied",
+            outcome="Pending / In Progress",
+        )
+
+    with sqlite3.connect(database_path) as connection:
+        tracker_count = connection.execute(
+            "SELECT COUNT(*) FROM application_tracker"
+        ).fetchone()[0]
+        history_count = connection.execute(
+            "SELECT COUNT(*) FROM job_history"
+        ).fetchone()[0]
+
+    assert tracker_count == 0
+    assert history_count == 1

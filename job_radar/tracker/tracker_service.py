@@ -1,19 +1,24 @@
 from datetime import date
 
+from job_radar.database import connect_database
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
 from job_radar.storage import (
     delete_job_history_record,
+    delete_job_history_record_with_connection,
     fetch_included_job_history_records,
     upsert_job_history_record,
+    upsert_job_history_record_with_connection,
 )
 from job_radar.tracker.tracker_ids import build_manual_job_radar_id
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_storage import (
     delete_application,
+    delete_application_with_connection,
     get_application,
     update_application_status,
     upsert_application,
+    upsert_application_with_connection,
 )
 
 
@@ -251,8 +256,20 @@ def update_tracker_application_workflow(
             notes=notes,
         )
 
-        upsert_job_history_record(database_path, history_record)
-        delete_application(database_path, job_radar_id)
+        with connect_database(database_path) as connection:
+            upsert_job_history_record_with_connection(
+                connection,
+                history_record,
+            )
+            deleted = delete_application_with_connection(
+                connection,
+                job_radar_id,
+            )
+
+            if not deleted:
+                raise RuntimeError(
+                    "Tracker record disappeared during move to history."
+                )
 
         return "moved_to_history"
 
@@ -341,8 +358,21 @@ def update_history_record_workflow(
 
     if should_track_history_record(updated_record):
         application = build_application_record_from_history_record(updated_record)
-        upsert_application(database_path, application)
-        delete_job_history_record(database_path, import_key)
+
+        with connect_database(database_path) as connection:
+            upsert_application_with_connection(
+                connection,
+                application,
+            )
+            deleted = delete_job_history_record_with_connection(
+                connection,
+                import_key,
+            )
+
+            if not deleted:
+                raise RuntimeError(
+                    "History record disappeared during move to tracker."
+                )
 
         return "moved_to_tracker"
 

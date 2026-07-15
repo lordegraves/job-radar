@@ -110,72 +110,38 @@ def _repair_url_backed_tracker_ids(connection: sqlite3.Connection) -> None:
         )
 
 
-def upsert_application(
-    database_path: str | Path,
+def upsert_application_with_connection(
+    connection: sqlite3.Connection,
     record: ApplicationRecord,
 ) -> str:
-    db_path = Path(database_path)
+    existing = connection.execute(
+        """
+        SELECT job_radar_id
+        FROM application_tracker
+        WHERE job_radar_id = ?
+        """,
+        (record.job_radar_id,),
+    ).fetchone()
 
-    with connect_database(db_path) as connection:
-        existing = connection.execute(
-            """
-            SELECT job_radar_id
-            FROM application_tracker
-            WHERE job_radar_id = ?
-            """,
-            (record.job_radar_id,),
-        ).fetchone()
-
-        if existing is None:
-            connection.execute(
-                """
-                INSERT INTO application_tracker (
-                    job_radar_id,
-                    company_name,
-                    role_title,
-                    source_url,
-                    status,
-                    follow_up_on,
-                    outcome,
-                    notes,
-                    applied_on,
-                    last_activity_on
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    record.job_radar_id,
-                    record.company_name,
-                    record.role_title,
-                    record.source_url,
-                    record.status,
-                    record.follow_up_on,
-                    record.outcome,
-                    record.notes,
-                    record.applied_on,
-                    record.last_activity_on,
-                ),
-            )
-
-            return "new"
-
+    if existing is None:
         connection.execute(
             """
-            UPDATE application_tracker
-            SET
-                company_name = ?,
-                role_title = ?,
-                source_url = ?,
-                status = ?,
-                follow_up_on = ?,
-                outcome = ?,
-                notes = ?,
-                applied_on = COALESCE(?, applied_on),
-                last_activity_on = COALESCE(?, last_activity_on),
-                updated_at = CURRENT_TIMESTAMP
-            WHERE job_radar_id = ?
+            INSERT INTO application_tracker (
+                job_radar_id,
+                company_name,
+                role_title,
+                source_url,
+                status,
+                follow_up_on,
+                outcome,
+                notes,
+                applied_on,
+                last_activity_on
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                record.job_radar_id,
                 record.company_name,
                 record.role_title,
                 record.source_url,
@@ -185,11 +151,67 @@ def upsert_application(
                 record.notes,
                 record.applied_on,
                 record.last_activity_on,
-                record.job_radar_id,
             ),
         )
 
-        return "updated"
+        return "new"
+
+    connection.execute(
+        """
+        UPDATE application_tracker
+        SET
+            company_name = ?,
+            role_title = ?,
+            source_url = ?,
+            status = ?,
+            follow_up_on = ?,
+            outcome = ?,
+            notes = ?,
+            applied_on = COALESCE(?, applied_on),
+            last_activity_on = COALESCE(?, last_activity_on),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE job_radar_id = ?
+        """,
+        (
+            record.company_name,
+            record.role_title,
+            record.source_url,
+            record.status,
+            record.follow_up_on,
+            record.outcome,
+            record.notes,
+            record.applied_on,
+            record.last_activity_on,
+            record.job_radar_id,
+        ),
+    )
+
+    return "updated"
+
+
+def upsert_application(
+    database_path: str | Path,
+    record: ApplicationRecord,
+) -> str:
+    db_path = Path(database_path)
+
+    with connect_database(db_path) as connection:
+        return upsert_application_with_connection(connection, record)
+
+
+def delete_application_with_connection(
+    connection: sqlite3.Connection,
+    job_radar_id: str,
+) -> bool:
+    cursor = connection.execute(
+        """
+        DELETE FROM application_tracker
+        WHERE job_radar_id = ?
+        """,
+        (job_radar_id,),
+    )
+
+    return cursor.rowcount > 0
 
 
 def delete_application(
@@ -199,15 +221,7 @@ def delete_application(
     db_path = Path(database_path)
 
     with connect_database(db_path) as connection:
-        cursor = connection.execute(
-            """
-            DELETE FROM application_tracker
-            WHERE job_radar_id = ?
-            """,
-            (job_radar_id,),
-        )
-
-        return cursor.rowcount > 0
+        return delete_application_with_connection(connection, job_radar_id)
 
 
 def update_application_status(

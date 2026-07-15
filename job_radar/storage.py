@@ -540,6 +540,118 @@ def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
         return "seen"
 
 
+def upsert_job_history_record_with_connection(
+    connection: sqlite3.Connection,
+    record: JobHistoryRecord,
+) -> str:
+    existing = connection.execute(
+        """
+        SELECT id
+        FROM job_history
+        WHERE import_key = ?
+        """,
+        (record.import_key,),
+    ).fetchone()
+
+    values = (
+        record.history_type,
+        record.company,
+        record.role,
+        record.source,
+        record.ats_platform,
+        record.work_arrangement,
+        record.location,
+        record.comp_range,
+        record.event_date,
+        record.status,
+        record.outcome_category,
+        record.recruiter_contact,
+        record.technical_match,
+        record.hiring_probability,
+        record.skills_signals,
+        record.primary_blocker,
+        record.secondary_blocker,
+        record.revisit,
+        1 if record.include_in_job_radar else 0,
+        record.import_key,
+        record.notes,
+        record.applied_on,
+        record.last_activity_on,
+        record.follow_up_on,
+    )
+
+    if existing is None:
+        connection.execute(
+            """
+            INSERT INTO job_history (
+                history_type,
+                company,
+                role,
+                source,
+                ats_platform,
+                work_arrangement,
+                location,
+                comp_range,
+                event_date,
+                status,
+                outcome_category,
+                recruiter_contact,
+                technical_match,
+                hiring_probability,
+                skills_signals,
+                primary_blocker,
+                secondary_blocker,
+                revisit,
+                include_in_job_radar,
+                import_key,
+                notes,
+                applied_on,
+                last_activity_on,
+                follow_up_on
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            values,
+        )
+
+        return "new"
+
+    connection.execute(
+        """
+        UPDATE job_history
+        SET
+            history_type = ?,
+            company = ?,
+            role = ?,
+            source = ?,
+            ats_platform = ?,
+            work_arrangement = ?,
+            location = ?,
+            comp_range = ?,
+            event_date = ?,
+            status = ?,
+            outcome_category = ?,
+            recruiter_contact = ?,
+            technical_match = ?,
+            hiring_probability = ?,
+            skills_signals = ?,
+            primary_blocker = ?,
+            secondary_blocker = ?,
+            revisit = ?,
+            include_in_job_radar = ?,
+            notes = ?,
+            applied_on = ?,
+            last_activity_on = ?,
+            follow_up_on = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE import_key = ?
+        """,
+        values[:19] + values[20:] + (record.import_key,),
+    )
+
+    return "updated"
+
+
 def upsert_job_history_record(
     database_path: str | Path,
     record: JobHistoryRecord,
@@ -547,112 +659,22 @@ def upsert_job_history_record(
     db_path = Path(database_path)
 
     with connect_database(db_path) as connection:
-        existing = connection.execute(
-            """
-            SELECT id
-            FROM job_history
-            WHERE import_key = ?
-            """,
-            (record.import_key,),
-        ).fetchone()
+        return upsert_job_history_record_with_connection(connection, record)
 
-        values = (
-            record.history_type,
-            record.company,
-            record.role,
-            record.source,
-            record.ats_platform,
-            record.work_arrangement,
-            record.location,
-            record.comp_range,
-            record.event_date,
-            record.status,
-            record.outcome_category,
-            record.recruiter_contact,
-            record.technical_match,
-            record.hiring_probability,
-            record.skills_signals,
-            record.primary_blocker,
-            record.secondary_blocker,
-            record.revisit,
-            1 if record.include_in_job_radar else 0,
-            record.import_key,
-            record.notes,
-            record.applied_on,
-            record.last_activity_on,
-            record.follow_up_on,
-        )
 
-        if existing is None:
-            connection.execute(
-                """
-                INSERT INTO job_history (
-                    history_type,
-                    company,
-                    role,
-                    source,
-                    ats_platform,
-                    work_arrangement,
-                    location,
-                    comp_range,
-                    event_date,
-                    status,
-                    outcome_category,
-                    recruiter_contact,
-                    technical_match,
-                    hiring_probability,
-                    skills_signals,
-                    primary_blocker,
-                    secondary_blocker,
-                    revisit,
-                    include_in_job_radar,
-                    import_key,
-                    notes,
-                    applied_on,
-                    last_activity_on,
-                    follow_up_on
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                values,
-            )
+def delete_job_history_record_with_connection(
+    connection: sqlite3.Connection,
+    import_key: str,
+) -> bool:
+    cursor = connection.execute(
+        """
+        DELETE FROM job_history
+        WHERE import_key = ?
+        """,
+        (import_key,),
+    )
 
-            return "new"
-
-        connection.execute(
-            """
-            UPDATE job_history
-            SET
-                history_type = ?,
-                company = ?,
-                role = ?,
-                source = ?,
-                ats_platform = ?,
-                work_arrangement = ?,
-                location = ?,
-                comp_range = ?,
-                event_date = ?,
-                status = ?,
-                outcome_category = ?,
-                recruiter_contact = ?,
-                technical_match = ?,
-                hiring_probability = ?,
-                skills_signals = ?,
-                primary_blocker = ?,
-                secondary_blocker = ?,
-                revisit = ?,
-                include_in_job_radar = ?,
-                notes = ?,
-                applied_on = ?,
-                last_activity_on = ?,
-                follow_up_on = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE import_key = ?
-            """,
-            values[:19] + values[20:] + (record.import_key,),
-        )
-
-        return "updated"
+    return cursor.rowcount > 0
 
 
 def delete_job_history_record(
@@ -662,15 +684,7 @@ def delete_job_history_record(
     db_path = Path(database_path)
 
     with connect_database(db_path) as connection:
-        cursor = connection.execute(
-            """
-            DELETE FROM job_history
-            WHERE import_key = ?
-            """,
-            (import_key,),
-        )
-
-        return cursor.rowcount > 0
+        return delete_job_history_record_with_connection(connection, import_key)
 
 
 def fetch_included_job_history_records(
