@@ -32,10 +32,12 @@ from job_radar.scored_posting import ScoredPosting
 from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
 from job_radar.resume_match import match_resume_to_posting
 from job_radar.scan_lock import acquire_scan_lock
-from job_radar.scoring import (
-    classify_location,
+from job_radar.recommendation_policy import (
     evaluate_review_needed_eligibility,
     evaluate_top_match_eligibility,
+)
+from job_radar.scoring import (
+    classify_location,
     load_scoring_config,
     score_posting,
 )
