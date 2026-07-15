@@ -31,6 +31,7 @@ from job_radar.reporting import (
 )
 from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
 from job_radar.resume_match import match_resume_to_posting
+from job_radar.scan_lock import acquire_scan_lock
 from job_radar.scoring import (
     classify_location,
     evaluate_review_needed_eligibility,
@@ -278,8 +279,32 @@ def handle_scan(
     email_preview_path: str | None = None,
     send_email: bool = False,
 ) -> None:
-    companies = load_companies(config_path)
     settings = load_settings(settings_path)
+    database_path = settings["database_path"]
+
+    with acquire_scan_lock(database_path):
+        _handle_scan_unlocked(
+            config_path=config_path,
+            settings_path=settings_path,
+            settings=settings,
+            report_path=report_path,
+            scoring_path=scoring_path,
+            email_preview_path=email_preview_path,
+            send_email=send_email,
+        )
+
+
+def _handle_scan_unlocked(
+    *,
+    config_path: str,
+    settings_path: str,
+    settings: dict,
+    report_path: str,
+    scoring_path: str,
+    email_preview_path: str | None,
+    send_email: bool,
+) -> None:
+    companies = load_companies(config_path)
     database_path = settings["database_path"]
 
     initialize_database(database_path)

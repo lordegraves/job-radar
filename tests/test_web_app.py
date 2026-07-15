@@ -6,6 +6,7 @@ from job_radar.collectors import html
 import job_radar.web_app as web_app_module
 
 from job_radar.job_history import JobHistoryRecord
+from job_radar.scan_lock import ScanAlreadyRunningError
 from job_radar.storage import (
     fetch_included_job_history_records,
     initialize_database,
@@ -1825,26 +1826,33 @@ def test_scan_run_calls_handle_scan_and_redirects(
 
 def test_scan_run_reports_busy_when_scan_is_already_running(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
 
     write_settings_file(settings_file, database_file)
 
-    web_app_module.SCAN_RUN_LOCK.acquire()
+    def reject_concurrent_scan(**kwargs):
+        raise ScanAlreadyRunningError(
+            "Another Job Radar scan is already running."
+        )
 
-    try:
-        app = create_app(settings_path=str(settings_file))
-        client = app.test_client()
+    monkeypatch.setattr(
+        web_app_module,
+        "handle_scan",
+        reject_concurrent_scan,
+    )
 
-        response = client.post("/scan/run", follow_redirects=True)
-        html = response.get_data(as_text=True)
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
 
-        assert response.status_code == 200
-        assert "Scan already running." in html
-        assert "Wait for the current scan to finish before starting another one." in html
-    finally:
-        web_app_module.SCAN_RUN_LOCK.release()
+    response = client.post("/scan/run", follow_redirects=True)
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Scan already running." in html
+    assert "Wait for the current scan to finish before starting another one." in html
 
 
 def test_scan_run_reports_errors(
