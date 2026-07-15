@@ -39,10 +39,14 @@ from job_radar.scoring import (
     score_posting,
 )
 from job_radar.storage import (
+    complete_scan_run,
     delete_job_history_record,
+    fail_scan_run,
     fetch_included_job_history_records,
     initialize_database,
-    record_scan_run,
+    record_scan_error,
+    start_scan_run,
+    update_scan_run_progress,
     upsert_job_history_record,
     upsert_job_posting,
 )
@@ -277,260 +281,390 @@ def handle_scan(
     companies = load_companies(config_path)
     settings = load_settings(settings_path)
     database_path = settings["database_path"]
-    scoring_config = load_scoring_config(scoring_path)
-    candidate_profile, resume_text = _load_candidate_context(settings)
 
     initialize_database(database_path)
 
-    _import_job_history_for_scan(
-        settings=settings,
-        database_path=database_path,
+    requested_at = datetime.now(UTC).isoformat()
+    scan_run_id = start_scan_run(
+        database_path,
+        requested_at=requested_at,
+        companies_requested=len(companies),
+        companies_enabled=len(companies),
+        current_stage="configuration",
     )
 
-    print("Scan requested")
-    print(f"Config: {config_path}")
-    print(f"Settings: {settings_path}")
-    print(f"Report: {report_path}")
-    print(f"Database: {database_path}")
-    print()
-    print("Enabled companies:")
-
+    current_stage = "configuration"
+    companies_scanned = 0
     total_jobs = 0
-    jobs_new = 0
-    jobs_seen = 0
-    jobs_changed = 0
     collector_errors: list[ScanError] = []
-    collected_postings = []
+    report_status = "not_started"
+    email_status = "not_requested"
 
-    for company in companies:
-        company_key = company["company_key"]
-        company_name = company["name"]
-        source_type = company["source_type"]
+    try:
+        scoring_config = load_scoring_config(scoring_path)
+        candidate_profile, resume_text = _load_candidate_context(settings)
 
-        print(f"- {company_key} ({company_name}) source_type={source_type}")
-
-        try:
-            postings = collect_jobs_for_company(company)
-        except CollectorError as error:
-            collector_errors.append(
-                ScanError(
-                    company_key=company_key,
-                    company_name=company_name,
-                    source_type=source_type,
-                    message=str(error),
-                )
-            )
-            print(f"  ERROR: {error}")
-            continue
-
-        total_jobs += len(postings)
-        collected_postings.extend(postings)
-        print(f"  collected_jobs={len(postings)}")
-
-    history_summary = build_history_summary(database_path)
-    history_context = build_history_context(history_summary)
-    history_records = fetch_included_job_history_records(database_path)
-    tracker_workflow_summary = _build_tracker_workflow_summary(database_path)
-    tracked_applications = list_applications(database_path)
-
-    scored_postings = []
-
-    for posting in collected_postings:
-        score, reasons = score_posting(posting, scoring_config)
-        location_status = classify_location(posting, scoring_config)
-        top_match_eligible, top_match_reasons = evaluate_top_match_eligibility(
-            posting=posting,
-            score=score,
-            score_reasons=reasons,
-            location_status=location_status,
-            scoring_config=scoring_config,
+        current_stage = "history_import"
+        update_scan_run_progress(
+            database_path,
+            scan_run_id=scan_run_id,
+            current_stage=current_stage,
         )
 
-        review_needed_eligible = evaluate_review_needed_eligibility(
-            score=score,
-            score_reasons=reasons,
-            location_status=location_status,
-            top_match_eligible=top_match_eligible,
-            scoring_config=scoring_config,
-        )
-
-        history_matches = find_history_matches(
-            posting=posting,
-            history_records=history_records,
-        )
-        history_risk_level, history_risk_reasons = summarize_history_risk(
-            history_matches
-        )
-        application = _get_application_for_posting(
+        _import_job_history_for_scan(
+            settings=settings,
             database_path=database_path,
-            tracked_applications=tracked_applications,
-            posting=posting,
         )
 
-        scored_postings.append(
-            ScoredPosting(
+        print("Scan requested")
+        print(f"Config: {config_path}")
+        print(f"Settings: {settings_path}")
+        print(f"Report: {report_path}")
+        print(f"Database: {database_path}")
+        print()
+        print("Enabled companies:")
+
+        jobs_new = 0
+        jobs_seen = 0
+        jobs_changed = 0
+        collected_postings = []
+
+        current_stage = "collection"
+        update_scan_run_progress(
+            database_path,
+            scan_run_id=scan_run_id,
+            current_stage=current_stage,
+        )
+
+        for company in companies:
+            company_key = company["company_key"]
+            company_name = company["name"]
+            source_type = company["source_type"]
+
+            print(f"- {company_key} ({company_name}) source_type={source_type}")
+
+            try:
+                postings = collect_jobs_for_company(company)
+            except CollectorError as error:
+                collector_errors.append(
+                    ScanError(
+                        company_key=company_key,
+                        company_name=company_name,
+                        source_type=source_type,
+                        message=str(error),
+                    )
+                )
+                record_scan_error(
+                    database_path,
+                    scan_run_id=scan_run_id,
+                    company_key=company_key,
+                    source_type=source_type,
+                    error_type="collector_error",
+                    error_message=str(error),
+                )
+                companies_scanned += 1
+                update_scan_run_progress(
+                    database_path,
+                    scan_run_id=scan_run_id,
+                    current_stage=current_stage,
+                    companies_scanned=companies_scanned,
+                    jobs_found=total_jobs,
+                    collector_errors=len(collector_errors),
+                )
+                print(f"  ERROR: {error}")
+                continue
+
+            total_jobs += len(postings)
+            collected_postings.extend(postings)
+            companies_scanned += 1
+            update_scan_run_progress(
+                database_path,
+                scan_run_id=scan_run_id,
+                current_stage=current_stage,
+                companies_scanned=companies_scanned,
+                jobs_found=total_jobs,
+                collector_errors=len(collector_errors),
+            )
+            print(f"  collected_jobs={len(postings)}")
+
+        current_stage = "scoring"
+        update_scan_run_progress(
+            database_path,
+            scan_run_id=scan_run_id,
+            current_stage=current_stage,
+            companies_scanned=companies_scanned,
+            jobs_found=total_jobs,
+            collector_errors=len(collector_errors),
+        )
+
+        history_summary = build_history_summary(database_path)
+        history_context = build_history_context(history_summary)
+        history_records = fetch_included_job_history_records(database_path)
+        tracker_workflow_summary = _build_tracker_workflow_summary(database_path)
+        tracked_applications = list_applications(database_path)
+
+        scored_postings = []
+
+        for posting in collected_postings:
+            score, reasons = score_posting(posting, scoring_config)
+            location_status = classify_location(posting, scoring_config)
+            top_match_eligible, top_match_reasons = evaluate_top_match_eligibility(
                 posting=posting,
                 score=score,
                 score_reasons=reasons,
                 location_status=location_status,
-                top_match_eligible=top_match_eligible,
-                review_needed_eligible=review_needed_eligible,
-                top_match_reasons=top_match_reasons,
-                resume_match=match_resume_to_posting(
-                    posting=posting,
-                    candidate_profile=candidate_profile,
-                    resume_text=resume_text,
-                ),
-                compensation=evaluate_compensation(
-                    salary_text=posting.salary_text,
-                    compensation_floor_usd=(
-                        candidate_profile.compensation_floor_usd
-                        if candidate_profile is not None
-                        else None
-                    ),
-                ),
-                profile_avoid_matches=_find_profile_avoid_matches(
-                    candidate_profile=candidate_profile,
-                    posting=posting,
-                ),
-                history_context=format_history_matches(history_matches),
-                history_risk_level=history_risk_level,
-                history_risk_reasons=history_risk_reasons,
-                # Scan/report reads tracker state only. Newly discovered jobs must
-                # not become tracked simply because they scored well.
-                application=application,
+                scoring_config=scoring_config,
             )
+
+            review_needed_eligible = evaluate_review_needed_eligibility(
+                score=score,
+                score_reasons=reasons,
+                location_status=location_status,
+                top_match_eligible=top_match_eligible,
+                scoring_config=scoring_config,
+            )
+
+            history_matches = find_history_matches(
+                posting=posting,
+                history_records=history_records,
+            )
+            history_risk_level, history_risk_reasons = summarize_history_risk(
+                history_matches
+            )
+            application = _get_application_for_posting(
+                database_path=database_path,
+                tracked_applications=tracked_applications,
+                posting=posting,
+            )
+
+            scored_postings.append(
+                ScoredPosting(
+                    posting=posting,
+                    score=score,
+                    score_reasons=reasons,
+                    location_status=location_status,
+                    top_match_eligible=top_match_eligible,
+                    review_needed_eligible=review_needed_eligible,
+                    top_match_reasons=top_match_reasons,
+                    resume_match=match_resume_to_posting(
+                        posting=posting,
+                        candidate_profile=candidate_profile,
+                        resume_text=resume_text,
+                    ),
+                    compensation=evaluate_compensation(
+                        salary_text=posting.salary_text,
+                        compensation_floor_usd=(
+                            candidate_profile.compensation_floor_usd
+                            if candidate_profile is not None
+                            else None
+                        ),
+                    ),
+                    profile_avoid_matches=_find_profile_avoid_matches(
+                        candidate_profile=candidate_profile,
+                        posting=posting,
+                    ),
+                    history_context=format_history_matches(history_matches),
+                    history_risk_level=history_risk_level,
+                    history_risk_reasons=history_risk_reasons,
+                    # Scan/report reads tracker state only. Newly discovered jobs must
+                    # not become tracked simply because they scored well.
+                    application=application,
+                )
+            )
+
+        scored_postings.sort(key=lambda item: item.score, reverse=True)
+
+        relevant_scored_postings = [
+            scored_posting
+            for scored_posting in scored_postings
+            if (
+                scored_posting.top_match_eligible
+                or scored_posting.review_needed_eligible
+            )
+        ]
+
+        relevant_source_urls = {
+            scored_posting.posting.source_url
+            for scored_posting in relevant_scored_postings
+        }
+
+        omitted_scored_postings = [
+            scored_posting
+            for scored_posting in scored_postings
+            if scored_posting.posting.source_url not in relevant_source_urls
+        ]
+
+        current_stage = "storage"
+        update_scan_run_progress(
+            database_path,
+            scan_run_id=scan_run_id,
+            current_stage=current_stage,
+            companies_scanned=companies_scanned,
+            jobs_found=total_jobs,
+            collector_errors=len(collector_errors),
         )
 
-    scored_postings.sort(key=lambda item: item.score, reverse=True)
+        jobs_stored = 0
+        jobs_omitted = total_jobs - len(relevant_scored_postings)
+        new_scored_postings: list[ScoredPosting] = []
 
-    relevant_scored_postings = [
-        scored_posting
-        for scored_posting in scored_postings
-        if scored_posting.top_match_eligible or scored_posting.review_needed_eligible
-    ]
+        for scored_posting in relevant_scored_postings:
+            result = upsert_job_posting(database_path, scored_posting.posting)
+            jobs_stored += 1
 
-    relevant_source_urls = {
-        scored_posting.posting.source_url
-        for scored_posting in relevant_scored_postings
-    }
+            if result == "new":
+                jobs_new += 1
+                new_scored_postings.append(scored_posting)
+            elif result == "seen":
+                jobs_seen += 1
+            elif result == "changed":
+                jobs_changed += 1
 
-    omitted_scored_postings = [
-        scored_posting
-        for scored_posting in scored_postings
-        if scored_posting.posting.source_url not in relevant_source_urls
-    ]
+        generated_at = datetime.now(UTC).isoformat()
 
-    jobs_stored = 0
-    jobs_omitted = total_jobs - len(relevant_scored_postings)
-    new_scored_postings: list[ScoredPosting] = []
+        report = ScanReport(
+            companies_enabled=len(companies),
+            jobs_collected=total_jobs,
+            jobs_new=jobs_new,
+            jobs_seen=jobs_seen,
+            jobs_changed=jobs_changed,
+            collector_errors=collector_errors,
+            postings=collected_postings,
+            scored_postings=relevant_scored_postings,
+            new_scored_postings=new_scored_postings,
+            omitted_scored_postings=omitted_scored_postings,
+            generated_at=generated_at,
+            top_match_min_score=scoring_config["top_matches"]["min_score"],
+            review_needed_min_score=scoring_config["review_needed"]["min_score"],
+            jobs_stored=jobs_stored,
+            jobs_omitted=jobs_omitted,
+            history_context=history_context,
+            tracker_workflow_summary=tracker_workflow_summary,
+        )
 
-    for scored_posting in relevant_scored_postings:
-        result = upsert_job_posting(database_path, scored_posting.posting)
-        jobs_stored += 1
+        current_stage = "report_generation"
+        update_scan_run_progress(
+            database_path,
+            scan_run_id=scan_run_id,
+            current_stage=current_stage,
+            companies_scanned=companies_scanned,
+            jobs_found=total_jobs,
+            collector_errors=len(collector_errors),
+        )
 
-        if result == "new":
-            jobs_new += 1
-            new_scored_postings.append(scored_posting)
-        elif result == "seen":
-            jobs_seen += 1
-        elif result == "changed":
-            jobs_changed += 1
-
-    generated_at = datetime.now(UTC).isoformat()
-
-    report = ScanReport(
-        companies_enabled=len(companies),
-        jobs_collected=total_jobs,
-        jobs_new=jobs_new,
-        jobs_seen=jobs_seen,
-        jobs_changed=jobs_changed,
-        collector_errors=collector_errors,
-        postings=collected_postings,
-        scored_postings=relevant_scored_postings,
-        new_scored_postings=new_scored_postings,
-        omitted_scored_postings=omitted_scored_postings,
-        generated_at=generated_at,
-        top_match_min_score=scoring_config["top_matches"]["min_score"],
-        review_needed_min_score=scoring_config["review_needed"]["min_score"],
-        jobs_stored=jobs_stored,
-        jobs_omitted=jobs_omitted,
-        history_context=history_context,
-        tracker_workflow_summary=tracker_workflow_summary,
-    )
-
-    record_scan_run(
-        database_path=database_path,
-        generated_at=generated_at,
-        companies_enabled=len(companies),
-        jobs_collected=total_jobs,
-        actionable_jobs_stored=jobs_stored,
-        jobs_not_actionable=jobs_omitted,
-        jobs_new=jobs_new,
-        jobs_seen=jobs_seen,
-        jobs_changed=jobs_changed,
-        collector_errors=len(collector_errors),
-        top_matches_count=sum(
-            1
-            for scored_posting in relevant_scored_postings
-            if scored_posting.top_match_eligible
-        ),
-        review_needed_count=sum(
-            1
-            for scored_posting in relevant_scored_postings
-            if scored_posting.review_needed_eligible
-        ),
-    )
-
-    written_report_path = write_markdown_report(report_path, report)
-    written_html_report_path = write_html_report(
-        Path(report_path).with_suffix(".html"),
-        report,
-    )
-
-    written_email_preview_path = None
-
-    if email_preview_path is not None:
-        written_email_preview_path = write_email_preview(
-            email_preview_path,
+        written_report_path = write_markdown_report(report_path, report)
+        written_html_report_path = write_html_report(
+            Path(report_path).with_suffix(".html"),
             report,
-            written_report_path,
         )
+        report_status = "completed"
 
-    email_send_result = None
+        written_email_preview_path = None
 
-    if send_email:
-        email_send_result = send_email_report(
-            email_settings=settings["email"],
-            subject=build_email_subject(report),
-            body=build_email_body(
-                report=report,
-                report_path=written_html_report_path,
-                include_report_path=False,
+        if email_preview_path is not None:
+            written_email_preview_path = write_email_preview(
+                email_preview_path,
+                report,
+                written_report_path,
+            )
+
+        email_send_result = None
+
+        if send_email:
+            current_stage = "email_delivery"
+            update_scan_run_progress(
+                database_path,
+                scan_run_id=scan_run_id,
+                current_stage=current_stage,
+                companies_scanned=companies_scanned,
+                jobs_found=total_jobs,
+                collector_errors=len(collector_errors),
+            )
+            email_status = "sending"
+            email_send_result = send_email_report(
+                email_settings=settings["email"],
+                subject=build_email_subject(report),
+                body=build_email_body(
+                    report=report,
+                    report_path=written_html_report_path,
+                    include_report_path=False,
+                ),
+                html_body=build_email_html_body(
+                    report=report,
+                    report_path=written_html_report_path,
+                    include_report_path=False,
+                ),
+                attachment_path=written_html_report_path,
+            )
+            email_status = "completed"
+
+        finished_at = datetime.now(UTC).isoformat()
+
+        if not complete_scan_run(
+            database_path,
+            scan_run_id=scan_run_id,
+            generated_at=generated_at,
+            finished_at=finished_at,
+            companies_scanned=companies_scanned,
+            jobs_collected=total_jobs,
+            actionable_jobs_stored=jobs_stored,
+            jobs_not_actionable=jobs_omitted,
+            jobs_new=jobs_new,
+            jobs_seen=jobs_seen,
+            jobs_changed=jobs_changed,
+            collector_errors=len(collector_errors),
+            top_matches_count=sum(
+                1
+                for scored_posting in relevant_scored_postings
+                if scored_posting.top_match_eligible
             ),
-            html_body=build_email_html_body(
-                report=report,
-                report_path=written_html_report_path,
-                include_report_path=False,
+            review_needed_count=sum(
+                1
+                for scored_posting in relevant_scored_postings
+                if scored_posting.review_needed_eligible
             ),
-            attachment_path=written_html_report_path,
+            report_status=report_status,
+            email_status=email_status,
+        ):
+            raise RuntimeError(
+                f"Scan run {scan_run_id} could not be marked complete."
+            )
+
+        print()
+        print("Scan summary:")
+        print(f"Companies enabled: {len(companies)}")
+        print(f"Jobs collected: {total_jobs}")
+        print(f"Actionable jobs stored: {jobs_stored}")
+        print(f"Jobs not actionable: {jobs_omitted}")
+        print(f"Jobs new: {jobs_new}")
+        print(f"Jobs seen: {jobs_seen}")
+        print(f"Jobs changed: {jobs_changed}")
+        print(f"Collector errors: {len(collector_errors)}")
+        print(f"Report written: {written_report_path}")
+        print(f"HTML report written: {written_html_report_path}")
+
+        if written_email_preview_path is not None:
+            print(f"Email preview written: {written_email_preview_path}")
+
+        if email_send_result is not None:
+            print(f"Email send result: {email_send_result.message}")
+    except Exception as error:
+        finished_at = datetime.now(UTC).isoformat()
+        record_scan_error(
+            database_path,
+            scan_run_id=scan_run_id,
+            error_type="scan_stage_failure",
+            error_message=str(error),
         )
+        fail_scan_run(
+            database_path,
+            scan_run_id=scan_run_id,
+            finished_at=finished_at,
+            failed_stage=current_stage,
+            failure_summary=str(error),
+            companies_scanned=companies_scanned,
+            jobs_found=total_jobs,
+            collector_errors=len(collector_errors),
+        )
+        raise
 
-    print()
-    print("Scan summary:")
-    print(f"Companies enabled: {len(companies)}")
-    print(f"Jobs collected: {total_jobs}")
-    print(f"Actionable jobs stored: {jobs_stored}")
-    print(f"Jobs not actionable: {jobs_omitted}")
-    print(f"Jobs new: {jobs_new}")
-    print(f"Jobs seen: {jobs_seen}")
-    print(f"Jobs changed: {jobs_changed}")
-    print(f"Collector errors: {len(collector_errors)}")
-    print(f"Report written: {written_report_path}")
-    print(f"HTML report written: {written_html_report_path}")
-
-    if written_email_preview_path is not None:
-        print(f"Email preview written: {written_email_preview_path}")
-
-    if email_send_result is not None:
-        print(f"Email send result: {email_send_result.message}")
