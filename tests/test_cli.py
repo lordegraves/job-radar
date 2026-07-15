@@ -559,7 +559,7 @@ top_matches:
         return [fake_posting]
 
     monkeypatch.setattr(
-        "job_radar.cli.collect_jobs_for_company",
+        "job_radar.scan_service.collect_jobs_for_company",
         fake_collect_jobs_for_company,
     )
 
@@ -717,7 +717,7 @@ top_matches:
         return [fake_posting]
 
     monkeypatch.setattr(
-        "job_radar.cli.collect_jobs_for_company",
+        "job_radar.scan_service.collect_jobs_for_company",
         fake_collect_jobs_for_company,
     )
 
@@ -841,7 +841,7 @@ top_matches:
         return [fake_posting]
 
     monkeypatch.setattr(
-        "job_radar.cli.collect_jobs_for_company",
+        "job_radar.scan_service.collect_jobs_for_company",
         fake_collect_jobs_for_company,
     )
 
@@ -983,7 +983,7 @@ top_matches:
         return [fake_posting]
 
     monkeypatch.setattr(
-        "job_radar.cli.collect_jobs_for_company",
+        "job_radar.scan_service.collect_jobs_for_company",
         fake_collect_jobs_for_company,
     )
 
@@ -1104,7 +1104,7 @@ top_matches:
         return [fake_posting]
 
     monkeypatch.setattr(
-        "job_radar.cli.collect_jobs_for_company",
+        "job_radar.scan_service.collect_jobs_for_company",
         fake_collect_jobs_for_company,
     )
 
@@ -1214,7 +1214,7 @@ top_matches:
         return [fake_posting]
 
     monkeypatch.setattr(
-        "job_radar.cli.collect_jobs_for_company",
+        "job_radar.scan_service.collect_jobs_for_company",
         fake_collect_jobs_for_company,
     )
 
@@ -1315,7 +1315,7 @@ top_matches:
         return [fake_posting]
 
     monkeypatch.setattr(
-        "job_radar.cli.collect_jobs_for_company",
+        "job_radar.scan_service.collect_jobs_for_company",
         fake_collect_jobs_for_company,
     )
 
@@ -1462,11 +1462,11 @@ top_matches:
         )
 
     monkeypatch.setattr(
-        "job_radar.cli.collect_jobs_for_company",
+        "job_radar.scan_service.collect_jobs_for_company",
         fake_collect_jobs_for_company,
     )
     monkeypatch.setattr(
-        "job_radar.cli.send_email_report",
+        "job_radar.scan_service.send_email_report",
         fake_send_email_report,
     )
 

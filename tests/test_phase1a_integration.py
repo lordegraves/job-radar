@@ -110,7 +110,7 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
         return [fake_posting]
 
     monkeypatch.setattr(
-        "job_radar.cli.collect_jobs_for_company",
+        "job_radar.scan_service.collect_jobs_for_company",
         fake_collect_jobs_for_company,
     )
 

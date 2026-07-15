@@ -7,7 +7,7 @@ from threading import Lock
 
 from flask import Flask, abort, redirect, render_template, request, send_from_directory, url_for
 
-from job_radar.cli import handle_scan
+from job_radar.scan_service import handle_scan
 from job_radar.company_config_service import (
     build_company_config_views,
     build_company_source_summaries,
