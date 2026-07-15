@@ -6,6 +6,8 @@ from job_radar.job_history import JobHistoryRecord
 from job_radar.storage import (
     complete_scan_run,
     fail_scan_run,
+    fetch_active_scan_run,
+    fetch_latest_scan_run,
     initialize_database,
     record_scan_error,
     record_scan_run,
@@ -685,3 +687,73 @@ def test_upsert_job_history_record_updates_existing_record(tmp_path: Path) -> No
     assert count_rows(database_path, "job_history") == 1
     assert row["status"] == "Rejected - After Interview"
     assert row["notes"] == "Updated after recruiter screen."
+
+
+def test_fetch_scan_runs_returns_none_when_no_scan_exists(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    assert fetch_active_scan_run(database_path) is None
+    assert fetch_latest_scan_run(database_path) is None
+
+
+def test_fetch_scan_runs_returns_active_and_latest_scan(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    scan_run_id = start_scan_run(
+        database_path,
+        requested_at="2026-07-15T16:00:00+00:00",
+        companies_requested=4,
+        companies_enabled=4,
+        current_stage="collection",
+    )
+    update_scan_run_progress(
+        database_path,
+        scan_run_id=scan_run_id,
+        current_stage="collection",
+        companies_scanned=2,
+        jobs_found=20,
+    )
+
+    active_row = fetch_active_scan_run(database_path)
+    latest_row = fetch_latest_scan_run(database_path)
+
+    assert active_row is not None
+    assert latest_row is not None
+    assert active_row["id"] == scan_run_id
+    assert latest_row["id"] == scan_run_id
+    assert active_row["status"] == "running"
+    assert active_row["companies_scanned"] == 2
+
+
+def test_fetch_active_scan_run_excludes_terminal_scan(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    scan_run_id = start_scan_run(
+        database_path,
+        requested_at="2026-07-15T17:00:00+00:00",
+        companies_requested=1,
+        companies_enabled=1,
+    )
+    fail_scan_run(
+        database_path,
+        scan_run_id=scan_run_id,
+        finished_at="2026-07-15T17:01:00+00:00",
+        failed_stage="configuration",
+        failure_summary="invalid configuration",
+    )
+
+    latest_row = fetch_latest_scan_run(database_path)
+
+    assert fetch_active_scan_run(database_path) is None
+    assert latest_row is not None
+    assert latest_row["id"] == scan_run_id
+    assert latest_row["status"] == "failed"

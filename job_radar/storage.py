@@ -376,6 +376,43 @@ def _migrate_job_history_table(connection: sqlite3.Connection) -> None:
         )
 
 
+def fetch_active_scan_run(
+    database_path: str | Path,
+) -> sqlite3.Row | None:
+    db_path = Path(database_path)
+
+    with connect_database(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+
+        return connection.execute(
+            """
+            SELECT *
+            FROM scan_runs
+            WHERE status = 'running'
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+
+def fetch_latest_scan_run(
+    database_path: str | Path,
+) -> sqlite3.Row | None:
+    db_path = Path(database_path)
+
+    with connect_database(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+
+        return connection.execute(
+            """
+            SELECT *
+            FROM scan_runs
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+
 def start_scan_run(
     database_path: str | Path,
     *,
