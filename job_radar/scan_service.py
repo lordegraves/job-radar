@@ -25,10 +25,10 @@ from job_radar.normalize import clean_text
 from job_radar.reporting import (
     ScanError,
     ScanReport,
-    ScoredPosting,
     write_html_report,
     write_markdown_report,
 )
+from job_radar.scored_posting import ScoredPosting
 from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
 from job_radar.resume_match import match_resume_to_posting
 from job_radar.scan_lock import acquire_scan_lock

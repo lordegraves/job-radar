@@ -3,9 +3,8 @@ from datetime import datetime
 from html import escape
 from pathlib import Path
 
-from job_radar.compensation import CompensationResult
 from job_radar.models import JobPosting
-from job_radar.resume_match import ResumeMatchResult
+from job_radar.scored_posting import ScoredPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import get_application_workflow_state
 from job_radar.recommendation_constants import (
@@ -83,24 +82,6 @@ TRACKER_NEEDS_REVIEW_WORKFLOW_STATES = (
     "stale",
     "presumed_closed",
 )
-
-
-@dataclass(frozen=True)
-class ScoredPosting:
-    posting: JobPosting
-    score: int
-    score_reasons: list[str]
-    location_status: str = "unknown"
-    top_match_eligible: bool = False
-    top_match_reasons: list[str] | None = None
-    review_needed_eligible: bool = False
-    resume_match: ResumeMatchResult | None = None
-    compensation: CompensationResult | None = None
-    profile_avoid_matches: list[str] | None = None
-    history_context: list[str] | None = None
-    history_risk_level: str | None = None
-    history_risk_reasons: list[str] | None = None
-    application: ApplicationRecord | None = None
 
 
 @dataclass(frozen=True)

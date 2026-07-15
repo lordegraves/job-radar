@@ -32,7 +32,7 @@ from job_radar.recommendation_constants import (
 )
 
 if TYPE_CHECKING:
-    from job_radar.reporting import ScoredPosting
+    from job_radar.scored_posting import ScoredPosting
 
 
 HIGH_COMPETITION_COMPANY_KEYWORDS = [
