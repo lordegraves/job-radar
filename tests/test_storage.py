@@ -4,8 +4,13 @@ from pathlib import Path
 from job_radar.database import connect_database
 from job_radar.job_history import JobHistoryRecord
 from job_radar.storage import (
+    complete_scan_run,
+    fail_scan_run,
     initialize_database,
+    record_scan_error,
     record_scan_run,
+    start_scan_run,
+    update_scan_run_progress,
     upsert_job_history_record,
     upsert_job_posting,
 )
@@ -61,7 +66,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     backup_directory = tmp_path / "backups"
     backup_paths = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v2-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v3-*.bak"
         )
     )
 
@@ -87,7 +92,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
 
     backup_paths_after_second_initialization = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v2-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v3-*.bak"
         )
     )
 
@@ -136,6 +141,7 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
     assert migration_rows == [
         (1, "baseline current schema"),
         (2, "backfill companies for stored jobs"),
+        (3, "add durable scan lifecycle fields"),
     ]
 
 
@@ -175,6 +181,118 @@ def test_initialize_database_backfills_companies_for_existing_jobs(
         "greenhouse",
     )
     assert foreign_key_errors == []
+
+
+def test_scan_run_lifecycle_records_progress_completion_and_errors(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    scan_run_id = start_scan_run(
+        database_path,
+        requested_at="2026-07-15T14:00:00+00:00",
+        companies_requested=3,
+        companies_enabled=3,
+    )
+
+    assert update_scan_run_progress(
+        database_path,
+        scan_run_id=scan_run_id,
+        current_stage="collection",
+        companies_scanned=2,
+        jobs_found=25,
+        collector_errors=1,
+    )
+
+    error_id = record_scan_error(
+        database_path,
+        scan_run_id=scan_run_id,
+        company_key="example_ai",
+        source_type="greenhouse",
+        error_type="collector_error",
+        error_message="temporary API failure",
+    )
+
+    assert complete_scan_run(
+        database_path,
+        scan_run_id=scan_run_id,
+        generated_at="2026-07-15T14:05:00+00:00",
+        finished_at="2026-07-15T14:05:00+00:00",
+        companies_scanned=3,
+        jobs_collected=40,
+        actionable_jobs_stored=4,
+        jobs_not_actionable=36,
+        jobs_new=2,
+        jobs_seen=1,
+        jobs_changed=1,
+        collector_errors=1,
+        top_matches_count=1,
+        review_needed_count=3,
+        report_status="completed",
+        email_status="not_requested",
+    )
+
+    with connect_database(database_path) as connection:
+        connection.row_factory = sqlite3.Row
+        scan_row = connection.execute(
+            "SELECT * FROM scan_runs WHERE id = ?",
+            (scan_run_id,),
+        ).fetchone()
+        error_row = connection.execute(
+            "SELECT * FROM scan_errors WHERE id = ?",
+            (error_id,),
+        ).fetchone()
+
+    assert scan_row is not None
+    assert scan_row["requested_at"] == "2026-07-15T14:00:00+00:00"
+    assert scan_row["started_at"] == "2026-07-15T14:00:00+00:00"
+    assert scan_row["finished_at"] == "2026-07-15T14:05:00+00:00"
+    assert scan_row["status"] == "completed_with_warnings"
+    assert scan_row["current_stage"] == "completed"
+    assert scan_row["failure_summary"] is None
+    assert scan_row["report_status"] == "completed"
+    assert scan_row["email_status"] == "not_requested"
+    assert scan_row["companies_requested"] == 3
+    assert scan_row["companies_scanned"] == 3
+    assert scan_row["jobs_found"] == 40
+    assert scan_row["jobs_collected"] == 40
+    assert scan_row["collector_errors"] == 1
+    assert error_row is not None
+    assert error_row["scan_run_id"] == scan_run_id
+    assert error_row["company_key"] == "example_ai"
+    assert error_row["error_type"] == "collector_error"
+    assert error_row["error_message"] == "temporary API failure"
+
+
+def test_scan_run_lifecycle_records_failure(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    scan_run_id = start_scan_run(
+        database_path,
+        requested_at="2026-07-15T15:00:00+00:00",
+        companies_requested=4,
+        companies_enabled=4,
+        current_stage="configuration",
+    )
+
+    assert fail_scan_run(
+        database_path,
+        scan_run_id=scan_run_id,
+        finished_at="2026-07-15T15:00:10+00:00",
+        failed_stage="configuration",
+        failure_summary="scoring configuration is invalid",
+    )
+
+    row = get_scan_run_row(database_path)
+
+    assert row["status"] == "failed"
+    assert row["current_stage"] == "configuration"
+    assert row["failure_summary"] == "scoring configuration is invalid"
+    assert row["finished_at"] == "2026-07-15T15:00:10+00:00"
 
 
 def test_record_scan_run_inserts_scan_summary(tmp_path: Path) -> None:

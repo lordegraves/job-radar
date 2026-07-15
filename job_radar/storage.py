@@ -60,9 +60,14 @@ CREATE TABLE IF NOT EXISTS job_status (
 CREATE TABLE IF NOT EXISTS scan_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    requested_at TEXT,
     started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     finished_at TEXT,
     status TEXT NOT NULL DEFAULT 'completed',
+    current_stage TEXT,
+    failure_summary TEXT,
+    report_status TEXT NOT NULL DEFAULT 'not_started',
+    email_status TEXT NOT NULL DEFAULT 'not_requested',
     companies_requested INTEGER NOT NULL DEFAULT 0,
     companies_scanned INTEGER NOT NULL DEFAULT 0,
     companies_enabled INTEGER NOT NULL DEFAULT 0,
@@ -183,6 +188,11 @@ def _schema_migrations() -> tuple:
             2,
             "backfill companies for stored jobs",
             _backfill_companies_for_stored_jobs,
+        ),
+        (
+            3,
+            "add durable scan lifecycle fields",
+            _migrate_scan_runs_table,
         ),
     )
 
@@ -321,6 +331,11 @@ def _migrate_scan_runs_table(connection: sqlite3.Connection) -> None:
 
     required_columns = {
         "generated_at": "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        "requested_at": "TEXT",
+        "current_stage": "TEXT",
+        "failure_summary": "TEXT",
+        "report_status": "TEXT NOT NULL DEFAULT 'not_started'",
+        "email_status": "TEXT NOT NULL DEFAULT 'not_requested'",
         "companies_enabled": "INTEGER NOT NULL DEFAULT 0",
         "jobs_collected": "INTEGER NOT NULL DEFAULT 0",
         "actionable_jobs_stored": "INTEGER NOT NULL DEFAULT 0",
@@ -359,6 +374,242 @@ def _migrate_job_history_table(connection: sqlite3.Connection) -> None:
         connection.execute(
             f"ALTER TABLE job_history ADD COLUMN {column_name} {column_definition}"
         )
+
+
+def start_scan_run(
+    database_path: str | Path,
+    *,
+    requested_at: str,
+    companies_requested: int,
+    companies_enabled: int,
+    current_stage: str = "initialization",
+) -> int:
+    db_path = Path(database_path)
+
+    with connect_database(db_path) as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO scan_runs (
+                generated_at,
+                requested_at,
+                started_at,
+                status,
+                current_stage,
+                companies_requested,
+                companies_enabled
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                requested_at,
+                requested_at,
+                requested_at,
+                "running",
+                current_stage,
+                companies_requested,
+                companies_enabled,
+            ),
+        )
+
+        return int(cursor.lastrowid)
+
+
+def update_scan_run_progress(
+    database_path: str | Path,
+    *,
+    scan_run_id: int,
+    current_stage: str,
+    companies_scanned: int | None = None,
+    jobs_found: int | None = None,
+    collector_errors: int | None = None,
+) -> bool:
+    db_path = Path(database_path)
+
+    with connect_database(db_path) as connection:
+        cursor = connection.execute(
+            """
+            UPDATE scan_runs
+            SET
+                current_stage = ?,
+                companies_scanned = COALESCE(?, companies_scanned),
+                jobs_found = COALESCE(?, jobs_found),
+                jobs_collected = COALESCE(?, jobs_collected),
+                collector_errors = COALESCE(?, collector_errors),
+                errors_count = COALESCE(?, errors_count)
+            WHERE id = ?
+            AND status = 'running'
+            """,
+            (
+                current_stage,
+                companies_scanned,
+                jobs_found,
+                jobs_found,
+                collector_errors,
+                collector_errors,
+                scan_run_id,
+            ),
+        )
+
+        return cursor.rowcount == 1
+
+
+def complete_scan_run(
+    database_path: str | Path,
+    *,
+    scan_run_id: int,
+    generated_at: str,
+    finished_at: str,
+    companies_scanned: int,
+    jobs_collected: int,
+    actionable_jobs_stored: int,
+    jobs_not_actionable: int,
+    jobs_new: int,
+    jobs_seen: int,
+    jobs_changed: int,
+    collector_errors: int,
+    top_matches_count: int,
+    review_needed_count: int,
+    report_status: str,
+    email_status: str,
+) -> bool:
+    status = (
+        "completed_with_warnings"
+        if collector_errors
+        else "completed"
+    )
+    db_path = Path(database_path)
+
+    with connect_database(db_path) as connection:
+        cursor = connection.execute(
+            """
+            UPDATE scan_runs
+            SET
+                generated_at = ?,
+                finished_at = ?,
+                status = ?,
+                current_stage = 'completed',
+                failure_summary = NULL,
+                report_status = ?,
+                email_status = ?,
+                companies_scanned = ?,
+                jobs_found = ?,
+                jobs_collected = ?,
+                actionable_jobs_stored = ?,
+                jobs_not_actionable = ?,
+                jobs_new = ?,
+                jobs_seen = ?,
+                jobs_changed = ?,
+                collector_errors = ?,
+                errors_count = ?,
+                top_matches_count = ?,
+                review_needed_count = ?
+            WHERE id = ?
+            AND status = 'running'
+            """,
+            (
+                generated_at,
+                finished_at,
+                status,
+                report_status,
+                email_status,
+                companies_scanned,
+                jobs_collected,
+                jobs_collected,
+                actionable_jobs_stored,
+                jobs_not_actionable,
+                jobs_new,
+                jobs_seen,
+                jobs_changed,
+                collector_errors,
+                collector_errors,
+                top_matches_count,
+                review_needed_count,
+                scan_run_id,
+            ),
+        )
+
+        return cursor.rowcount == 1
+
+
+def fail_scan_run(
+    database_path: str | Path,
+    *,
+    scan_run_id: int,
+    finished_at: str,
+    failed_stage: str,
+    failure_summary: str,
+    companies_scanned: int = 0,
+    jobs_found: int = 0,
+    collector_errors: int = 0,
+) -> bool:
+    db_path = Path(database_path)
+
+    with connect_database(db_path) as connection:
+        cursor = connection.execute(
+            """
+            UPDATE scan_runs
+            SET
+                finished_at = ?,
+                status = 'failed',
+                current_stage = ?,
+                failure_summary = ?,
+                companies_scanned = ?,
+                jobs_found = ?,
+                jobs_collected = ?,
+                collector_errors = ?,
+                errors_count = ?
+            WHERE id = ?
+            AND status = 'running'
+            """,
+            (
+                finished_at,
+                failed_stage,
+                failure_summary,
+                companies_scanned,
+                jobs_found,
+                jobs_found,
+                collector_errors,
+                collector_errors,
+                scan_run_id,
+            ),
+        )
+
+        return cursor.rowcount == 1
+
+
+def record_scan_error(
+    database_path: str | Path,
+    *,
+    scan_run_id: int,
+    error_type: str,
+    error_message: str,
+    company_key: str | None = None,
+    source_type: str | None = None,
+) -> int:
+    db_path = Path(database_path)
+
+    with connect_database(db_path) as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO scan_errors (
+                scan_run_id,
+                company_key,
+                source_type,
+                error_type,
+                error_message
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                scan_run_id,
+                company_key,
+                source_type,
+                error_type,
+                error_message,
+            ),
+        )
+
+        return int(cursor.lastrowid)
 
 
 def record_scan_run(
