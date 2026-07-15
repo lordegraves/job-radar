@@ -29,15 +29,23 @@ ON application_tracker(follow_up_on);
 """
 
 
+def initialize_tracker_schema(connection: sqlite3.Connection) -> None:
+    connection.executescript(TRACKER_SCHEMA_SQL)
+
+
+def migrate_tracker_schema(connection: sqlite3.Connection) -> None:
+    _ensure_tracker_column(connection, "applied_on", "TEXT")
+    _ensure_tracker_column(connection, "last_activity_on", "TEXT")
+    _repair_url_backed_tracker_ids(connection)
+
+
 def initialize_tracker_tables(database_path: str | Path) -> Path:
     db_path = Path(database_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     with sqlite3.connect(db_path) as connection:
-        connection.executescript(TRACKER_SCHEMA_SQL)
-        _ensure_tracker_column(connection, "applied_on", "TEXT")
-        _ensure_tracker_column(connection, "last_activity_on", "TEXT")
-        _repair_url_backed_tracker_ids(connection)
+        initialize_tracker_schema(connection)
+        migrate_tracker_schema(connection)
 
     return db_path
 

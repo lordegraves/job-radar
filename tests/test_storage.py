@@ -48,6 +48,7 @@ def test_initialize_database_creates_expected_tables(tmp_path: Path) -> None:
         "job_seen_events",
         "job_history",
         "application_tracker",
+        "schema_migrations",
     ]
 
     for table_name in expected_tables:
@@ -62,6 +63,17 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
 
     assert database_path.exists()
     assert table_exists(database_path, "companies")
+
+    with sqlite3.connect(database_path) as connection:
+        migration_rows = connection.execute(
+            """
+            SELECT version, name
+            FROM schema_migrations
+            ORDER BY version
+            """
+        ).fetchall()
+
+    assert migration_rows == [(1, "baseline current schema")]
 
 
 def test_record_scan_run_inserts_scan_summary(tmp_path: Path) -> None:

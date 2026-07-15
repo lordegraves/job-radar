@@ -3,7 +3,10 @@ from pathlib import Path
 
 from job_radar.job_history import JobHistoryRecord
 from job_radar.models import JobPosting
-from job_radar.tracker.tracker_storage import initialize_tracker_tables
+from job_radar.tracker.tracker_storage import (
+    initialize_tracker_schema,
+    migrate_tracker_schema,
+)
 
 
 SCHEMA_SQL = """
@@ -158,18 +161,68 @@ ON job_history(primary_blocker);
 """
 
 
+SCHEMA_MIGRATIONS_SQL = """
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+CURRENT_SCHEMA_VERSION = 1
+
+
 def initialize_database(database_path: str | Path) -> Path:
     db_path = Path(database_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     with sqlite3.connect(db_path) as connection:
         connection.executescript(SCHEMA_SQL)
-        _migrate_scan_runs_table(connection)
-        _migrate_job_history_table(connection)
-
-    initialize_tracker_tables(db_path)
+        initialize_tracker_schema(connection)
+        connection.executescript(SCHEMA_MIGRATIONS_SQL)
+        _apply_schema_migrations(connection)
 
     return db_path
+
+
+def _apply_schema_migrations(connection: sqlite3.Connection) -> None:
+    migrations = (
+        (
+            CURRENT_SCHEMA_VERSION,
+            "baseline current schema",
+            _migrate_baseline_schema,
+        ),
+    )
+
+    applied_versions = {
+        row[0]
+        for row in connection.execute(
+            "SELECT version FROM schema_migrations"
+        ).fetchall()
+    }
+
+    for version, name, migration in migrations:
+        if version in applied_versions:
+            continue
+
+        migration(connection)
+        connection.execute(
+            """
+            INSERT INTO schema_migrations (
+                version,
+                name
+            )
+            VALUES (?, ?)
+            """,
+            (version, name),
+        )
+
+
+def _migrate_baseline_schema(connection: sqlite3.Connection) -> None:
+    _migrate_scan_runs_table(connection)
+    _migrate_job_history_table(connection)
+    migrate_tracker_schema(connection)
 
 
 def _migrate_scan_runs_table(connection: sqlite3.Connection) -> None:

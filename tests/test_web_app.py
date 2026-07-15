@@ -2665,9 +2665,11 @@ def test_tracker_edit_page_shows_missing_follow_up_next_action(tmp_path: Path) -
     response = client.get("/tracker/jr-missing-follow-up-12345678/edit")
     html = response.get_data(as_text=True)
 
+    expected_date = f"{date.today().strftime('%B')} {date.today().day}, {date.today().year}"
+
     assert response.status_code == 200
     assert "Next action" in html
-    assert "Waiting for an update since July 14, 2026." in html
+    assert f"Waiting for an update since {expected_date}." in html
     assert "Record the next follow-up date when appropriate." in html
 
 
