@@ -35,6 +35,65 @@ def test_initialize_database_creates_database_file(tmp_path: Path) -> None:
     assert database_path.exists()
 
 
+def test_initialize_database_backs_up_existing_database_before_migration(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE legacy_marker (
+                value TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO legacy_marker (value)
+            VALUES (?)
+            """,
+            ("before migration",),
+        )
+
+    initialize_database(database_path)
+
+    backup_directory = tmp_path / "backups"
+    backup_paths = list(
+        backup_directory.glob(
+            "job_radar.sqlite3.pre-migration-v1-v2-*.bak"
+        )
+    )
+
+    assert len(backup_paths) == 1
+
+    with sqlite3.connect(backup_paths[0]) as connection:
+        marker_value = connection.execute(
+            "SELECT value FROM legacy_marker"
+        ).fetchone()[0]
+        migration_table = connection.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+            AND name = 'schema_migrations'
+            """
+        ).fetchone()
+
+    assert marker_value == "before migration"
+    assert migration_table is None
+
+    initialize_database(database_path)
+
+    backup_paths_after_second_initialization = list(
+        backup_directory.glob(
+            "job_radar.sqlite3.pre-migration-v1-v2-*.bak"
+        )
+    )
+
+    assert len(backup_paths_after_second_initialization) == 1
+
+
 def test_initialize_database_creates_expected_tables(tmp_path: Path) -> None:
     database_path = tmp_path / "job_radar.sqlite3"
 

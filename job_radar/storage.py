@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
 from job_radar.database import connect_database
@@ -171,21 +172,8 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 """
 
 
-def initialize_database(database_path: str | Path) -> Path:
-    db_path = Path(database_path)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with connect_database(db_path) as connection:
-        connection.executescript(SCHEMA_SQL)
-        initialize_tracker_schema(connection)
-        connection.executescript(SCHEMA_MIGRATIONS_SQL)
-        _apply_schema_migrations(connection)
-
-    return db_path
-
-
-def _apply_schema_migrations(connection: sqlite3.Connection) -> None:
-    migrations = (
+def _schema_migrations() -> tuple:
+    return (
         (
             1,
             "baseline current schema",
@@ -198,6 +186,78 @@ def _apply_schema_migrations(connection: sqlite3.Connection) -> None:
         ),
     )
 
+
+def _read_applied_schema_versions(database_path: Path) -> set[int]:
+    with connect_database(database_path) as connection:
+        migration_table_exists = connection.execute(
+            """
+            SELECT 1
+            FROM sqlite_master
+            WHERE type = 'table'
+            AND name = 'schema_migrations'
+            """
+        ).fetchone()
+
+        if migration_table_exists is None:
+            return set()
+
+        return {
+            row[0]
+            for row in connection.execute(
+                "SELECT version FROM schema_migrations"
+            ).fetchall()
+        }
+
+
+def _backup_database_before_migrations(
+    database_path: Path,
+    pending_versions: list[int],
+) -> Path:
+    backup_directory = database_path.parent / "backups"
+    backup_directory.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    backup_path = backup_directory / (
+        f"{database_path.name}.pre-migration-"
+        f"v{min(pending_versions)}-v{max(pending_versions)}-"
+        f"{timestamp}.bak"
+    )
+
+    with connect_database(database_path) as source_connection:
+        with connect_database(backup_path) as backup_connection:
+            source_connection.backup(backup_connection)
+
+    return backup_path
+
+
+def initialize_database(database_path: str | Path) -> Path:
+    db_path = Path(database_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if db_path.exists():
+        applied_versions = _read_applied_schema_versions(db_path)
+        pending_versions = [
+            version
+            for version, _name, _migration in _schema_migrations()
+            if version not in applied_versions
+        ]
+
+        if pending_versions:
+            _backup_database_before_migrations(
+                db_path,
+                pending_versions,
+            )
+
+    with connect_database(db_path) as connection:
+        connection.executescript(SCHEMA_SQL)
+        initialize_tracker_schema(connection)
+        connection.executescript(SCHEMA_MIGRATIONS_SQL)
+        _apply_schema_migrations(connection)
+
+    return db_path
+
+
+def _apply_schema_migrations(connection: sqlite3.Connection) -> None:
     applied_versions = {
         row[0]
         for row in connection.execute(
@@ -205,7 +265,7 @@ def _apply_schema_migrations(connection: sqlite3.Connection) -> None:
         ).fetchall()
     }
 
-    for version, name, migration in migrations:
+    for version, name, migration in _schema_migrations():
         if version in applied_versions:
             continue
 
