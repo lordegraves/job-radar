@@ -28,6 +28,7 @@ from job_radar.reporting import (
     write_html_report,
     write_markdown_report,
 )
+from job_radar.report_snapshot import write_report_snapshot
 from job_radar.scored_posting import ScoredPosting
 from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
 from job_radar.resume_match import match_resume_to_posting
@@ -599,6 +600,10 @@ def _handle_scan_unlocked(
         written_report_path = write_markdown_report(report_path, report)
         written_html_report_path = write_html_report(
             Path(report_path).with_suffix(".html"),
+            report,
+        )
+        write_report_snapshot(
+            Path(report_path).with_suffix(".json"),
             report,
         )
         report_status = "completed"

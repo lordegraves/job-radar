@@ -505,6 +505,7 @@ def test_handle_scan_records_completed_lifecycle(
     scoring_file = tmp_path / "scoring.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     report_file = tmp_path / "today.md"
+    snapshot_file = tmp_path / "today.json"
 
     config_file.write_text(
         """
@@ -596,6 +597,8 @@ top_matches:
     assert scan_row["jobs_collected"] == 1
     assert scan_row["collector_errors"] == 0
     assert fetch_scan_errors(database_file) == []
+    assert snapshot_file.is_file()
+    assert '"schema_version": 1' in snapshot_file.read_text(encoding="utf-8")
 
 
 def test_handle_scan_records_collector_warning(
