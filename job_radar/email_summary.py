@@ -5,10 +5,14 @@ from pathlib import Path
 from job_radar.recommendation_constants import (
     ACTION_HOLD,
     ACTION_PASS,
-    ACTION_TRACK_STATUS,
     RISK_NOT_LOCATION_ELIGIBLE,
 )
 
+from job_radar.report_view_model import (
+    build_report_view_model,
+    is_email_review_needed_posting,
+    is_email_top_match_posting,
+)
 from job_radar.recommendations import (
     _format_hiring_risk_flags,
     _format_resume_evidence,
@@ -21,7 +25,6 @@ from job_radar.recommendations import (
     _get_recommended_action,
     _get_resume_match_label,
     _get_technical_match_label,
-    _is_top_match_display_posting,
 )
 from job_radar.reporting import ScanReport, ScoredPosting
 
@@ -258,17 +261,11 @@ def _format_optional_count_line(label: str, count: int | None) -> str:
 
 
 def _get_email_summary_scored_postings(report: ScanReport) -> list[ScoredPosting]:
-    summary_scored_postings = list(report.scored_postings or [])
-    summary_scored_postings.extend(report.omitted_scored_postings or [])
-
-    # Email is for new things that deserve attention. Already-applied jobs stay
-    # in the full report under Tracked Applications, but they should not create
-    # inbox noise or look like fresh apply targets.
-    return [
-        scored_posting
-        for scored_posting in summary_scored_postings
-        if _get_recommended_action(scored_posting) != ACTION_TRACK_STATUS
-    ]
+    return build_report_view_model(
+        scored_postings=report.scored_postings,
+        omitted_scored_postings=report.omitted_scored_postings,
+        email_postings_limit=EMAIL_POSTINGS_LIMIT,
+    ).email_scored_postings
 
 
 def _is_email_actionable_posting(scored_posting: ScoredPosting) -> bool:
@@ -276,46 +273,29 @@ def _is_email_actionable_posting(scored_posting: ScoredPosting) -> bool:
 
 
 def _is_email_top_match_posting(scored_posting: ScoredPosting) -> bool:
-    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
-        return False
-
-    return _is_top_match_display_posting(scored_posting)
+    return is_email_top_match_posting(scored_posting)
 
 
 def _is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
-    if not _is_email_actionable_posting(scored_posting):
-        return False
-
-    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
-        return False
-
-    return scored_posting.review_needed_eligible
+    return is_email_review_needed_posting(scored_posting)
 
 
 def _get_top_matches(
     scored_postings: list[ScoredPosting] | None,
 ) -> list[ScoredPosting]:
-    if scored_postings is None:
-        return []
-
-    return [
-        scored_posting
-        for scored_posting in scored_postings
-        if _is_email_top_match_posting(scored_posting)
-    ][:EMAIL_POSTINGS_LIMIT]
+    return build_report_view_model(
+        scored_postings=scored_postings,
+        email_postings_limit=EMAIL_POSTINGS_LIMIT,
+    ).email_top_matches
 
 
 def _get_review_needed(
     scored_postings: list[ScoredPosting] | None,
 ) -> list[ScoredPosting]:
-    if scored_postings is None:
-        return []
-
-    return [
-        scored_posting
-        for scored_posting in scored_postings
-        if _is_email_review_needed_posting(scored_posting)
-    ][:EMAIL_POSTINGS_LIMIT]
+    return build_report_view_model(
+        scored_postings=scored_postings,
+        email_postings_limit=EMAIL_POSTINGS_LIMIT,
+    ).email_review_needed
 
 
 def _append_email_posting_lines(

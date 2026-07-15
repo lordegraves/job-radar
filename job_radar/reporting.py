@@ -4,6 +4,11 @@ from html import escape
 from pathlib import Path
 
 from job_radar.models import JobPosting
+from job_radar.report_view_model import (
+    build_report_view_model,
+    is_review_needed_report_posting,
+    is_top_match_report_posting,
+)
 from job_radar.scored_posting import ScoredPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import get_application_workflow_state
@@ -39,8 +44,6 @@ from job_radar.recommendations import (
     _get_recommended_action,
     _get_resume_match_label,
     _get_technical_match_label,
-    _is_actionable_posting,
-    _is_top_match_display_posting,
 )
 
 
@@ -519,10 +522,10 @@ def _get_ordered_tracker_workflow_states(
 
 
 def _get_report_scored_postings(report: ScanReport) -> list[ScoredPosting]:
-    report_scored_postings = list(report.scored_postings or [])
-    report_scored_postings.extend(report.omitted_scored_postings or [])
-
-    return report_scored_postings
+    return build_report_view_model(
+        scored_postings=report.scored_postings,
+        omitted_scored_postings=report.omitted_scored_postings,
+    ).report_scored_postings
 
 
 def _get_surfaced_recommendation_postings(report: ScanReport) -> list[ScoredPosting]:
@@ -853,44 +856,27 @@ def _append_new_jobs_section(
 
 
 def _is_top_match_report_posting(scored_posting: ScoredPosting) -> bool:
-    # Already-applied jobs are not new opportunities. Keep them out of
-    # Top Matches even if the score still looks strong.
-    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
-        return False
-
-    return _is_top_match_display_posting(scored_posting)
+    return is_top_match_report_posting(scored_posting)
 
 
 def _is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
-    if not _is_actionable_posting(scored_posting):
-        return False
-
-    # Track Status means "watch the existing application", not "review/apply."
-    # It gets its own report section so applied jobs do not crowd new leads.
-    if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
-        return False
-
-    return scored_posting.review_needed_eligible
+    return is_review_needed_report_posting(scored_posting)
 
 
 def _get_review_needed(
     scored_postings: list[ScoredPosting],
 ) -> list[ScoredPosting]:
-    return [
-        scored_posting
-        for scored_posting in scored_postings
-        if _is_review_needed_report_posting(scored_posting)
-    ]
+    return build_report_view_model(
+        scored_postings=scored_postings,
+    ).review_needed
 
 
 def _get_tracked_applications(
     scored_postings: list[ScoredPosting],
 ) -> list[ScoredPosting]:
-    return [
-        scored_posting
-        for scored_posting in scored_postings
-        if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS
-    ]
+    return build_report_view_model(
+        scored_postings=scored_postings,
+    ).tracked_applications
 
 
 def _append_omitted_jobs_section(
@@ -1485,13 +1471,9 @@ def _format_generated_at(generated_at: str) -> str:
 
 
 def _get_top_matches(scored_postings: list[ScoredPosting]) -> list[ScoredPosting]:
-    eligible_postings = [
-        scored_posting
-        for scored_posting in scored_postings
-        if _is_top_match_report_posting(scored_posting)
-    ]
-
-    return eligible_postings
+    return build_report_view_model(
+        scored_postings=scored_postings,
+    ).top_matches
 
 
 def _get_northern_colorado_highlights(
