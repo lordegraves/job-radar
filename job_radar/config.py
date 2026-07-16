@@ -60,6 +60,18 @@ class EmailSettings(Mapping[str, Any]):
 
 
 @dataclass(frozen=True)
+class ActiveProfileSettings:
+    """Application-owned selection of the profile used for the current run.
+
+    The selected profile path belongs to application configuration. Candidate
+    identity, resume, preferences, strengths, gaps, and exclusions remain owned
+    by the profile file itself.
+    """
+
+    candidate_profile_path: str | None
+
+
+@dataclass(frozen=True)
 class ApplicationSettings(Mapping[str, Any]):
     """Application-owned settings loaded from the current settings YAML file.
 
@@ -73,10 +85,16 @@ class ApplicationSettings(Mapping[str, Any]):
     reports_path: str
     logs_path: str
     retention: dict[str, Any]
-    candidate_profile_path: str | None
+    active_profile: ActiveProfileSettings
     job_history_workbook_path: str | None
     email: EmailSettings
     _data: dict[str, Any] = field(repr=False, compare=False)
+
+    @property
+    def candidate_profile_path(self) -> str | None:
+        """Compatibility access for the released flat settings interface."""
+
+        return self.active_profile.candidate_profile_path
 
     def __getitem__(self, key: str) -> Any:
         return self._data[key]
@@ -179,6 +197,9 @@ def load_settings(
         data.get("candidate_profile_path"),
         "candidate_profile_path",
     )
+    active_profile = ActiveProfileSettings(
+        candidate_profile_path=candidate_profile_path,
+    )
     job_history_workbook_path = _optional_settings_string(
         data.get("job_history_workbook_path"),
         "job_history_workbook_path",
@@ -205,7 +226,7 @@ def load_settings(
         reports_path=reports_path,
         logs_path=logs_path,
         retention=retention,
-        candidate_profile_path=candidate_profile_path,
+        active_profile=active_profile,
         job_history_workbook_path=job_history_workbook_path,
         email=email,
         _data=normalized_data,

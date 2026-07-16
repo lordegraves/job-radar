@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from job_radar.config import (
+    ActiveProfileSettings,
     ApplicationSettings,
     ConfigError,
     EmailSettings,
@@ -137,6 +138,9 @@ retention:
     assert settings.database_path == "data/job_radar.sqlite3"
     assert settings.reports_path == "reports"
     assert settings.logs_path == "logs"
+    assert isinstance(settings.active_profile, ActiveProfileSettings)
+    assert settings.active_profile.candidate_profile_path is None
+    assert settings.candidate_profile_path is None
     assert isinstance(settings.email, EmailSettings)
     assert settings.email.enabled is False
     assert settings.email.sender == ""
@@ -154,6 +158,30 @@ retention:
     assert "candidate_profile_path" not in settings
     assert "job_history_workbook_path" not in settings
     assert settings["email"]["smtp_port"] == 587
+
+
+def test_load_settings_exposes_active_profile_selection(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    profile_path = tmp_path / "profiles" / "example" / "profile.yaml"
+    settings_file.write_text(
+        f"""
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+candidate_profile_path: {profile_path}
+
+retention: {{}}
+""",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(settings_file)
+
+    assert settings.active_profile.candidate_profile_path == str(profile_path)
+    assert settings.candidate_profile_path == str(profile_path)
+
+    # Preserve the released flat YAML/mapping interface during migration.
+    assert settings["candidate_profile_path"] == str(profile_path)
 
 
 def test_load_settings_accepts_job_history_workbook_path(tmp_path: Path) -> None:
@@ -180,6 +208,7 @@ retention:
     settings = load_settings(settings_file)
 
     assert settings["job_history_workbook_path"] == str(workbook_path)
+    assert settings.active_profile.candidate_profile_path is None
 
 
 def test_load_settings_rejects_invalid_job_history_workbook_path(
