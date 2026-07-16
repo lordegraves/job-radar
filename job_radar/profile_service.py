@@ -49,8 +49,17 @@ class ResumeUploadResult:
 
 def build_candidate_profile_view(
     settings_path: str | None,
+    *,
+    base_directory: str | Path | None = None,
 ) -> CandidateProfileView:
-    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    runtime_paths = (
+        RuntimePaths.from_settings(
+            settings_path=settings_path,
+            base_directory=base_directory,
+        )
+        if settings_path is not None and base_directory is not None
+        else RuntimePaths.from_settings_argument(settings_path)
+    )
     resolved_settings_path = str(runtime_paths.settings_path)
     profile_path = runtime_paths.candidate_profile_path
 
@@ -79,7 +88,10 @@ def build_candidate_profile_view(
     resolved_profile_path = str(profile_path)
 
     try:
-        candidate_profile = load_candidate_profile(profile_path)
+        candidate_profile = load_candidate_profile(
+            profile_path,
+            base_directory=runtime_paths.base_directory,
+        )
     except ConfigError as error:
         return CandidateProfileView(
             settings_path=resolved_settings_path,
@@ -173,6 +185,8 @@ def save_uploaded_resume(
     settings_path: str | None,
     uploaded_filename: str,
     uploaded_content: bytes,
+    *,
+    base_directory: str | Path | None = None,
 ) -> ResumeUploadResult:
     extension = Path(uploaded_filename).suffix.lower()
 
@@ -186,7 +200,14 @@ def save_uploaded_resume(
     if not uploaded_content:
         raise ConfigError("Uploaded resume file is empty.")
 
-    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    runtime_paths = (
+        RuntimePaths.from_settings(
+            settings_path=settings_path,
+            base_directory=base_directory,
+        )
+        if settings_path is not None and base_directory is not None
+        else RuntimePaths.from_settings_argument(settings_path)
+    )
     profile_path = runtime_paths.candidate_profile_path
 
     if profile_path is None:

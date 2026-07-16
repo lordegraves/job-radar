@@ -24,9 +24,18 @@ class CandidateProfile:
     avoid: list[str]
 
 
-def load_candidate_profile(path: str | Path) -> CandidateProfile:
+def load_candidate_profile(
+    path: str | Path,
+    *,
+    base_directory: str | Path | None = None,
+) -> CandidateProfile:
     profile_path = Path(path)
     data = load_yaml_file(profile_path)
+    resume_base_directory = (
+        Path(base_directory).resolve()
+        if base_directory is not None
+        else Path.cwd().resolve()
+    )
 
     candidate = data.get("candidate")
     if not isinstance(candidate, dict):
@@ -46,7 +55,10 @@ def load_candidate_profile(path: str | Path) -> CandidateProfile:
         name=name,
         compensation_floor_usd=compensation_floor_usd,
         preferred_base_usd=preferred_base_usd,
-        resume=_load_resume_config(candidate.get("resume")),
+        resume=_load_resume_config(
+            candidate.get("resume"),
+            base_directory=resume_base_directory,
+        ),
         core_strengths=_string_list(candidate.get("core_strengths"), "core_strengths"),
         credible_adjacent=_string_list(
             candidate.get("credible_adjacent"),
@@ -57,7 +69,11 @@ def load_candidate_profile(path: str | Path) -> CandidateProfile:
     )
 
 
-def _load_resume_config(raw_resume: Any) -> CandidateResumeConfig | None:
+def _load_resume_config(
+    raw_resume: Any,
+    *,
+    base_directory: Path,
+) -> CandidateResumeConfig | None:
     if raw_resume is None:
         return None
 
@@ -74,9 +90,27 @@ def _load_resume_config(raw_resume: Any) -> CandidateResumeConfig | None:
     )
 
     return CandidateResumeConfig(
-        source_path=source_path,
-        normalized_text_path=normalized_text_path,
+        source_path=str(_resolve_profile_owned_path(source_path, base_directory)),
+        normalized_text_path=(
+            str(
+                _resolve_profile_owned_path(
+                    normalized_text_path,
+                    base_directory,
+                )
+            )
+            if normalized_text_path is not None
+            else None
+        ),
     )
+
+
+def _resolve_profile_owned_path(path: str, base_directory: Path) -> Path:
+    candidate_path = Path(path)
+
+    if candidate_path.is_absolute():
+        return candidate_path.resolve()
+
+    return (base_directory / candidate_path).resolve()
 
 
 def _string_list(raw_values: Any, config_key: str) -> list[str]:

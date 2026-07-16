@@ -28,14 +28,26 @@ candidate:
         encoding="utf-8",
     )
 
-    profile = load_candidate_profile(profile_path)
+    profile = load_candidate_profile(
+        profile_path,
+        base_directory=tmp_path,
+    )
 
     assert profile.name == "Clayton Graves"
     assert profile.compensation_floor_usd == 160000
     assert profile.preferred_base_usd == 185000
     assert profile.resume is not None
-    assert profile.resume.source_path == "profiles/clayton/resume.md"
-    assert profile.resume.normalized_text_path == "profiles/clayton/resume.normalized.txt"
+    assert profile.resume.source_path == str(
+        (tmp_path / "profiles" / "clayton" / "resume.md").resolve()
+    )
+    assert profile.resume.normalized_text_path == str(
+        (
+            tmp_path
+            / "profiles"
+            / "clayton"
+            / "resume.normalized.txt"
+        ).resolve()
+    )
     assert profile.core_strengths == ["Linux infrastructure", "HPC operations"]
     assert profile.credible_adjacent == ["SRE"]
     assert profile.learning_or_gap == ["production Kubernetes ownership"]

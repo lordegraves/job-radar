@@ -627,6 +627,122 @@ top_matches:
     assert '"schema_version": 1' in snapshot_file.read_text(encoding="utf-8")
 
 
+def test_handle_scan_resolves_profile_from_explicit_runtime_base(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repository_root = tmp_path / "repository"
+    user_data_root = tmp_path / "user-data"
+    config_file = user_data_root / "config" / "companies.yaml"
+    settings_file = user_data_root / "config" / "settings.yaml"
+    scoring_file = user_data_root / "config" / "scoring.yaml"
+    profile_file = user_data_root / "profiles" / "example" / "profile.yaml"
+    database_file = user_data_root / "data" / "job_radar.sqlite3"
+    report_file = user_data_root / "reports" / "target-scan.html"
+    snapshot_file = user_data_root / "reports" / "target-scan.json"
+
+    repository_root.mkdir()
+    config_file.parent.mkdir(parents=True)
+    profile_file.parent.mkdir(parents=True)
+    monkeypatch.chdir(repository_root)
+
+    config_file.write_text(
+        """
+companies:
+  - company_key: example_ai
+    name: Example AI
+    source_type: greenhouse
+    source_slug: exampleai
+    enabled: true
+""",
+        encoding="utf-8",
+    )
+
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+candidate_profile_path: profiles/example/profile.yaml
+
+retention: {}
+""",
+        encoding="utf-8",
+    )
+
+    scoring_file.write_text(
+        """
+positive_keywords:
+  infrastructure: 10
+  linux: 10
+
+negative_keywords:
+  sales: -10
+
+location_preferences:
+  allowed:
+    remote: 100
+  conditional: {}
+  skipped: {}
+
+top_matches:
+  min_score: 1
+  excluded_title_keywords: []
+  strong_signals:
+    - title:infrastructure
+""",
+        encoding="utf-8",
+    )
+
+    profile_file.write_text(
+        """
+candidate:
+  name: Example Candidate
+  compensation_floor_usd: 160000
+  core_strengths:
+    - Linux infrastructure
+  credible_adjacent: []
+  learning_or_gap: []
+  avoid: []
+""",
+        encoding="utf-8",
+    )
+
+    fake_posting = JobPosting(
+        company_key="example_ai",
+        company_name="Example AI",
+        source_type="greenhouse",
+        source_job_id="123",
+        source_url="https://boards.greenhouse.io/exampleai/jobs/123",
+        title="Senior Infrastructure Engineer",
+        location="Remote",
+        description="Build Linux infrastructure.",
+        canonical_key="example-ai:senior-infrastructure-engineer:remote",
+        content_hash="hash-linux-infrastructure",
+    )
+
+    monkeypatch.setattr(
+        "job_radar.scan_service.collect_jobs_for_company",
+        lambda company_config: [fake_posting],
+    )
+
+    handle_scan(
+        config_path=str(config_file),
+        settings_path=str(settings_file),
+        report_path=str(report_file),
+        scoring_path=str(scoring_file),
+        base_directory=str(user_data_root),
+    )
+
+    scan_row = fetch_latest_scan_run(database_file)
+
+    assert scan_row["status"] == "completed"
+    assert database_file.is_file()
+    assert report_file.is_file()
+    assert snapshot_file.is_file()
+    assert not (repository_root / "profiles" / "example" / "profile.yaml").exists()
+
+
 def test_handle_scan_records_collector_warning(
     tmp_path: Path,
     monkeypatch,

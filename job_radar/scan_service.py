@@ -70,11 +70,16 @@ from job_radar.tracker.tracker_storage import (
 
 def _load_candidate_context(
     candidate_profile_path: Path | None,
+    *,
+    base_directory: Path,
 ) -> tuple[object | None, str | None]:
     if candidate_profile_path is None:
         return None, None
 
-    candidate_profile = load_candidate_profile(candidate_profile_path)
+    candidate_profile = load_candidate_profile(
+        candidate_profile_path,
+        base_directory=base_directory,
+    )
 
     if candidate_profile.resume is None:
         return candidate_profile, None
@@ -288,6 +293,7 @@ def handle_scan(
     scoring_path: str = DEFAULT_SCORING_CONFIG_PATH,
     email_preview_path: str | None = None,
     send_email: bool = False,
+    base_directory: str | Path | None = None,
 ) -> None:
     settings = load_settings(settings_path)
     runtime_paths = RuntimePaths.from_application_settings(
@@ -295,6 +301,7 @@ def handle_scan(
         settings_path=settings_path,
         company_config_path=config_path,
         scoring_config_path=scoring_path,
+        base_directory=base_directory,
     )
     database_path = runtime_paths.database_path
     resolved_report_path = runtime_paths.resolve(report_path)
@@ -314,6 +321,7 @@ def handle_scan(
             ),
             send_email=send_email,
             database_path=str(database_path),
+            base_directory=runtime_paths.base_directory,
             candidate_profile_path=runtime_paths.candidate_profile_path,
             job_history_workbook_path=runtime_paths.job_history_workbook_path,
         )
@@ -329,6 +337,7 @@ def _handle_scan_unlocked(
     email_preview_path: str | None,
     send_email: bool,
     database_path: str,
+    base_directory: Path,
     candidate_profile_path: Path | None,
     job_history_workbook_path: Path | None,
 ) -> None:
@@ -356,6 +365,7 @@ def _handle_scan_unlocked(
         scoring_config = load_scoring_config(scoring_path)
         candidate_profile, resume_text = _load_candidate_context(
             candidate_profile_path,
+            base_directory=base_directory,
         )
 
         current_stage = "history_import"

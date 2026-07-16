@@ -1953,6 +1953,7 @@ def test_scan_run_calls_handle_scan_and_redirects(
                 )
             ),
             "send_email": False,
+            "base_directory": str(runtime_paths.base_directory),
         }
     ]
 
@@ -3596,6 +3597,81 @@ candidate:
     assert "production Kubernetes ownership" in html
     assert "frontend" in html
     assert "Large-scale Linux and HPC operations." in html
+
+
+def test_profile_page_resolves_relative_paths_from_runtime_base(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repository_root = tmp_path / "repository"
+    user_data_root = tmp_path / "user-data"
+    settings_file = user_data_root / "config" / "settings.yaml"
+    profile_file = user_data_root / "profiles" / "example" / "profile.yaml"
+    resume_file = user_data_root / "profiles" / "example" / "resume.md"
+    normalized_resume_file = (
+        user_data_root
+        / "profiles"
+        / "example"
+        / "resume.normalized.txt"
+    )
+
+    repository_root.mkdir()
+    settings_file.parent.mkdir(parents=True)
+    profile_file.parent.mkdir(parents=True)
+    monkeypatch.chdir(repository_root)
+
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+candidate_profile_path: profiles/example/profile.yaml
+
+retention: {}
+""",
+        encoding="utf-8",
+    )
+    profile_file.write_text(
+        """
+candidate:
+  name: Example Candidate
+  resume:
+    source_path: profiles/example/resume.md
+    normalized_text_path: profiles/example/resume.normalized.txt
+  core_strengths:
+    - Linux infrastructure
+  credible_adjacent: []
+  learning_or_gap: []
+  avoid: []
+""",
+        encoding="utf-8",
+    )
+    resume_file.write_text(
+        "# Example Candidate\n\nLinux infrastructure",
+        encoding="utf-8",
+    )
+    normalized_resume_file.write_text(
+        "example candidate linux infrastructure\n",
+        encoding="utf-8",
+    )
+
+    app = create_app(
+        settings_path=str(settings_file),
+        base_directory=str(user_data_root),
+    )
+    client = app.test_client()
+
+    response = client.get("/profile")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Example Candidate" in html
+    assert "Profile and resume available" in html
+    assert "Linux infrastructure" in html
+    assert str(profile_file) in html
+    assert str(resume_file) in html
+    assert str(normalized_resume_file) in html
+    assert str(repository_root / "profiles") not in html
 
 
 def test_main_pages_share_full_navigation(tmp_path: Path) -> None:

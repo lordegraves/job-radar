@@ -424,9 +424,20 @@ class SettingsView:
     email_status: str
 
 
-def create_app(settings_path: str | Path | None = None) -> Flask:
+def create_app(
+    settings_path: str | Path | None = None,
+    *,
+    base_directory: str | Path | None = None,
+) -> Flask:
     app = Flask(__name__)
-    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    runtime_paths = (
+        RuntimePaths.from_settings(
+            settings_path=settings_path,
+            base_directory=base_directory,
+        )
+        if settings_path is not None and base_directory is not None
+        else RuntimePaths.from_settings_argument(settings_path)
+    )
     app.config["JOB_RADAR_RUNTIME_PATHS"] = runtime_paths
     app.config["JOB_RADAR_SETTINGS_PATH"] = str(runtime_paths.settings_path)
 
@@ -506,8 +517,10 @@ def create_app(settings_path: str | Path | None = None) -> Flask:
 
     @app.get("/profile")
     def profile() -> str:
+        runtime_paths = _get_runtime_paths(app)
         profile_view = build_candidate_profile_view(
-            app.config["JOB_RADAR_SETTINGS_PATH"]
+            app.config["JOB_RADAR_SETTINGS_PATH"],
+            base_directory=str(runtime_paths.base_directory),
         )
 
         return render_template(
@@ -531,10 +544,12 @@ def create_app(settings_path: str | Path | None = None) -> Flask:
             )
 
         try:
+            runtime_paths = _get_runtime_paths(app)
             save_uploaded_resume(
                 app.config["JOB_RADAR_SETTINGS_PATH"],
                 uploaded_file.filename,
                 uploaded_file.read(),
+                base_directory=str(runtime_paths.base_directory),
             )
         except ConfigError as error:
             return redirect(
@@ -710,6 +725,7 @@ def create_app(settings_path: str | Path | None = None) -> Flask:
                     runtime_paths.resolve(DEFAULT_SCAN_EMAIL_PREVIEW_PATH)
                 ),
                 send_email=False,
+                base_directory=str(runtime_paths.base_directory),
             )
         except ScanAlreadyRunningError:
             return redirect(url_for("scan", scan_result="busy"))
