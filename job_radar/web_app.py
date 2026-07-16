@@ -21,6 +21,7 @@ from job_radar.report_snapshot import (
     ReportSnapshotJob,
     load_report_snapshot,
 )
+from job_radar.runtime_paths import RuntimePaths
 from job_radar.storage import (
     fetch_included_job_history_records,
     initialize_database,
@@ -1031,16 +1032,20 @@ def _build_settings_view(app: Flask) -> SettingsView:
     )
 
 
+def _get_runtime_paths(app: Flask) -> RuntimePaths:
+    return RuntimePaths.from_settings(
+        settings_path=app.config["JOB_RADAR_SETTINGS_PATH"],
+    )
+
+
 def _get_database_path(app: Flask) -> str:
-    settings = load_settings(app.config["JOB_RADAR_SETTINGS_PATH"])
-    database_path = settings["database_path"]
+    database_path = _get_runtime_paths(app).database_path
     initialize_database(database_path)
-    return database_path
+    return str(database_path)
 
 
 def _get_reports_path(app: Flask) -> str:
-    settings = load_settings(app.config["JOB_RADAR_SETTINGS_PATH"])
-    return settings["reports_path"]
+    return str(_get_runtime_paths(app).reports_path)
 
 
 def _read_report_view_content(report_path: Path, report_kind: str) -> str:
