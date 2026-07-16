@@ -1510,9 +1510,11 @@ def test_index_page_links_to_companies(tmp_path: Path) -> None:
 def test_companies_page_shows_read_only_company_config(tmp_path: Path, monkeypatch) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
-    companies_file = tmp_path / "target-companies.yaml"
+    companies_file = tmp_path / "config" / "target-companies.yaml"
 
     write_settings_file(settings_file, database_file)
+    companies_file.parent.mkdir()
+    monkeypatch.chdir(tmp_path)
     companies_file.write_text(
         """
 companies:
@@ -1536,11 +1538,6 @@ companies:
       Organization: NN
 """,
         encoding="utf-8",
-    )
-    monkeypatch.setattr(
-        web_app_module,
-        "DEFAULT_SCAN_CONFIG_PATH",
-        str(companies_file),
     )
 
     app = create_app(settings_path=str(settings_file))
@@ -1586,9 +1583,11 @@ companies:
 def test_companies_page_filters_company_config(tmp_path: Path, monkeypatch) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
-    companies_file = tmp_path / "target-companies.yaml"
+    companies_file = tmp_path / "config" / "target-companies.yaml"
 
     write_settings_file(settings_file, database_file)
+    companies_file.parent.mkdir()
+    monkeypatch.chdir(tmp_path)
     companies_file.write_text(
         """
 companies:
@@ -1610,11 +1609,6 @@ companies:
       Organization: NN
 """,
         encoding="utf-8",
-    )
-    monkeypatch.setattr(
-        web_app_module,
-        "DEFAULT_SCAN_CONFIG_PATH",
-        str(companies_file),
     )
 
     app = create_app(settings_path=str(settings_file))
@@ -1674,9 +1668,11 @@ companies:
 def test_company_detail_page_shows_read_only_company_config(tmp_path: Path, monkeypatch) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
-    companies_file = tmp_path / "target-companies.yaml"
+    companies_file = tmp_path / "config" / "target-companies.yaml"
 
     write_settings_file(settings_file, database_file)
+    companies_file.parent.mkdir()
+    monkeypatch.chdir(tmp_path)
     companies_file.write_text(
         """
 companies:
@@ -1694,11 +1690,6 @@ companies:
       Organization: NN
 """,
         encoding="utf-8",
-    )
-    monkeypatch.setattr(
-        web_app_module,
-        "DEFAULT_SCAN_CONFIG_PATH",
-        str(companies_file),
     )
 
     app = create_app(settings_path=str(settings_file))
@@ -1725,9 +1716,11 @@ companies:
 def test_company_detail_page_returns_404_for_missing_company(tmp_path: Path, monkeypatch) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
-    companies_file = tmp_path / "target-companies.yaml"
+    companies_file = tmp_path / "config" / "target-companies.yaml"
 
     write_settings_file(settings_file, database_file)
+    companies_file.parent.mkdir()
+    monkeypatch.chdir(tmp_path)
     companies_file.write_text(
         """
 companies:
@@ -1738,11 +1731,6 @@ companies:
     enabled: true
 """,
         encoding="utf-8",
-    )
-    monkeypatch.setattr(
-        web_app_module,
-        "DEFAULT_SCAN_CONFIG_PATH",
-        str(companies_file),
     )
 
     app = create_app(settings_path=str(settings_file))
@@ -1802,13 +1790,18 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "Save" not in html
 
 
-def test_scan_page_shows_manual_scan_command(tmp_path: Path) -> None:
+def test_scan_page_shows_manual_scan_command(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
 
     write_settings_file(settings_file, database_file)
+    monkeypatch.chdir(tmp_path)
 
     app = create_app(settings_path=str(settings_file))
+    runtime_paths = app.config["JOB_RADAR_RUNTIME_PATHS"]
     client = app.test_client()
 
     response = client.get("/scan")
@@ -1828,10 +1821,17 @@ def test_scan_page_shows_manual_scan_command(tmp_path: Path) -> None:
     assert "Some company/source errors are temporary." in normalized_html
     assert "After running a scan, use the latest scan links here" in normalized_html
     assert "python -m job_radar scan" in html
-    assert "--config config/target-companies.yaml" in html
-    assert f"--settings {settings_file}" in html
-    assert "--report reports/target-scan.html" in html
-    assert "--email-preview reports/target-email-preview.txt" in html
+    assert f"--config {runtime_paths.company_config_path}" in html
+    assert f"--settings {runtime_paths.settings_path}" in html
+    assert (
+        f"--report {runtime_paths.resolve('reports/target-scan.html')}"
+        in html
+    )
+    assert (
+        "--email-preview "
+        f"{runtime_paths.resolve('reports/target-email-preview.txt')}"
+        in html
+    )
 
 
 def test_scan_run_calls_handle_scan_and_redirects(
@@ -1843,6 +1843,7 @@ def test_scan_run_calls_handle_scan_and_redirects(
     calls = []
 
     write_settings_file(settings_file, database_file)
+    monkeypatch.chdir(tmp_path)
 
     def fake_handle_scan(**kwargs):
         calls.append(kwargs)
@@ -1850,6 +1851,7 @@ def test_scan_run_calls_handle_scan_and_redirects(
     monkeypatch.setattr(web_app_module, "handle_scan", fake_handle_scan)
 
     app = create_app(settings_path=str(settings_file))
+    runtime_paths = app.config["JOB_RADAR_RUNTIME_PATHS"]
     client = app.test_client()
 
     response = client.post("/scan/run", follow_redirects=True)
@@ -1864,11 +1866,17 @@ def test_scan_run_calls_handle_scan_and_redirects(
     assert "/reports/view/target-email-preview.txt" in html
     assert calls == [
         {
-            "config_path": "config/target-companies.yaml",
-            "settings_path": str(settings_file),
-            "report_path": "reports/target-scan.html",
-            "scoring_path": "config/scoring.yaml",
-            "email_preview_path": "reports/target-email-preview.txt",
+            "config_path": str(runtime_paths.company_config_path),
+            "settings_path": str(runtime_paths.settings_path),
+            "report_path": str(
+                runtime_paths.resolve("reports/target-scan.html")
+            ),
+            "scoring_path": str(runtime_paths.scoring_config_path),
+            "email_preview_path": str(
+                runtime_paths.resolve(
+                    "reports/target-email-preview.txt"
+                )
+            ),
             "send_email": False,
         }
     ]

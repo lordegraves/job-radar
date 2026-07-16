@@ -423,9 +423,11 @@ class SettingsView:
     email_status: str
 
 
-def create_app(settings_path: str = "config/settings.yaml") -> Flask:
+def create_app(settings_path: str | Path | None = None) -> Flask:
     app = Flask(__name__)
-    app.config["JOB_RADAR_SETTINGS_PATH"] = settings_path
+    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    app.config["JOB_RADAR_RUNTIME_PATHS"] = runtime_paths
+    app.config["JOB_RADAR_SETTINGS_PATH"] = str(runtime_paths.settings_path)
 
     @app.get("/")
     def index() -> str:
@@ -453,7 +455,10 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
     @app.get("/companies")
     def companies() -> str:
-        company_views = build_company_config_views(DEFAULT_SCAN_CONFIG_PATH)
+        company_config_path = str(
+            _get_runtime_paths(app).company_config_path
+        )
+        company_views = build_company_config_views(company_config_path)
         selected_status = request.args.get("status", "")
         selected_source_type = request.args.get("source_type", "")
         search_query = request.args.get("q", "").strip()
@@ -469,7 +474,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
             "companies.html",
             companies=filtered_companies,
             source_summaries=source_summaries,
-            company_config_path=DEFAULT_SCAN_CONFIG_PATH,
+            company_config_path=company_config_path,
             total_companies=len(company_views),
             enabled_companies=sum(1 for company in company_views if company.enabled),
             disabled_companies=sum(1 for company in company_views if not company.enabled),
@@ -481,8 +486,11 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
     @app.get("/companies/<company_key>")
     def company_detail(company_key: str) -> str:
+        company_config_path = str(
+            _get_runtime_paths(app).company_config_path
+        )
         company_view = get_company_config_view(
-            DEFAULT_SCAN_CONFIG_PATH,
+            company_config_path,
             company_key,
         )
 
@@ -492,7 +500,7 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
         return render_template(
             "company_detail.html",
             company=company_view,
-            company_config_path=DEFAULT_SCAN_CONFIG_PATH,
+            company_config_path=company_config_path,
         )
 
     @app.get("/profile")
@@ -657,38 +665,49 @@ def create_app(settings_path: str = "config/settings.yaml") -> Flask:
 
     @app.get("/scan")
     def scan() -> str:
-        settings_path = app.config["JOB_RADAR_SETTINGS_PATH"]
+        runtime_paths = _get_runtime_paths(app)
+        settings_path = str(runtime_paths.settings_path)
+        company_config_path = str(runtime_paths.company_config_path)
+        scoring_config_path = str(runtime_paths.scoring_config_path)
+        report_path = str(runtime_paths.resolve(DEFAULT_SCAN_REPORT_PATH))
+        email_preview_path = str(
+            runtime_paths.resolve(DEFAULT_SCAN_EMAIL_PREVIEW_PATH)
+        )
         scan_command = (
             "python -m job_radar scan "
-            f"--config {DEFAULT_SCAN_CONFIG_PATH} "
+            f"--config {company_config_path} "
             f"--settings {settings_path} "
-            f"--report {DEFAULT_SCAN_REPORT_PATH} "
-            f"--email-preview {DEFAULT_SCAN_EMAIL_PREVIEW_PATH}"
+            f"--report {report_path} "
+            f"--email-preview {email_preview_path}"
         )
 
         return render_template(
             "scan.html",
             scan_command=scan_command,
-            scan_config_path=DEFAULT_SCAN_CONFIG_PATH,
+            scan_config_path=company_config_path,
             scan_settings_path=settings_path,
-            scan_scoring_path=DEFAULT_SCAN_SCORING_PATH,
-            scan_report_path=DEFAULT_SCAN_REPORT_PATH,
-            scan_email_preview_path=DEFAULT_SCAN_EMAIL_PREVIEW_PATH,
+            scan_scoring_path=scoring_config_path,
+            scan_report_path=report_path,
+            scan_email_preview_path=email_preview_path,
             scan_result=request.args.get("scan_result"),
             scan_error=request.args.get("scan_error", "").strip(),
         )
 
     @app.post("/scan/run")
     def run_scan():
-        settings_path = app.config["JOB_RADAR_SETTINGS_PATH"]
+        runtime_paths = _get_runtime_paths(app)
 
         try:
             handle_scan(
-                config_path=DEFAULT_SCAN_CONFIG_PATH,
-                settings_path=settings_path,
-                report_path=DEFAULT_SCAN_REPORT_PATH,
-                scoring_path=DEFAULT_SCAN_SCORING_PATH,
-                email_preview_path=DEFAULT_SCAN_EMAIL_PREVIEW_PATH,
+                config_path=str(runtime_paths.company_config_path),
+                settings_path=str(runtime_paths.settings_path),
+                report_path=str(
+                    runtime_paths.resolve(DEFAULT_SCAN_REPORT_PATH)
+                ),
+                scoring_path=str(runtime_paths.scoring_config_path),
+                email_preview_path=str(
+                    runtime_paths.resolve(DEFAULT_SCAN_EMAIL_PREVIEW_PATH)
+                ),
                 send_email=False,
             )
         except ScanAlreadyRunningError:
@@ -1039,9 +1058,7 @@ def _build_settings_view(app: Flask) -> SettingsView:
 
 
 def _get_runtime_paths(app: Flask) -> RuntimePaths:
-    return RuntimePaths.from_settings(
-        settings_path=app.config["JOB_RADAR_SETTINGS_PATH"],
-    )
+    return app.config["JOB_RADAR_RUNTIME_PATHS"]
 
 
 def _get_database_path(app: Flask) -> str:
@@ -1787,8 +1804,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--settings",
-        default="config/settings.yaml",
-        help="Path to settings.yaml",
+        default=None,
+        help="Optional explicit path to settings.yaml",
     )
     parser.add_argument(
         "--host",
