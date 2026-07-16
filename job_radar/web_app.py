@@ -15,6 +15,7 @@ from job_radar.company_config_service import (
     get_company_config_view,
 )
 from job_radar.config import ConfigError, load_settings
+from job_radar.email_sender import get_email_readiness
 from job_radar.profile_service import build_candidate_profile_view, save_uploaded_resume
 from job_radar.report_snapshot import (
     ReportSnapshotCollectorError,
@@ -1030,12 +1031,7 @@ def _build_settings_view(app: Flask) -> SettingsView:
     settings_path = app.config["JOB_RADAR_SETTINGS_PATH"]
     settings = load_settings(settings_path)
     retention = settings.get("retention", {})
-    email_settings = settings.get("email", {})
-
-    email_status = "Disabled or not configured"
-
-    if isinstance(email_settings, dict) and email_settings.get("enabled"):
-        email_status = "Enabled"
+    email_readiness = get_email_readiness(settings.email)
 
     return SettingsView(
         settings_path=settings_path,
@@ -1053,7 +1049,7 @@ def _build_settings_view(app: Flask) -> SettingsView:
         scan_scoring_path=DEFAULT_SCAN_SCORING_PATH,
         scan_report_path=DEFAULT_SCAN_REPORT_PATH,
         scan_email_preview_path=DEFAULT_SCAN_EMAIL_PREVIEW_PATH,
-        email_status=email_status,
+        email_status=email_readiness.message,
     )
 
 

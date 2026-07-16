@@ -1,4 +1,3 @@
-import os
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -372,9 +371,4 @@ def _validate_enabled_email_settings(
     if not smtp_password_env:
         raise ConfigError(
             "settings.yaml email.smtp_password_env is required when email is enabled"
-        )
-
-    if smtp_password_env not in os.environ:
-        raise ConfigError(
-            f"Email password environment variable is not set: {smtp_password_env}"
         )

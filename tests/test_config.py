@@ -375,7 +375,7 @@ email:
     assert settings["email"]["smtp_password_env"] == "JOB_RADAR_SMTP_PASSWORD"
 
 
-def test_load_settings_rejects_enabled_email_without_password_env(
+def test_load_settings_accepts_enabled_email_without_password_env_value(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -409,11 +409,10 @@ email:
         encoding="utf-8",
     )
 
-    with pytest.raises(
-        ConfigError,
-        match="Email password environment variable is not set",
-    ):
-        load_settings(settings_file)
+    settings = load_settings(settings_file)
+
+    assert settings.email.enabled is True
+    assert settings.email.smtp_password_env == "JOB_RADAR_SMTP_PASSWORD"
 
 
 def test_load_settings_rejects_enabled_email_without_sender(

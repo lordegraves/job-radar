@@ -3,6 +3,7 @@ import smtplib
 from dataclasses import dataclass
 from email.message import EmailMessage
 from email.utils import formataddr
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,43 @@ from typing import Any
 class EmailSendResult:
     sent: bool
     message: str
+
+
+@dataclass(frozen=True)
+class EmailReadiness:
+    ready: bool
+    message: str
+
+
+def get_email_readiness(
+    email_settings: Mapping[str, Any],
+) -> EmailReadiness:
+    """Report whether email can be sent without attempting an SMTP connection."""
+
+    if not email_settings.get("enabled", False):
+        return EmailReadiness(
+            ready=False,
+            message="Disabled",
+        )
+
+    password_env = email_settings.get("smtp_password_env", "")
+
+    if not password_env:
+        return EmailReadiness(
+            ready=False,
+            message="Enabled, but no credential environment variable is configured",
+        )
+
+    if not os.environ.get(password_env):
+        return EmailReadiness(
+            ready=False,
+            message=f"Enabled, but credential is unavailable: {password_env}",
+        )
+
+    return EmailReadiness(
+        ready=True,
+        message="Ready to send",
+    )
 
 
 def send_email_report(

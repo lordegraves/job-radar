@@ -1,4 +1,4 @@
-from job_radar.email_sender import send_email_report
+from job_radar.email_sender import get_email_readiness, send_email_report
 
 
 class FakeSMTP:
@@ -28,6 +28,49 @@ class FakeSMTP:
 
     def send_message(self, message):
         self.sent_message = message
+
+
+def test_get_email_readiness_reports_disabled() -> None:
+    readiness = get_email_readiness(
+        {
+            "enabled": False,
+            "smtp_password_env": "",
+        }
+    )
+
+    assert readiness.ready is False
+    assert readiness.message == "Disabled"
+
+
+def test_get_email_readiness_reports_missing_credential(monkeypatch) -> None:
+    monkeypatch.delenv("JOB_RADAR_SMTP_PASSWORD", raising=False)
+
+    readiness = get_email_readiness(
+        {
+            "enabled": True,
+            "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
+        }
+    )
+
+    assert readiness.ready is False
+    assert (
+        readiness.message
+        == "Enabled, but credential is unavailable: JOB_RADAR_SMTP_PASSWORD"
+    )
+
+
+def test_get_email_readiness_reports_ready(monkeypatch) -> None:
+    monkeypatch.setenv("JOB_RADAR_SMTP_PASSWORD", "not-a-real-password")
+
+    readiness = get_email_readiness(
+        {
+            "enabled": True,
+            "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
+        }
+    )
+
+    assert readiness.ready is True
+    assert readiness.message == "Ready to send"
 
 
 def test_send_email_report_refuses_when_disabled() -> None:

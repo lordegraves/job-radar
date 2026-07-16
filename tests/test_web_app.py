@@ -1785,9 +1785,84 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "raw_capture_enabled" in html
     assert "False" in html
     assert "Email" in html
-    assert "Disabled or not configured" in html
+    assert "Disabled" in html
     assert "Secrets are not shown on this page." in html
     assert "Save" not in html
+
+
+def test_settings_page_shows_email_enabled_without_credential(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    monkeypatch.delenv("JOB_RADAR_SMTP_PASSWORD", raising=False)
+    settings_file.write_text(
+        settings_file.read_text(encoding="utf-8")
+        + """
+email:
+  enabled: true
+  sender: clayton@example.com
+  recipients:
+    - clayton@example.com
+  smtp_host: smtp.example.com
+  smtp_port: 587
+  smtp_username: clayton@example.com
+  smtp_password_env: JOB_RADAR_SMTP_PASSWORD
+  smtp_tls_mode: starttls
+""",
+        encoding="utf-8",
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/settings")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert (
+        "Enabled, but credential is unavailable: JOB_RADAR_SMTP_PASSWORD"
+        in html
+    )
+
+
+def test_settings_page_shows_email_ready(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    monkeypatch.setenv("JOB_RADAR_SMTP_PASSWORD", "not-a-real-password")
+    settings_file.write_text(
+        settings_file.read_text(encoding="utf-8")
+        + """
+email:
+  enabled: true
+  sender: clayton@example.com
+  recipients:
+    - clayton@example.com
+  smtp_host: smtp.example.com
+  smtp_port: 587
+  smtp_username: clayton@example.com
+  smtp_password_env: JOB_RADAR_SMTP_PASSWORD
+  smtp_tls_mode: starttls
+""",
+        encoding="utf-8",
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/settings")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Ready to send" in html
 
 
 def test_scan_page_shows_manual_scan_command(
