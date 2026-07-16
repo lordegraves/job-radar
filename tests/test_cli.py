@@ -7,7 +7,6 @@ from openpyxl import Workbook
 from job_radar.candidate_profile import CandidateProfile
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.cli import (
-    _find_profile_avoid_matches,
     _import_history_records,
     build_parser,
     handle_import_history,
@@ -16,6 +15,7 @@ from job_radar.cli import (
     handle_tracker_list,
     handle_tracker_update,
 )
+from job_radar.scan_service import _find_profile_avoid_matches
 from job_radar.job_history import (
     EXPECTED_HEADERS,
     SIMPLIFIED_HEADERS,

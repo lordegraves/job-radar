@@ -6,10 +6,6 @@ import yaml
 from job_radar.models import JobPosting
 from job_radar.normalize import clean_text
 from job_radar.score_evidence import ScoreEvidence
-from job_radar.recommendation_policy import (
-    evaluate_review_needed_eligibility,
-    evaluate_top_match_eligibility,
-)
 
 
 TITLE_WEIGHT = 3

@@ -10,6 +10,7 @@ def make_scored_posting(
     top_match_eligible: bool = False,
     review_needed_eligible: bool = False,
     tracked: bool = False,
+    score_reasons: list[str] | None = None,
 ) -> ScoredPosting:
     posting = JobPosting(
         company_key="example",
@@ -39,7 +40,8 @@ def make_scored_posting(
     return ScoredPosting(
         posting=posting,
         score=140,
-        score_reasons=[
+        score_reasons=score_reasons
+        or [
             "+30 title:infrastructure",
             "+10 body:linux",
             "+0 location_allowed:remote",
@@ -102,3 +104,58 @@ def test_build_report_view_model_applies_email_limit() -> None:
 
     assert len(view.top_matches) == 12
     assert len(view.email_top_matches) == 10
+
+
+def test_build_report_view_model_routes_kubernetes_risk_to_review_needed() -> None:
+    posting = make_scored_posting(
+        title="Senior Site Reliability Engineer",
+        top_match_eligible=True,
+        review_needed_eligible=True,
+        score_reasons=[
+            "+30 title:site reliability",
+            "+8 body:kubernetes",
+            "+10 body:linux",
+            "+100 location_allowed:remote",
+        ],
+    )
+
+    view = build_report_view_model(scored_postings=[posting])
+
+    assert view.top_matches == []
+    assert view.review_needed == [posting]
+    assert view.tracked_applications == []
+
+
+def test_build_report_view_model_excludes_noneligible_roles_from_action_sections() -> None:
+    top_match = make_scored_posting(
+        title="Senior Infrastructure Engineer",
+        top_match_eligible=True,
+    )
+    skipped = make_scored_posting(title="Senior Kubernetes Engineer")
+    business = make_scored_posting(title="Recruiting Coordinator")
+
+    view = build_report_view_model(
+        scored_postings=[top_match, skipped, business],
+    )
+
+    assert view.top_matches == [top_match]
+    assert view.review_needed == []
+    assert view.tracked_applications == []
+
+
+def test_build_report_view_model_routes_tracked_role_out_of_apply_sections() -> None:
+    tracked = make_scored_posting(
+        title="Site Reliability Engineer",
+        top_match_eligible=True,
+        review_needed_eligible=True,
+        tracked=True,
+    )
+
+    view = build_report_view_model(scored_postings=[tracked])
+
+    assert view.top_matches == []
+    assert view.review_needed == []
+    assert view.tracked_applications == [tracked]
+    assert view.email_scored_postings == []
+    assert view.email_top_matches == []
+    assert view.email_review_needed == []

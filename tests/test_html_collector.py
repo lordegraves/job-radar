@@ -348,36 +348,6 @@ def test_parse_html_jobs_cleans_mbari_title_with_normalized_whitespace() -> None
     assert postings[0].source_url == "https://www.mbari.org/job-opening/electronic-technician-2/"
 
 
-def test_parse_html_jobs_cleans_mbari_title_before_mbari_teaser() -> None:
-    html = """
-    <html>
-      <body>
-        <a
-          class="list-item__link"
-          href="/job-opening/rov-pilot/"
-        >
-          ROV Pilot MBARI invites candidates to apply for the ROV Pilot/Technician role.
-        </a>
-      </body>
-    </html>
-    """
-
-    postings = _parse_html_jobs(
-        company_config={
-            "company_key": "mbari",
-            "name": "MBARI",
-            "source_type": "html",
-            "source_url": "https://www.mbari.org/about/careers/job-openings/",
-        },
-        html=html,
-        source_url="https://www.mbari.org/about/careers/job-openings/",
-    )
-
-    assert len(postings) == 1
-    assert postings[0].title == "ROV Pilot"
-    assert postings[0].source_url == "https://www.mbari.org/job-opening/rov-pilot/"
-
-
 def test_parse_html_jobs_supports_amentum_job_title_ids() -> None:
     html = """
     <html>

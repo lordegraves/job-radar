@@ -483,45 +483,6 @@ def test_index_page_summarizes_latest_scan_report(tmp_path: Path) -> None:
         "<html><body><h1>Job Radar Report</h1></body></html>",
         encoding="utf-8",
     )
-    (reports_path / "target-scan.md").write_text(
-        """
-# Job Radar Report
-
-## Summary
-
-- Generated at: 2026-07-11 11:57 UTC
-- New jobs: 3
-- Collector errors: 0
-- Actionable jobs stored: 13
-
-## Top Matches
-
-### Quick View
-
-- **122** - [Site Reliability Engineer](https://example.com/top)
-
-### [Site Reliability Engineer](https://example.com/top)
-
-## Northern Colorado Highlights
-
-No Northern Colorado highlights found.
-
-## Review Needed
-
-### [Senior Systems Software Engineer, GPU Compute](https://example.com/review-one)
-
-### [Hardware Operations Engineer](https://example.com/review-two)
-
-## Tracked Applications
-
-### [Site Reliability Engineer](https://example.com/tracked)
-
-## Passed / Not Recommended
-
-No passed jobs.
-""",
-        encoding="utf-8",
-    )
     write_report_snapshot_file(
         reports_path / "target-scan.json",
         generated_at="2026-07-11T11:57:00+00:00",
@@ -587,63 +548,6 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
 
     (reports_path / "target-scan.html").write_text(
         "<html><body><h1>Job Radar Report</h1></body></html>",
-        encoding="utf-8",
-    )
-    (reports_path / "target-scan.md").write_text(
-        """
-# Job Radar Report
-
-## Summary
-
-- Generated at: 2026-07-11 11:57 UTC
-
-## Top Matches
-
-### Quick View
-
-- **122** - [Site Reliability Engineer](https://example.com/top)
-  - Company: RunPod
-  - Location: Remote - USA
-
-### [Site Reliability Engineer](https://example.com/top)
-
-- Score: 122
-- Why it is a top match: score 122 meets top-match threshold 120
-- Why this matched: linux, infrastructure, sre, gpu, observability
-- Technical match: Very Strong
-- Resume match: Very Strong
-- Resume evidence: Linux infrastructure; reliability engineering
-- Resume gaps: None
-- Compensation: Unknown
-- Compensation range: Unknown
-- Hiring probability: High
-- Recommended action: Apply
-- Action rationale: Clean apply: very strong technical match, very strong resume match, high hiring probability, and no hiring risks.
-- Hiring risks: None
-- History context: Prior similar role at Runpod; outcome: Rejected - No Interview
-- History risk: neutral: prior_similar_role
-- Work location fit: remote
-- Company: RunPod
-- Source: ashby
-- Location: Remote - USA
-- URL: https://example.com/top
-- Job Radar ID: `jr-runpod-655a542b`
-- Canonical key: runpod:site-reliability-engineer:remote-usa
-
-## Review Needed
-
-### [Hardware Operations Engineer](https://example.com/review)
-
-- Company: OpenAI
-- Location: Remote - US
-- Recommended action: Network First
-
-## Tracked Applications
-
-### [Tracked SRE](https://example.com/tracked)
-
-- Company: Nebius
-""",
         encoding="utf-8",
     )
     write_report_snapshot_file(
@@ -749,39 +653,6 @@ def test_report_section_view_shows_new_jobs_from_latest_scan(tmp_path: Path) -> 
         "<html><body><h1>Job Radar Report</h1></body></html>",
         encoding="utf-8",
     )
-    (reports_path / "target-scan.md").write_text(
-        """
-# Job Radar Report
-
-## Summary
-
-- Generated at: 2026-07-14 14:20 UTC
-- New jobs: 1
-
-## New Jobs
-
-### [Senior Linux Infrastructure Engineer](https://example.com/new-job)
-
-- Company: NewCo
-- Location: Remote - USA
-- Compensation range: $180,000 - $220,000
-- Hiring probability: Medium
-- Recommended action: Tailor Resume
-- Action rationale: Strong infrastructure fit, but the resume should emphasize large-scale Linux operations.
-- Why this matched: linux, infrastructure, automation, reliability
-- Technical match: Very Strong
-- Resume match: Strong
-- Resume evidence: Large-scale Linux; Ansible; infrastructure reliability
-- Resume gaps: Production Kubernetes
-- Hiring risks: Production Kubernetes translation
-- Job Radar ID: `jr-newco-12345678`
-
-## Passed / Not Recommended
-
-No passed jobs.
-""",
-        encoding="utf-8",
-    )
     write_report_snapshot_file(
         reports_path / "target-scan.json",
         generated_at="2026-07-14T14:20:00+00:00",
@@ -848,28 +719,6 @@ def test_report_section_view_shows_collector_errors_and_clean_empty_state(tmp_pa
         "<html><body><h1>Job Radar Report</h1></body></html>",
         encoding="utf-8",
     )
-    markdown_report_path = reports_path / "target-scan.md"
-    markdown_report_path.write_text(
-        """
-# Job Radar Report
-
-## Summary
-
-- Generated at: 2026-07-14 14:20 UTC
-- Collector errors: 1
-
-## Collector Errors
-
-Some collector errors are temporary source or network issues and may clear on a later scan.
-
-- example-company (Example Company, greenhouse): Request timed out while contacting the job board.
-
-## Top Matches
-
-No top matches found.
-""",
-        encoding="utf-8",
-    )
     snapshot_path = reports_path / "target-scan.json"
     write_report_snapshot_file(
         snapshot_path,
@@ -901,21 +750,6 @@ No top matches found.
     assert "example-company" in html
     assert "Track this application" not in html
 
-    markdown_report_path.write_text(
-        """
-# Job Radar Report
-
-## Summary
-
-- Generated at: 2026-07-14 15:00 UTC
-- Collector errors: 0
-
-## Top Matches
-
-No top matches found.
-""",
-        encoding="utf-8",
-    )
 
     write_report_snapshot_file(
         snapshot_path,
@@ -1955,7 +1789,7 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "GUI scan defaults" in html
     assert "config/target-companies.yaml" in html
     assert "config/scoring.yaml" in html
-    assert "reports/target-scan.md" in html
+    assert "reports/target-scan.html" in html
     assert "reports/target-email-preview.txt" in html
     assert "Retention" in html
     assert "report_retention_days" in html
@@ -1996,7 +1830,7 @@ def test_scan_page_shows_manual_scan_command(tmp_path: Path) -> None:
     assert "python -m job_radar scan" in html
     assert "--config config/target-companies.yaml" in html
     assert f"--settings {settings_file}" in html
-    assert "--report reports/target-scan.md" in html
+    assert "--report reports/target-scan.html" in html
     assert "--email-preview reports/target-email-preview.txt" in html
 
 
@@ -2024,16 +1858,15 @@ def test_scan_run_calls_handle_scan_and_redirects(
     assert response.status_code == 200
     assert "Latest scan completed." in html
     assert "HTML report" in html
-    assert "Markdown report" in html
+    assert "Markdown report" not in html
     assert "Email preview" in html
     assert "/reports/view/target-scan.html" in html
-    assert "/reports/view/target-scan.md" in html
     assert "/reports/view/target-email-preview.txt" in html
     assert calls == [
         {
             "config_path": "config/target-companies.yaml",
             "settings_path": str(settings_file),
-            "report_path": "reports/target-scan.md",
+            "report_path": "reports/target-scan.html",
             "scoring_path": "config/scoring.yaml",
             "email_preview_path": "reports/target-email-preview.txt",
             "send_email": False,
@@ -2124,10 +1957,6 @@ def test_reports_page_lists_existing_report_files(tmp_path: Path) -> None:
         "<html><body>Target scan</body></html>",
         encoding="utf-8",
     )
-    (reports_path / "target-scan.md").write_text(
-        "# Target scan",
-        encoding="utf-8",
-    )
     (reports_path / "target-email-preview.txt").write_text(
         "Email preview",
         encoding="utf-8",
@@ -2152,7 +1981,7 @@ def test_reports_page_lists_existing_report_files(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert "Reports" in html
     assert f"<code>{reports_path}</code>" in html
-    assert "Report files shown:</strong> 4" in html
+    assert "Report files shown:</strong> 3" in html
     assert "Latest scan results" in html
     assert "Additional files" in html
     assert "target-scan.html" in html
@@ -2161,8 +1990,6 @@ def test_reports_page_lists_existing_report_files(tmp_path: Path) -> None:
     assert "Latest scan result shortcuts" in html
     assert "primary-output-card" in html
     assert "Open the latest generated scan report and email preview." in html
-    assert "target-scan.md" in html
-    assert "Latest Markdown scan report." in html
     assert "target-email-preview.txt" in html
     assert "Latest plain-text email preview." in html
     assert "code-audit.md" in html
@@ -2242,18 +2069,18 @@ def test_report_file_serves_allowed_report_file(tmp_path: Path) -> None:
     database_file = tmp_path / "job_radar.sqlite3"
     reports_path = tmp_path / "reports"
     reports_path.mkdir()
-    report_file = reports_path / "target-scan.md"
-    report_file.write_text("# Target scan", encoding="utf-8")
+    report_file = reports_path / "code-audit.md"
+    report_file.write_text("# Code audit", encoding="utf-8")
 
     write_settings_file(settings_file, database_file, reports_path=reports_path)
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    response = client.get("/reports/target-scan.md")
+    response = client.get("/reports/code-audit.md")
 
     assert response.status_code == 200
-    assert "# Target scan" in response.get_data(as_text=True)
+    assert "# Code audit" in response.get_data(as_text=True)
 
 
 def test_report_file_rejects_non_report_file(tmp_path: Path) -> None:

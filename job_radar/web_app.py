@@ -269,13 +269,9 @@ PRIMARY_REPORT_FILE_DETAILS = {
         "description": "Latest HTML scan report. Open this first.",
         "sort_order": 10,
     },
-    "target-scan.md": {
-        "description": "Latest Markdown scan report.",
-        "sort_order": 20,
-    },
     "target-email-preview.txt": {
         "description": "Latest plain-text email preview.",
-        "sort_order": 30,
+        "sort_order": 20,
     },
 }
 
@@ -322,7 +318,7 @@ DEFAULT_REPORT_FILE_DESCRIPTION = "Additional file in the reports directory."
 
 DEFAULT_SCAN_CONFIG_PATH = "config/target-companies.yaml"
 DEFAULT_SCAN_SCORING_PATH = "config/scoring.yaml"
-DEFAULT_SCAN_REPORT_PATH = "reports/target-scan.md"
+DEFAULT_SCAN_REPORT_PATH = "reports/target-scan.html"
 DEFAULT_SCAN_EMAIL_PREVIEW_PATH = "reports/target-email-preview.txt"
 
 

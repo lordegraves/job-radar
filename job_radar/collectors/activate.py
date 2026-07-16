@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from html import unescape
 from typing import Any
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urljoin
 
 import requests
 

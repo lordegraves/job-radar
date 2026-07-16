@@ -5,7 +5,7 @@ from typing import Any
 from job_radar.candidate_profile import load_candidate_profile
 from job_radar.config import ConfigError, load_companies, load_settings
 from job_radar.resume_loader import load_resume_text
-from job_radar.scoring import ScoringConfigError, load_scoring_config
+from job_radar.scoring import load_scoring_config
 
 
 @dataclass(frozen=True)

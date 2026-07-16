@@ -3,11 +3,13 @@ from pathlib import Path
 import pytest
 
 from job_radar.models import JobPosting
+from job_radar.recommendation_policy import (
+    evaluate_review_needed_eligibility,
+    evaluate_top_match_eligibility,
+)
 from job_radar.scoring import (
     ScoringConfigError,
     classify_location,
-    evaluate_top_match_eligibility,
-    evaluate_review_needed_eligibility,
     load_scoring_config,
     score_posting,
     score_posting_with_evidence,

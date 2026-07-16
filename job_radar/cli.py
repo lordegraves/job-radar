@@ -3,7 +3,6 @@ from job_radar.config import ConfigError, load_settings
 from job_radar.history_summary import build_history_summary, format_history_summary
 from job_radar.job_history import load_job_history_workbook
 from job_radar.scan_service import (
-    _find_profile_avoid_matches,
     _import_history_records,
     handle_scan,
 )
@@ -58,7 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan_parser.add_argument(
         "--report",
         required=True,
-        help="Path to output Markdown report",
+        help="Path to output HTML report",
     )
     scan_parser.add_argument(
         "--email-preview",
