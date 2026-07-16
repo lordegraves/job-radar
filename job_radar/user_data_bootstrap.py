@@ -18,6 +18,31 @@ class BootstrapCopyResult:
     copied: bool
 
 
+@dataclass(frozen=True)
+class UserDataBootstrapResult:
+    """Summary of one settings-and-profile bootstrap operation."""
+
+    user_data_paths: UserDataPaths
+    settings_result: BootstrapCopyResult
+    profile_results: tuple[BootstrapCopyResult, ...]
+
+    @property
+    def copied_files(self) -> tuple[BootstrapCopyResult, ...]:
+        return tuple(
+            result
+            for result in (self.settings_result, *self.profile_results)
+            if result.copied
+        )
+
+    @property
+    def preserved_files(self) -> tuple[BootstrapCopyResult, ...]:
+        return tuple(
+            result
+            for result in (self.settings_result, *self.profile_results)
+            if not result.copied
+        )
+
+
 def create_user_data_directories(user_data_paths: UserDataPaths) -> None:
     """Create the standard writable directory layout when it is missing."""
 
@@ -30,6 +55,32 @@ def create_user_data_directories(user_data_paths: UserDataPaths) -> None:
         user_data_paths.reports,
     ):
         directory.mkdir(parents=True, exist_ok=True)
+
+
+def bootstrap_user_configuration(
+    *,
+    source_settings_path: str | Path,
+    source_profiles_path: str | Path,
+    user_data_paths: UserDataPaths,
+) -> UserDataBootstrapResult:
+    """Copy initial settings and profiles into user-owned storage safely."""
+
+    create_user_data_directories(user_data_paths)
+
+    settings_result = copy_bootstrap_file(
+        source_settings_path,
+        user_data_paths.config / "settings.yaml",
+    )
+    profile_results = copy_bootstrap_tree(
+        source_profiles_path,
+        user_data_paths.profiles,
+    )
+
+    return UserDataBootstrapResult(
+        user_data_paths=user_data_paths,
+        settings_result=settings_result,
+        profile_results=profile_results,
+    )
 
 
 def copy_bootstrap_tree(

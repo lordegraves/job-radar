@@ -5,6 +5,7 @@ import pytest
 from job_radar.runtime_paths import UserDataPaths
 from job_radar.user_data_bootstrap import (
     UserDataBootstrapError,
+    bootstrap_user_configuration,
     copy_bootstrap_file,
     copy_bootstrap_tree,
     create_user_data_directories,
@@ -24,6 +25,84 @@ def test_create_user_data_directories_creates_standard_layout(
     assert user_data_paths.logs.is_dir()
     assert user_data_paths.profiles.is_dir()
     assert user_data_paths.reports.is_dir()
+
+
+def test_bootstrap_user_configuration_copies_settings_and_profiles(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "source"
+    source_settings = source_root / "config" / "settings.yaml"
+    source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
+    source_resume = source_root / "profiles" / "clayton" / "resume.md"
+    source_settings.parent.mkdir(parents=True)
+    source_profile.parent.mkdir(parents=True)
+    source_settings.write_text(
+        "database_path: data/job_radar.sqlite3\n",
+        encoding="utf-8",
+    )
+    source_profile.write_text(
+        "candidate:\n  name: Clayton\n",
+        encoding="utf-8",
+    )
+    source_resume.write_text("# Resume\n", encoding="utf-8")
+    user_data_paths = UserDataPaths.from_root(tmp_path / "user-data")
+
+    result = bootstrap_user_configuration(
+        source_settings_path=source_settings,
+        source_profiles_path=source_root / "profiles",
+        user_data_paths=user_data_paths,
+    )
+
+    assert result.user_data_paths == user_data_paths
+    assert result.settings_result.copied is True
+    assert len(result.profile_results) == 2
+    assert len(result.copied_files) == 3
+    assert result.preserved_files == ()
+    assert (
+        user_data_paths.config / "settings.yaml"
+    ).read_text(encoding="utf-8") == (
+        "database_path: data/job_radar.sqlite3\n"
+    )
+    assert (
+        user_data_paths.profiles / "clayton" / "profile.yaml"
+    ).read_text(encoding="utf-8") == "candidate:\n  name: Clayton\n"
+    assert (
+        user_data_paths.profiles / "clayton" / "resume.md"
+    ).read_text(encoding="utf-8") == "# Resume\n"
+
+
+def test_bootstrap_user_configuration_preserves_existing_user_files(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "source"
+    source_settings = source_root / "config" / "settings.yaml"
+    source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
+    source_settings.parent.mkdir(parents=True)
+    source_profile.parent.mkdir(parents=True)
+    source_settings.write_text("source settings\n", encoding="utf-8")
+    source_profile.write_text("source profile\n", encoding="utf-8")
+    user_data_paths = UserDataPaths.from_root(tmp_path / "user-data")
+    existing_settings = user_data_paths.config / "settings.yaml"
+    existing_profile = user_data_paths.profiles / "clayton" / "profile.yaml"
+    existing_settings.parent.mkdir(parents=True)
+    existing_profile.parent.mkdir(parents=True)
+    existing_settings.write_text("existing settings\n", encoding="utf-8")
+    existing_profile.write_text("existing profile\n", encoding="utf-8")
+
+    result = bootstrap_user_configuration(
+        source_settings_path=source_settings,
+        source_profiles_path=source_root / "profiles",
+        user_data_paths=user_data_paths,
+    )
+
+    assert result.copied_files == ()
+    assert len(result.preserved_files) == 2
+    assert existing_settings.read_text(encoding="utf-8") == (
+        "existing settings\n"
+    )
+    assert existing_profile.read_text(encoding="utf-8") == (
+        "existing profile\n"
+    )
 
 
 def test_copy_bootstrap_file_copies_missing_destination(
