@@ -2,7 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from job_radar.config import ConfigError, load_companies, load_settings
+from job_radar.config import (
+    ApplicationSettings,
+    ConfigError,
+    EmailSettings,
+    load_companies,
+    load_settings,
+)
 
 
 def test_load_companies_returns_only_enabled_companies(tmp_path: Path) -> None:
@@ -65,6 +71,47 @@ logs_path: logs
         load_settings(settings_file)
 
 
+@pytest.mark.parametrize(
+    ("key", "yaml_value"),
+    [
+        ("database_path", "[data/job_radar.sqlite3]"),
+        ("reports_path", "{path: reports}"),
+        ("logs_path", "123"),
+        ("candidate_profile_path", "[profiles/example/profile.yaml]"),
+    ],
+)
+def test_load_settings_rejects_non_string_paths(
+    tmp_path: Path,
+    key: str,
+    yaml_value: str,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    candidate_profile_line = (
+        f"candidate_profile_path: {yaml_value}\n"
+        if key == "candidate_profile_path"
+        else ""
+    )
+
+    database_path = (
+        yaml_value if key == "database_path" else "data/job_radar.sqlite3"
+    )
+    reports_path = yaml_value if key == "reports_path" else "reports"
+    logs_path = yaml_value if key == "logs_path" else "logs"
+
+    settings_file.write_text(
+        f"""
+database_path: {database_path}
+reports_path: {reports_path}
+logs_path: {logs_path}
+{candidate_profile_line}retention: {{}}
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match=rf"{key} must be a string"):
+        load_settings(settings_file)
+
+
 def test_load_settings_defaults_email_settings(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     settings_file.write_text(
@@ -86,17 +133,27 @@ retention:
 
     settings = load_settings(settings_file)
 
-    assert settings["email"] == {
-        "enabled": False,
-        "sender": "",
-        "sender_name": "",
-        "recipients": [],
-        "smtp_host": "",
-        "smtp_port": 587,
-        "smtp_username": "",
-        "smtp_password_env": "",
-        "smtp_tls_mode": "starttls",
-    }
+    assert isinstance(settings, ApplicationSettings)
+    assert settings.database_path == "data/job_radar.sqlite3"
+    assert settings.reports_path == "reports"
+    assert settings.logs_path == "logs"
+    assert isinstance(settings.email, EmailSettings)
+    assert settings.email.enabled is False
+    assert settings.email.sender == ""
+    assert settings.email.sender_name == ""
+    assert settings.email.recipients == ()
+    assert settings.email.smtp_host == ""
+    assert settings.email.smtp_port == 587
+    assert settings.email.smtp_username == ""
+    assert settings.email.smtp_password_env == ""
+    assert settings.email.smtp_tls_mode == "starttls"
+
+    # Mapping compatibility protects released callers during migration.
+    assert settings["database_path"] == settings.database_path
+    assert settings.get("candidate_profile_path") is None
+    assert "candidate_profile_path" not in settings
+    assert "job_history_workbook_path" not in settings
+    assert settings["email"]["smtp_port"] == 587
 
 
 def test_load_settings_accepts_job_history_workbook_path(tmp_path: Path) -> None:
@@ -182,17 +239,15 @@ email:
 
     settings = load_settings(settings_file)
 
-    assert settings["email"] == {
-        "enabled": False,
-        "sender": "clayton@example.com",
-        "sender_name": "Job Radar",
-        "recipients": ["clayton@example.com"],
-        "smtp_host": "smtp.example.com",
-        "smtp_port": 587,
-        "smtp_username": "",
-        "smtp_password_env": "",
-        "smtp_tls_mode": "starttls",
-    }
+    assert settings.email.enabled is False
+    assert settings.email.sender == "clayton@example.com"
+    assert settings.email.sender_name == "Job Radar"
+    assert settings.email.recipients == ("clayton@example.com",)
+    assert settings.email.smtp_host == "smtp.example.com"
+    assert settings.email.smtp_port == 587
+    assert settings.email.smtp_username == ""
+    assert settings.email.smtp_password_env == ""
+    assert settings.email.smtp_tls_mode == "starttls"
 
 
 def test_load_settings_rejects_invalid_email_sender_name(tmp_path: Path) -> None:

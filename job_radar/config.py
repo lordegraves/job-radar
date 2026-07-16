@@ -1,4 +1,6 @@
 import os
+from collections.abc import Iterator, Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +32,60 @@ SUPPORTED_SOURCE_TYPES = {
 
 class ConfigError(Exception):
     """Raised when Job Radar configuration is missing or invalid."""
+
+
+@dataclass(frozen=True)
+class EmailSettings(Mapping[str, Any]):
+    """Validated email configuration without containing the secret itself."""
+
+    enabled: bool
+    sender: str
+    sender_name: str
+    recipients: tuple[str, ...]
+    smtp_host: str
+    smtp_port: int
+    smtp_username: str
+    smtp_password_env: str
+    smtp_tls_mode: str
+    _data: dict[str, Any] = field(repr=False, compare=False)
+
+    def __getitem__(self, key: str) -> Any:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+
+@dataclass(frozen=True)
+class ApplicationSettings(Mapping[str, Any]):
+    """Application-owned settings loaded from the current settings YAML file.
+
+    Mapping behavior is retained temporarily so released callers continue to
+    work while they are migrated to explicit attributes in controlled steps.
+    Unknown YAML keys are also preserved so upgrades do not silently discard
+    settings introduced by older or newer versions.
+    """
+
+    database_path: str
+    reports_path: str
+    logs_path: str
+    retention: dict[str, Any]
+    candidate_profile_path: str | None
+    job_history_workbook_path: str | None
+    email: EmailSettings
+    _data: dict[str, Any] = field(repr=False, compare=False)
+
+    def __getitem__(self, key: str) -> Any:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
 
 
 def load_yaml_file(path: str | Path) -> dict[str, Any]:
@@ -94,38 +150,93 @@ def load_companies(path: str | Path) -> list[dict[str, Any]]:
     return enabled_companies
 
 
-def load_settings(path: str | Path = "config/settings.yaml") -> dict[str, Any]:
+def load_settings(
+    path: str | Path = "config/settings.yaml",
+) -> ApplicationSettings:
     data = load_yaml_file(path)
 
-    required_keys = [
+    required_keys = (
         "database_path",
         "reports_path",
         "logs_path",
         "retention",
-    ]
+    )
 
     for key in required_keys:
         if key not in data:
             raise ConfigError(f"settings.yaml is missing required key: {key}")
 
-    if not isinstance(data["retention"], dict):
+    database_path = _required_settings_string(data["database_path"], "database_path")
+    reports_path = _required_settings_string(data["reports_path"], "reports_path")
+    logs_path = _required_settings_string(data["logs_path"], "logs_path")
+
+    retention = data["retention"]
+
+    if not isinstance(retention, dict):
         raise ConfigError("settings.yaml retention section must be a mapping")
 
-    job_history_workbook_path = data.get("job_history_workbook_path")
+    candidate_profile_path = _optional_settings_string(
+        data.get("candidate_profile_path"),
+        "candidate_profile_path",
+    )
+    job_history_workbook_path = _optional_settings_string(
+        data.get("job_history_workbook_path"),
+        "job_history_workbook_path",
+    )
+    email = _validate_email_settings(data.get("email", {}))
 
-    if job_history_workbook_path is not None and not isinstance(
-        job_history_workbook_path,
-        str,
-    ):
-        raise ConfigError("settings.yaml job_history_workbook_path must be a string")
+    # Preserve the original mapping shape during the compatibility migration.
+    # Existing CLI and GUI callers can keep using [] and .get() until each
+    # boundary is deliberately converted to typed attribute access.
+    normalized_data = dict(data)
+    normalized_data["database_path"] = database_path
+    normalized_data["reports_path"] = reports_path
+    normalized_data["logs_path"] = logs_path
+    normalized_data["email"] = email
 
-    email_settings = data.get("email", {})
-    data["email"] = _validate_email_settings(email_settings)
+    if "candidate_profile_path" in data:
+        normalized_data["candidate_profile_path"] = candidate_profile_path
 
-    return data
+    if "job_history_workbook_path" in data:
+        normalized_data["job_history_workbook_path"] = job_history_workbook_path
+
+    return ApplicationSettings(
+        database_path=database_path,
+        reports_path=reports_path,
+        logs_path=logs_path,
+        retention=retention,
+        candidate_profile_path=candidate_profile_path,
+        job_history_workbook_path=job_history_workbook_path,
+        email=email,
+        _data=normalized_data,
+    )
 
 
-def _validate_email_settings(raw_email_settings: Any) -> dict[str, Any]:
+def _required_settings_string(raw_value: Any, key: str) -> str:
+    value = _optional_settings_string(raw_value, key)
+
+    if value is None:
+        raise ConfigError(f"settings.yaml {key} is required")
+
+    return value
+
+
+def _optional_settings_string(raw_value: Any, key: str) -> str | None:
+    if raw_value is None:
+        return None
+
+    if not isinstance(raw_value, str):
+        raise ConfigError(f"settings.yaml {key} must be a string")
+
+    value = raw_value.strip()
+
+    if not value:
+        raise ConfigError(f"settings.yaml {key} cannot be empty")
+
+    return value
+
+
+def _validate_email_settings(raw_email_settings: Any) -> EmailSettings:
     if raw_email_settings is None:
         raw_email_settings = {}
 
@@ -189,7 +300,7 @@ def _validate_email_settings(raw_email_settings: Any) -> dict[str, Any]:
             smtp_password_env=smtp_password_env,
         )
 
-    return {
+    normalized_data = {
         "enabled": enabled,
         "sender": sender,
         "sender_name": sender_name,
@@ -200,6 +311,19 @@ def _validate_email_settings(raw_email_settings: Any) -> dict[str, Any]:
         "smtp_password_env": smtp_password_env,
         "smtp_tls_mode": smtp_tls_mode,
     }
+
+    return EmailSettings(
+        enabled=enabled,
+        sender=sender,
+        sender_name=sender_name,
+        recipients=tuple(recipients),
+        smtp_host=smtp_host,
+        smtp_port=smtp_port,
+        smtp_username=smtp_username,
+        smtp_password_env=smtp_password_env,
+        smtp_tls_mode=smtp_tls_mode,
+        _data=normalized_data,
+    )
 
 def _validate_enabled_email_settings(
     sender: str,
