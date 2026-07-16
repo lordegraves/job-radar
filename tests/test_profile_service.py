@@ -75,6 +75,73 @@ def test_build_candidate_profile_view_shows_resume_file_name_and_formatted_previ
     )
 
 
+def test_profile_service_resolves_active_user_paths(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    user_data_root = tmp_path / "user-data"
+    settings_file = user_data_root / "config" / "settings.yaml"
+    profile_file = user_data_root / "profiles" / "example" / "profile.yaml"
+    resume_file = user_data_root / "profiles" / "example" / "resume.md"
+    normalized_resume_file = (
+        user_data_root
+        / "profiles"
+        / "example"
+        / "resume.normalized.txt"
+    )
+
+    settings_file.parent.mkdir(parents=True)
+    profile_file.parent.mkdir(parents=True)
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+candidate_profile_path: profiles/example/profile.yaml
+
+retention: {}
+""",
+        encoding="utf-8",
+    )
+    profile_file.write_text(
+        """
+candidate:
+  name: Example Candidate
+  resume:
+    source_path: profiles/example/resume.md
+    normalized_text_path: profiles/example/resume.normalized.txt
+  core_strengths:
+    - Linux infrastructure
+  credible_adjacent: []
+  learning_or_gap: []
+  avoid: []
+""",
+        encoding="utf-8",
+    )
+    resume_file.write_text(
+        "# Example Candidate\n\nLinux infrastructure",
+        encoding="utf-8",
+    )
+    normalized_resume_file.write_text(
+        "# Example Candidate Linux infrastructure\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("JOB_RADAR_DATA_DIR", str(user_data_root))
+
+    profile_view = build_candidate_profile_view(None)
+
+    assert profile_view.settings_path == str(settings_file.resolve())
+    assert profile_view.candidate_profile_path == str(profile_file.resolve())
+    assert profile_view.resume_source_path == str(resume_file.resolve())
+    assert profile_view.normalized_text_path == str(
+        normalized_resume_file.resolve()
+    )
+    assert profile_view.resume_preview == (
+        "# Example Candidate\n"
+        "Linux infrastructure"
+    )
+
+
 def test_save_uploaded_resume_replaces_existing_markdown_resume(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     profile_file = tmp_path / "profile.yaml"
@@ -108,6 +175,69 @@ def test_save_uploaded_resume_replaces_existing_markdown_resume(tmp_path: Path) 
     assert profile_view.resume_preview == (
         "# Updated Resume\n"
         "Linux infrastructure and HPC operations"
+    )
+
+
+def test_save_uploaded_resume_uses_active_user_paths(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    user_data_root = tmp_path / "user-data"
+    settings_file = user_data_root / "config" / "settings.yaml"
+    profile_file = user_data_root / "profiles" / "example" / "profile.yaml"
+    resume_file = user_data_root / "profiles" / "example" / "resume.md"
+    normalized_resume_file = (
+        user_data_root
+        / "profiles"
+        / "example"
+        / "resume.normalized.txt"
+    )
+
+    settings_file.parent.mkdir(parents=True)
+    profile_file.parent.mkdir(parents=True)
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+candidate_profile_path: profiles/example/profile.yaml
+
+retention: {}
+""",
+        encoding="utf-8",
+    )
+    profile_file.write_text(
+        """
+candidate:
+  name: Example Candidate
+  resume:
+    source_path: profiles/example/resume.md
+    normalized_text_path: profiles/example/resume.normalized.txt
+  core_strengths: []
+  credible_adjacent: []
+  learning_or_gap: []
+  avoid: []
+""",
+        encoding="utf-8",
+    )
+    resume_file.write_text("Old resume", encoding="utf-8")
+    monkeypatch.setenv("JOB_RADAR_DATA_DIR", str(user_data_root))
+
+    result = save_uploaded_resume(
+        None,
+        "updated-resume.md",
+        b"# Updated Resume\n\nLinux infrastructure",
+    )
+
+    assert result.resume_source_path == str(resume_file.resolve())
+    assert result.normalized_text_path == str(
+        normalized_resume_file.resolve()
+    )
+    assert resume_file.read_text(encoding="utf-8") == (
+        "# Updated Resume\n\nLinux infrastructure"
+    )
+    assert normalized_resume_file.read_text(encoding="utf-8") == (
+        "# Updated Resume Linux infrastructure\n"
     )
 
 

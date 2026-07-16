@@ -5,13 +5,14 @@ from textwrap import fill
 import yaml
 
 from job_radar.candidate_profile import load_candidate_profile
-from job_radar.config import ConfigError, load_settings
+from job_radar.config import ConfigError
 from job_radar.resume_loader import (
     SUPPORTED_RESUME_EXTENSIONS,
     load_resume_display_text,
     load_resume_text,
     write_normalized_resume_text,
 )
+from job_radar.runtime_paths import RuntimePaths
 
 
 RESUME_PREVIEW_CHARACTER_LIMIT = 5000
@@ -46,13 +47,16 @@ class ResumeUploadResult:
     normalized_text_path: str
 
 
-def build_candidate_profile_view(settings_path: str) -> CandidateProfileView:
-    settings = load_settings(settings_path)
-    candidate_profile_path = settings.get("candidate_profile_path")
+def build_candidate_profile_view(
+    settings_path: str | None,
+) -> CandidateProfileView:
+    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    resolved_settings_path = str(runtime_paths.settings_path)
+    profile_path = runtime_paths.candidate_profile_path
 
-    if not candidate_profile_path:
+    if profile_path is None:
         return CandidateProfileView(
-            settings_path=settings_path,
+            settings_path=resolved_settings_path,
             candidate_profile_path=None,
             candidate_profile_exists=False,
             load_error="No candidate_profile_path is configured in settings.",
@@ -72,14 +76,14 @@ def build_candidate_profile_view(settings_path: str) -> CandidateProfileView:
             avoid=[],
         )
 
-    profile_path = Path(candidate_profile_path)
+    resolved_profile_path = str(profile_path)
 
     try:
         candidate_profile = load_candidate_profile(profile_path)
     except ConfigError as error:
         return CandidateProfileView(
-            settings_path=settings_path,
-            candidate_profile_path=candidate_profile_path,
+            settings_path=resolved_settings_path,
+            candidate_profile_path=resolved_profile_path,
             candidate_profile_exists=profile_path.exists(),
             load_error=str(error),
             candidate_name=None,
@@ -98,44 +102,64 @@ def build_candidate_profile_view(settings_path: str) -> CandidateProfileView:
             avoid=[],
         )
 
-    resume_source_path = (
+    configured_resume_source_path = (
         candidate_profile.resume.source_path
         if candidate_profile.resume is not None
         else None
     )
-    normalized_text_path = (
+    configured_normalized_text_path = (
         candidate_profile.resume.normalized_text_path
         if candidate_profile.resume is not None
         else None
     )
+    resume_source_path = runtime_paths.resolve_optional(
+        configured_resume_source_path
+    )
+    normalized_text_path = runtime_paths.resolve_optional(
+        configured_normalized_text_path
+    )
     resume_text = None
     resume_error = None
 
-    if resume_source_path:
+    if resume_source_path is not None:
         try:
             resume_text = load_resume_display_text(resume_source_path)
         except ConfigError as error:
             resume_error = str(error)
 
     return CandidateProfileView(
-        settings_path=settings_path,
-        candidate_profile_path=candidate_profile_path,
+        settings_path=resolved_settings_path,
+        candidate_profile_path=resolved_profile_path,
         candidate_profile_exists=profile_path.exists(),
         load_error=resume_error,
         candidate_name=candidate_profile.name,
         compensation_floor_usd=candidate_profile.compensation_floor_usd,
         preferred_base_usd=candidate_profile.preferred_base_usd,
-        resume_source_path=resume_source_path,
-        resume_source_file_name=Path(resume_source_path).name
-        if resume_source_path
-        else None,
-        resume_source_exists=Path(resume_source_path).exists()
-        if resume_source_path
-        else False,
-        normalized_text_path=normalized_text_path,
-        normalized_text_exists=Path(normalized_text_path).exists()
-        if normalized_text_path
-        else False,
+        resume_source_path=(
+            str(resume_source_path)
+            if resume_source_path is not None
+            else None
+        ),
+        resume_source_file_name=(
+            resume_source_path.name
+            if resume_source_path is not None
+            else None
+        ),
+        resume_source_exists=(
+            resume_source_path.exists()
+            if resume_source_path is not None
+            else False
+        ),
+        normalized_text_path=(
+            str(normalized_text_path)
+            if normalized_text_path is not None
+            else None
+        ),
+        normalized_text_exists=(
+            normalized_text_path.exists()
+            if normalized_text_path is not None
+            else False
+        ),
         resume_character_count=len(resume_text) if resume_text is not None else None,
         resume_preview=_build_resume_preview(resume_text),
         core_strengths=candidate_profile.core_strengths,
@@ -146,7 +170,7 @@ def build_candidate_profile_view(settings_path: str) -> CandidateProfileView:
 
 
 def save_uploaded_resume(
-    settings_path: str,
+    settings_path: str | None,
     uploaded_filename: str,
     uploaded_content: bytes,
 ) -> ResumeUploadResult:
@@ -162,22 +186,35 @@ def save_uploaded_resume(
     if not uploaded_content:
         raise ConfigError("Uploaded resume file is empty.")
 
-    profile_path = _get_candidate_profile_path(settings_path)
+    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    profile_path = runtime_paths.candidate_profile_path
+
+    if profile_path is None:
+        raise ConfigError("No candidate_profile_path is configured in settings.")
+
     profile_data = _load_profile_yaml(profile_path)
     candidate_data = profile_data.setdefault("candidate", {})
     resume_data = candidate_data.setdefault("resume", {})
 
-    current_source_path = resume_data.get("source_path")
-    current_normalized_path = resume_data.get("normalized_text_path")
+    current_source_path = runtime_paths.resolve_optional(
+        resume_data.get("source_path")
+    )
+    current_normalized_path = runtime_paths.resolve_optional(
+        resume_data.get("normalized_text_path")
+    )
 
     target_path = _get_resume_upload_target_path(
         profile_path=profile_path,
-        current_source_path=current_source_path,
+        current_source_path=(
+            str(current_source_path)
+            if current_source_path is not None
+            else None
+        ),
         extension=extension,
     )
-    normalized_text_path = Path(
+    normalized_text_path = (
         current_normalized_path
-        if current_normalized_path
+        if current_normalized_path is not None
         else target_path.with_suffix(".normalized.txt")
     )
 
@@ -205,16 +242,6 @@ def save_uploaded_resume(
         resume_source_path=str(target_path),
         normalized_text_path=str(normalized_text_path),
     )
-
-
-def _get_candidate_profile_path(settings_path: str) -> Path:
-    settings = load_settings(settings_path)
-    candidate_profile_path = settings.get("candidate_profile_path")
-
-    if not candidate_profile_path:
-        raise ConfigError("No candidate_profile_path is configured in settings.")
-
-    return Path(candidate_profile_path)
 
 
 def _load_profile_yaml(profile_path: Path) -> dict:
