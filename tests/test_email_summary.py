@@ -550,7 +550,6 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
     written_path = write_email_preview(
         preview_path,
         report,
-        "reports/live-test.md",
     )
 
     preview_text = written_path.read_text(encoding="utf-8")
@@ -567,7 +566,8 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
     assert "   Job Radar ID: jr-" in preview_text
     assert "   Score: 158" in preview_text
     assert "Full report:" in preview_text
-    assert "reports/live-test.md" in preview_text
+    assert "Attached as HTML file." in preview_text
+    assert ".md" not in preview_text
 
 
 def test_build_email_body_can_reference_attached_report_instead_of_path() -> None:

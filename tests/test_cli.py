@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 
@@ -26,6 +27,28 @@ from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_storage import upsert_application
+
+
+def read_report_snapshot(report_file: Path) -> dict:
+    snapshot_file = report_file.with_suffix(".json")
+    return json.loads(snapshot_file.read_text(encoding="utf-8"))
+
+
+def find_snapshot_job(snapshot: dict, title: str) -> dict:
+    section_names = (
+        "top_matches",
+        "review_needed",
+        "tracked_applications",
+        "new_jobs",
+        "passed_not_recommended",
+    )
+
+    for section_name in section_names:
+        for job in snapshot[section_name]:
+            if job["title"] == title:
+                return job
+
+    raise AssertionError(f"Snapshot job not found: {title}")
 
 
 def count_job_posting_rows(database_file: Path) -> int:
@@ -846,7 +869,7 @@ top_matches:
         raise RuntimeError("report writer failed")
 
     monkeypatch.setattr(
-        "job_radar.scan_service.write_markdown_report",
+        "job_radar.scan_service.write_html_report",
         fail_report_generation,
     )
 
@@ -980,11 +1003,12 @@ top_matches:
     )
 
     output = capsys.readouterr().out
-    report_text = report_file.read_text(encoding="utf-8")
+    report_text = html_report_file.read_text(encoding="utf-8")
 
     assert database_file.exists()
-    assert report_file.exists()
+    assert not report_file.exists()
     assert html_report_file.exists()
+    assert report_file.with_suffix(".json").exists()
     assert count_job_posting_rows(database_file) == 1
     assert count_scan_run_rows(database_file) == 1
 
@@ -997,41 +1021,45 @@ top_matches:
     assert "Jobs seen: 0" in output
     assert "Jobs changed: 0" in output
     assert "Collector errors: 0" in output
-    assert "# Job Radar Report" in report_text
-    assert "- Companies enabled: 1" in report_text
-    assert "- Jobs collected: 1" in report_text
-    assert "- Actionable jobs stored: 1" in report_text
-    assert "- Jobs not actionable: 0" in report_text
-    assert "- New jobs: 1" in report_text
-    assert "- Seen jobs: 0" in report_text
-    assert "- Changed jobs: 0" in report_text
-    assert "- Collector errors: 0" in report_text
-    assert "- Top match score threshold: 1" in report_text
-    assert "- Review-needed score threshold: 100" in report_text
+    assert "<h1>Job Radar Report</h1>" in report_text
+    assert "<strong>Companies enabled:</strong> 1" in report_text
+    assert "<strong>Jobs collected:</strong> 1" in report_text
+    assert "<strong>Actionable jobs stored:</strong> 1" in report_text
+    assert "<strong>Jobs not actionable:</strong> 0" in report_text
+    assert "<strong>New jobs:</strong> 1" in report_text
+    assert "<strong>Seen jobs:</strong> 0" in report_text
+    assert "<strong>Changed jobs:</strong> 0" in report_text
+    assert "<strong>Collector errors:</strong> 0" in report_text
+    assert "<strong>Top match score threshold:</strong> 1" in report_text
+    assert "<strong>Review-needed score threshold:</strong> 100" in report_text
 
-    assert "## Top Matches" in report_text
-    assert "## Passed / Not Recommended" in report_text
-    assert "## All Jobs" not in report_text
+    assert "<h2>Top Matches</h2>" in report_text
+    assert "<h2>Passed / Not Recommended</h2>" in report_text
+    assert "<h2>All Jobs</h2>" not in report_text
+    assert "Senior Infrastructure Engineer" in report_text
+    assert "https://boards.greenhouse.io/exampleai/jobs/123" in report_text
+
+    assert "<strong>Score:</strong> 40" in report_text
     assert (
-        "### [Senior Infrastructure Engineer]"
-        "(https://boards.greenhouse.io/exampleai/jobs/123)"
+        "<strong>Why this matched:</strong> infrastructure, linux, remote"
         in report_text
     )
-
-    assert "- Score: 40" in report_text
-    assert "- Why this matched: infrastructure, linux, remote" in report_text
-    assert "- Score reasons:" not in report_text
+    assert "Score reasons:" not in report_text
     assert "+30 title:infrastructure" not in report_text
     assert "+10 body:linux" not in report_text
     assert "+0 location_allowed:remote" not in report_text
-    assert "- Work location fit: remote" in report_text
-    assert "- Location status:" not in report_text
+    assert "<strong>Work location fit:</strong> remote" in report_text
+    assert "Location status:" not in report_text
 
-    assert "- Company: Example AI" in report_text
-    assert "- Source: greenhouse" in report_text
-    assert "- Location: Remote" in report_text
-    assert "- URL: https://boards.greenhouse.io/exampleai/jobs/123" in report_text
-    assert "- Canonical key: `example-ai:senior-infrastructure-engineer:remote`" in report_text
+    assert "<strong>Company:</strong> Example AI" in report_text
+    assert "<strong>Source:</strong> greenhouse" in report_text
+    assert "<strong>Location:</strong> Remote" in report_text
+    assert "https://boards.greenhouse.io/exampleai/jobs/123" in report_text
+    assert (
+        "<strong>Canonical key:</strong> "
+        "<code>example-ai:senior-infrastructure-engineer:remote</code>"
+        in report_text
+    )
 
 
 def test_handle_scan_adds_history_context_to_report(
@@ -1138,30 +1166,21 @@ top_matches:
     )
 
     capsys.readouterr()
-    report_text = report_file.read_text(encoding="utf-8")
+    snapshot = read_report_snapshot(report_file)
+    snapshot_job = find_snapshot_job(
+        snapshot,
+        "Senior Infrastructure Engineer",
+    )
 
-    assert "- Job history context:" in report_text
-    assert "  - Imported history: 1 records (1 pipeline, 0 reviewed)" in report_text
-    assert (
-        "  - Strong technical alignment has not always led to interviews "
-        "in prior applications (1 no-interview outcomes)"
-        in report_text
-    )
-    assert (
-        "  - Strong technical matches with no interview: "
-        "Strong / No Interview: 1"
-        in report_text
-    )
-    assert "  - Common prior history signals: Compensation: 1" in report_text
-    assert "- History context: Imported history: 1 records" not in report_text
-    assert (
-        "- History context: Prior similar application at Example AI ended "
+    assert not report_file.exists()
+    assert report_file.with_suffix(".html").exists()
+    assert report_file.with_suffix(".json").exists()
+    assert snapshot_job["history_context"] == (
+        "Prior similar application at Example AI ended "
         "No Interview despite Strong technical match"
-        in report_text
     )
-    assert (
-        "- History risk: caution: prior_no_interview_despite_strong_match"
-        in report_text
+    assert snapshot_job["history_risk"] == (
+        "caution: prior_no_interview_despite_strong_match"
     )
 
 
@@ -1262,7 +1281,11 @@ top_matches:
     )
 
     output = capsys.readouterr().out
-    report_text = report_file.read_text(encoding="utf-8")
+    snapshot = read_report_snapshot(report_file)
+    snapshot_job = find_snapshot_job(
+        snapshot,
+        "Senior Infrastructure Engineer",
+    )
 
     assert count_job_history_rows(database_file) == 2
     assert count_application_tracker_rows(database_file) == 0
@@ -1281,19 +1304,16 @@ top_matches:
     assert "Tracker rows updated: 0" in output
     assert "Tracker rows skipped: 2" in output
 
-    assert "- Job history context:" in report_text
-    assert "  - Imported history: 2 records (1 pipeline, 1 reviewed)" in report_text
-    assert (
-        "  - Strong technical alignment has not always led to interviews "
-        "in prior applications (1 no-interview outcomes)"
-        in report_text
+    assert not report_file.exists()
+    assert report_file.with_suffix(".html").exists()
+    assert report_file.with_suffix(".json").exists()
+    assert snapshot_job["history_context"] == (
+        "Prior similar application at Example AI ended "
+        "No Interview despite Very Strong technical match"
     )
-    assert (
-        "  - Strong technical matches with no interview: "
-        "Very Strong / No Interview: 1"
-        in report_text
+    assert snapshot_job["history_risk"] == (
+        "caution: prior_no_interview_despite_strong_match"
     )
-    assert "  - Common prior history signals: Generic Remote Competition: 1" in report_text
 
 
 def test_handle_scan_attaches_existing_tracker_record_to_report(
@@ -1404,17 +1424,35 @@ top_matches:
     )
 
     capsys.readouterr()
-    report_text = report_file.read_text(encoding="utf-8")
+    snapshot = read_report_snapshot(report_file)
+    tracked_jobs = snapshot["tracked_applications"]
 
     assert count_application_tracker_rows(database_file) == 1
-    assert "- Track Status:" in report_text
-    assert "  - Status: applied" in report_text
-    assert "  - Workflow: follow_up_scheduled" in report_text
-    assert "  - Follow up on: 2099-07-10" in report_text
-    assert "  - Outcome: interviewing" in report_text
-    assert "  - Notes: Already applied through company site." in report_text
-    assert "- Tracker workflow summary:" in report_text
-    assert "  - follow_up_scheduled: 1" in report_text
+    assert snapshot["summary"]["tracked_applications"] == 1
+    assert len(tracked_jobs) == 1
+    assert tracked_jobs[0]["title"] == "Senior Infrastructure Engineer"
+    assert tracked_jobs[0]["recommended_action"] == "Track Status"
+    assert tracked_jobs[0]["action_rationale"] == (
+        "You already applied for this job. "
+        "Track the existing application instead of applying again."
+    )
+
+    with sqlite3.connect(database_file) as connection:
+        tracker_row = connection.execute(
+            """
+            SELECT status, follow_up_on, outcome, notes
+            FROM application_tracker
+            WHERE job_radar_id = ?
+            """,
+            (fake_posting.job_radar_id,),
+        ).fetchone()
+
+    assert tracker_row == (
+        "applied",
+        "2099-07-10",
+        "interviewing",
+        "Already applied through company site.",
+    )
 
 
 def test_handle_scan_matches_tracked_application_by_source_url_when_ids_differ(
@@ -1525,21 +1563,34 @@ top_matches:
     )
 
     capsys.readouterr()
-    report_text = report_file.read_text(encoding="utf-8")
+    snapshot = read_report_snapshot(report_file)
+    tracked_jobs = snapshot["tracked_applications"]
 
-    top_matches_section = report_text.split("## Northern Colorado Highlights")[0]
-    tracked_section = report_text.split("## Tracked Applications")[1].split(
-        "## Passed / Not Recommended"
-    )[0]
+    assert snapshot["top_matches"] == []
+    assert snapshot["summary"]["tracked_applications"] == 1
+    assert len(tracked_jobs) == 1
+    assert tracked_jobs[0]["title"] == "Site Reliability Engineer"
+    assert tracked_jobs[0]["url"] == (
+        "https://jobs.ashbyhq.com/RunPod/"
+        "1d14340c-c9bd-4754-80f4-5c83980cd413"
+    )
+    assert tracked_jobs[0]["recommended_action"] == "Track Status"
 
-    assert "### [Site Reliability Engineer]" not in top_matches_section
-    assert "### [Site Reliability Engineer]" in tracked_section
-    assert "- Recommended action: Track Status" in tracked_section
-    assert "- Track Status:" in tracked_section
-    assert "  - Status: Applied" in tracked_section
-    assert "  - Workflow: follow_up_scheduled" in tracked_section
-    assert "  - Follow up on: 2026-07-25" in tracked_section
-    assert "  - Outcome: Pending / In Progress" in tracked_section
+    with sqlite3.connect(database_file) as connection:
+        tracker_row = connection.execute(
+            """
+            SELECT status, follow_up_on, outcome
+            FROM application_tracker
+            WHERE source_url = ?
+            """,
+            (fake_posting.source_url,),
+        ).fetchone()
+
+    assert tracker_row == (
+        "Applied",
+        "2026-07-25",
+        "Pending / In Progress",
+    )
 
 
 def test_handle_scan_omits_track_status_for_untracked_job(
@@ -1635,10 +1686,17 @@ top_matches:
     )
 
     capsys.readouterr()
-    report_text = report_file.read_text(encoding="utf-8")
+    snapshot = read_report_snapshot(report_file)
 
     assert count_application_tracker_rows(database_file) == 0
-    assert "- Track Status:\n  - Status:" not in report_text
+    assert snapshot["summary"]["tracked_applications"] == 0
+    assert snapshot["tracked_applications"] == []
+
+    snapshot_job = find_snapshot_job(
+        snapshot,
+        "Senior Infrastructure Engineer",
+    )
+    assert snapshot_job["recommended_action"] != "Track Status"
 
 
 def test_handle_scan_warns_and_continues_when_configured_history_workbook_is_missing(
@@ -1738,7 +1796,9 @@ top_matches:
     output = capsys.readouterr().out
 
     assert database_file.exists()
-    assert report_file.exists()
+    assert not report_file.exists()
+    assert report_file.with_suffix(".html").exists()
+    assert report_file.with_suffix(".json").exists()
     assert count_job_history_rows(database_file) == 0
     assert count_scan_run_rows(database_file) == 1
 
@@ -1889,8 +1949,9 @@ top_matches:
 
     output = capsys.readouterr().out
 
-    assert report_file.exists()
+    assert not report_file.exists()
     assert html_report_file.exists()
+    assert report_file.with_suffix(".json").exists()
     assert captured_email_call["attachment_path"] == html_report_file
     assert captured_email_call["subject"].startswith("Job Radar Report - ")
     assert "Full report:" in captured_email_call["body"]

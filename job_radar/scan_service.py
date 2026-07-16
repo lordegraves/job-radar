@@ -26,7 +26,6 @@ from job_radar.reporting import (
     ScanError,
     ScanReport,
     write_html_report,
-    write_markdown_report,
 )
 from job_radar.report_snapshot import write_report_snapshot
 from job_radar.scored_posting import ScoredPosting
@@ -597,12 +596,11 @@ def _handle_scan_unlocked(
             collector_errors=len(collector_errors),
         )
 
-        written_report_path = write_markdown_report(report_path, report)
         written_html_report_path = write_html_report(
             Path(report_path).with_suffix(".html"),
             report,
         )
-        write_report_snapshot(
+        written_snapshot_path = write_report_snapshot(
             Path(report_path).with_suffix(".json"),
             report,
         )
@@ -614,7 +612,6 @@ def _handle_scan_unlocked(
             written_email_preview_path = write_email_preview(
                 email_preview_path,
                 report,
-                written_report_path,
             )
 
         email_send_result = None
@@ -689,8 +686,8 @@ def _handle_scan_unlocked(
         print(f"Jobs seen: {jobs_seen}")
         print(f"Jobs changed: {jobs_changed}")
         print(f"Collector errors: {len(collector_errors)}")
-        print(f"Report written: {written_report_path}")
         print(f"HTML report written: {written_html_report_path}")
+        print(f"Structured report written: {written_snapshot_path}")
 
         if written_email_preview_path is not None:
             print(f"Email preview written: {written_email_preview_path}")

@@ -1,3 +1,5 @@
+import json
+import sqlite3
 from pathlib import Path
 
 from job_radar.cli import handle_scan
@@ -32,12 +34,14 @@ def make_fake_posting() -> JobPosting:
     )
 
 
-def write_test_config_files(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path]:
+def write_scan_test_files(
+    tmp_path: Path,
+) -> tuple[Path, Path, Path, Path, Path]:
     config_file = tmp_path / "companies.yaml"
     settings_file = tmp_path / "settings.yaml"
     scoring_file = tmp_path / "scoring.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
-    report_file = tmp_path / "today.md"
+    report_file = tmp_path / "today.html"
 
     config_file.write_text(
         """
@@ -95,23 +99,35 @@ top_matches:
     return config_file, settings_file, database_file, report_file, scoring_file
 
 
-def test_phase1a_scan_pipeline_tracks_new_then_seen(
+def count_job_postings(database_file: Path) -> int:
+    with sqlite3.connect(database_file) as connection:
+        row = connection.execute(
+            "SELECT COUNT(*) FROM job_postings"
+        ).fetchone()
+
+    assert row is not None
+    return int(row[0])
+
+
+def read_snapshot(report_file: Path) -> dict:
+    snapshot_file = report_file.with_suffix(".json")
+    return json.loads(snapshot_file.read_text(encoding="utf-8"))
+
+
+def test_scan_pipeline_tracks_new_then_seen(
     tmp_path: Path,
     monkeypatch,
     capsys,
 ) -> None:
     config_file, settings_file, database_file, report_file, scoring_file = (
-        write_test_config_files(tmp_path)
+        write_scan_test_files(tmp_path)
     )
 
     fake_posting = make_fake_posting()
 
-    def fake_collect_jobs_for_company(company_config):
-        return [fake_posting]
-
     monkeypatch.setattr(
         "job_radar.scan_service.collect_jobs_for_company",
-        fake_collect_jobs_for_company,
+        lambda company_config: [fake_posting],
     )
 
     handle_scan(
@@ -122,9 +138,15 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     )
 
     first_output = capsys.readouterr().out
-    first_report = report_file.read_text(encoding="utf-8")
+    first_snapshot = read_snapshot(report_file)
+    first_html = report_file.read_text(encoding="utf-8")
 
     assert database_file.exists()
+    assert count_job_postings(database_file) == 1
+    assert report_file.exists()
+    assert report_file.with_suffix(".json").exists()
+    assert not report_file.with_suffix(".md").exists()
+
     assert "Jobs collected: 1" in first_output
     assert "Actionable jobs stored: 1" in first_output
     assert "Jobs not actionable: 0" in first_output
@@ -132,27 +154,22 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     assert "Jobs seen: 0" in first_output
     assert "Jobs changed: 0" in first_output
 
-    assert "- New jobs: 1" in first_report
-    assert "- Seen jobs: 0" in first_report
-    assert "- Actionable jobs stored: 1" in first_report
-    assert "- Jobs not actionable: 0" in first_report
-    assert "## Top Matches" in first_report
-    assert "## Passed / Not Recommended" in first_report
-    assert "## All Jobs" not in first_report
-    assert (
-        "### [Senior Infrastructure Engineer]"
-        "(https://boards.greenhouse.io/exampleai/jobs/123)"
-        in first_report
+    assert first_snapshot["summary"]["new_jobs"] == 1
+    assert len(first_snapshot["top_matches"]) == 1
+    assert len(first_snapshot["new_jobs"]) == 1
+    assert first_snapshot["top_matches"][0]["title"] == (
+        "Senior Infrastructure Engineer"
+    )
+    assert first_snapshot["top_matches"][0]["why_matched"] == (
+        "infrastructure, linux, remote"
+    )
+    assert first_snapshot["new_jobs"][0]["url"] == (
+        "https://boards.greenhouse.io/exampleai/jobs/123"
     )
 
-    assert "- Score: 40" in first_report
-    assert "- Why this matched: infrastructure, linux, remote" in first_report
-    assert "- Score reasons:" not in first_report
-    assert "+30 title:infrastructure" not in first_report
-    assert "+10 body:linux" not in first_report
-    assert "+0 location_allowed:remote" not in first_report
-    assert "- Work location fit: remote" in first_report
-    assert "- Location status:" not in first_report
+    assert "<h1>Job Radar Report</h1>" in first_html
+    assert "<h2>Top Matches</h2>" in first_html
+    assert "Senior Infrastructure Engineer" in first_html
 
     handle_scan(
         config_path=str(config_file),
@@ -162,32 +179,27 @@ def test_phase1a_scan_pipeline_tracks_new_then_seen(
     )
 
     second_output = capsys.readouterr().out
-    second_report = report_file.read_text(encoding="utf-8")
+    second_snapshot = read_snapshot(report_file)
+    second_html = report_file.read_text(encoding="utf-8")
 
+    assert count_job_postings(database_file) == 1
     assert "Jobs collected: 1" in second_output
     assert "Actionable jobs stored: 1" in second_output
     assert "Jobs not actionable: 0" in second_output
     assert "Jobs new: 0" in second_output
     assert "Jobs seen: 1" in second_output
     assert "Jobs changed: 0" in second_output
-    assert "- New jobs: 0" in second_report
-    assert "- Seen jobs: 1" in second_report
-    assert "- Actionable jobs stored: 1" in second_report
-    assert "- Jobs not actionable: 0" in second_report
-    assert "## Top Matches" in second_report
-    assert "## Passed / Not Recommended" in second_report
-    assert "## All Jobs" not in second_report
-    assert (
-        "### [Senior Infrastructure Engineer]"
-        "(https://boards.greenhouse.io/exampleai/jobs/123)"
-        in second_report
+
+    assert second_snapshot["summary"]["new_jobs"] == 0
+    assert len(second_snapshot["top_matches"]) == 1
+    assert second_snapshot["new_jobs"] == []
+    assert second_snapshot["top_matches"][0]["title"] == (
+        "Senior Infrastructure Engineer"
+    )
+    assert second_snapshot["top_matches"][0]["why_matched"] == (
+        "infrastructure, linux, remote"
     )
 
-    assert "- Score: 40" in second_report
-    assert "- Why this matched: infrastructure, linux, remote" in second_report
-    assert "- Score reasons:" not in second_report
-    assert "+30 title:infrastructure" not in second_report
-    assert "+10 body:linux" not in second_report
-    assert "+0 location_allowed:remote" not in second_report
-    assert "- Work location fit: remote" in second_report
-    assert "- Location status:" not in second_report
+    assert "<h1>Job Radar Report</h1>" in second_html
+    assert "<h2>Top Matches</h2>" in second_html
+    assert "Senior Infrastructure Engineer" in second_html

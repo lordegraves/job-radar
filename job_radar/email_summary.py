@@ -208,13 +208,16 @@ def build_email_html_body(
 def write_email_preview(
     path: str | Path,
     report: ScanReport,
-    report_path: str | Path,
 ) -> Path:
     preview_path = Path(path)
     preview_path.parent.mkdir(parents=True, exist_ok=True)
 
     subject = build_email_subject(report)
-    body = build_email_body(report, report_path)
+    body = build_email_body(
+        report,
+        report_path="",
+        include_report_path=False,
+    )
 
     preview_text = f"Subject: {subject}\n\n{body}\n"
     preview_path.write_text(preview_text, encoding="utf-8")
