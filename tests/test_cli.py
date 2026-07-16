@@ -2053,6 +2053,10 @@ def test_parser_accepts_bootstrap_user_data_command() -> None:
             "bootstrap-user-data",
             "--source-settings",
             "config/settings.yaml",
+            "--source-companies",
+            "config/target-companies.yaml",
+            "--source-scoring",
+            "config/scoring.yaml",
             "--source-profiles",
             "profiles",
             "--source-database",
@@ -2064,6 +2068,8 @@ def test_parser_accepts_bootstrap_user_data_command() -> None:
 
     assert args.command == "bootstrap-user-data"
     assert args.source_settings == "config/settings.yaml"
+    assert args.source_companies == "config/target-companies.yaml"
+    assert args.source_scoring == "config/scoring.yaml"
     assert args.source_profiles == "profiles"
     assert args.source_database == "data/job_radar.sqlite3"
     assert args.destination == "user-data"
@@ -2076,6 +2082,8 @@ def test_parser_uses_bootstrap_user_data_defaults() -> None:
 
     assert args.command == "bootstrap-user-data"
     assert args.source_settings == "config/settings.yaml"
+    assert args.source_companies == "config/target-companies.yaml"
+    assert args.source_scoring == "config/scoring.yaml"
     assert args.source_profiles == "profiles"
     assert args.source_database is None
     assert args.destination is None
@@ -2087,6 +2095,8 @@ def test_handle_bootstrap_user_data_copies_configuration(
 ) -> None:
     source_root = tmp_path / "source"
     source_settings = source_root / "config" / "settings.yaml"
+    source_company_config = source_root / "config" / "target-companies.yaml"
+    source_scoring_config = source_root / "config" / "scoring.yaml"
     source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
     source_resume = source_root / "profiles" / "clayton" / "resume.md"
     source_database = source_root / "data" / "job_radar.sqlite3"
@@ -2096,6 +2106,14 @@ def test_handle_bootstrap_user_data_copies_configuration(
     source_database.parent.mkdir(parents=True)
     source_settings.write_text(
         "database_path: data/job_radar.sqlite3\n",
+        encoding="utf-8",
+    )
+    source_company_config.write_text(
+        "companies: []\n",
+        encoding="utf-8",
+    )
+    source_scoring_config.write_text(
+        "positive_keywords: {}\n",
         encoding="utf-8",
     )
     source_profile.write_text(
@@ -2115,6 +2133,8 @@ def test_handle_bootstrap_user_data_copies_configuration(
 
     handle_bootstrap_user_data(
         source_settings_path=str(source_settings),
+        source_company_config_path=str(source_company_config),
+        source_scoring_config_path=str(source_scoring_config),
         source_profiles_path=str(source_root / "profiles"),
         source_database_path=str(source_database),
         destination=str(destination),
@@ -2124,9 +2144,11 @@ def test_handle_bootstrap_user_data_copies_configuration(
 
     assert "User data bootstrap complete" in output
     assert f"Destination: {destination.resolve()}" in output
-    assert "Files copied: 4" in output
+    assert "Files copied: 6" in output
     assert "Existing files preserved: 0" in output
     assert (destination / "config" / "settings.yaml").is_file()
+    assert (destination / "config" / "target-companies.yaml").is_file()
+    assert (destination / "config" / "scoring.yaml").is_file()
     assert (destination / "profiles" / "clayton" / "profile.yaml").is_file()
     assert (destination / "profiles" / "clayton" / "resume.md").is_file()
 
@@ -2146,9 +2168,15 @@ def test_handle_bootstrap_user_data_preserves_existing_files(
 ) -> None:
     source_root = tmp_path / "source"
     source_settings = source_root / "config" / "settings.yaml"
+    source_company_config = source_root / "config" / "target-companies.yaml"
+    source_scoring_config = source_root / "config" / "scoring.yaml"
     source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
     destination = tmp_path / "user-data"
     destination_settings = destination / "config" / "settings.yaml"
+    destination_company_config = (
+        destination / "config" / "target-companies.yaml"
+    )
+    destination_scoring_config = destination / "config" / "scoring.yaml"
     destination_profile = (
         destination / "profiles" / "clayton" / "profile.yaml"
     )
@@ -2157,12 +2185,30 @@ def test_handle_bootstrap_user_data_preserves_existing_files(
     destination_settings.parent.mkdir(parents=True)
     destination_profile.parent.mkdir(parents=True)
     source_settings.write_text("source settings\n", encoding="utf-8")
+    source_company_config.write_text(
+        "source companies\n",
+        encoding="utf-8",
+    )
+    source_scoring_config.write_text(
+        "source scoring\n",
+        encoding="utf-8",
+    )
     source_profile.write_text("source profile\n", encoding="utf-8")
     destination_settings.write_text("existing settings\n", encoding="utf-8")
+    destination_company_config.write_text(
+        "existing companies\n",
+        encoding="utf-8",
+    )
+    destination_scoring_config.write_text(
+        "existing scoring\n",
+        encoding="utf-8",
+    )
     destination_profile.write_text("existing profile\n", encoding="utf-8")
 
     handle_bootstrap_user_data(
         source_settings_path=str(source_settings),
+        source_company_config_path=str(source_company_config),
+        source_scoring_config_path=str(source_scoring_config),
         source_profiles_path=str(source_root / "profiles"),
         destination=str(destination),
     )
@@ -2170,9 +2216,15 @@ def test_handle_bootstrap_user_data_preserves_existing_files(
     output = capsys.readouterr().out
 
     assert "Files copied: 0" in output
-    assert "Existing files preserved: 2" in output
+    assert "Existing files preserved: 4" in output
     assert destination_settings.read_text(encoding="utf-8") == (
         "existing settings\n"
+    )
+    assert destination_company_config.read_text(encoding="utf-8") == (
+        "existing companies\n"
+    )
+    assert destination_scoring_config.read_text(encoding="utf-8") == (
+        "existing scoring\n"
     )
     assert destination_profile.read_text(encoding="utf-8") == (
         "existing profile\n"

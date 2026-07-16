@@ -25,6 +25,8 @@ class UserDataBootstrapResult:
 
     user_data_paths: UserDataPaths
     settings_result: BootstrapCopyResult
+    company_config_result: BootstrapCopyResult
+    scoring_config_result: BootstrapCopyResult
     profile_results: tuple[BootstrapCopyResult, ...]
     database_result: BootstrapCopyResult | None
 
@@ -38,6 +40,8 @@ class UserDataBootstrapResult:
 
         return (
             self.settings_result,
+            self.company_config_result,
+            self.scoring_config_result,
             *self.profile_results,
             *optional_database_results,
         )
@@ -76,6 +80,8 @@ def create_user_data_directories(user_data_paths: UserDataPaths) -> None:
 def bootstrap_user_configuration(
     *,
     source_settings_path: str | Path,
+    source_company_config_path: str | Path,
+    source_scoring_config_path: str | Path,
     source_profiles_path: str | Path,
     user_data_paths: UserDataPaths,
     source_database_path: str | Path | None = None,
@@ -87,6 +93,14 @@ def bootstrap_user_configuration(
     settings_result = copy_bootstrap_file(
         source_settings_path,
         user_data_paths.config / "settings.yaml",
+    )
+    company_config_result = copy_bootstrap_file(
+        source_company_config_path,
+        user_data_paths.config / "target-companies.yaml",
+    )
+    scoring_config_result = copy_bootstrap_file(
+        source_scoring_config_path,
+        user_data_paths.config / "scoring.yaml",
     )
     profile_results = copy_bootstrap_tree(
         source_profiles_path,
@@ -104,6 +118,8 @@ def bootstrap_user_configuration(
     return UserDataBootstrapResult(
         user_data_paths=user_data_paths,
         settings_result=settings_result,
+        company_config_result=company_config_result,
+        scoring_config_result=scoring_config_result,
         profile_results=profile_results,
         database_result=database_result,
     )

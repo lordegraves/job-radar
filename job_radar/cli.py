@@ -3,6 +3,7 @@ from job_radar.config import ConfigError
 from job_radar.history_summary import build_history_summary, format_history_summary
 from job_radar.job_history import load_job_history_workbook
 from job_radar.runtime_paths import (
+    DEFAULT_COMPANY_CONFIG_PATH,
     DEFAULT_SCORING_CONFIG_PATH,
     DEFAULT_SETTINGS_PATH,
     RuntimePaths,
@@ -58,6 +59,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--source-settings",
         default=DEFAULT_SETTINGS_PATH,
         help="Existing settings file to copy",
+    )
+    bootstrap_parser.add_argument(
+        "--source-companies",
+        default=DEFAULT_COMPANY_CONFIG_PATH,
+        help="Existing company configuration file to copy",
+    )
+    bootstrap_parser.add_argument(
+        "--source-scoring",
+        default=DEFAULT_SCORING_CONFIG_PATH,
+        help="Existing scoring configuration file to copy",
     )
     bootstrap_parser.add_argument(
         "--source-profiles",
@@ -358,6 +369,8 @@ def build_parser() -> argparse.ArgumentParser:
 def handle_bootstrap_user_data(
     *,
     source_settings_path: str,
+    source_company_config_path: str,
+    source_scoring_config_path: str,
     source_profiles_path: str,
     source_database_path: str | None = None,
     destination: str | None = None,
@@ -369,6 +382,8 @@ def handle_bootstrap_user_data(
     )
     result = bootstrap_user_configuration(
         source_settings_path=source_settings_path,
+        source_company_config_path=source_company_config_path,
+        source_scoring_config_path=source_scoring_config_path,
         source_profiles_path=source_profiles_path,
         source_database_path=source_database_path,
         user_data_paths=user_data_paths,
@@ -643,6 +658,8 @@ def main() -> None:
         if args.command == "bootstrap-user-data":
             handle_bootstrap_user_data(
                 source_settings_path=args.source_settings,
+                source_company_config_path=args.source_companies,
+                source_scoring_config_path=args.source_scoring,
                 source_profiles_path=args.source_profiles,
                 source_database_path=args.source_database,
                 destination=args.destination,

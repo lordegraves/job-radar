@@ -34,12 +34,22 @@ def test_bootstrap_user_configuration_copies_settings_and_profiles(
 ) -> None:
     source_root = tmp_path / "source"
     source_settings = source_root / "config" / "settings.yaml"
+    source_company_config = source_root / "config" / "target-companies.yaml"
+    source_scoring_config = source_root / "config" / "scoring.yaml"
     source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
     source_resume = source_root / "profiles" / "clayton" / "resume.md"
     source_settings.parent.mkdir(parents=True)
     source_profile.parent.mkdir(parents=True)
     source_settings.write_text(
         "database_path: data/job_radar.sqlite3\n",
+        encoding="utf-8",
+    )
+    source_company_config.write_text(
+        "companies: []\n",
+        encoding="utf-8",
+    )
+    source_scoring_config.write_text(
+        "positive_keywords: {}\n",
         encoding="utf-8",
     )
     source_profile.write_text(
@@ -51,22 +61,32 @@ def test_bootstrap_user_configuration_copies_settings_and_profiles(
 
     result = bootstrap_user_configuration(
         source_settings_path=source_settings,
+        source_company_config_path=source_company_config,
+        source_scoring_config_path=source_scoring_config,
         source_profiles_path=source_root / "profiles",
         user_data_paths=user_data_paths,
     )
 
     assert result.user_data_paths == user_data_paths
     assert result.settings_result.copied is True
+    assert result.company_config_result.copied is True
+    assert result.scoring_config_result.copied is True
     assert len(result.profile_results) == 2
     assert result.database_result is None
-    assert len(result.all_results) == 3
-    assert len(result.copied_files) == 3
+    assert len(result.all_results) == 5
+    assert len(result.copied_files) == 5
     assert result.preserved_files == ()
     assert (
         user_data_paths.config / "settings.yaml"
     ).read_text(encoding="utf-8") == (
         "database_path: data/job_radar.sqlite3\n"
     )
+    assert (
+        user_data_paths.config / "target-companies.yaml"
+    ).read_text(encoding="utf-8") == "companies: []\n"
+    assert (
+        user_data_paths.config / "scoring.yaml"
+    ).read_text(encoding="utf-8") == "positive_keywords: {}\n"
     assert (
         user_data_paths.profiles / "clayton" / "profile.yaml"
     ).read_text(encoding="utf-8") == "candidate:\n  name: Clayton\n"
@@ -80,29 +100,53 @@ def test_bootstrap_user_configuration_preserves_existing_user_files(
 ) -> None:
     source_root = tmp_path / "source"
     source_settings = source_root / "config" / "settings.yaml"
+    source_company_config = source_root / "config" / "target-companies.yaml"
+    source_scoring_config = source_root / "config" / "scoring.yaml"
     source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
     source_settings.parent.mkdir(parents=True)
     source_profile.parent.mkdir(parents=True)
     source_settings.write_text("source settings\n", encoding="utf-8")
+    source_company_config.write_text("source companies\n", encoding="utf-8")
+    source_scoring_config.write_text("source scoring\n", encoding="utf-8")
     source_profile.write_text("source profile\n", encoding="utf-8")
     user_data_paths = UserDataPaths.from_root(tmp_path / "user-data")
     existing_settings = user_data_paths.config / "settings.yaml"
+    existing_company_config = (
+        user_data_paths.config / "target-companies.yaml"
+    )
+    existing_scoring_config = user_data_paths.config / "scoring.yaml"
     existing_profile = user_data_paths.profiles / "clayton" / "profile.yaml"
     existing_settings.parent.mkdir(parents=True)
     existing_profile.parent.mkdir(parents=True)
     existing_settings.write_text("existing settings\n", encoding="utf-8")
+    existing_company_config.write_text(
+        "existing companies\n",
+        encoding="utf-8",
+    )
+    existing_scoring_config.write_text(
+        "existing scoring\n",
+        encoding="utf-8",
+    )
     existing_profile.write_text("existing profile\n", encoding="utf-8")
 
     result = bootstrap_user_configuration(
         source_settings_path=source_settings,
+        source_company_config_path=source_company_config,
+        source_scoring_config_path=source_scoring_config,
         source_profiles_path=source_root / "profiles",
         user_data_paths=user_data_paths,
     )
 
     assert result.copied_files == ()
-    assert len(result.preserved_files) == 2
+    assert len(result.preserved_files) == 4
     assert existing_settings.read_text(encoding="utf-8") == (
         "existing settings\n"
+    )
+    assert existing_company_config.read_text(encoding="utf-8") == (
+        "existing companies\n"
+    )
+    assert existing_scoring_config.read_text(encoding="utf-8") == (
+        "existing scoring\n"
     )
     assert existing_profile.read_text(encoding="utf-8") == (
         "existing profile\n"
@@ -114,6 +158,8 @@ def test_bootstrap_user_configuration_copies_optional_database(
 ) -> None:
     source_root = tmp_path / "source"
     source_settings = source_root / "config" / "settings.yaml"
+    source_company_config = source_root / "config" / "target-companies.yaml"
+    source_scoring_config = source_root / "config" / "scoring.yaml"
     source_profiles = source_root / "profiles"
     source_profile = source_profiles / "clayton" / "profile.yaml"
     source_database = source_root / "data" / "job_radar.sqlite3"
@@ -122,6 +168,11 @@ def test_bootstrap_user_configuration_copies_optional_database(
     source_database.parent.mkdir(parents=True)
     source_settings.write_text(
         "database_path: data/job_radar.sqlite3\n",
+        encoding="utf-8",
+    )
+    source_company_config.write_text("companies: []\n", encoding="utf-8")
+    source_scoring_config.write_text(
+        "positive_keywords: {}\n",
         encoding="utf-8",
     )
     source_profile.write_text(
@@ -142,6 +193,8 @@ def test_bootstrap_user_configuration_copies_optional_database(
 
     result = bootstrap_user_configuration(
         source_settings_path=source_settings,
+        source_company_config_path=source_company_config,
+        source_scoring_config_path=source_scoring_config,
         source_profiles_path=source_profiles,
         source_database_path=source_database,
         user_data_paths=user_data_paths,
@@ -149,8 +202,8 @@ def test_bootstrap_user_configuration_copies_optional_database(
 
     assert result.database_result is not None
     assert result.database_result.copied is True
-    assert len(result.all_results) == 3
-    assert len(result.copied_files) == 3
+    assert len(result.all_results) == 5
+    assert len(result.copied_files) == 5
     assert result.preserved_files == ()
 
     with sqlite3.connect(
@@ -168,6 +221,8 @@ def test_bootstrap_user_configuration_preserves_existing_database(
 ) -> None:
     source_root = tmp_path / "source"
     source_settings = source_root / "config" / "settings.yaml"
+    source_company_config = source_root / "config" / "target-companies.yaml"
+    source_scoring_config = source_root / "config" / "scoring.yaml"
     source_profiles = source_root / "profiles"
     source_profile = source_profiles / "clayton" / "profile.yaml"
     source_database = source_root / "data" / "job_radar.sqlite3"
@@ -175,6 +230,11 @@ def test_bootstrap_user_configuration_preserves_existing_database(
     source_profile.parent.mkdir(parents=True)
     source_database.parent.mkdir(parents=True)
     source_settings.write_text("source settings\n", encoding="utf-8")
+    source_company_config.write_text("companies: []\n", encoding="utf-8")
+    source_scoring_config.write_text(
+        "positive_keywords: {}\n",
+        encoding="utf-8",
+    )
     source_profile.write_text("source profile\n", encoding="utf-8")
 
     with sqlite3.connect(source_database) as connection:
@@ -197,6 +257,8 @@ def test_bootstrap_user_configuration_preserves_existing_database(
 
     result = bootstrap_user_configuration(
         source_settings_path=source_settings,
+        source_company_config_path=source_company_config,
+        source_scoring_config_path=source_scoring_config,
         source_profiles_path=source_profiles,
         source_database_path=source_database,
         user_data_paths=user_data_paths,
