@@ -7,6 +7,8 @@ from job_radar.config import ApplicationSettings, load_settings
 DEFAULT_SETTINGS_PATH = "config/settings.yaml"
 DEFAULT_COMPANY_CONFIG_PATH = "config/target-companies.yaml"
 DEFAULT_SCORING_CONFIG_PATH = "config/scoring.yaml"
+DEFAULT_REPORT_PATH = "reports/target-scan.html"
+DEFAULT_EMAIL_PREVIEW_PATH = "reports/target-email-preview.txt"
 
 
 @dataclass(frozen=True)

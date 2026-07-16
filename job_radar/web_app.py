@@ -21,7 +21,13 @@ from job_radar.report_snapshot import (
     ReportSnapshotJob,
     load_report_snapshot,
 )
-from job_radar.runtime_paths import RuntimePaths
+from job_radar.runtime_paths import (
+    DEFAULT_COMPANY_CONFIG_PATH,
+    DEFAULT_EMAIL_PREVIEW_PATH,
+    DEFAULT_REPORT_PATH,
+    DEFAULT_SCORING_CONFIG_PATH,
+    RuntimePaths,
+)
 from job_radar.storage import (
     fetch_included_job_history_records,
     initialize_database,
@@ -317,10 +323,10 @@ REPORT_SECTION_DETAILS = {
 
 DEFAULT_REPORT_FILE_DESCRIPTION = "Additional file in the reports directory."
 
-DEFAULT_SCAN_CONFIG_PATH = "config/target-companies.yaml"
-DEFAULT_SCAN_SCORING_PATH = "config/scoring.yaml"
-DEFAULT_SCAN_REPORT_PATH = "reports/target-scan.html"
-DEFAULT_SCAN_EMAIL_PREVIEW_PATH = "reports/target-email-preview.txt"
+DEFAULT_SCAN_CONFIG_PATH = DEFAULT_COMPANY_CONFIG_PATH
+DEFAULT_SCAN_SCORING_PATH = DEFAULT_SCORING_CONFIG_PATH
+DEFAULT_SCAN_REPORT_PATH = DEFAULT_REPORT_PATH
+DEFAULT_SCAN_EMAIL_PREVIEW_PATH = DEFAULT_EMAIL_PREVIEW_PATH
 
 
 @dataclass(frozen=True)

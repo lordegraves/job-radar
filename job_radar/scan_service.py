@@ -28,7 +28,7 @@ from job_radar.reporting import (
     write_html_report,
 )
 from job_radar.report_snapshot import write_report_snapshot
-from job_radar.runtime_paths import RuntimePaths
+from job_radar.runtime_paths import DEFAULT_SCORING_CONFIG_PATH, RuntimePaths
 from job_radar.scored_posting import ScoredPosting
 from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
 from job_radar.resume_match import match_resume_to_posting
@@ -285,7 +285,7 @@ def handle_scan(
     config_path: str,
     settings_path: str,
     report_path: str,
-    scoring_path: str = "config/scoring.yaml",
+    scoring_path: str = DEFAULT_SCORING_CONFIG_PATH,
     email_preview_path: str | None = None,
     send_email: bool = False,
 ) -> None:

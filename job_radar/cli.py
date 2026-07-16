@@ -2,6 +2,10 @@ import argparse
 from job_radar.config import ConfigError, load_settings
 from job_radar.history_summary import build_history_summary, format_history_summary
 from job_radar.job_history import load_job_history_workbook
+from job_radar.runtime_paths import (
+    DEFAULT_SCORING_CONFIG_PATH,
+    DEFAULT_SETTINGS_PATH,
+)
 from job_radar.scan_service import (
     _import_history_records,
     handle_scan,
@@ -51,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     scan_parser.add_argument(
         "--settings",
-        default="config/settings.yaml",
+        default=DEFAULT_SETTINGS_PATH,
         help="Path to settings.yaml",
     )
     scan_parser.add_argument(
@@ -71,7 +75,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     scan_parser.add_argument(
         "--scoring",
-        default="config/scoring.yaml",
+        default=DEFAULT_SCORING_CONFIG_PATH,
         help="Path to scoring YAML file",
     )
 
@@ -86,12 +90,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     validate_parser.add_argument(
         "--settings",
-        default="config/settings.yaml",
+        default=DEFAULT_SETTINGS_PATH,
         help="Path to settings.yaml",
     )
     validate_parser.add_argument(
         "--scoring",
-        default="config/scoring.yaml",
+        default=DEFAULT_SCORING_CONFIG_PATH,
         help="Path to scoring YAML file",
     )
     validate_parser.add_argument(
@@ -116,7 +120,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     import_history_parser.add_argument(
         "--settings",
-        default="config/settings.yaml",
+        default=DEFAULT_SETTINGS_PATH,
         help="Path to settings.yaml",
     )
 
@@ -126,7 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     history_summary_parser.add_argument(
         "--settings",
-        default="config/settings.yaml",
+        default=DEFAULT_SETTINGS_PATH,
         help="Path to settings.yaml",
     )
 
@@ -150,7 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     history_import_parser.add_argument(
         "--settings",
-        default="config/settings.yaml",
+        default=DEFAULT_SETTINGS_PATH,
         help="Path to settings.yaml",
     )
 
@@ -160,7 +164,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     history_summary_group_parser.add_argument(
         "--settings",
-        default="config/settings.yaml",
+        default=DEFAULT_SETTINGS_PATH,
         help="Path to settings.yaml",
     )
 
@@ -197,7 +201,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tracker_list_parser.add_argument(
         "--settings",
-        default="config/settings.yaml",
+        default=DEFAULT_SETTINGS_PATH,
         help="Path to settings.yaml",
     )
     tracker_list_filter_group = tracker_list_parser.add_mutually_exclusive_group()
@@ -253,7 +257,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tracker_update_parser.add_argument(
         "--settings",
-        default="config/settings.yaml",
+        default=DEFAULT_SETTINGS_PATH,
         help="Path to settings.yaml",
     )
 
@@ -313,7 +317,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tracker_add_parser.add_argument(
         "--settings",
-        default="config/settings.yaml",
+        default=DEFAULT_SETTINGS_PATH,
         help="Path to settings.yaml",
     )
 
