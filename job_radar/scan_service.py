@@ -5,7 +5,7 @@ from job_radar.candidate_profile import CandidateProfile, load_candidate_profile
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import evaluate_compensation
-from job_radar.config import load_companies, load_settings
+from job_radar.config import ApplicationSettings, load_companies, load_settings
 from job_radar.email_sender import send_email_report
 from job_radar.email_summary import (
     build_email_body,
@@ -28,6 +28,7 @@ from job_radar.reporting import (
     write_html_report,
 )
 from job_radar.report_snapshot import write_report_snapshot
+from job_radar.runtime_paths import RuntimePaths
 from job_radar.scored_posting import ScoredPosting
 from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
 from job_radar.resume_match import match_resume_to_posting
@@ -291,17 +292,24 @@ def handle_scan(
     send_email: bool = False,
 ) -> None:
     settings = load_settings(settings_path)
-    database_path = settings["database_path"]
+    runtime_paths = RuntimePaths.from_application_settings(
+        settings,
+        settings_path=settings_path,
+        company_config_path=config_path,
+        scoring_config_path=scoring_path,
+    )
+    database_path = runtime_paths.database_path
 
     with acquire_scan_lock(database_path):
         _handle_scan_unlocked(
-            config_path=config_path,
-            settings_path=settings_path,
+            config_path=str(runtime_paths.company_config_path),
+            settings_path=str(runtime_paths.settings_path),
             settings=settings,
             report_path=report_path,
-            scoring_path=scoring_path,
+            scoring_path=str(runtime_paths.scoring_config_path),
             email_preview_path=email_preview_path,
             send_email=send_email,
+            database_path=str(database_path),
         )
 
 
@@ -309,14 +317,14 @@ def _handle_scan_unlocked(
     *,
     config_path: str,
     settings_path: str,
-    settings: dict,
+    settings: ApplicationSettings,
     report_path: str,
     scoring_path: str,
     email_preview_path: str | None,
     send_email: bool,
+    database_path: str,
 ) -> None:
     companies = load_companies(config_path)
-    database_path = settings["database_path"]
 
     initialize_database(database_path)
 

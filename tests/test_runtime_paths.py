@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from job_radar.config import load_settings
 from job_radar.runtime_paths import RuntimePaths
 
 
@@ -106,6 +107,46 @@ retention: {}
 
     assert runtime_paths.candidate_profile_path is None
     assert runtime_paths.job_history_workbook_path is None
+
+
+def test_runtime_paths_build_from_loaded_application_settings(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+    _write_settings(
+        settings_path,
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+candidate_profile_path: profiles/example/profile.yaml
+
+retention: {}
+""",
+    )
+    settings = load_settings(settings_path)
+
+    runtime_paths = RuntimePaths.from_application_settings(
+        settings,
+        settings_path=settings_path,
+        company_config_path="config/custom-companies.yaml",
+        scoring_config_path="config/custom-scoring.yaml",
+        base_directory=tmp_path,
+    )
+
+    assert runtime_paths.settings_path == settings_path.resolve()
+    assert runtime_paths.company_config_path == (
+        tmp_path / "config" / "custom-companies.yaml"
+    ).resolve()
+    assert runtime_paths.scoring_config_path == (
+        tmp_path / "config" / "custom-scoring.yaml"
+    ).resolve()
+    assert runtime_paths.database_path == (
+        tmp_path / "data" / "job_radar.sqlite3"
+    ).resolve()
+    assert runtime_paths.candidate_profile_path == (
+        tmp_path / "profiles" / "example" / "profile.yaml"
+    ).resolve()
 
 
 def test_runtime_paths_use_current_working_directory_by_default(

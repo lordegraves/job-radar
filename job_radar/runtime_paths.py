@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from job_radar.config import load_settings
+from job_radar.config import ApplicationSettings, load_settings
 
 
 DEFAULT_SETTINGS_PATH = "config/settings.yaml"
@@ -42,9 +42,29 @@ class RuntimePaths:
         resolved_settings_path = _resolve_from_base(settings_path, base_path)
         settings = load_settings(resolved_settings_path)
 
+        return cls.from_application_settings(
+            settings,
+            settings_path=resolved_settings_path,
+            company_config_path=company_config_path,
+            scoring_config_path=scoring_config_path,
+            base_directory=base_path,
+        )
+
+    @classmethod
+    def from_application_settings(
+        cls,
+        settings: ApplicationSettings,
+        *,
+        settings_path: str | Path,
+        company_config_path: str | Path = DEFAULT_COMPANY_CONFIG_PATH,
+        scoring_config_path: str | Path = DEFAULT_SCORING_CONFIG_PATH,
+        base_directory: str | Path | None = None,
+    ) -> "RuntimePaths":
+        base_path = _resolve_base_directory(base_directory)
+
         return cls(
             base_directory=base_path,
-            settings_path=resolved_settings_path,
+            settings_path=_resolve_from_base(settings_path, base_path),
             company_config_path=_resolve_from_base(
                 company_config_path,
                 base_path,
