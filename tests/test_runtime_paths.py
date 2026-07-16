@@ -74,6 +74,86 @@ def test_default_user_data_paths_use_default_root(
     assert user_data_paths.profiles == root.resolve() / "profiles"
 
 
+def test_runtime_paths_use_bootstrapped_user_settings_by_default(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    user_data_root = tmp_path / "user-data"
+    user_settings_path = user_data_root / "config" / "settings.yaml"
+    _write_settings(
+        user_settings_path,
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+candidate_profile_path: profiles/example/profile.yaml
+
+retention: {}
+""",
+    )
+    monkeypatch.setenv(
+        APPLICATION_DATA_ENVIRONMENT_VARIABLE,
+        str(user_data_root),
+    )
+
+    runtime_paths = RuntimePaths.from_default_settings()
+
+    assert runtime_paths.base_directory == user_data_root.resolve()
+    assert runtime_paths.settings_path == user_settings_path.resolve()
+    assert runtime_paths.database_path == (
+        user_data_root / "data" / "job_radar.sqlite3"
+    ).resolve()
+    assert runtime_paths.reports_path == (
+        user_data_root / "reports"
+    ).resolve()
+    assert runtime_paths.logs_path == (
+        user_data_root / "logs"
+    ).resolve()
+    assert runtime_paths.candidate_profile_path == (
+        user_data_root / "profiles" / "example" / "profile.yaml"
+    ).resolve()
+
+
+def test_runtime_paths_fall_back_to_repository_settings(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repository_root = tmp_path / "repository"
+    repository_settings_path = (
+        repository_root / "config" / "settings.yaml"
+    )
+    user_data_root = tmp_path / "user-data"
+    _write_settings(
+        repository_settings_path,
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention: {}
+""",
+    )
+    monkeypatch.chdir(repository_root)
+    monkeypatch.setenv(
+        APPLICATION_DATA_ENVIRONMENT_VARIABLE,
+        str(user_data_root),
+    )
+
+    runtime_paths = RuntimePaths.from_default_settings()
+
+    assert runtime_paths.base_directory == repository_root.resolve()
+    assert runtime_paths.settings_path == repository_settings_path.resolve()
+    assert runtime_paths.database_path == (
+        repository_root / "data" / "job_radar.sqlite3"
+    ).resolve()
+    assert runtime_paths.reports_path == (
+        repository_root / "reports"
+    ).resolve()
+    assert runtime_paths.logs_path == (
+        repository_root / "logs"
+    ).resolve()
+
+
 def test_runtime_paths_resolve_relative_paths_from_explicit_base(
     tmp_path: Path,
 ) -> None:

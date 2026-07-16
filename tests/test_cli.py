@@ -1,5 +1,6 @@
 import json
 import sqlite3
+import sys
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -15,6 +16,7 @@ from job_radar.cli import (
     handle_tracker_add,
     handle_tracker_list,
     handle_tracker_update,
+    main,
 )
 from job_radar.scan_service import _find_profile_avoid_matches
 from job_radar.job_history import (
@@ -2221,6 +2223,74 @@ def test_parser_accepts_grouped_db_init_command() -> None:
 
     assert args.command == "db"
     assert args.db_command == "init"
+
+
+def test_main_init_db_uses_bootstrapped_user_database(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    user_data_root = tmp_path / "user-data"
+    settings_path = user_data_root / "config" / "settings.yaml"
+    database_path = user_data_root / "data" / "job_radar.sqlite3"
+    repository_root = tmp_path / "repository"
+    settings_path.parent.mkdir(parents=True)
+    repository_root.mkdir()
+    settings_path.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention: {}
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(repository_root)
+    monkeypatch.setenv("JOB_RADAR_DATA_DIR", str(user_data_root))
+    monkeypatch.setattr(sys, "argv", ["job-radar", "init-db"])
+
+    main()
+
+    output = capsys.readouterr().out
+
+    assert database_path.is_file()
+    assert f"Database initialized: {database_path.resolve()}" in output
+    assert not (repository_root / "data" / "job_radar.sqlite3").exists()
+
+
+def test_main_grouped_db_init_uses_bootstrapped_user_database(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    user_data_root = tmp_path / "user-data"
+    settings_path = user_data_root / "config" / "settings.yaml"
+    database_path = user_data_root / "data" / "job_radar.sqlite3"
+    repository_root = tmp_path / "repository"
+    settings_path.parent.mkdir(parents=True)
+    repository_root.mkdir()
+    settings_path.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention: {}
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(repository_root)
+    monkeypatch.setenv("JOB_RADAR_DATA_DIR", str(user_data_root))
+    monkeypatch.setattr(sys, "argv", ["job-radar", "db", "init"])
+
+    main()
+
+    output = capsys.readouterr().out
+
+    assert database_path.is_file()
+    assert f"Database initialized: {database_path.resolve()}" in output
+    assert not (repository_root / "data" / "job_radar.sqlite3").exists()
 
 
 def test_parser_keeps_legacy_history_commands() -> None:

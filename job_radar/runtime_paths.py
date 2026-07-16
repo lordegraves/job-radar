@@ -76,6 +76,32 @@ class RuntimePaths:
         return _resolve_optional_from_base(path, self.base_directory)
 
     @classmethod
+    def from_default_settings(
+        cls,
+        *,
+        company_config_path: str | Path = DEFAULT_COMPANY_CONFIG_PATH,
+        scoring_config_path: str | Path = DEFAULT_SCORING_CONFIG_PATH,
+    ) -> "RuntimePaths":
+        """Use bootstrapped user settings when present, otherwise use the repo."""
+
+        user_data_paths = UserDataPaths.default()
+        user_settings_path = user_data_paths.config / "settings.yaml"
+
+        if user_settings_path.is_file():
+            return cls.from_settings(
+                settings_path=user_settings_path,
+                company_config_path=company_config_path,
+                scoring_config_path=scoring_config_path,
+                base_directory=user_data_paths.root,
+            )
+
+        return cls.from_settings(
+            settings_path=DEFAULT_SETTINGS_PATH,
+            company_config_path=company_config_path,
+            scoring_config_path=scoring_config_path,
+        )
+
+    @classmethod
     def from_settings(
         cls,
         settings_path: str | Path = DEFAULT_SETTINGS_PATH,

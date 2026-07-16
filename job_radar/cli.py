@@ -5,6 +5,7 @@ from job_radar.job_history import load_job_history_workbook
 from job_radar.runtime_paths import (
     DEFAULT_SCORING_CONFIG_PATH,
     DEFAULT_SETTINGS_PATH,
+    RuntimePaths,
     UserDataPaths,
 )
 from job_radar.scan_service import (
@@ -693,15 +694,15 @@ def main() -> None:
                 return
 
         if args.command == "init-db":
-            settings = load_settings()
-            db_path = initialize_database(settings["database_path"])
+            runtime_paths = RuntimePaths.from_default_settings()
+            db_path = initialize_database(runtime_paths.database_path)
             print(f"Database initialized: {db_path}")
             return
 
         if args.command == "db":
             if args.db_command == "init":
-                settings = load_settings()
-                db_path = initialize_database(settings["database_path"])
+                runtime_paths = RuntimePaths.from_default_settings()
+                db_path = initialize_database(runtime_paths.database_path)
                 print(f"Database initialized: {db_path}")
                 return
 
