@@ -109,6 +109,38 @@ retention: {}
     assert runtime_paths.job_history_workbook_path is None
 
 
+def test_runtime_paths_resolve_required_and_optional_output_paths(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+    _write_settings(
+        settings_path,
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention: {}
+""",
+    )
+
+    runtime_paths = RuntimePaths.from_settings(
+        settings_path=settings_path,
+        base_directory=tmp_path,
+    )
+
+    assert runtime_paths.resolve("reports/target-scan.html") == (
+        tmp_path / "reports" / "target-scan.html"
+    ).resolve()
+    assert runtime_paths.resolve(tmp_path / "external" / "report.html") == (
+        tmp_path / "external" / "report.html"
+    ).resolve()
+    assert runtime_paths.resolve_optional("reports/email-preview.txt") == (
+        tmp_path / "reports" / "email-preview.txt"
+    ).resolve()
+    assert runtime_paths.resolve_optional(None) is None
+
+
 def test_runtime_paths_build_from_loaded_application_settings(
     tmp_path: Path,
 ) -> None:

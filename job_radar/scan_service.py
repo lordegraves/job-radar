@@ -68,10 +68,10 @@ from job_radar.tracker.tracker_storage import (
 )
 
 
-def _load_candidate_context(settings: dict) -> tuple[object | None, str | None]:
-    candidate_profile_path = settings.get("candidate_profile_path")
-
-    if not candidate_profile_path:
+def _load_candidate_context(
+    candidate_profile_path: Path | None,
+) -> tuple[object | None, str | None]:
+    if candidate_profile_path is None:
         return None, None
 
     candidate_profile = load_candidate_profile(candidate_profile_path)
@@ -198,12 +198,10 @@ def _import_history_records(
 
 def _import_job_history_for_scan(
     *,
-    settings: dict,
+    workbook_path: Path | None,
     database_path: str,
 ) -> None:
-    workbook_path = settings.get("job_history_workbook_path")
-
-    if not workbook_path:
+    if workbook_path is None:
         return
 
     if not Path(workbook_path).exists():
@@ -299,17 +297,25 @@ def handle_scan(
         scoring_config_path=scoring_path,
     )
     database_path = runtime_paths.database_path
+    resolved_report_path = runtime_paths.resolve(report_path)
+    resolved_email_preview_path = runtime_paths.resolve_optional(email_preview_path)
 
     with acquire_scan_lock(database_path):
         _handle_scan_unlocked(
             config_path=str(runtime_paths.company_config_path),
             settings_path=str(runtime_paths.settings_path),
             settings=settings,
-            report_path=report_path,
+            report_path=str(resolved_report_path),
             scoring_path=str(runtime_paths.scoring_config_path),
-            email_preview_path=email_preview_path,
+            email_preview_path=(
+                str(resolved_email_preview_path)
+                if resolved_email_preview_path is not None
+                else None
+            ),
             send_email=send_email,
             database_path=str(database_path),
+            candidate_profile_path=runtime_paths.candidate_profile_path,
+            job_history_workbook_path=runtime_paths.job_history_workbook_path,
         )
 
 
@@ -323,6 +329,8 @@ def _handle_scan_unlocked(
     email_preview_path: str | None,
     send_email: bool,
     database_path: str,
+    candidate_profile_path: Path | None,
+    job_history_workbook_path: Path | None,
 ) -> None:
     companies = load_companies(config_path)
 
@@ -346,7 +354,9 @@ def _handle_scan_unlocked(
 
     try:
         scoring_config = load_scoring_config(scoring_path)
-        candidate_profile, resume_text = _load_candidate_context(settings)
+        candidate_profile, resume_text = _load_candidate_context(
+            candidate_profile_path,
+        )
 
         current_stage = "history_import"
         update_scan_run_progress(
@@ -356,7 +366,7 @@ def _handle_scan_unlocked(
         )
 
         _import_job_history_for_scan(
-            settings=settings,
+            workbook_path=job_history_workbook_path,
             database_path=database_path,
         )
 
