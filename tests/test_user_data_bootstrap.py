@@ -1,3 +1,4 @@
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ from job_radar.runtime_paths import UserDataPaths
 from job_radar.user_data_bootstrap import (
     UserDataBootstrapError,
     bootstrap_user_configuration,
+    copy_bootstrap_database,
     copy_bootstrap_file,
     copy_bootstrap_tree,
     create_user_data_directories,
@@ -56,6 +58,8 @@ def test_bootstrap_user_configuration_copies_settings_and_profiles(
     assert result.user_data_paths == user_data_paths
     assert result.settings_result.copied is True
     assert len(result.profile_results) == 2
+    assert result.database_result is None
+    assert len(result.all_results) == 3
     assert len(result.copied_files) == 3
     assert result.preserved_files == ()
     assert (
@@ -103,6 +107,233 @@ def test_bootstrap_user_configuration_preserves_existing_user_files(
     assert existing_profile.read_text(encoding="utf-8") == (
         "existing profile\n"
     )
+
+
+def test_bootstrap_user_configuration_copies_optional_database(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "source"
+    source_settings = source_root / "config" / "settings.yaml"
+    source_profiles = source_root / "profiles"
+    source_profile = source_profiles / "clayton" / "profile.yaml"
+    source_database = source_root / "data" / "job_radar.sqlite3"
+    source_settings.parent.mkdir(parents=True)
+    source_profile.parent.mkdir(parents=True)
+    source_database.parent.mkdir(parents=True)
+    source_settings.write_text(
+        "database_path: data/job_radar.sqlite3\n",
+        encoding="utf-8",
+    )
+    source_profile.write_text(
+        "candidate:\n  name: Clayton\n",
+        encoding="utf-8",
+    )
+
+    with sqlite3.connect(source_database) as connection:
+        connection.execute(
+            "CREATE TABLE bootstrap_marker (value TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO bootstrap_marker (value) VALUES (?)",
+            ("database copied",),
+        )
+
+    user_data_paths = UserDataPaths.from_root(tmp_path / "user-data")
+
+    result = bootstrap_user_configuration(
+        source_settings_path=source_settings,
+        source_profiles_path=source_profiles,
+        source_database_path=source_database,
+        user_data_paths=user_data_paths,
+    )
+
+    assert result.database_result is not None
+    assert result.database_result.copied is True
+    assert len(result.all_results) == 3
+    assert len(result.copied_files) == 3
+    assert result.preserved_files == ()
+
+    with sqlite3.connect(
+        user_data_paths.data / "job_radar.sqlite3"
+    ) as connection:
+        marker_value = connection.execute(
+            "SELECT value FROM bootstrap_marker"
+        ).fetchone()[0]
+
+    assert marker_value == "database copied"
+
+
+def test_bootstrap_user_configuration_preserves_existing_database(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "source"
+    source_settings = source_root / "config" / "settings.yaml"
+    source_profiles = source_root / "profiles"
+    source_profile = source_profiles / "clayton" / "profile.yaml"
+    source_database = source_root / "data" / "job_radar.sqlite3"
+    source_settings.parent.mkdir(parents=True)
+    source_profile.parent.mkdir(parents=True)
+    source_database.parent.mkdir(parents=True)
+    source_settings.write_text("source settings\n", encoding="utf-8")
+    source_profile.write_text("source profile\n", encoding="utf-8")
+
+    with sqlite3.connect(source_database) as connection:
+        connection.execute(
+            "CREATE TABLE source_marker (value TEXT NOT NULL)"
+        )
+
+    user_data_paths = UserDataPaths.from_root(tmp_path / "user-data")
+    destination_database = user_data_paths.data / "job_radar.sqlite3"
+    destination_database.parent.mkdir(parents=True)
+
+    with sqlite3.connect(destination_database) as connection:
+        connection.execute(
+            "CREATE TABLE destination_marker (value TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO destination_marker (value) VALUES (?)",
+            ("existing database",),
+        )
+
+    result = bootstrap_user_configuration(
+        source_settings_path=source_settings,
+        source_profiles_path=source_profiles,
+        source_database_path=source_database,
+        user_data_paths=user_data_paths,
+    )
+
+    assert result.database_result is not None
+    assert result.database_result.copied is False
+    assert result.database_result in result.preserved_files
+
+    with sqlite3.connect(destination_database) as connection:
+        marker_value = connection.execute(
+            "SELECT value FROM destination_marker"
+        ).fetchone()[0]
+        source_table = connection.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+            AND name = 'source_marker'
+            """
+        ).fetchone()
+
+    assert marker_value == "existing database"
+    assert source_table is None
+
+
+def test_copy_bootstrap_database_creates_valid_sqlite_backup(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source" / "job_radar.sqlite3"
+    destination = tmp_path / "destination" / "job_radar.sqlite3"
+    source.parent.mkdir(parents=True)
+
+    with sqlite3.connect(source) as connection:
+        connection.execute(
+            """
+            CREATE TABLE migration_marker (
+                value TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO migration_marker (value)
+            VALUES (?)
+            """,
+            ("copied safely",),
+        )
+
+    result = copy_bootstrap_database(source, destination)
+
+    assert result.source == source.resolve()
+    assert result.destination == destination.resolve()
+    assert result.copied is True
+
+    with sqlite3.connect(destination) as connection:
+        marker_value = connection.execute(
+            "SELECT value FROM migration_marker"
+        ).fetchone()[0]
+
+    assert marker_value == "copied safely"
+
+
+def test_copy_bootstrap_database_preserves_existing_destination(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.sqlite3"
+    destination = tmp_path / "destination.sqlite3"
+
+    with sqlite3.connect(source) as connection:
+        connection.execute(
+            "CREATE TABLE source_marker (value TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO source_marker (value) VALUES (?)",
+            ("source",),
+        )
+
+    with sqlite3.connect(destination) as connection:
+        connection.execute(
+            "CREATE TABLE destination_marker (value TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO destination_marker (value) VALUES (?)",
+            ("existing",),
+        )
+
+    result = copy_bootstrap_database(source, destination)
+
+    assert result.copied is False
+
+    with sqlite3.connect(destination) as connection:
+        marker_value = connection.execute(
+            "SELECT value FROM destination_marker"
+        ).fetchone()[0]
+        source_table = connection.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+            AND name = 'source_marker'
+            """
+        ).fetchone()
+
+    assert marker_value == "existing"
+    assert source_table is None
+
+
+def test_copy_bootstrap_database_rejects_missing_source(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "missing.sqlite3"
+    destination = tmp_path / "destination.sqlite3"
+
+    with pytest.raises(
+        UserDataBootstrapError,
+        match="Bootstrap source database does not exist",
+    ):
+        copy_bootstrap_database(source, destination)
+
+
+def test_copy_bootstrap_database_rejects_directory_destination(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.sqlite3"
+    destination = tmp_path / "destination"
+
+    with sqlite3.connect(source) as connection:
+        connection.execute("CREATE TABLE marker (value TEXT)")
+
+    destination.mkdir()
+
+    with pytest.raises(
+        UserDataBootstrapError,
+        match="Bootstrap database destination is not a file",
+    ):
+        copy_bootstrap_database(source, destination)
 
 
 def test_copy_bootstrap_file_copies_missing_destination(

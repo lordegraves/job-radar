@@ -2053,6 +2053,8 @@ def test_parser_accepts_bootstrap_user_data_command() -> None:
             "config/settings.yaml",
             "--source-profiles",
             "profiles",
+            "--source-database",
+            "data/job_radar.sqlite3",
             "--destination",
             "user-data",
         ]
@@ -2061,6 +2063,7 @@ def test_parser_accepts_bootstrap_user_data_command() -> None:
     assert args.command == "bootstrap-user-data"
     assert args.source_settings == "config/settings.yaml"
     assert args.source_profiles == "profiles"
+    assert args.source_database == "data/job_radar.sqlite3"
     assert args.destination == "user-data"
 
 
@@ -2072,6 +2075,7 @@ def test_parser_uses_bootstrap_user_data_defaults() -> None:
     assert args.command == "bootstrap-user-data"
     assert args.source_settings == "config/settings.yaml"
     assert args.source_profiles == "profiles"
+    assert args.source_database is None
     assert args.destination is None
 
 
@@ -2083,9 +2087,11 @@ def test_handle_bootstrap_user_data_copies_configuration(
     source_settings = source_root / "config" / "settings.yaml"
     source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
     source_resume = source_root / "profiles" / "clayton" / "resume.md"
+    source_database = source_root / "data" / "job_radar.sqlite3"
     destination = tmp_path / "user-data"
     source_settings.parent.mkdir(parents=True)
     source_profile.parent.mkdir(parents=True)
+    source_database.parent.mkdir(parents=True)
     source_settings.write_text(
         "database_path: data/job_radar.sqlite3\n",
         encoding="utf-8",
@@ -2096,9 +2102,19 @@ def test_handle_bootstrap_user_data_copies_configuration(
     )
     source_resume.write_text("# Resume\n", encoding="utf-8")
 
+    with sqlite3.connect(source_database) as connection:
+        connection.execute(
+            "CREATE TABLE bootstrap_marker (value TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO bootstrap_marker (value) VALUES (?)",
+            ("copied through CLI",),
+        )
+
     handle_bootstrap_user_data(
         source_settings_path=str(source_settings),
         source_profiles_path=str(source_root / "profiles"),
+        source_database_path=str(source_database),
         destination=str(destination),
     )
 
@@ -2106,11 +2122,20 @@ def test_handle_bootstrap_user_data_copies_configuration(
 
     assert "User data bootstrap complete" in output
     assert f"Destination: {destination.resolve()}" in output
-    assert "Files copied: 3" in output
+    assert "Files copied: 4" in output
     assert "Existing files preserved: 0" in output
     assert (destination / "config" / "settings.yaml").is_file()
     assert (destination / "profiles" / "clayton" / "profile.yaml").is_file()
     assert (destination / "profiles" / "clayton" / "resume.md").is_file()
+
+    with sqlite3.connect(
+        destination / "data" / "job_radar.sqlite3"
+    ) as connection:
+        marker_value = connection.execute(
+            "SELECT value FROM bootstrap_marker"
+        ).fetchone()[0]
+
+    assert marker_value == "copied through CLI"
 
 
 def test_handle_bootstrap_user_data_preserves_existing_files(

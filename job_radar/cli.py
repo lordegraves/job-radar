@@ -64,6 +64,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Existing profiles directory to copy",
     )
     bootstrap_parser.add_argument(
+        "--source-database",
+        default=None,
+        help="Optional existing SQLite database to copy safely",
+    )
+    bootstrap_parser.add_argument(
         "--destination",
         default=None,
         help="Optional user-data root override",
@@ -353,6 +358,7 @@ def handle_bootstrap_user_data(
     *,
     source_settings_path: str,
     source_profiles_path: str,
+    source_database_path: str | None = None,
     destination: str | None = None,
 ) -> None:
     user_data_paths = (
@@ -363,6 +369,7 @@ def handle_bootstrap_user_data(
     result = bootstrap_user_configuration(
         source_settings_path=source_settings_path,
         source_profiles_path=source_profiles_path,
+        source_database_path=source_database_path,
         user_data_paths=user_data_paths,
     )
 
@@ -636,6 +643,7 @@ def main() -> None:
             handle_bootstrap_user_data(
                 source_settings_path=args.source_settings,
                 source_profiles_path=args.source_profiles,
+                source_database_path=args.source_database,
                 destination=args.destination,
             )
             return
