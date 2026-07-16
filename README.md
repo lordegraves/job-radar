@@ -358,20 +358,23 @@ The Settings page is read-only for MVP. It surfaces the active settings file, da
 
 ## Email behavior
 
-Email delivery is guarded behind explicit configuration and an explicit scan flag.
+Email delivery is guarded behind explicit configuration and an explicit send action.
 
-Email behavior:
+Current email behavior:
 
-- email settings are validated without sending by default
-- SMTP delivery is disabled until intentionally enabled
-- `--send-email` is required to exercise the send path
-- passwords must come from environment variables
-- no SMTP password should be stored in YAML
-- with email disabled, `--send-email` prints that sending is disabled
+- email configuration is validated without sending
+- missing email credentials do not prevent Job Radar from starting
+- SMTP delivery remains disabled until intentionally enabled
+- `--send-email` is required to exercise the CLI send path
+- the current implementation reads SMTP passwords from environment variables
+- SMTP passwords must not be stored in YAML
+- email readiness is reported separately as disabled, credential unavailable, or ready to send
+- an attempted send refuses safely when the configured credential is unavailable
+- with email disabled, `--send-email` reports that sending is disabled
 - email summaries are intentionally capped for readability
 - tracked applications are excluded from email summaries
 
-When email sending is enabled, the settings file should name an environment variable that contains the SMTP password:
+The current environment-variable configuration names the variable that contains the SMTP password:
 
 ```yaml
 email:
@@ -381,10 +384,12 @@ email:
     - "you@example.com"
   smtp_host: "smtp.example.com"
   smtp_port: 587
+  smtp_username: "you@example.com"
   smtp_password_env: "JOB_RADAR_SMTP_PASSWORD"
+  smtp_tls_mode: "starttls"
 ```
 
-If `email.enabled` is true and the configured password environment variable is missing, Job Radar fails cleanly before attempting to send email.
+If `email.enabled` is true and the configured environment variable is missing, Job Radar continues to start and perform unrelated work. Email readiness reports that the credential is unavailable, and an attempted email send stops before opening an SMTP connection.
 
 After real email send tests, remove the password environment variable from the shell:
 
@@ -398,6 +403,48 @@ Expected:
 ```text
 False
 ```
+
+### Approved credential-storage direction
+
+The approved desktop credential-storage design is:
+
+- Windows desktop installations use Windows Credential Manager
+- macOS desktop installations use Keychain
+- supported Linux desktop installations use a Secret Service-compatible system keyring when available
+- containers, servers, scheduled automation, CI, and existing installations may continue using environment variables
+- existing `smtp_password_env` configurations remain supported without forced migration
+- Job Radar configuration stores only a credential reference, never the credential value
+- application upgrades preserve credential references and do not overwrite, expose, migrate, or delete stored credentials automatically
+- a lost or unavailable credential can be replaced but cannot be displayed or recovered through Job Radar
+
+Native operating-system credential storage will become the default during future desktop email setup. Environment variables remain the supported non-desktop and compatibility mechanism.
+
+### Credential protections and limitations
+
+Job Radar must clearly disclose these protections and limitations before a user saves an email credential and must keep the same information available later from Settings.
+
+The credential-storage design protects against SMTP passwords being:
+
+- stored in Job Radar YAML configuration
+- stored in the Job Radar SQLite database
+- written to reports, email previews, logs, diagnostics, or support bundles
+- copied by user-data bootstrap or migration operations
+- committed to source control
+- included in application packages or release artifacts
+- displayed after being saved
+
+These protections reduce accidental disclosure and prevent anyone who can merely read Job Radar files from obtaining the SMTP password.
+
+The credential-storage design does not protect against:
+
+- malware running as the logged-in user
+- an administrator or root user
+- a fully compromised operating system
+- inspection of application memory while the credential is actively being used
+- compromise of the email provider or SMTP account
+- a user deliberately exposing or copying their own credential
+
+Job Radar must not describe operating-system credential storage as absolute protection. The user must be told that it protects credentials at rest from ordinary file access and accidental inclusion in Job Radar data, but it cannot secure a credential from software or administrators that already control the user account or operating system.
 
 ## Run tests
 
