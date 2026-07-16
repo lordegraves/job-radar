@@ -74,6 +74,70 @@ def test_default_user_data_paths_use_default_root(
     assert user_data_paths.profiles == root.resolve() / "profiles"
 
 
+def test_runtime_paths_settings_argument_uses_active_default_for_none(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    user_data_root = tmp_path / "user-data"
+    user_settings_path = user_data_root / "config" / "settings.yaml"
+    _write_settings(
+        user_settings_path,
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention: {}
+""",
+    )
+    monkeypatch.setenv(
+        APPLICATION_DATA_ENVIRONMENT_VARIABLE,
+        str(user_data_root),
+    )
+
+    runtime_paths = RuntimePaths.from_settings_argument(None)
+
+    assert runtime_paths.base_directory == user_data_root.resolve()
+    assert runtime_paths.settings_path == user_settings_path.resolve()
+    assert runtime_paths.database_path == (
+        user_data_root / "data" / "job_radar.sqlite3"
+    ).resolve()
+
+
+def test_runtime_paths_settings_argument_preserves_explicit_path(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repository_root = tmp_path / "repository"
+    explicit_settings_path = repository_root / "config" / "settings.yaml"
+    user_data_root = tmp_path / "user-data"
+    _write_settings(
+        explicit_settings_path,
+        """
+database_path: data/explicit.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention: {}
+""",
+    )
+    monkeypatch.chdir(repository_root)
+    monkeypatch.setenv(
+        APPLICATION_DATA_ENVIRONMENT_VARIABLE,
+        str(user_data_root),
+    )
+
+    runtime_paths = RuntimePaths.from_settings_argument(
+        "config/settings.yaml"
+    )
+
+    assert runtime_paths.base_directory == repository_root.resolve()
+    assert runtime_paths.settings_path == explicit_settings_path.resolve()
+    assert runtime_paths.database_path == (
+        repository_root / "data" / "explicit.sqlite3"
+    ).resolve()
+
+
 def test_runtime_paths_use_bootstrapped_user_settings_by_default(
     tmp_path: Path,
     monkeypatch,

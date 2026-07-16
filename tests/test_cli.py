@@ -2179,6 +2179,33 @@ def test_handle_bootstrap_user_data_preserves_existing_files(
     )
 
 
+def test_parser_uses_active_settings_for_history_commands() -> None:
+    parser = build_parser()
+
+    legacy_import_args = parser.parse_args(
+        [
+            "import-history",
+            "--workbook",
+            "data/job-history.xlsx",
+        ]
+    )
+    legacy_summary_args = parser.parse_args(["history-summary"])
+    grouped_import_args = parser.parse_args(
+        [
+            "history",
+            "import",
+            "--workbook",
+            "data/job-history.xlsx",
+        ]
+    )
+    grouped_summary_args = parser.parse_args(["history", "summary"])
+
+    assert legacy_import_args.settings is None
+    assert legacy_summary_args.settings is None
+    assert grouped_import_args.settings is None
+    assert grouped_summary_args.settings is None
+
+
 def test_parser_accepts_grouped_history_import_command() -> None:
     parser = build_parser()
 
@@ -2320,6 +2347,38 @@ def test_parser_keeps_legacy_history_commands() -> None:
     assert init_args.command == "init-db"
 
 
+def test_parser_uses_active_settings_for_tracker_commands() -> None:
+    parser = build_parser()
+
+    list_args = parser.parse_args(["tracker", "list"])
+    add_args = parser.parse_args(
+        [
+            "tracker",
+            "add",
+            "--job-radar-id",
+            "jr-example-12345678",
+            "--company",
+            "Example Co",
+            "--role",
+            "Senior Infrastructure Engineer",
+        ]
+    )
+    update_args = parser.parse_args(
+        [
+            "tracker",
+            "update",
+            "--job-radar-id",
+            "jr-example-12345678",
+            "--status",
+            "applied",
+        ]
+    )
+
+    assert list_args.settings is None
+    assert add_args.settings is None
+    assert update_args.settings is None
+
+
 def test_parser_accepts_tracker_list_command() -> None:
     parser = build_parser()
 
@@ -2377,6 +2436,89 @@ def test_parser_accepts_tracker_list_needs_review_command() -> None:
     assert args.needs_action is False
     assert args.needs_review is True
     assert args.settings == "config/settings.yaml"
+
+
+def test_handle_tracker_list_uses_active_user_runtime(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    user_data_root = tmp_path / "user-data"
+    settings_file = user_data_root / "config" / "settings.yaml"
+    database_file = user_data_root / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention: {}
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("JOB_RADAR_DATA_DIR", str(user_data_root))
+
+    initialize_database(database_file)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-user-runtime-12345678",
+            company_name="User Runtime Co",
+            role_title="Senior Infrastructure Engineer",
+            status="applied",
+        ),
+    )
+
+    handle_tracker_list(settings_path=None)
+
+    output = capsys.readouterr().out
+
+    assert f"Database: {database_file.resolve()}" in output
+    assert "User Runtime Co" in output
+    assert "jr-user-runtime-12345678" in output
+
+
+def test_handle_tracker_add_uses_active_user_runtime(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    user_data_root = tmp_path / "user-data"
+    settings_file = user_data_root / "config" / "settings.yaml"
+    database_file = user_data_root / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention: {}
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("JOB_RADAR_DATA_DIR", str(user_data_root))
+
+    handle_tracker_add(
+        settings_path=None,
+        job_radar_id="jr-user-runtime-add-12345678",
+        company_name="User Runtime Add Co",
+        role_title="Principal Systems Engineer",
+        status="applied",
+    )
+
+    output = capsys.readouterr().out
+
+    assert database_file.is_file()
+    assert f"Database: {database_file.resolve()}" in output
+    assert "Result: new" in output
+
+    handle_tracker_list(settings_path=None)
+    list_output = capsys.readouterr().out
+
+    assert "User Runtime Add Co" in list_output
+    assert "jr-user-runtime-add-12345678" in list_output
 
 
 def test_handle_tracker_list_outputs_tracked_applications(

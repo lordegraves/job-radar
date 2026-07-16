@@ -1,5 +1,5 @@
 import argparse
-from job_radar.config import ConfigError, load_settings
+from job_radar.config import ConfigError
 from job_radar.history_summary import build_history_summary, format_history_summary
 from job_radar.job_history import load_job_history_workbook
 from job_radar.runtime_paths import (
@@ -151,8 +151,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     import_history_parser.add_argument(
         "--settings",
-        default=DEFAULT_SETTINGS_PATH,
-        help="Path to settings.yaml",
+        default=None,
+        help="Optional explicit path to settings.yaml",
     )
 
     history_summary_parser = subparsers.add_parser(
@@ -161,8 +161,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     history_summary_parser.add_argument(
         "--settings",
-        default=DEFAULT_SETTINGS_PATH,
-        help="Path to settings.yaml",
+        default=None,
+        help="Optional explicit path to settings.yaml",
     )
 
     history_parser = subparsers.add_parser(
@@ -185,8 +185,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     history_import_parser.add_argument(
         "--settings",
-        default=DEFAULT_SETTINGS_PATH,
-        help="Path to settings.yaml",
+        default=None,
+        help="Optional explicit path to settings.yaml",
     )
 
     history_summary_group_parser = history_subparsers.add_parser(
@@ -195,8 +195,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     history_summary_group_parser.add_argument(
         "--settings",
-        default=DEFAULT_SETTINGS_PATH,
-        help="Path to settings.yaml",
+        default=None,
+        help="Optional explicit path to settings.yaml",
     )
 
     subparsers.add_parser(
@@ -232,8 +232,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tracker_list_parser.add_argument(
         "--settings",
-        default=DEFAULT_SETTINGS_PATH,
-        help="Path to settings.yaml",
+        default=None,
+        help="Optional explicit path to settings.yaml",
     )
     tracker_list_filter_group = tracker_list_parser.add_mutually_exclusive_group()
     tracker_list_filter_group.add_argument(
@@ -288,8 +288,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tracker_update_parser.add_argument(
         "--settings",
-        default=DEFAULT_SETTINGS_PATH,
-        help="Path to settings.yaml",
+        default=None,
+        help="Optional explicit path to settings.yaml",
     )
 
     tracker_add_parser = tracker_subparsers.add_parser(
@@ -348,8 +348,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tracker_add_parser.add_argument(
         "--settings",
-        default=DEFAULT_SETTINGS_PATH,
-        help="Path to settings.yaml",
+        default=None,
+        help="Optional explicit path to settings.yaml",
     )
 
     return parser
@@ -388,10 +388,10 @@ def handle_bootstrap_user_data(
 
 def handle_import_history(
     workbook_path: str,
-    settings_path: str,
+    settings_path: str | None,
 ) -> None:
-    settings = load_settings(settings_path)
-    database_path = settings["database_path"]
+    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    database_path = runtime_paths.database_path
     initialize_database(database_path)
 
     import_result = load_job_history_workbook(workbook_path)
@@ -419,9 +419,9 @@ def handle_import_history(
     print(f"Tracker rows skipped: {tracker_skipped_count}")
 
 
-def handle_history_summary(settings_path: str) -> None:
-    settings = load_settings(settings_path)
-    database_path = settings["database_path"]
+def handle_history_summary(settings_path: str | None) -> None:
+    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    database_path = runtime_paths.database_path
     initialize_database(database_path)
 
     summary = build_history_summary(database_path)
@@ -430,13 +430,13 @@ def handle_history_summary(settings_path: str) -> None:
 
 
 def handle_tracker_list(
-    settings_path: str,
+    settings_path: str | None,
     *,
     needs_action: bool = False,
     needs_review: bool = False,
 ) -> None:
-    settings = load_settings(settings_path)
-    database_path = settings["database_path"]
+    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    database_path = runtime_paths.database_path
     initialize_database(database_path)
 
     applications = list_applications(database_path)
@@ -500,7 +500,7 @@ def handle_tracker_list(
 
 
 def handle_tracker_add(
-    settings_path: str,
+    settings_path: str | None,
     *,
     job_radar_id: str,
     company_name: str,
@@ -513,8 +513,8 @@ def handle_tracker_add(
     outcome: str | None = None,
     notes: str | None = None,
 ) -> None:
-    settings = load_settings(settings_path)
-    database_path = settings["database_path"]
+    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    database_path = runtime_paths.database_path
     initialize_database(database_path)
 
     result = upsert_application(
@@ -561,7 +561,7 @@ def handle_tracker_add(
 
 
 def handle_tracker_update(
-    settings_path: str,
+    settings_path: str | None,
     *,
     job_radar_id: str,
     status: str,
@@ -571,8 +571,8 @@ def handle_tracker_update(
     outcome: str | None = None,
     notes: str | None = None,
 ) -> None:
-    settings = load_settings(settings_path)
-    database_path = settings["database_path"]
+    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+    database_path = runtime_paths.database_path
     initialize_database(database_path)
 
     updated = update_application_status(

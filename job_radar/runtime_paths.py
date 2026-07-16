@@ -76,6 +76,28 @@ class RuntimePaths:
         return _resolve_optional_from_base(path, self.base_directory)
 
     @classmethod
+    def from_settings_argument(
+        cls,
+        settings_path: str | Path | None,
+        *,
+        company_config_path: str | Path = DEFAULT_COMPANY_CONFIG_PATH,
+        scoring_config_path: str | Path = DEFAULT_SCORING_CONFIG_PATH,
+    ) -> "RuntimePaths":
+        """Resolve an explicit settings file or use the active default."""
+
+        if settings_path is None:
+            return cls.from_default_settings(
+                company_config_path=company_config_path,
+                scoring_config_path=scoring_config_path,
+            )
+
+        return cls.from_settings(
+            settings_path=settings_path,
+            company_config_path=company_config_path,
+            scoring_config_path=scoring_config_path,
+        )
+
+    @classmethod
     def from_default_settings(
         cls,
         *,
