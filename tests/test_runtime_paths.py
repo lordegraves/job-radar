@@ -1,12 +1,77 @@
 from pathlib import Path
 
+import job_radar.runtime_paths as runtime_paths_module
 from job_radar.config import load_settings
-from job_radar.runtime_paths import RuntimePaths
+from job_radar.runtime_paths import (
+    APPLICATION_DATA_ENVIRONMENT_VARIABLE,
+    RuntimePaths,
+    UserDataPaths,
+    get_default_user_data_directory,
+)
 
 
 def _write_settings(settings_path: Path, content: str) -> None:
     settings_path.parent.mkdir(parents=True, exist_ok=True)
     settings_path.write_text(content, encoding="utf-8")
+
+
+def test_default_user_data_directory_honors_environment_override(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    configured_directory = tmp_path / "custom-job-radar-data"
+    monkeypatch.setenv(
+        APPLICATION_DATA_ENVIRONMENT_VARIABLE,
+        str(configured_directory),
+    )
+
+    assert get_default_user_data_directory() == configured_directory.resolve()
+
+
+def test_default_user_data_directory_uses_windows_local_app_data(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    local_app_data = tmp_path / "LocalAppData"
+    monkeypatch.delenv(APPLICATION_DATA_ENVIRONMENT_VARIABLE, raising=False)
+    monkeypatch.setenv("LOCALAPPDATA", str(local_app_data))
+    monkeypatch.setattr(runtime_paths_module.os, "name", "nt")
+
+    assert get_default_user_data_directory() == (
+        local_app_data / "JobRadar"
+    ).resolve()
+
+
+def test_user_data_paths_define_standard_writable_layout(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "JobRadar"
+
+    user_data_paths = UserDataPaths.from_root(root)
+
+    assert user_data_paths.root == root.resolve()
+    assert user_data_paths.config == root.resolve() / "config"
+    assert user_data_paths.data == root.resolve() / "data"
+    assert user_data_paths.logs == root.resolve() / "logs"
+    assert user_data_paths.profiles == root.resolve() / "profiles"
+    assert user_data_paths.reports == root.resolve() / "reports"
+
+
+def test_default_user_data_paths_use_default_root(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    root = tmp_path / "JobRadar"
+    monkeypatch.setenv(
+        APPLICATION_DATA_ENVIRONMENT_VARIABLE,
+        str(root),
+    )
+
+    user_data_paths = UserDataPaths.default()
+
+    assert user_data_paths.root == root.resolve()
+    assert user_data_paths.data == root.resolve() / "data"
+    assert user_data_paths.profiles == root.resolve() / "profiles"
 
 
 def test_runtime_paths_resolve_relative_paths_from_explicit_base(

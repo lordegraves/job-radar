@@ -1,3 +1,5 @@
+import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,6 +11,38 @@ DEFAULT_COMPANY_CONFIG_PATH = "config/target-companies.yaml"
 DEFAULT_SCORING_CONFIG_PATH = "config/scoring.yaml"
 DEFAULT_REPORT_PATH = "reports/target-scan.html"
 DEFAULT_EMAIL_PREVIEW_PATH = "reports/target-email-preview.txt"
+
+APPLICATION_DATA_DIRECTORY_NAME = "JobRadar"
+APPLICATION_DATA_ENVIRONMENT_VARIABLE = "JOB_RADAR_DATA_DIR"
+
+
+@dataclass(frozen=True)
+class UserDataPaths:
+    """Standard writable locations owned by the current Job Radar user."""
+
+    root: Path
+    config: Path
+    data: Path
+    logs: Path
+    profiles: Path
+    reports: Path
+
+    @classmethod
+    def from_root(cls, root: str | Path) -> "UserDataPaths":
+        resolved_root = Path(root).expanduser().resolve()
+
+        return cls(
+            root=resolved_root,
+            config=resolved_root / "config",
+            data=resolved_root / "data",
+            logs=resolved_root / "logs",
+            profiles=resolved_root / "profiles",
+            reports=resolved_root / "reports",
+        )
+
+    @classmethod
+    def default(cls) -> "UserDataPaths":
+        return cls.from_root(get_default_user_data_directory())
 
 
 @dataclass(frozen=True)
@@ -106,6 +140,45 @@ class RuntimePaths:
                 base_path,
             ),
         )
+
+
+def get_default_user_data_directory() -> Path:
+    """Return the operating system's normal location for Job Radar user data.
+
+    An explicit JOB_RADAR_DATA_DIR value takes priority. This provides a safe
+    test and recovery override without requiring private data to live inside
+    the source repository.
+    """
+
+    configured_directory = os.environ.get(APPLICATION_DATA_ENVIRONMENT_VARIABLE)
+
+    if configured_directory:
+        return Path(configured_directory).expanduser().resolve()
+
+    if os.name == "nt":
+        local_app_data = os.environ.get("LOCALAPPDATA")
+
+        if local_app_data:
+            return (Path(local_app_data) / APPLICATION_DATA_DIRECTORY_NAME).resolve()
+
+        return (
+            Path.home() / "AppData" / "Local" / APPLICATION_DATA_DIRECTORY_NAME
+        ).resolve()
+
+    if sys.platform == "darwin":
+        return (
+            Path.home()
+            / "Library"
+            / "Application Support"
+            / APPLICATION_DATA_DIRECTORY_NAME
+        ).resolve()
+
+    xdg_data_home = os.environ.get("XDG_DATA_HOME")
+
+    if xdg_data_home:
+        return (Path(xdg_data_home) / "job-radar").resolve()
+
+    return (Path.home() / ".local" / "share" / "job-radar").resolve()
 
 
 def _resolve_base_directory(base_directory: str | Path | None) -> Path:
