@@ -479,6 +479,44 @@ def test_copy_bootstrap_tree_preserves_existing_destination_files(
     )
 
 
+def test_bootstrap_user_configuration_allows_missing_profiles_directory(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "source"
+    source_settings = source_root / "config" / "settings.yaml"
+    source_company_config = source_root / "config" / "target-companies.yaml"
+    source_scoring_config = source_root / "config" / "scoring.yaml"
+    missing_profiles = source_root / "profiles"
+    source_settings.parent.mkdir(parents=True)
+    source_settings.write_text(
+        "database_path: data/job_radar.sqlite3\n",
+        encoding="utf-8",
+    )
+    source_company_config.write_text(
+        "companies: []\n",
+        encoding="utf-8",
+    )
+    source_scoring_config.write_text(
+        "positive_keywords: {}\n",
+        encoding="utf-8",
+    )
+    user_data_paths = UserDataPaths.from_root(tmp_path / "user-data")
+
+    result = bootstrap_user_configuration(
+        source_settings_path=source_settings,
+        source_company_config_path=source_company_config,
+        source_scoring_config_path=source_scoring_config,
+        source_profiles_path=missing_profiles,
+        user_data_paths=user_data_paths,
+    )
+
+    assert result.profile_results == ()
+    assert len(result.all_results) == 3
+    assert len(result.copied_files) == 3
+    assert result.preserved_files == ()
+    assert user_data_paths.profiles.is_dir()
+
+
 def test_copy_bootstrap_tree_rejects_missing_source_directory(
     tmp_path: Path,
 ) -> None:

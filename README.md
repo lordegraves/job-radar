@@ -550,9 +550,8 @@ Do not work on these unless explicitly requested and documented as a new milesto
 | `job_radar/profile_service.py` | Profile/resume service helpers, including GUI-safe resume upload/replacement and normalized resume regeneration. | Keep |
 | `job_radar/resume_loader.py` | Loads Markdown, plain-text, PDF, and DOCX resume/profile text for matching. | Keep |
 | `job_radar/resume_match.py` | Resume-to-posting match logic. | Keep |
-| `profiles/clayton/profile.yaml` | Clayton-specific target profile and avoid/preference signals. | Keep / review before public release |
-| `profiles/clayton/resume.md` | Clayton-specific resume source used by Job Radar. | Keep / review before public release |
-| `profiles/clayton/resume.normalized.txt` | Normalized resume text for matching. | Keep / review whether generated |
+
+Candidate profiles, resumes, and normalized resume text are private user data stored outside the source tree in the active Job Radar user-data directory.
 
 ## Scoring, recommendations, and history
 

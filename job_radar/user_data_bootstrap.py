@@ -102,9 +102,14 @@ def bootstrap_user_configuration(
         source_scoring_config_path,
         user_data_paths.config / "scoring.yaml",
     )
-    profile_results = copy_bootstrap_tree(
-        source_profiles_path,
-        user_data_paths.profiles,
+    source_profiles = Path(source_profiles_path).resolve()
+    profile_results = (
+        copy_bootstrap_tree(
+            source_profiles,
+            user_data_paths.profiles,
+        )
+        if source_profiles.exists()
+        else ()
     )
     database_result = (
         copy_bootstrap_database(
