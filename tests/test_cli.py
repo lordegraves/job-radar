@@ -9,6 +9,7 @@ from job_radar.collectors.greenhouse import CollectorError
 from job_radar.cli import (
     _import_history_records,
     build_parser,
+    handle_bootstrap_user_data,
     handle_import_history,
     handle_scan,
     handle_tracker_add,
@@ -2040,6 +2041,115 @@ def test_find_profile_avoid_matches_ignores_non_matching_terms() -> None:
     )
 
     assert _find_profile_avoid_matches(profile, posting) == []
+
+
+def test_parser_accepts_bootstrap_user_data_command() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "bootstrap-user-data",
+            "--source-settings",
+            "config/settings.yaml",
+            "--source-profiles",
+            "profiles",
+            "--destination",
+            "user-data",
+        ]
+    )
+
+    assert args.command == "bootstrap-user-data"
+    assert args.source_settings == "config/settings.yaml"
+    assert args.source_profiles == "profiles"
+    assert args.destination == "user-data"
+
+
+def test_parser_uses_bootstrap_user_data_defaults() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["bootstrap-user-data"])
+
+    assert args.command == "bootstrap-user-data"
+    assert args.source_settings == "config/settings.yaml"
+    assert args.source_profiles == "profiles"
+    assert args.destination is None
+
+
+def test_handle_bootstrap_user_data_copies_configuration(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    source_root = tmp_path / "source"
+    source_settings = source_root / "config" / "settings.yaml"
+    source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
+    source_resume = source_root / "profiles" / "clayton" / "resume.md"
+    destination = tmp_path / "user-data"
+    source_settings.parent.mkdir(parents=True)
+    source_profile.parent.mkdir(parents=True)
+    source_settings.write_text(
+        "database_path: data/job_radar.sqlite3\n",
+        encoding="utf-8",
+    )
+    source_profile.write_text(
+        "candidate:\n  name: Clayton\n",
+        encoding="utf-8",
+    )
+    source_resume.write_text("# Resume\n", encoding="utf-8")
+
+    handle_bootstrap_user_data(
+        source_settings_path=str(source_settings),
+        source_profiles_path=str(source_root / "profiles"),
+        destination=str(destination),
+    )
+
+    output = capsys.readouterr().out
+
+    assert "User data bootstrap complete" in output
+    assert f"Destination: {destination.resolve()}" in output
+    assert "Files copied: 3" in output
+    assert "Existing files preserved: 0" in output
+    assert (destination / "config" / "settings.yaml").is_file()
+    assert (destination / "profiles" / "clayton" / "profile.yaml").is_file()
+    assert (destination / "profiles" / "clayton" / "resume.md").is_file()
+
+
+def test_handle_bootstrap_user_data_preserves_existing_files(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    source_root = tmp_path / "source"
+    source_settings = source_root / "config" / "settings.yaml"
+    source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
+    destination = tmp_path / "user-data"
+    destination_settings = destination / "config" / "settings.yaml"
+    destination_profile = (
+        destination / "profiles" / "clayton" / "profile.yaml"
+    )
+    source_settings.parent.mkdir(parents=True)
+    source_profile.parent.mkdir(parents=True)
+    destination_settings.parent.mkdir(parents=True)
+    destination_profile.parent.mkdir(parents=True)
+    source_settings.write_text("source settings\n", encoding="utf-8")
+    source_profile.write_text("source profile\n", encoding="utf-8")
+    destination_settings.write_text("existing settings\n", encoding="utf-8")
+    destination_profile.write_text("existing profile\n", encoding="utf-8")
+
+    handle_bootstrap_user_data(
+        source_settings_path=str(source_settings),
+        source_profiles_path=str(source_root / "profiles"),
+        destination=str(destination),
+    )
+
+    output = capsys.readouterr().out
+
+    assert "Files copied: 0" in output
+    assert "Existing files preserved: 2" in output
+    assert destination_settings.read_text(encoding="utf-8") == (
+        "existing settings\n"
+    )
+    assert destination_profile.read_text(encoding="utf-8") == (
+        "existing profile\n"
+    )
 
 
 def test_parser_accepts_grouped_history_import_command() -> None:

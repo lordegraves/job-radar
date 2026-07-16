@@ -5,6 +5,7 @@ from job_radar.job_history import load_job_history_workbook
 from job_radar.runtime_paths import (
     DEFAULT_SCORING_CONFIG_PATH,
     DEFAULT_SETTINGS_PATH,
+    UserDataPaths,
 )
 from job_radar.scan_service import (
     _import_history_records,
@@ -18,6 +19,10 @@ from job_radar.tracker.tracker_storage import (
     list_applications,
     update_application_status,
     upsert_application,
+)
+from job_radar.user_data_bootstrap import (
+    UserDataBootstrapError,
+    bootstrap_user_configuration,
 )
 from job_radar.validation import validate_configuration
 
@@ -43,6 +48,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    bootstrap_parser = subparsers.add_parser(
+        "bootstrap-user-data",
+        help="Copy initial settings and profiles into user-owned storage",
+    )
+    bootstrap_parser.add_argument(
+        "--source-settings",
+        default=DEFAULT_SETTINGS_PATH,
+        help="Existing settings file to copy",
+    )
+    bootstrap_parser.add_argument(
+        "--source-profiles",
+        default="profiles",
+        help="Existing profiles directory to copy",
+    )
+    bootstrap_parser.add_argument(
+        "--destination",
+        default=None,
+        help="Optional user-data root override",
+    )
 
     scan_parser = subparsers.add_parser(
         "scan",
@@ -324,6 +349,35 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def handle_bootstrap_user_data(
+    *,
+    source_settings_path: str,
+    source_profiles_path: str,
+    destination: str | None = None,
+) -> None:
+    user_data_paths = (
+        UserDataPaths.from_root(destination)
+        if destination is not None
+        else UserDataPaths.default()
+    )
+    result = bootstrap_user_configuration(
+        source_settings_path=source_settings_path,
+        source_profiles_path=source_profiles_path,
+        user_data_paths=user_data_paths,
+    )
+
+    print("User data bootstrap complete")
+    print(f"Destination: {user_data_paths.root}")
+    print(f"Files copied: {len(result.copied_files)}")
+    print(f"Existing files preserved: {len(result.preserved_files)}")
+
+    for copy_result in result.copied_files:
+        print(f"Copied: {copy_result.destination}")
+
+    for copy_result in result.preserved_files:
+        print(f"Preserved: {copy_result.destination}")
+
+
 def handle_import_history(
     workbook_path: str,
     settings_path: str,
@@ -578,6 +632,14 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
+        if args.command == "bootstrap-user-data":
+            handle_bootstrap_user_data(
+                source_settings_path=args.source_settings,
+                source_profiles_path=args.source_profiles,
+                destination=args.destination,
+            )
+            return
+
         if args.command == "scan":
             handle_scan(
                 config_path=args.config,
@@ -673,7 +735,7 @@ def main() -> None:
                 )
                 return
 
-    except (ConfigError, ScoringConfigError) as error:
+    except (ConfigError, ScoringConfigError, UserDataBootstrapError) as error:
         parser.exit(status=1, message=f"Config error: {error}\n")
 
 if __name__ == "__main__":
