@@ -1,4 +1,6 @@
 import argparse
+
+from job_radar import __version__
 from job_radar.config import ConfigError
 from job_radar.history_summary import build_history_summary, format_history_summary
 from job_radar.job_history import load_job_history_workbook
@@ -45,8 +47,13 @@ TRACKER_NEEDS_REVIEW_WORKFLOW_STATES = {
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="job_radar",
+        prog="job-radar",
         description="Target-company job discovery and triage tool",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
