@@ -2,22 +2,24 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from job_radar.report_view_model import build_report_view_model
-from job_radar.reporting import (
-    PASSED_JOBS_REPORT_LIMIT,
-    ScanReport,
+from job_radar.recommendations import (
     _format_hiring_risk_flags,
-    _format_history_context,
-    _format_history_risk,
-    _format_match_summary,
     _get_action_rationale,
     _get_compensation_range_label,
     _get_hiring_probability_label,
-    _get_omitted_postings,
-    _get_ordered_omitted_postings,
     _get_recommended_action,
     _get_resume_match_label,
     _get_technical_match_label,
+)
+from job_radar.report_models import ScanReport
+from job_radar.report_view_model import build_report_view_model
+from job_radar.reporting import (
+    PASSED_JOBS_REPORT_LIMIT,
+    _format_history_context,
+    _format_history_risk,
+    _format_match_summary,
+    _get_omitted_postings,
+    _get_ordered_omitted_postings,
 )
 from job_radar.scored_posting import ScoredPosting
 
