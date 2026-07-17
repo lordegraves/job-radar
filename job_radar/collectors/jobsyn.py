@@ -3,8 +3,7 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlencode
 
-import requests
-
+from job_radar.collectors.collector_http import get_json
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -80,24 +79,21 @@ def _fetch_jobsyn_page(
     if origin_url:
         headers["Origin"] = origin_url
 
-    try:
-        response = requests.get(
-            source_url,
-            params=params,
-            headers=headers,
-            timeout=DEFAULT_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status()
-        payload = response.json()
-    except requests.RequestException as error:
-        raise CollectorError(f"Jobsyn request failed for {source_url}: {error}") from error
-    except ValueError as error:
-        raise CollectorError(f"Jobsyn response was not valid JSON for {source_url}") from error
-
-    if not isinstance(payload, dict):
-        raise CollectorError(f"Jobsyn response was not a JSON object for {source_url}")
-
-    return payload
+    return get_json(
+        source_url,
+        params=params,
+        headers=headers,
+        timeout=DEFAULT_TIMEOUT_SECONDS,
+        error_type=CollectorError,
+        request_error_message=f"Jobsyn request failed for {source_url}",
+        expected_type=dict,
+        response_type_error_message=(
+            f"Jobsyn response was not a JSON object for {source_url}"
+        ),
+        invalid_json_error_message=(
+            f"Jobsyn response was not valid JSON for {source_url}"
+        ),
+    )
 
 
 def _build_posting(

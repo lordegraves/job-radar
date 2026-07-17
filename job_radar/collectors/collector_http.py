@@ -6,6 +6,27 @@ import requests
 PayloadType = TypeVar("PayloadType")
 
 
+def get_response(
+    url: str,
+    *,
+    timeout: int,
+    params: dict[str, Any] | None = None,
+    headers: dict[str, Any] | None = None,
+) -> requests.Response:
+    request_kwargs: dict[str, Any] = {"timeout": timeout}
+
+    if params is not None:
+        request_kwargs["params"] = params
+
+    if headers is not None:
+        request_kwargs["headers"] = headers
+
+    response = requests.get(url, **request_kwargs)
+    response.raise_for_status()
+
+    return response
+
+
 def get_json(
     url: str,
     *,
@@ -14,14 +35,27 @@ def get_json(
     request_error_message: str,
     expected_type: type[PayloadType],
     response_type_error_message: str,
+    params: dict[str, Any] | None = None,
+    headers: dict[str, Any] | None = None,
+    invalid_json_error_message: str | None = None,
 ) -> PayloadType:
     try:
-        response = requests.get(url, timeout=timeout)
-        response.raise_for_status()
+        response = get_response(
+            url,
+            timeout=timeout,
+            params=params,
+            headers=headers,
+        )
     except requests.RequestException as error:
         raise error_type(f"{request_error_message}: {error}") from error
 
-    payload: Any = response.json()
+    try:
+        payload: Any = response.json()
+    except ValueError as error:
+        if invalid_json_error_message is None:
+            raise
+
+        raise error_type(invalid_json_error_message) from error
 
     if not isinstance(payload, expected_type):
         raise error_type(response_type_error_message)

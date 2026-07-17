@@ -5,6 +5,7 @@ from typing import Any
 
 import requests
 
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -75,7 +76,7 @@ def _fetch_smartrecruiters_page(
     limit: int,
     offset: int,
 ) -> dict[str, Any]:
-    response = requests.get(
+    response = get_response(
         source_url,
         params={
             "limit": limit,
@@ -87,7 +88,6 @@ def _fetch_smartrecruiters_page(
         },
         timeout=30,
     )
-    response.raise_for_status()
     return response.json()
 
 

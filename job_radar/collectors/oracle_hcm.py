@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 import requests
 
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -105,8 +106,12 @@ def _fetch_oracle_hcm_page(
     if referer_url:
         headers["Referer"] = referer_url
 
-    response = requests.get(source_url, params=params, headers=headers, timeout=30)
-    response.raise_for_status()
+    response = get_response(
+        source_url,
+        params=params,
+        headers=headers,
+        timeout=30,
+    )
     return response.json()
 
 
