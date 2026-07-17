@@ -31,18 +31,14 @@ from job_radar.scan_lock import ScanAlreadyRunningError
 from job_radar.scan_service import handle_scan
 from job_radar.storage import (
     fetch_active_scan_run,
-    fetch_included_job_history_records,
     fetch_latest_scan_run,
     initialize_database,
 )
 from job_radar.tracker.tracker_ids import build_manual_job_radar_id
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import (
-    delete_history_record,
     delete_tracker_application,
     get_application_workflow_state,
-    get_history_record,
-    update_history_record_workflow,
     update_tracker_application_workflow,
 )
 from job_radar.tracker.tracker_storage import (
@@ -50,7 +46,13 @@ from job_radar.tracker.tracker_storage import (
     list_applications,
     upsert_application,
 )
+from job_radar.web_routes.common import (
+    matches_filter_value,
+    normalize_optional_form_value,
+    parse_sort_date,
+)
 from job_radar.web_routes.companies import register_company_routes
+from job_radar.web_routes.history import register_history_routes
 from job_radar.web_routes.profile import register_profile_routes
 from job_radar.web_routes.settings import register_settings_routes
 
@@ -96,42 +98,6 @@ TRACKER_SORT_OPTIONS = {
     "outcome": "Outcome A-Z",
 }
 
-HISTORY_SORT_OPTIONS = {
-    "event_desc": "Date newest first",
-    "event_asc": "Date oldest first",
-    "company": "Company A-Z",
-    "role": "Role A-Z",
-    "status": "Decision A-Z",
-    "outcome": "Outcome A-Z",
-}
-
-HISTORY_QUICK_FILTERS = {
-    "all": {
-        "decision_filter": "",
-        "outcome_filter": "",
-    },
-    "applied": {
-        "decision_filter": "Applied",
-        "outcome_filter": "",
-    },
-    "passed": {
-        "decision_filter": "Passed",
-        "outcome_filter": "",
-    },
-    "rejected": {
-        "decision_filter": "",
-        "outcome_filter": "Rejected",
-    },
-    "withdrawn": {
-        "decision_filter": "",
-        "outcome_filter": "Withdrawn",
-    },
-    "closed_before_application": {
-        "decision_filter": "",
-        "outcome_filter": "Closed Before Application",
-    },
-}
-
 CANONICAL_DECISION_FILTER_OPTIONS = (
     "Applied",
     "Passed",
@@ -146,14 +112,6 @@ TRACKER_OUTCOME_FILTER_OPTIONS = (
     "Waiting For Feedback",
     "Offer",
     "Dormant",
-    "N/A",
-)
-
-HISTORY_OUTCOME_FILTER_OPTIONS = (
-    "Closed Before Application",
-    "Rejected - No Interview",
-    "Rejected - After Interview",
-    "Withdrawn",
     "N/A",
 )
 
@@ -203,14 +161,6 @@ TRACKER_OUTCOME_OPTIONS = (
 )
 
 TRACKER_EDIT_OUTCOME_OPTIONS = TRACKER_OUTCOME_OPTIONS + TRACKER_TERMINAL_OUTCOME_OPTIONS
-
-HISTORY_QUICK_ACTIONS = {
-    "restore_to_tracker": {
-        "label": "Restore to Active Applications",
-        "status": "Applied",
-        "outcome": "Pending / In Progress",
-    },
-}
 
 TRACKER_QUICK_ACTIONS = {
     "refresh_activity_today": {
@@ -393,16 +343,6 @@ class ReportCollectorErrorView:
 
 
 @dataclass(frozen=True)
-class HistorySummaryView:
-    total: int
-    applied: int
-    passed: int
-    withdrawn: int
-    closed_before_application: int
-    rejected: int
-
-
-@dataclass(frozen=True)
 class ReportFileView:
     name: str
     size_bytes: int
@@ -552,122 +492,12 @@ def create_app(
         base_directory=str(_get_runtime_paths(app).base_directory),
     )
 
-    @app.get("/history")
-    def history() -> str:
-        sort_name = request.args.get("sort", "event_desc")
-        search_query = request.args.get("q", "").strip()
-        decision_filter = request.args.get("decision_filter", "").strip()
-        outcome_filter = request.args.get("outcome_filter", "").strip()
-        quick_filter = request.args.get("quick_filter", "").strip()
-
-        if quick_filter:
-            quick_filter_values = HISTORY_QUICK_FILTERS.get(quick_filter)
-
-            if quick_filter_values is None:
-                abort(404)
-
-            decision_filter = quick_filter_values["decision_filter"]
-            outcome_filter = quick_filter_values["outcome_filter"]
-
-        if sort_name not in HISTORY_SORT_OPTIONS:
-            abort(404)
-
-        database_path = _get_database_path(app)
-        all_records = fetch_included_job_history_records(database_path)
-        searched_records = _search_history_records(all_records, search_query)
-        filtered_records = _filter_history_records(
-            searched_records,
-            decision_filter,
-            outcome_filter,
-        )
-        sorted_records = _sort_history_records(
-            filtered_records,
-            sort_name,
-        )
-        history_summary = _build_history_summary(all_records)
-
-        return render_template(
-            "history.html",
-            database_path=database_path,
-            records=sorted_records,
-            history_summary=history_summary,
-            active_sort=sort_name,
-            search_query=search_query,
-            active_decision_filter=decision_filter,
-            active_outcome_filter=outcome_filter,
-            active_quick_filter=quick_filter,
-            decision_filter_options=CANONICAL_DECISION_FILTER_OPTIONS,
-            outcome_filter_options=HISTORY_OUTCOME_FILTER_OPTIONS,
-            sort_options=HISTORY_SORT_OPTIONS,
-        )
-
-    @app.get("/history/<path:import_key>/edit")
-    def edit_history_record(import_key: str) -> str:
-        database_path = _get_database_path(app)
-        record = get_history_record(database_path, import_key)
-
-        if record is None:
-            abort(404)
-
-        return render_template(
-            "history_edit.html",
-            record=record,
-            decision_options=CANONICAL_DECISION_FILTER_OPTIONS,
-            outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
-            quick_actions=HISTORY_QUICK_ACTIONS,
-        )
-
-    @app.post("/history/<path:import_key>/edit")
-    def update_history_record(import_key: str):
-        database_path = _get_database_path(app)
-        record = get_history_record(database_path, import_key)
-
-        if record is None:
-            abort(404)
-
-        action = request.form.get("action", "save").strip()
-
-        if action == "delete":
-            deleted = delete_history_record(database_path, import_key)
-
-            if not deleted:
-                abort(404)
-
-            return redirect(url_for("history"))
-
-        status = request.form["status"].strip()
-        outcome = _normalize_optional_form_value("outcome")
-        quick_action = request.form.get("quick_action", "").strip()
-
-        if quick_action:
-            quick_action_values = HISTORY_QUICK_ACTIONS.get(quick_action)
-
-            if quick_action_values is None:
-                abort(400)
-
-            status = quick_action_values["status"]
-            outcome = quick_action_values["outcome"]
-
-        result = update_history_record_workflow(
-            database_path,
-            import_key=import_key,
-            company=request.form["company"].strip(),
-            role=request.form["role"].strip(),
-            source=_normalize_optional_form_value("source"),
-            event_date=_normalize_optional_form_value("event_date"),
-            status=status,
-            outcome=outcome,
-            recruiter_contact=_normalize_optional_form_value("recruiter_contact"),
-            notes=_normalize_optional_form_value("notes"),
-        )
-
-        if result == "missing":
-            abort(404)
-
-        if result == "moved_to_tracker":
-            return redirect(url_for("tracker", filter="all"))
-
-        return redirect(url_for("history"))
+    register_history_routes(
+        app,
+        get_database_path=lambda: _get_database_path(app),
+        decision_options=CANONICAL_DECISION_FILTER_OPTIONS,
+        tracker_edit_outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
+    )
 
     @app.get("/scan")
     def scan() -> str:
@@ -913,7 +743,7 @@ def create_app(
 
         company_name = request.form["company_name"].strip()
         role_title = request.form["role_title"].strip()
-        source_url = _normalize_optional_form_value("source_url")
+        source_url = normalize_optional_form_value("source_url")
 
         job_radar_id = request.form.get("job_radar_id", "").strip()
 
@@ -932,11 +762,11 @@ def create_app(
                 role_title=role_title,
                 source_url=source_url,
                 status=request.form["status"].strip(),
-                follow_up_on=_normalize_optional_form_value("follow_up_on"),
-                applied_on=_normalize_optional_form_value("applied_on"),
-                last_activity_on=_normalize_optional_form_value("last_activity_on"),
-                outcome=_normalize_optional_form_value("outcome"),
-                notes=_normalize_optional_form_value("notes"),
+                follow_up_on=normalize_optional_form_value("follow_up_on"),
+                applied_on=normalize_optional_form_value("applied_on"),
+                last_activity_on=normalize_optional_form_value("last_activity_on"),
+                outcome=normalize_optional_form_value("outcome"),
+                notes=normalize_optional_form_value("notes"),
             ),
         )
 
@@ -998,11 +828,11 @@ def create_app(
             return redirect(url_for("tracker", filter="all"))
 
         status = request.form["status"].strip()
-        follow_up_on = _normalize_optional_form_value("follow_up_on")
-        applied_on = _normalize_optional_form_value("applied_on")
-        last_activity_on = _normalize_optional_form_value("last_activity_on")
-        outcome = _normalize_optional_form_value("outcome")
-        notes = _normalize_optional_form_value("notes")
+        follow_up_on = normalize_optional_form_value("follow_up_on")
+        applied_on = normalize_optional_form_value("applied_on")
+        last_activity_on = normalize_optional_form_value("last_activity_on")
+        outcome = normalize_optional_form_value("outcome")
+        notes = normalize_optional_form_value("notes")
         quick_action = request.form.get("quick_action", "").strip()
 
         if quick_action:
@@ -1302,44 +1132,6 @@ def _build_report_job_card(
     )
 
 
-def _build_history_summary(records: list) -> HistorySummaryView:
-    # These counts summarize the archive itself, not only the current filtered
-    # table. That keeps the page useful as a dashboard while search narrows rows.
-    return HistorySummaryView(
-        total=len(records),
-        applied=sum(
-            1
-            for record in records
-            if _matches_filter_value(record.status, "Applied")
-        ),
-        passed=sum(
-            1
-            for record in records
-            if _matches_filter_value(record.status, "Passed")
-        ),
-        withdrawn=sum(
-            1
-            for record in records
-            if _matches_filter_value(record.status, "Withdrawn")
-            or _matches_filter_value(record.outcome_category, "Withdrawn")
-        ),
-        closed_before_application=sum(
-            1
-            for record in records
-            if _matches_filter_value(
-                record.outcome_category,
-                "Closed Before Application",
-            )
-        ),
-        rejected=sum(
-            1
-            for record in records
-            if _matches_filter_value(record.outcome_category, "Rejected - No Interview")
-            or _matches_filter_value(record.outcome_category, "Rejected - After Interview")
-        ),
-    )
-
-
 def _get_tracker_application_sort_key(
     application_view: TrackerApplicationView,
 ) -> tuple[int, str, str]:
@@ -1381,14 +1173,14 @@ def _filter_tracker_applications_by_fields(
         filtered_applications = [
             application_view
             for application_view in filtered_applications
-            if _matches_filter_value(application_view.application.status, status_filter)
+            if matches_filter_value(application_view.application.status, status_filter)
         ]
 
     if outcome_filter:
         filtered_applications = [
             application_view
             for application_view in filtered_applications
-            if _matches_filter_value(application_view.application.outcome, outcome_filter)
+            if matches_filter_value(application_view.application.outcome, outcome_filter)
         ]
 
     return filtered_applications
@@ -1486,7 +1278,7 @@ def _get_applied_date_desc_sort_key(
     application_view: TrackerApplicationView,
 ) -> tuple[bool, int, str, str]:
     application = application_view.application
-    applied_date = _parse_tracker_sort_date(application.applied_on)
+    applied_date = parse_sort_date(application.applied_on)
 
     return (
         applied_date is None,
@@ -1500,7 +1292,7 @@ def _get_applied_date_asc_sort_key(
     application_view: TrackerApplicationView,
 ) -> tuple[bool, int, str, str]:
     application = application_view.application
-    applied_date = _parse_tracker_sort_date(application.applied_on)
+    applied_date = parse_sort_date(application.applied_on)
 
     return (
         applied_date is None,
@@ -1510,170 +1302,8 @@ def _get_applied_date_asc_sort_key(
     )
 
 
-def _search_history_records(
-    records: list,
-    search_query: str,
-) -> list:
-    if not search_query:
-        return records
-
-    normalized_query = search_query.lower()
-
-    return [
-        record
-        for record in records
-        if normalized_query in _get_history_record_search_text(record)
-    ]
-
-
-def _get_history_record_search_text(record) -> str:
-    # Search covers the human workbook-review fields so the archive can replace
-    # spreadsheet filtering for normal history lookup.
-    searchable_values = (
-        record.company,
-        record.role,
-        record.status,
-        record.outcome_category,
-        record.source,
-        record.lead_source,
-        record.recruiter_contact,
-        record.import_key,
-        record.notes,
-        record.history_type,
-    )
-
-    return " ".join(value or "" for value in searchable_values).lower()
-
-
-def _filter_history_records(
-    records: list,
-    decision_filter: str,
-    outcome_filter: str,
-) -> list:
-    filtered_records = records
-
-    if decision_filter:
-        filtered_records = [
-            record
-            for record in filtered_records
-            if _matches_filter_value(record.status, decision_filter)
-        ]
-
-    if outcome_filter:
-        filtered_records = [
-            record
-            for record in filtered_records
-            if _matches_history_outcome_filter(record, outcome_filter)
-        ]
-
-    return filtered_records
-
-
-def _matches_filter_value(value: str | None, selected_filter: str) -> bool:
-    if value is None:
-        return False
-
-    return value.strip().casefold() == selected_filter.strip().casefold()
-
-
-def _matches_history_outcome_filter(record, outcome_filter: str) -> bool:
-    if outcome_filter.casefold() == "rejected":
-        return _matches_filter_value(record.outcome_category, "Rejected - No Interview") or _matches_filter_value(
-            record.outcome_category,
-            "Rejected - After Interview",
-        )
-
-    if outcome_filter.casefold() == "withdrawn":
-        return _matches_filter_value(record.status, "Withdrawn") or _matches_filter_value(
-            record.outcome_category,
-            "Withdrawn",
-        )
-
-    return _matches_filter_value(record.outcome_category, outcome_filter)
-
-
-def _sort_history_records(
-    records: list,
-    sort_name: str,
-) -> list:
-    if sort_name == "event_asc":
-        return sorted(records, key=_get_history_event_date_asc_sort_key)
-
-    if sort_name == "company":
-        return sorted(
-            records,
-            key=lambda record: (
-                record.company.lower(),
-                record.role.lower(),
-            ),
-        )
-
-    if sort_name == "role":
-        return sorted(
-            records,
-            key=lambda record: (
-                record.role.lower(),
-                record.company.lower(),
-            ),
-        )
-
-    if sort_name == "status":
-        return sorted(
-            records,
-            key=lambda record: (
-                (record.status or "").lower(),
-                record.company.lower(),
-                record.role.lower(),
-            ),
-        )
-
-    if sort_name == "outcome":
-        return sorted(
-            records,
-            key=lambda record: (
-                (record.outcome_category or "").lower(),
-                record.company.lower(),
-                record.role.lower(),
-            ),
-        )
-
-    return sorted(records, key=_get_history_event_date_desc_sort_key)
-
-
-def _get_history_event_date_desc_sort_key(record) -> tuple[bool, int, str, str]:
-    event_date = _parse_tracker_sort_date(record.event_date)
-
-    return (
-        event_date is None,
-        -(event_date.toordinal() if event_date else 0),
-        record.company.lower(),
-        record.role.lower(),
-    )
-
-
-def _get_history_event_date_asc_sort_key(record) -> tuple[bool, int, str, str]:
-    event_date = _parse_tracker_sort_date(record.event_date)
-
-    return (
-        event_date is None,
-        event_date.toordinal() if event_date else 0,
-        record.company.lower(),
-        record.role.lower(),
-    )
-
-
-def _parse_tracker_sort_date(value: str | None) -> date | None:
-    if not value:
-        return None
-
-    try:
-        return date.fromisoformat(value)
-    except ValueError:
-        return None
-
-
 def _format_tracker_action_date(value: str | None) -> str | None:
-    parsed_date = _parse_tracker_sort_date(value)
+    parsed_date = parse_sort_date(value)
 
     if parsed_date is None:
         return None
@@ -1685,7 +1315,7 @@ def _build_tracker_next_action_message(
     application: ApplicationRecord,
     workflow_state: str,
 ) -> str:
-    follow_up_date = _parse_tracker_sort_date(application.follow_up_on)
+    follow_up_date = parse_sort_date(application.follow_up_on)
     formatted_follow_up_date = _format_tracker_action_date(application.follow_up_on)
     formatted_last_activity_date = _format_tracker_action_date(
         application.last_activity_on
@@ -1782,15 +1412,6 @@ def _resolve_quick_action_date(
         return (today + timedelta(days=7)).isoformat()
 
     return quick_action_value
-
-
-def _normalize_optional_form_value(field_name: str) -> str | None:
-    value = request.form.get(field_name, "").strip()
-
-    if not value:
-        return None
-
-    return value
 
 
 def build_parser() -> argparse.ArgumentParser:
