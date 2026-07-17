@@ -7,7 +7,7 @@
     .primary-output-grid {
         display: grid;
         gap: 12px;
-        grid-template-columns: repeat(3, minmax(180px, 1fr));
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
         margin: 18px 0;
     }
 
@@ -38,11 +38,15 @@
 <div class="page-card">
     <h1 class="page-title">Reports</h1>
 
-    <p class="muted">This page opens existing generated reports and previews. It does not start a scan or send email.
+    <p class="muted">
+        This page opens the latest generated scan report and email preview. It does not start a scan or send email.
+    </p>
+
+    <p class="muted">
+        Each successful scan replaces the previous scan outputs.
     </p>
 
     <p><strong>Reports path:</strong> <code>{{ reports_path }}</code></p>
-    <p><strong>Report files shown:</strong> {{ report_files|length }}</p>
 </div>
 
 <h2>Latest scan results</h2>
@@ -58,13 +62,7 @@
     </div>
     {% endfor %}
 </div>
-{% endif %}
 
-{% if not primary_report_files %}
-<div class="page-card">
-    <p>No primary scan outputs found yet. Run a scan first.</p>
-</div>
-{% else %}
 <table>
     <thead>
         <tr>
@@ -87,36 +85,9 @@
         {% endfor %}
     </tbody>
 </table>
-{% endif %}
-
-<h2>Additional files</h2>
-
-<p class="muted">Other files currently present in the reports directory.</p>
-
-{% if not other_report_files %}
-<div class="page-card">
-    <p>No additional report files found.</p>
-</div>
 {% else %}
-<table>
-    <thead>
-        <tr>
-            <th>Report</th>
-            <th>What it is</th>
-            <th>Modified</th>
-            <th>Size</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for report in other_report_files %}
-        <tr>
-            <td><a href="{{ url_for('report_view', report_name=report.name) }}">{{ report.name }}</a></td>
-            <td>{{ report.description }}</td>
-            <td class="date-cell">{{ report.modified_at }}</td>
-            <td>{{ report.size_bytes }} bytes</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="page-card">
+    <p>No scan outputs found yet. Run a scan first.</p>
+</div>
 {% endif %}
 {% endblock %}

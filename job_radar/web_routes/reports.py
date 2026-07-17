@@ -80,9 +80,6 @@ REPORT_SECTION_DETAILS = {
     },
 }
 
-DEFAULT_REPORT_FILE_DESCRIPTION = "Additional file in the reports directory."
-
-
 @dataclass(frozen=True)
 class LatestReportSummaryView:
     generated_at: str | None
@@ -189,21 +186,12 @@ def register_report_routes(
     @app.get("/reports")
     def reports() -> str:
         reports_path = get_reports_path()
-        report_files = _get_report_file_views(reports_path)
-        primary_report_files = sorted(
-            [report for report in report_files if report.is_primary],
-            key=lambda report: report.sort_order,
-        )
-        other_report_files = [
-            report for report in report_files if not report.is_primary
-        ]
+        primary_report_files = _get_report_file_views(reports_path)
 
         return render_template(
             "reports.html",
             reports_path=reports_path,
-            report_files=report_files,
             primary_report_files=primary_report_files,
-            other_report_files=other_report_files,
         )
 
     @app.get("/reports/view/<path:report_name>")
@@ -323,18 +311,13 @@ def _get_report_file_views(
 
     report_files: list[ReportFileView] = []
 
-    for path in reports_dir.iterdir():
+    for report_name, report_details in PRIMARY_REPORT_FILE_DETAILS.items():
+        path = reports_dir / report_name
+
         if not path.is_file():
             continue
 
-        if path.name.startswith("."):
-            continue
-
-        if path.suffix.lower() not in REPORT_FILE_EXTENSIONS:
-            continue
-
         stat = path.stat()
-        primary_details = PRIMARY_REPORT_FILE_DETAILS.get(path.name)
 
         report_files.append(
             ReportFileView(
@@ -344,24 +327,15 @@ def _get_report_file_views(
                     stat.st_mtime
                 ).strftime("%Y-%m-%d %I:%M %p"),
                 modified_timestamp=stat.st_mtime,
-                description=(
-                    primary_details["description"]
-                    if primary_details
-                    else DEFAULT_REPORT_FILE_DESCRIPTION
-                ),
-                is_primary=primary_details is not None,
-                sort_order=(
-                    primary_details["sort_order"]
-                    if primary_details
-                    else 999
-                ),
+                description=report_details["description"],
+                is_primary=True,
+                sort_order=report_details["sort_order"],
             )
         )
 
     return sorted(
         report_files,
-        key=lambda report: report.modified_timestamp,
-        reverse=True,
+        key=lambda report: report.sort_order,
     )
 
 

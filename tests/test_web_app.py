@@ -2174,7 +2174,9 @@ def test_index_page_links_to_reports(tmp_path: Path) -> None:
     assert ">Reports</a>" in html
 
 
-def test_reports_page_lists_existing_report_files(tmp_path: Path) -> None:
+def test_reports_page_lists_only_current_scan_outputs(
+    tmp_path: Path,
+) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     reports_path = tmp_path / "reports"
@@ -2208,24 +2210,24 @@ def test_reports_page_lists_existing_report_files(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert "Reports" in html
     assert f"<code>{reports_path}</code>" in html
-    assert "Report files shown:</strong> 3" in html
     assert "Latest scan results" in html
-    assert "Additional files" in html
     assert "target-scan.html" in html
     assert "/reports/view/target-scan.html" in html
     assert "Latest HTML scan report. Open this first." in html
     assert "Latest scan result shortcuts" in html
     assert "primary-output-card" in html
     assert "Open the latest generated scan report and email preview." in html
+    assert "Each successful scan replaces the previous scan outputs." in html
     assert "target-email-preview.txt" in html
     assert "Latest plain-text email preview." in html
-    assert "code-audit.md" in html
-    assert "Additional file in the reports directory." in html
+    assert "code-audit.md" not in html
     assert "job_radar.sqlite3" not in html
+    assert "Additional files" not in html
+    assert "Report files shown:" not in html
     assert "It does not start a scan or send email." in html
 
 
-def test_reports_page_shows_time_and_sorts_by_full_timestamp(
+def test_reports_page_shows_primary_outputs_in_display_order(
     tmp_path: Path,
 ) -> None:
     settings_file = tmp_path / "settings.yaml"
@@ -2233,20 +2235,20 @@ def test_reports_page_shows_time_and_sorts_by_full_timestamp(
     reports_path = tmp_path / "reports"
     reports_path.mkdir()
 
-    older_report = reports_path / "older-notes.txt"
-    newer_report = reports_path / "newer-notes.txt"
-    older_report.write_text("Older notes", encoding="utf-8")
-    newer_report.write_text("Newer notes", encoding="utf-8")
+    html_report = reports_path / "target-scan.html"
+    email_preview = reports_path / "target-email-preview.txt"
+    html_report.write_text("HTML report", encoding="utf-8")
+    email_preview.write_text("Email preview", encoding="utf-8")
 
-    older_timestamp = datetime(2026, 7, 16, 9, 15).timestamp()
-    newer_timestamp = datetime(2026, 7, 16, 21, 47).timestamp()
+    html_timestamp = datetime(2026, 7, 16, 9, 15).timestamp()
+    email_timestamp = datetime(2026, 7, 16, 21, 47).timestamp()
     os.utime(
-        older_report,
-        (older_timestamp, older_timestamp),
+        html_report,
+        (html_timestamp, html_timestamp),
     )
     os.utime(
-        newer_report,
-        (newer_timestamp, newer_timestamp),
+        email_preview,
+        (email_timestamp, email_timestamp),
     )
 
     write_settings_file(
@@ -2262,13 +2264,15 @@ def test_reports_page_shows_time_and_sorts_by_full_timestamp(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert datetime.fromtimestamp(older_timestamp).strftime(
+    assert datetime.fromtimestamp(html_timestamp).strftime(
         "%Y-%m-%d %I:%M %p"
     ) in html
-    assert datetime.fromtimestamp(newer_timestamp).strftime(
+    assert datetime.fromtimestamp(email_timestamp).strftime(
         "%Y-%m-%d %I:%M %p"
     ) in html
-    assert html.index("newer-notes.txt") < html.index("older-notes.txt")
+    assert html.index("target-scan.html") < html.index(
+        "target-email-preview.txt"
+    )
 
 
 def test_reports_page_handles_missing_reports_directory(tmp_path: Path) -> None:
@@ -2285,9 +2289,9 @@ def test_reports_page_handles_missing_reports_directory(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Report files shown:</strong> 0" in html
-    assert "No primary scan outputs found yet. Run a scan first." in html
-    assert "No additional report files found." in html
+    assert "No scan outputs found yet. Run a scan first." in html
+    assert "Additional files" not in html
+    assert "Report files shown:" not in html
 
 
 def test_report_view_embeds_report_inside_app_shell(tmp_path: Path) -> None:
