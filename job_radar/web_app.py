@@ -15,14 +15,6 @@ from flask import (
     url_for,
 )
 
-from job_radar.scan_lock import ScanAlreadyRunningError
-from job_radar.scan_service import handle_scan
-from job_radar.company_config_service import (
-    build_company_config_views,
-    build_company_source_summaries,
-    filter_company_config_views,
-    get_company_config_view,
-)
 from job_radar.config import ConfigError, load_settings
 from job_radar.email_sender import get_email_readiness
 from job_radar.profile_service import build_candidate_profile_view, save_uploaded_resume
@@ -38,6 +30,8 @@ from job_radar.runtime_paths import (
     DEFAULT_SCORING_CONFIG_PATH,
     RuntimePaths,
 )
+from job_radar.scan_lock import ScanAlreadyRunningError
+from job_radar.scan_service import handle_scan
 from job_radar.storage import (
     fetch_active_scan_run,
     fetch_included_job_history_records,
@@ -59,7 +53,7 @@ from job_radar.tracker.tracker_storage import (
     list_applications,
     upsert_application,
 )
-
+from job_radar.web_routes.companies import register_company_routes
 
 TRACKER_NEEDS_ACTION_WORKFLOW_STATES = {
     "follow_up_due",
@@ -566,55 +560,12 @@ def create_app(
             settings_view=settings_view,
         )
 
-    @app.get("/companies")
-    def companies() -> str:
-        company_config_path = str(
+    register_company_routes(
+        app,
+        get_company_config_path=lambda: str(
             _get_runtime_paths(app).company_config_path
-        )
-        company_views = build_company_config_views(company_config_path)
-        selected_status = request.args.get("status", "")
-        selected_source_type = request.args.get("source_type", "")
-        search_query = request.args.get("q", "").strip()
-        filtered_companies = filter_company_config_views(
-            company_views,
-            selected_status=selected_status,
-            selected_source_type=selected_source_type,
-            search_query=search_query,
-        )
-        source_summaries = build_company_source_summaries(company_views)
-
-        return render_template(
-            "companies.html",
-            companies=filtered_companies,
-            source_summaries=source_summaries,
-            company_config_path=company_config_path,
-            total_companies=len(company_views),
-            enabled_companies=sum(1 for company in company_views if company.enabled),
-            disabled_companies=sum(1 for company in company_views if not company.enabled),
-            selected_status=selected_status,
-            selected_source_type=selected_source_type,
-            search_query=search_query,
-            filtered_company_count=len(filtered_companies),
-        )
-
-    @app.get("/companies/<company_key>")
-    def company_detail(company_key: str) -> str:
-        company_config_path = str(
-            _get_runtime_paths(app).company_config_path
-        )
-        company_view = get_company_config_view(
-            company_config_path,
-            company_key,
-        )
-
-        if company_view is None:
-            abort(404)
-
-        return render_template(
-            "company_detail.html",
-            company=company_view,
-            company_config_path=company_config_path,
-        )
+        ),
+    )
 
     @app.get("/profile")
     def profile() -> str:
