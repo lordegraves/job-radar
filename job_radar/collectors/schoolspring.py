@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 import requests
 
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -272,15 +273,13 @@ def parse_schoolspring_jobs(
 
 
 def _fetch_schoolspring_payload(url: str, domain_name: str) -> dict[str, Any]:
-    try:
-        response = requests.get(
-            url,
-            headers=_get_headers(domain_name),
-            timeout=30,
-        )
-        response.raise_for_status()
-    except requests.RequestException as error:
-        raise CollectorError(f"Failed to fetch SchoolSpring jobs: {error}") from error
+    response = get_response(
+        url,
+        headers=_get_headers(domain_name),
+        timeout=30,
+        error_type=CollectorError,
+        request_error_message="Failed to fetch SchoolSpring jobs",
+    )
 
     return _load_json_response(response)
 

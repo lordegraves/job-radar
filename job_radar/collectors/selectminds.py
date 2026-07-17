@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 
 import requests
 
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -130,7 +131,7 @@ def collect_selectminds_jobs(company_config: dict[str, Any]) -> list[JobPosting]
 
 
 def _fetch_selectminds_page(source_url: str) -> str:
-    response = requests.get(
+    response = get_response(
         source_url,
         headers={
             "User-Agent": "JobRadar/0.1 local career-source scanner",
@@ -138,7 +139,6 @@ def _fetch_selectminds_page(source_url: str) -> str:
         },
         timeout=30,
     )
-    response.raise_for_status()
     return response.text
 
 

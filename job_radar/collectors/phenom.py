@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 
 import requests
 
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -81,7 +82,7 @@ def _fetch_phenom_page(*, source_url: str, offset: int) -> str:
     separator = "&" if "?" in source_url else "?"
     url = f"{source_url}{separator}{urlencode({'from': offset, 's': 1})}"
 
-    response = requests.get(
+    response = get_response(
         url,
         headers={
             "User-Agent": "JobRadar/0.1 local career-source scanner",
@@ -89,7 +90,6 @@ def _fetch_phenom_page(*, source_url: str, offset: int) -> str:
         },
         timeout=30,
     )
-    response.raise_for_status()
     return response.text
 
 

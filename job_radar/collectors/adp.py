@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
 
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -109,7 +110,7 @@ def _fetch_adp_page(
         "/v1/job-requisitions"
     )
 
-    response = requests.get(
+    response = get_response(
         api_url,
         params={
             "cid": cid,
@@ -134,7 +135,6 @@ def _fetch_adp_page(
         },
         timeout=30,
     )
-    response.raise_for_status()
 
     data = response.json()
     if not isinstance(data, dict):

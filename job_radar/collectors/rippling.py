@@ -3,8 +3,7 @@ import re
 from html import unescape
 from typing import Any
 
-import requests
-
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.pagination import get_max_pages
 from job_radar.models import JobPosting
@@ -265,21 +264,19 @@ def parse_rippling_jobs(
 
 
 def _fetch_rippling_payload(url: str) -> dict[str, Any]:
-    try:
-        response = requests.get(
-            url,
-            headers={
-                "User-Agent": "Mozilla/5.0 JobRadar/1.0",
-                "Accept": (
-                    "text/html,application/xhtml+xml,application/xml;q=0.9,"
-                    "application/json;q=0.8,*/*;q=0.7"
-                ),
-            },
-            timeout=30,
-        )
-        response.raise_for_status()
-    except requests.RequestException as error:
-        raise CollectorError(f"Failed to fetch Rippling jobs: {error}") from error
+    response = get_response(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 JobRadar/1.0",
+            "Accept": (
+                "text/html,application/xhtml+xml,application/xml;q=0.9,"
+                "application/json;q=0.8,*/*;q=0.7"
+            ),
+        },
+        timeout=30,
+        error_type=CollectorError,
+        request_error_message="Failed to fetch Rippling jobs",
+    )
 
     return extract_rippling_next_data(response.text)
 
