@@ -116,19 +116,18 @@
     </section>
 
     <section class="settings-card">
-        <h2>Retention</h2>
-        {% if settings_view.retention_items %}
+        <h2>Report history</h2>
         <ul class="settings-list">
-            {% for name, value in settings_view.retention_items %}
             <li>
-                <span class="settings-label">{{ name }}</span>
-                <code class="settings-value">{{ value }}</code>
+                <span class="settings-label">Current policy</span>
+                <span class="settings-value">{{ settings_view.report_history_policy }}</span>
             </li>
-            {% endfor %}
+            <li>
+                <span class="settings-label">Replacement behavior</span>
+                <span class="settings-value">{{ settings_view.report_replacement_behavior }}</span>
+            </li>
         </ul>
-        {% else %}
-        <p class="muted">No retention settings configured.</p>
-        {% endif %}
+        <p class="muted">Configurable report retention is planned for a later milestone.</p>
     </section>
 
     <section class="settings-card">

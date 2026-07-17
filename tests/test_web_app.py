@@ -1783,11 +1783,15 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "config/scoring.yaml" in html
     assert "reports/target-scan.html" in html
     assert "reports/target-email-preview.txt" in html
-    assert "Retention" in html
-    assert "report_retention_days" in html
-    assert "90" in html
-    assert "raw_capture_enabled" in html
-    assert "False" in html
+    assert "Report history" in html
+    assert "Latest scan only" in html
+    assert (
+        "Each successful scan replaces the previous HTML report, "
+        "structured snapshot, and email preview."
+    ) in html
+    assert "Configurable report retention is planned for a later milestone." in html
+    assert "report_retention_days" not in html
+    assert "raw_capture_enabled" not in html
     assert "Email" in html
     assert "Disabled" in html
     assert "Secrets are not shown on this page." in html

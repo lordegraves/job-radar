@@ -19,7 +19,8 @@ class SettingsView:
     reports_path: str
     logs_path: str
     candidate_profile_path: str | None
-    retention_items: list[tuple[str, object]]
+    report_history_policy: str
+    report_replacement_behavior: str
     scan_config_path: str
     scan_settings_path: str
     scan_scoring_path: str
@@ -47,7 +48,6 @@ def register_settings_routes(
 
 def _build_settings_view(settings_path: str) -> SettingsView:
     settings = load_settings(settings_path)
-    retention = settings.get("retention", {})
     email_readiness = get_email_readiness(settings.email)
 
     return SettingsView(
@@ -56,10 +56,10 @@ def _build_settings_view(settings_path: str) -> SettingsView:
         reports_path=settings["reports_path"],
         logs_path=settings["logs_path"],
         candidate_profile_path=settings.get("candidate_profile_path"),
-        retention_items=(
-            sorted(retention.items())
-            if isinstance(retention, dict)
-            else []
+        report_history_policy="Latest scan only",
+        report_replacement_behavior=(
+            "Each successful scan replaces the previous HTML report, "
+            "structured snapshot, and email preview."
         ),
         scan_config_path=DEFAULT_COMPANY_CONFIG_PATH,
         scan_settings_path=settings_path,

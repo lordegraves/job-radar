@@ -57,7 +57,9 @@ companies:
         load_companies(config_file)
 
 
-def test_load_settings_requires_retention_section(tmp_path: Path) -> None:
+def test_load_settings_accepts_settings_without_retention_section(
+    tmp_path: Path,
+) -> None:
     settings_file = tmp_path / "settings.yaml"
     settings_file.write_text(
         """
@@ -68,8 +70,12 @@ logs_path: logs
         encoding="utf-8",
     )
 
-    with pytest.raises(ConfigError, match="retention"):
-        load_settings(settings_file)
+    settings = load_settings(settings_file)
+
+    assert settings.database_path == "data/job_radar.sqlite3"
+    assert settings.reports_path == "reports"
+    assert settings.logs_path == "logs"
+    assert "retention" not in settings
 
 
 @pytest.mark.parametrize(
@@ -111,6 +117,29 @@ logs_path: {logs_path}
 
     with pytest.raises(ConfigError, match=rf"{key} must be a string"):
         load_settings(settings_file)
+
+
+def test_load_settings_preserves_legacy_retention_mapping(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text(
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+retention:
+  report_retention_days: 90
+""",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(settings_file)
+
+    assert settings["retention"] == {
+        "report_retention_days": 90,
+    }
 
 
 def test_load_settings_defaults_email_settings(tmp_path: Path) -> None:

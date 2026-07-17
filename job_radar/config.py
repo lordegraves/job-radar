@@ -83,7 +83,6 @@ class ApplicationSettings(Mapping[str, Any]):
     database_path: str
     reports_path: str
     logs_path: str
-    retention: dict[str, Any]
     active_profile: ActiveProfileSettings
     email: EmailSettings
     _data: dict[str, Any] = field(repr=False, compare=False)
@@ -175,7 +174,6 @@ def load_settings(
         "database_path",
         "reports_path",
         "logs_path",
-        "retention",
     )
 
     for key in required_keys:
@@ -185,11 +183,6 @@ def load_settings(
     database_path = _required_settings_string(data["database_path"], "database_path")
     reports_path = _required_settings_string(data["reports_path"], "reports_path")
     logs_path = _required_settings_string(data["logs_path"], "logs_path")
-
-    retention = data["retention"]
-
-    if not isinstance(retention, dict):
-        raise ConfigError("settings.yaml retention section must be a mapping")
 
     candidate_profile_path = _optional_settings_string(
         data.get("candidate_profile_path"),
@@ -216,7 +209,6 @@ def load_settings(
         database_path=database_path,
         reports_path=reports_path,
         logs_path=logs_path,
-        retention=retention,
         active_profile=active_profile,
         email=email,
         _data=normalized_data,
