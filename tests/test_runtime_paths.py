@@ -229,7 +229,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 candidate_profile_path: profiles/example/profile.yaml
-job_history_workbook_path: imports/job-history.xlsx
 
 retention: {}
 """,
@@ -256,17 +255,12 @@ retention: {}
     assert runtime_paths.candidate_profile_path == (
         tmp_path / "profiles" / "example" / "profile.yaml"
     ).resolve()
-    assert runtime_paths.job_history_workbook_path == (
-        tmp_path / "imports" / "job-history.xlsx"
-    ).resolve()
-
 
 def test_runtime_paths_preserve_absolute_paths(tmp_path: Path) -> None:
     database_path = tmp_path / "external" / "job_radar.sqlite3"
     reports_path = tmp_path / "external" / "reports"
     logs_path = tmp_path / "external" / "logs"
     profile_path = tmp_path / "external" / "profile.yaml"
-    workbook_path = tmp_path / "external" / "job-history.xlsx"
     settings_path = tmp_path / "config" / "settings.yaml"
 
     _write_settings(
@@ -276,7 +270,6 @@ database_path: {database_path}
 reports_path: {reports_path}
 logs_path: {logs_path}
 candidate_profile_path: {profile_path}
-job_history_workbook_path: {workbook_path}
 
 retention: {{}}
 """,
@@ -291,10 +284,9 @@ retention: {{}}
     assert runtime_paths.reports_path == reports_path.resolve()
     assert runtime_paths.logs_path == logs_path.resolve()
     assert runtime_paths.candidate_profile_path == profile_path.resolve()
-    assert runtime_paths.job_history_workbook_path == workbook_path.resolve()
 
 
-def test_runtime_paths_allow_optional_profile_and_workbook_paths(
+def test_runtime_paths_allow_optional_profile_path(
     tmp_path: Path,
 ) -> None:
     settings_path = tmp_path / "config" / "settings.yaml"
@@ -315,7 +307,6 @@ retention: {}
     )
 
     assert runtime_paths.candidate_profile_path is None
-    assert runtime_paths.job_history_workbook_path is None
 
 
 def test_runtime_paths_resolve_required_and_optional_output_paths(

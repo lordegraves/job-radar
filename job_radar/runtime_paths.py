@@ -63,7 +63,6 @@ class RuntimePaths:
     reports_path: Path
     logs_path: Path
     candidate_profile_path: Path | None
-    job_history_workbook_path: Path | None
 
     def resolve(self, path: str | Path) -> Path:
         """Resolve a required runtime path from this run's base directory."""
@@ -181,10 +180,6 @@ class RuntimePaths:
             ),
             candidate_profile_path=_resolve_optional_from_base(
                 settings.candidate_profile_path,
-                base_path,
-            ),
-            job_history_workbook_path=_resolve_optional_from_base(
-                settings.job_history_workbook_path,
                 base_path,
             ),
         )

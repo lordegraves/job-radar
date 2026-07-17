@@ -85,7 +85,6 @@ class ApplicationSettings(Mapping[str, Any]):
     logs_path: str
     retention: dict[str, Any]
     active_profile: ActiveProfileSettings
-    job_history_workbook_path: str | None
     email: EmailSettings
     _data: dict[str, Any] = field(repr=False, compare=False)
 
@@ -199,10 +198,6 @@ def load_settings(
     active_profile = ActiveProfileSettings(
         candidate_profile_path=candidate_profile_path,
     )
-    job_history_workbook_path = _optional_settings_string(
-        data.get("job_history_workbook_path"),
-        "job_history_workbook_path",
-    )
     email = _validate_email_settings(data.get("email", {}))
 
     # Preserve the original mapping shape during the compatibility migration.
@@ -217,16 +212,12 @@ def load_settings(
     if "candidate_profile_path" in data:
         normalized_data["candidate_profile_path"] = candidate_profile_path
 
-    if "job_history_workbook_path" in data:
-        normalized_data["job_history_workbook_path"] = job_history_workbook_path
-
     return ApplicationSettings(
         database_path=database_path,
         reports_path=reports_path,
         logs_path=logs_path,
         retention=retention,
         active_profile=active_profile,
-        job_history_workbook_path=job_history_workbook_path,
         email=email,
         _data=normalized_data,
     )

@@ -20,7 +20,6 @@ from job_radar.history_match import (
     summarize_history_risk,
 )
 from job_radar.history_summary import build_history_summary
-from job_radar.job_history import load_job_history_workbook
 from job_radar.normalize import clean_text
 from job_radar.html_report import write_html_report
 from job_radar.report_models import ScanError, ScanReport
@@ -198,46 +197,6 @@ def _import_history_records(
     )
 
 
-def _import_job_history_for_scan(
-    *,
-    workbook_path: Path | None,
-    database_path: str,
-) -> None:
-    if workbook_path is None:
-        return
-
-    if not Path(workbook_path).exists():
-        print("Application history import skipped")
-        print(f"Workbook: {workbook_path}")
-        print("Reason: workbook file does not exist; using existing database history")
-        print()
-        return
-
-    import_result = load_job_history_workbook(workbook_path)
-
-    (
-        imported_count,
-        updated_count,
-        tracker_imported_count,
-        tracker_updated_count,
-        tracker_skipped_count,
-    ) = _import_history_records(
-        database_path=database_path,
-        records=import_result.records,
-    )
-
-    print("Application history import complete")
-    print(f"Workbook: {workbook_path}")
-    print(f"Rows read: {import_result.rows_read}")
-    print(f"Rows imported: {imported_count}")
-    print(f"Rows updated: {updated_count}")
-    print(f"Rows skipped: {import_result.rows_skipped}")
-    print(f"Tracker rows imported: {tracker_imported_count}")
-    print(f"Tracker rows updated: {tracker_updated_count}")
-    print(f"Tracker rows skipped: {tracker_skipped_count}")
-    print()
-
-
 def _build_tracker_workflow_summary(database_path: str) -> dict[str, int]:
     workflow_summary: dict[str, int] = {}
 
@@ -320,7 +279,6 @@ def handle_scan(
             database_path=str(database_path),
             base_directory=runtime_paths.base_directory,
             candidate_profile_path=runtime_paths.candidate_profile_path,
-            job_history_workbook_path=runtime_paths.job_history_workbook_path,
         )
 
 
@@ -336,7 +294,6 @@ def _handle_scan_unlocked(
     database_path: str,
     base_directory: Path,
     candidate_profile_path: Path | None,
-    job_history_workbook_path: Path | None,
 ) -> None:
     companies = load_companies(config_path)
 
@@ -363,18 +320,6 @@ def _handle_scan_unlocked(
         candidate_profile, resume_text = _load_candidate_context(
             candidate_profile_path,
             base_directory=base_directory,
-        )
-
-        current_stage = "history_import"
-        update_scan_run_progress(
-            database_path,
-            scan_run_id=scan_run_id,
-            current_stage=current_stage,
-        )
-
-        _import_job_history_for_scan(
-            workbook_path=job_history_workbook_path,
-            database_path=database_path,
         )
 
         print("Scan requested")
