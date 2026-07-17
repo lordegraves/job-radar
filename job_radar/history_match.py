@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 
-from job_radar.job_history import JobHistoryRecord
+from job_radar.history_models import JobHistoryRecord
 from job_radar.models import JobPosting
 from job_radar.recommendation_constants import (
     HISTORY_ALREADY_APPLIED,

@@ -1,7 +1,7 @@
 from datetime import date
 
 from job_radar.database import connect_database
-from job_radar.job_history import JobHistoryRecord
+from job_radar.history_models import JobHistoryRecord
 from job_radar.models import JobPosting
 from job_radar.storage import (
     delete_job_history_record,

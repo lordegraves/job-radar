@@ -19,10 +19,10 @@ from job_radar.cli import (
     main,
 )
 from job_radar.scan_service import _find_profile_avoid_matches
+from job_radar.history_models import JobHistoryRecord
 from job_radar.job_history import (
     EXPECTED_HEADERS,
     SIMPLIFIED_HEADERS,
-    JobHistoryRecord,
 )
 from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.email_sender import EmailSendResult

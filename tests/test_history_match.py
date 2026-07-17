@@ -3,7 +3,7 @@ from job_radar.history_match import (
     find_history_matches,
     summarize_history_risk,
 )
-from job_radar.job_history import JobHistoryRecord
+from job_radar.history_models import JobHistoryRecord
 from job_radar.models import JobPosting
 
 
@@ -197,7 +197,7 @@ def test_summarize_history_risk_returns_highest_risk_and_unique_reasons() -> Non
 
 def test_applied_history_record_tracks_status_instead_of_fresh_apply() -> None:
     from job_radar.history_match import find_history_matches, summarize_history_risk
-    from job_radar.job_history import JobHistoryRecord
+    from job_radar.history_models import JobHistoryRecord
     from job_radar.models import JobPosting
 
     posting = JobPosting(

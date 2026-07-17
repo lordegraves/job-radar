@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from job_radar.job_history import JobHistoryRecord
+from job_radar.history_models import JobHistoryRecord
 from job_radar.models import JobPosting
 from job_radar.storage import initialize_database, upsert_job_history_record
 from job_radar.tracker.tracker_models import ApplicationRecord

@@ -2,7 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from job_radar.database import connect_database
-from job_radar.job_history import JobHistoryRecord
+from job_radar.history_models import JobHistoryRecord
 from job_radar.storage import (
     complete_scan_run,
     fail_scan_run,

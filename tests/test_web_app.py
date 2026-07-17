@@ -6,7 +6,7 @@ from pathlib import Path
 
 import job_radar.web_app as web_app_module
 
-from job_radar.job_history import JobHistoryRecord
+from job_radar.history_models import JobHistoryRecord
 from job_radar.scan_lock import ScanAlreadyRunningError
 from job_radar.storage import (
     complete_scan_run,
