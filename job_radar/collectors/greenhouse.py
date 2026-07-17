@@ -1,7 +1,6 @@
 from typing import Any
 
-import requests
-
+from job_radar.collectors.collector_http import get_json
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
 
@@ -109,15 +108,13 @@ def collect_greenhouse_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
 
     url = build_greenhouse_jobs_url(str(board_token))
 
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-    except requests.RequestException as error:
-        raise CollectorError(f"Failed to fetch Greenhouse jobs: {error}") from error
-
-    payload = response.json()
-
-    if not isinstance(payload, dict):
-        raise CollectorError("Greenhouse response JSON must be an object")
+    payload = get_json(
+        url,
+        timeout=30,
+        error_type=CollectorError,
+        request_error_message="Failed to fetch Greenhouse jobs",
+        expected_type=dict,
+        response_type_error_message="Greenhouse response JSON must be an object",
+    )
 
     return parse_greenhouse_jobs(company_config, payload)

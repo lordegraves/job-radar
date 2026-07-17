@@ -1,7 +1,6 @@
 from typing import Any
 
-import requests
-
+from job_radar.collectors.collector_http import get_json
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -166,15 +165,13 @@ def collect_ashby_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
 
     url = build_ashby_jobs_url(str(source_slug))
 
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-    except requests.RequestException as error:
-        raise CollectorError(f"Failed to fetch Ashby jobs: {error}") from error
-
-    payload = response.json()
-
-    if not isinstance(payload, dict):
-        raise CollectorError("Ashby response JSON must be an object")
+    payload = get_json(
+        url,
+        timeout=30,
+        error_type=CollectorError,
+        request_error_message="Failed to fetch Ashby jobs",
+        expected_type=dict,
+        response_type_error_message="Ashby response JSON must be an object",
+    )
 
     return parse_ashby_jobs(company_config, payload)
