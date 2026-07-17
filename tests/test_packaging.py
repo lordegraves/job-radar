@@ -198,3 +198,121 @@ def test_installed_wheel_runs_outside_source_checkout(
     assert "--settings" in web_help.stdout
     assert "--host" in web_help.stdout
     assert "--port" in web_help.stdout
+
+
+def test_installed_wheel_renders_home_page_with_user_owned_data(
+    tmp_path: Path,
+) -> None:
+    source_directory = tmp_path / "source"
+    wheel_directory = tmp_path / "wheelhouse"
+    install_directory = tmp_path / "installed"
+    execution_directory = tmp_path / "outside-source"
+    user_data_directory = tmp_path / "user-data"
+    settings_file = user_data_directory / "config" / "settings.yaml"
+    database_file = user_data_directory / "data" / "job_radar.sqlite3"
+    reports_directory = user_data_directory / "reports"
+    logs_directory = user_data_directory / "logs"
+
+    shutil.copytree(PROJECT_ROOT / "job_radar", source_directory / "job_radar")
+    shutil.copy2(PROJECT_ROOT / "pyproject.toml", source_directory)
+    shutil.copy2(PROJECT_ROOT / "README.md", source_directory)
+
+    execution_directory.mkdir()
+    settings_file.parent.mkdir(parents=True)
+    database_file.parent.mkdir(parents=True)
+    reports_directory.mkdir(parents=True)
+    logs_directory.mkdir(parents=True)
+
+    settings_file.write_text(
+        f"""
+database_path: {database_file}
+reports_path: {reports_directory}
+logs_path: {logs_directory}
+
+retention:
+  report_retention_days: 90
+  routine_event_retention_days: 90
+  log_max_mb: 5
+  log_backup_count: 5
+  raw_capture_enabled: false
+  raw_capture_retention_days: 7
+""",
+        encoding="utf-8",
+    )
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "wheel",
+            ".",
+            "--no-deps",
+            "--wheel-dir",
+            str(wheel_directory),
+        ],
+        cwd=source_directory,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    wheel_files = tuple(wheel_directory.glob("job_radar-*.whl"))
+    assert len(wheel_files) == 1
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--no-deps",
+            "--target",
+            str(install_directory),
+            str(wheel_files[0]),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(install_directory)
+    environment["JOB_RADAR_TEST_INSTALL"] = str(install_directory)
+    environment["JOB_RADAR_TEST_SETTINGS"] = str(settings_file)
+    environment["JOB_RADAR_TEST_DATABASE"] = str(database_file)
+
+    rendered_page = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import os; "
+                "from pathlib import Path; "
+                "import job_radar.web_app as web_app; "
+                "install_root = "
+                "Path(os.environ['JOB_RADAR_TEST_INSTALL']).resolve(); "
+                "module_file = Path(web_app.__file__).resolve(); "
+                "assert install_root in module_file.parents, module_file; "
+                "settings_path = os.environ['JOB_RADAR_TEST_SETTINGS']; "
+                "database_path = "
+                "Path(os.environ['JOB_RADAR_TEST_DATABASE']); "
+                "app = web_app.create_app(settings_path=settings_path); "
+                "response = app.test_client().get('/'); "
+                "html = response.get_data(as_text=True); "
+                "assert response.status_code == 200; "
+                "assert 'Active Applications dashboard' in html; "
+                "assert 'Tracked applications' in html; "
+                "assert 'Latest scan' in html; "
+                "assert database_path.is_file(); "
+                "print('installed web render passed')"
+            ),
+        ],
+        cwd=execution_directory,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert rendered_page.stdout.strip() == "installed web render passed"
