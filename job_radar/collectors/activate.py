@@ -5,8 +5,7 @@ from html import unescape
 from typing import Any
 from urllib.parse import urljoin
 
-import requests
-
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -160,22 +159,15 @@ def _fetch_page(
         "jtPageSize": page_size,
     }
 
-    try:
-        response = requests.get(
-            source_url,
-            params=params,
-            headers=_build_headers(referer_url),
-            timeout=_get_timeout_seconds(company_config),
-        )
-        response.raise_for_status()
-    except requests.HTTPError as error:
-        response_body = response.text[:500].replace("\n", " ")
-        raise CollectorError(
-            f"Failed to fetch Activate postings: {error}; "
-            f"response_body={response_body}"
-        ) from error
-    except requests.RequestException as error:
-        raise CollectorError(f"Failed to fetch Activate postings: {error}") from error
+    response = get_response(
+        source_url,
+        params=params,
+        headers=_build_headers(referer_url),
+        timeout=_get_timeout_seconds(company_config),
+        error_type=CollectorError,
+        request_error_message="Failed to fetch Activate postings",
+        include_response_body=True,
+    )
 
     try:
         data = response.json()

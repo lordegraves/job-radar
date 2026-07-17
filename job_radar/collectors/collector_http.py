@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any, TypeVar
 
 import requests
@@ -12,6 +13,10 @@ def get_response(
     timeout: int,
     params: dict[str, Any] | None = None,
     headers: dict[str, Any] | None = None,
+    error_type: type[Exception] | None = None,
+    request_error_message: str | None = None,
+    include_response_body: bool = False,
+    request_get: Callable[..., requests.Response] | None = None,
 ) -> requests.Response:
     request_kwargs: dict[str, Any] = {"timeout": timeout}
 
@@ -21,8 +26,28 @@ def get_response(
     if headers is not None:
         request_kwargs["headers"] = headers
 
-    response = requests.get(url, **request_kwargs)
-    response.raise_for_status()
+    if request_get is None:
+        request_get = requests.get
+
+    try:
+        response = request_get(url, **request_kwargs)
+        response.raise_for_status()
+    except requests.HTTPError as error:
+        if error_type is None or request_error_message is None:
+            raise
+
+        message = f"{request_error_message}: {error}"
+
+        if include_response_body:
+            response_body = response.text[:500].replace("\n", " ")
+            message = f"{message}; response_body={response_body}"
+
+        raise error_type(message) from error
+    except requests.RequestException as error:
+        if error_type is None or request_error_message is None:
+            raise
+
+        raise error_type(f"{request_error_message}: {error}") from error
 
     return response
 

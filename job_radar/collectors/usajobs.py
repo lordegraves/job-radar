@@ -3,8 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-import requests
-
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -188,22 +187,15 @@ def collect_usajobs(company_config: dict[str, Any]) -> list[JobPosting]:
     for page in range(1, MAX_PAGES + 1):
         params = _build_params(company_config, page)
 
-        try:
-            response = requests.get(
-                USAJOBS_SEARCH_URL,
-                headers=headers,
-                params=params,
-                timeout=30,
-            )
-            response.raise_for_status()
-        except requests.HTTPError as error:
-            response_body = response.text[:500].replace("\n", " ")
-            raise CollectorError(
-                f"Failed to fetch USAJobs postings: {error}; "
-                f"response_body={response_body}"
-            ) from error
-        except requests.RequestException as error:
-            raise CollectorError(f"Failed to fetch USAJobs postings: {error}") from error
+        response = get_response(
+            USAJOBS_SEARCH_URL,
+            headers=headers,
+            params=params,
+            timeout=30,
+            error_type=CollectorError,
+            request_error_message="Failed to fetch USAJobs postings",
+            include_response_body=True,
+        )
 
         payload = response.json()
         postings.extend(_parse_search_items(company_config, payload))

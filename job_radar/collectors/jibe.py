@@ -3,8 +3,7 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urljoin
 
-import requests
-
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -193,25 +192,18 @@ def _fetch_jibe_page(
 ) -> dict[str, Any]:
     source_url = str(company_config["source_url"])
 
-    try:
-        response = requests.get(
-            source_url,
-            params={
-                "page": page,
-                "limit": limit,
-            },
-            headers=_build_headers(company_config),
-            timeout=DEFAULT_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status()
-    except requests.HTTPError as error:
-        response_body = response.text[:500].replace("\n", " ")
-        raise CollectorError(
-            f"Failed to fetch Jibe postings: {error}; "
-            f"response_body={response_body}"
-        ) from error
-    except requests.RequestException as error:
-        raise CollectorError(f"Failed to fetch Jibe postings: {error}") from error
+    response = get_response(
+        source_url,
+        params={
+            "page": page,
+            "limit": limit,
+        },
+        headers=_build_headers(company_config),
+        timeout=DEFAULT_TIMEOUT_SECONDS,
+        error_type=CollectorError,
+        request_error_message="Failed to fetch Jibe postings",
+        include_response_body=True,
+    )
 
     payload = response.json()
     if not isinstance(payload, dict):

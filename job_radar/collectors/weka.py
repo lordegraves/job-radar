@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 
 import requests
 
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -44,24 +45,18 @@ def _get_timeout_seconds(company_config: dict[str, Any]) -> int:
 def _fetch_careers_page(company_config: dict[str, Any]) -> tuple[str, str]:
     source_url = str(company_config["source_url"])
 
-    try:
-        response = requests.get(
-            source_url,
-            headers={
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "User-Agent": DEFAULT_USER_AGENT,
-            },
-            timeout=_get_timeout_seconds(company_config),
-        )
-        response.raise_for_status()
-    except requests.HTTPError as error:
-        response_body = response.text[:500].replace("\n", " ")
-        raise CollectorError(
-            f"Failed to fetch WEKA careers page: {error}; "
-            f"response_body={response_body}"
-        ) from error
-    except requests.RequestException as error:
-        raise CollectorError(f"Failed to fetch WEKA careers page: {error}") from error
+    response = get_response(
+        source_url,
+        headers={
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "User-Agent": DEFAULT_USER_AGENT,
+        },
+        timeout=_get_timeout_seconds(company_config),
+        error_type=CollectorError,
+        request_error_message="Failed to fetch WEKA careers page",
+        include_response_body=True,
+        request_get=requests.get,
+    )
 
     return response.text, response.url
 

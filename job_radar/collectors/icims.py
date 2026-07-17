@@ -4,8 +4,7 @@ from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
-import requests
-
+from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -254,21 +253,14 @@ def collect_icims_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
 
         current_url = next_url
 
-        try:
-            response = requests.get(
-                current_url,
-                headers=_build_headers(),
-                timeout=DEFAULT_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
-        except requests.HTTPError as error:
-            response_body = response.text[:500].replace("\n", " ")
-            raise CollectorError(
-                f"Failed to fetch iCIMS postings: {error}; "
-                f"response_body={response_body}"
-            ) from error
-        except requests.RequestException as error:
-            raise CollectorError(f"Failed to fetch iCIMS postings: {error}") from error
+        response = get_response(
+            current_url,
+            headers=_build_headers(),
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+            error_type=CollectorError,
+            request_error_message="Failed to fetch iCIMS postings",
+            include_response_body=True,
+        )
 
         page_postings = _parse_icims_html(company_config, response.text, current_url)
         for posting in page_postings:
