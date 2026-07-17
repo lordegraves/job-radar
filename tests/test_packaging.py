@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import sys
@@ -82,3 +83,118 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
         archive_name.startswith(private_runtime_prefixes)
         for archive_name in archive_names
     )
+
+
+def test_installed_wheel_runs_outside_source_checkout(
+    tmp_path: Path,
+) -> None:
+    source_directory = tmp_path / "source"
+    wheel_directory = tmp_path / "wheelhouse"
+    install_directory = tmp_path / "installed"
+    execution_directory = tmp_path / "outside-source"
+
+    # Build and install entirely under pytest temporary storage so this test
+    # exercises the distributable package without modifying the repository.
+    shutil.copytree(PROJECT_ROOT / "job_radar", source_directory / "job_radar")
+    shutil.copy2(PROJECT_ROOT / "pyproject.toml", source_directory)
+    shutil.copy2(PROJECT_ROOT / "README.md", source_directory)
+    execution_directory.mkdir()
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "wheel",
+            ".",
+            "--no-deps",
+            "--wheel-dir",
+            str(wheel_directory),
+        ],
+        cwd=source_directory,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    wheel_files = tuple(wheel_directory.glob("job_radar-*.whl"))
+    assert len(wheel_files) == 1
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--no-deps",
+            "--target",
+            str(install_directory),
+            str(wheel_files[0]),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(install_directory)
+    environment["JOB_RADAR_TEST_INSTALL"] = str(install_directory)
+
+    installed_import = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import os; "
+                "from importlib.resources import files; "
+                "from pathlib import Path; "
+                "import job_radar; "
+                "install_root = "
+                "Path(os.environ['JOB_RADAR_TEST_INSTALL']).resolve(); "
+                "package_file = Path(job_radar.__file__).resolve(); "
+                "assert install_root in package_file.parents, package_file; "
+                "assert files('job_radar').joinpath("
+                "'templates/base.html').is_file(); "
+                "print(job_radar.__version__)"
+            ),
+        ],
+        cwd=execution_directory,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert installed_import.stdout.strip() == __version__
+
+    cli_version = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "job_radar",
+            "--version",
+        ],
+        cwd=execution_directory,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert cli_version.stdout.strip() == f"job-radar {__version__}"
+
+    web_help = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "job_radar.web_app",
+            "--help",
+        ],
+        cwd=execution_directory,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "Local Job Radar web interface" in web_help.stdout
+    assert "--settings" in web_help.stdout
+    assert "--host" in web_help.stdout
+    assert "--port" in web_help.stdout
