@@ -1,0 +1,70 @@
+from dataclasses import dataclass
+
+from flask import Flask, render_template
+
+from job_radar.config import load_settings
+from job_radar.email_sender import get_email_readiness
+from job_radar.runtime_paths import (
+    DEFAULT_COMPANY_CONFIG_PATH,
+    DEFAULT_EMAIL_PREVIEW_PATH,
+    DEFAULT_REPORT_PATH,
+    DEFAULT_SCORING_CONFIG_PATH,
+)
+
+
+@dataclass(frozen=True)
+class SettingsView:
+    settings_path: str
+    database_path: str
+    reports_path: str
+    logs_path: str
+    candidate_profile_path: str | None
+    retention_items: list[tuple[str, object]]
+    scan_config_path: str
+    scan_settings_path: str
+    scan_scoring_path: str
+    scan_report_path: str
+    scan_email_preview_path: str
+    email_status: str
+
+
+def register_settings_routes(
+    app: Flask,
+    *,
+    settings_path: str,
+) -> None:
+    """Register the read-only application settings page."""
+
+    @app.get("/settings")
+    def settings() -> str:
+        settings_view = _build_settings_view(settings_path)
+
+        return render_template(
+            "settings.html",
+            settings_view=settings_view,
+        )
+
+
+def _build_settings_view(settings_path: str) -> SettingsView:
+    settings = load_settings(settings_path)
+    retention = settings.get("retention", {})
+    email_readiness = get_email_readiness(settings.email)
+
+    return SettingsView(
+        settings_path=settings_path,
+        database_path=settings["database_path"],
+        reports_path=settings["reports_path"],
+        logs_path=settings["logs_path"],
+        candidate_profile_path=settings.get("candidate_profile_path"),
+        retention_items=(
+            sorted(retention.items())
+            if isinstance(retention, dict)
+            else []
+        ),
+        scan_config_path=DEFAULT_COMPANY_CONFIG_PATH,
+        scan_settings_path=settings_path,
+        scan_scoring_path=DEFAULT_SCORING_CONFIG_PATH,
+        scan_report_path=DEFAULT_REPORT_PATH,
+        scan_email_preview_path=DEFAULT_EMAIL_PREVIEW_PATH,
+        email_status=email_readiness.message,
+    )

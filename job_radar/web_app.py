@@ -15,8 +15,7 @@ from flask import (
     url_for,
 )
 
-from job_radar.config import ConfigError, load_settings
-from job_radar.email_sender import get_email_readiness
+from job_radar.config import ConfigError
 from job_radar.profile_service import build_candidate_profile_view, save_uploaded_resume
 from job_radar.report_snapshot import (
     ReportSnapshotCollectorError,
@@ -54,6 +53,7 @@ from job_radar.tracker.tracker_storage import (
     upsert_application,
 )
 from job_radar.web_routes.companies import register_company_routes
+from job_radar.web_routes.settings import register_settings_routes
 
 TRACKER_NEEDS_ACTION_WORKFLOW_STATES = {
     "follow_up_due",
@@ -414,22 +414,6 @@ class ReportFileView:
     sort_order: int
 
 
-@dataclass(frozen=True)
-class SettingsView:
-    settings_path: str
-    database_path: str
-    reports_path: str
-    logs_path: str
-    candidate_profile_path: str | None
-    retention_items: list[tuple[str, object]]
-    scan_config_path: str
-    scan_settings_path: str
-    scan_scoring_path: str
-    scan_report_path: str
-    scan_email_preview_path: str
-    email_status: str
-
-
 def _build_scan_status_payload(
     database_path: str | Path,
 ) -> dict[str, object]:
@@ -551,14 +535,10 @@ def create_app(
             latest_report=latest_report,
         )
 
-    @app.get("/settings")
-    def settings() -> str:
-        settings_view = _build_settings_view(app)
-
-        return render_template(
-            "settings.html",
-            settings_view=settings_view,
-        )
+    register_settings_routes(
+        app,
+        settings_path=app.config["JOB_RADAR_SETTINGS_PATH"],
+    )
 
     register_company_routes(
         app,
@@ -1106,32 +1086,6 @@ def create_app(
         return redirect(url_for("tracker", filter=return_filter))
 
     return app
-
-
-def _build_settings_view(app: Flask) -> SettingsView:
-    settings_path = app.config["JOB_RADAR_SETTINGS_PATH"]
-    settings = load_settings(settings_path)
-    retention = settings.get("retention", {})
-    email_readiness = get_email_readiness(settings.email)
-
-    return SettingsView(
-        settings_path=settings_path,
-        database_path=settings["database_path"],
-        reports_path=settings["reports_path"],
-        logs_path=settings["logs_path"],
-        candidate_profile_path=settings.get("candidate_profile_path"),
-        retention_items=(
-            sorted(retention.items())
-            if isinstance(retention, dict)
-            else []
-        ),
-        scan_config_path=DEFAULT_SCAN_CONFIG_PATH,
-        scan_settings_path=settings_path,
-        scan_scoring_path=DEFAULT_SCAN_SCORING_PATH,
-        scan_report_path=DEFAULT_SCAN_REPORT_PATH,
-        scan_email_preview_path=DEFAULT_SCAN_EMAIL_PREVIEW_PATH,
-        email_status=email_readiness.message,
-    )
 
 
 def _get_runtime_paths(app: Flask) -> RuntimePaths:
