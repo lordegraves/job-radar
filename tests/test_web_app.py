@@ -1,5 +1,6 @@
 import json
-from datetime import date
+import os
+from datetime import date, datetime
 from io import BytesIO
 from pathlib import Path
 
@@ -8,8 +9,11 @@ import job_radar.web_app as web_app_module
 from job_radar.job_history import JobHistoryRecord
 from job_radar.scan_lock import ScanAlreadyRunningError
 from job_radar.storage import (
+    complete_scan_run,
     fetch_included_job_history_records,
     initialize_database,
+    start_scan_run,
+    update_scan_run_progress,
     upsert_job_history_record,
 )
 from job_radar.tracker.tracker_models import ApplicationRecord
@@ -1889,9 +1893,9 @@ def test_scan_page_shows_manual_scan_command(
     assert "Review the current scan settings or start a manual scan." in normalized_html
     assert "<h2>Run scan</h2>" in normalized_html
     assert "Email sending is disabled for manual scans started here." in normalized_html
-    assert ">Run scan</button>" in normalized_html
+    assert 'id="scan-submit-button"' in html
+    assert "> Run scan </button>" in normalized_html
     assert "Run scan from GUI" not in html
-    assert ">Run scan</button>" in normalized_html
     assert "Scan is running. This may take a few minutes." in normalized_html
     assert "Some company/source errors are temporary." in normalized_html
     assert "After running a scan, use the latest scan links here" in normalized_html
@@ -1907,6 +1911,145 @@ def test_scan_page_shows_manual_scan_command(
         f"{runtime_paths.resolve('reports/target-email-preview.txt')}"
         in html
     )
+
+
+def test_scan_page_restores_active_scan_progress(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    scan_run_id = start_scan_run(
+        database_file,
+        requested_at="2026-07-17T12:00:00+00:00",
+        companies_requested=64,
+        companies_enabled=64,
+        current_stage="collection",
+    )
+    update_scan_run_progress(
+        database_file,
+        scan_run_id=scan_run_id,
+        current_stage="collection",
+        companies_scanned=18,
+        jobs_found=142,
+        collector_errors=1,
+    )
+    client = app.test_client()
+
+    response = client.get("/scan")
+    html = response.get_data(as_text=True)
+    normalized_html = " ".join(html.split())
+
+    assert response.status_code == 200
+    assert 'id="scan-submit-button"' in html
+    assert "disabled" in html
+    assert "Scan running..." in normalized_html
+    assert "Scanning company job sources" in html
+    assert 'value="28"' in html
+    assert "18 of 64 company sources scanned." in normalized_html
+    assert "142 jobs found." in normalized_html
+
+
+def test_scan_status_endpoint_returns_durable_progress(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    scan_run_id = start_scan_run(
+        database_file,
+        requested_at="2026-07-17T12:00:00+00:00",
+        companies_requested=64,
+        companies_enabled=64,
+        current_stage="collection",
+    )
+    update_scan_run_progress(
+        database_file,
+        scan_run_id=scan_run_id,
+        current_stage="collection",
+        companies_scanned=32,
+        jobs_found=275,
+        collector_errors=2,
+    )
+    client = app.test_client()
+
+    response = client.get("/scan/status")
+    payload = response.get_json()
+
+    assert response.status_code == 200
+    assert payload == {
+        "status": "running",
+        "is_running": True,
+        "stage": "collection",
+        "stage_label": "Scanning company job sources",
+        "companies_scanned": 32,
+        "companies_enabled": 64,
+        "progress_percent": 50,
+        "progress_determinate": True,
+        "jobs_found": 275,
+        "collector_errors": 2,
+        "has_results": False,
+        "failure_summary": None,
+    }
+
+
+def test_scan_status_endpoint_exposes_completed_report_links(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file))
+    scan_run_id = start_scan_run(
+        database_file,
+        requested_at="2026-07-17T12:00:00+00:00",
+        companies_requested=64,
+        companies_enabled=64,
+        current_stage="collection",
+    )
+    complete_scan_run(
+        database_file,
+        scan_run_id=scan_run_id,
+        generated_at="2026-07-17T12:05:00+00:00",
+        finished_at="2026-07-17T12:05:00+00:00",
+        companies_scanned=64,
+        jobs_collected=500,
+        actionable_jobs_stored=10,
+        jobs_not_actionable=490,
+        jobs_new=5,
+        jobs_seen=490,
+        jobs_changed=5,
+        collector_errors=0,
+        top_matches_count=2,
+        review_needed_count=8,
+        report_status="completed",
+        email_status="not_requested",
+    )
+    client = app.test_client()
+
+    status_response = client.get("/scan/status")
+    status_payload = status_response.get_json()
+    page_response = client.get("/scan")
+    page_html = page_response.get_data(as_text=True)
+
+    assert status_response.status_code == 200
+    assert status_payload["status"] == "completed"
+    assert status_payload["is_running"] is False
+    assert status_payload["progress_percent"] == 100
+    assert status_payload["has_results"] is True
+
+    assert page_response.status_code == 200
+    assert "Latest scan completed." in page_html
+    assert "/reports/view/target-scan.html" in page_html
+    assert "/reports/view/target-email-preview.txt" in page_html
 
 
 def test_scan_run_calls_handle_scan_and_redirects(
@@ -2080,6 +2223,52 @@ def test_reports_page_lists_existing_report_files(tmp_path: Path) -> None:
     assert "Additional file in the reports directory." in html
     assert "job_radar.sqlite3" not in html
     assert "It does not start a scan or send email." in html
+
+
+def test_reports_page_shows_time_and_sorts_by_full_timestamp(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+
+    older_report = reports_path / "older-notes.txt"
+    newer_report = reports_path / "newer-notes.txt"
+    older_report.write_text("Older notes", encoding="utf-8")
+    newer_report.write_text("Newer notes", encoding="utf-8")
+
+    older_timestamp = datetime(2026, 7, 16, 9, 15).timestamp()
+    newer_timestamp = datetime(2026, 7, 16, 21, 47).timestamp()
+    os.utime(
+        older_report,
+        (older_timestamp, older_timestamp),
+    )
+    os.utime(
+        newer_report,
+        (newer_timestamp, newer_timestamp),
+    )
+
+    write_settings_file(
+        settings_file,
+        database_file,
+        reports_path=reports_path,
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/reports")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert datetime.fromtimestamp(older_timestamp).strftime(
+        "%Y-%m-%d %I:%M %p"
+    ) in html
+    assert datetime.fromtimestamp(newer_timestamp).strftime(
+        "%Y-%m-%d %I:%M %p"
+    ) in html
+    assert html.index("newer-notes.txt") < html.index("older-notes.txt")
 
 
 def test_reports_page_handles_missing_reports_directory(tmp_path: Path) -> None:

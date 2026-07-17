@@ -4,7 +4,16 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from flask import Flask, abort, redirect, render_template, request, send_from_directory, url_for
+from flask import (
+    Flask,
+    abort,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    url_for,
+)
 
 from job_radar.scan_lock import ScanAlreadyRunningError
 from job_radar.scan_service import handle_scan
@@ -30,7 +39,9 @@ from job_radar.runtime_paths import (
     RuntimePaths,
 )
 from job_radar.storage import (
+    fetch_active_scan_run,
     fetch_included_job_history_records,
+    fetch_latest_scan_run,
     initialize_database,
 )
 from job_radar.tracker.tracker_ids import build_manual_job_radar_id
@@ -403,6 +414,7 @@ class ReportFileView:
     name: str
     size_bytes: int
     modified_at: str
+    modified_timestamp: float
     description: str
     is_primary: bool
     sort_order: int
@@ -424,6 +436,93 @@ class SettingsView:
     email_status: str
 
 
+def _build_scan_status_payload(
+    database_path: str | Path,
+) -> dict[str, object]:
+    active_scan_run = fetch_active_scan_run(database_path)
+    scan_run = active_scan_run or fetch_latest_scan_run(database_path)
+
+    if scan_run is None:
+        return {
+            "status": "idle",
+            "is_running": False,
+            "stage": None,
+            "stage_label": "No scan is currently running.",
+            "companies_scanned": 0,
+            "companies_enabled": 0,
+            "progress_percent": 0,
+            "progress_determinate": False,
+            "jobs_found": 0,
+            "collector_errors": 0,
+            "has_results": False,
+            "failure_summary": None,
+        }
+
+    status = str(scan_run["status"])
+    stage = str(scan_run["current_stage"] or "")
+    companies_scanned = int(scan_run["companies_scanned"] or 0)
+    companies_enabled = int(scan_run["companies_enabled"] or 0)
+
+    stage_labels = {
+        "configuration": "Loading configuration and candidate profile",
+        "history_import": "Preparing application history",
+        "collection": "Scanning company job sources",
+        "scoring": "Scoring collected jobs",
+        "storage": "Saving actionable results",
+        "report_generation": "Generating reports",
+        "email_delivery": "Sending email report",
+        "completed": "Scan completed",
+    }
+    stage_label = stage_labels.get(
+        stage,
+        stage.replace("_", " ").strip().title() or "Scan is running",
+    )
+
+    progress_determinate = (
+        companies_enabled > 0
+        and (
+            stage
+            in {
+                "collection",
+                "scoring",
+                "storage",
+                "report_generation",
+                "email_delivery",
+                "completed",
+            }
+            or status != "running"
+        )
+    )
+    progress_percent = (
+        min(
+            100,
+            round((companies_scanned / companies_enabled) * 100),
+        )
+        if progress_determinate
+        else 0
+    )
+
+    has_results = (
+        status in {"completed", "completed_with_warnings"}
+        and scan_run["report_status"] == "completed"
+    )
+
+    return {
+        "status": status,
+        "is_running": status == "running",
+        "stage": stage or None,
+        "stage_label": stage_label,
+        "companies_scanned": companies_scanned,
+        "companies_enabled": companies_enabled,
+        "progress_percent": progress_percent,
+        "progress_determinate": progress_determinate,
+        "jobs_found": int(scan_run["jobs_found"] or 0),
+        "collector_errors": int(scan_run["collector_errors"] or 0),
+        "has_results": has_results,
+        "failure_summary": scan_run["failure_summary"],
+    }
+
+
 def create_app(
     settings_path: str | Path | None = None,
     *,
@@ -440,6 +539,8 @@ def create_app(
     )
     app.config["JOB_RADAR_RUNTIME_PATHS"] = runtime_paths
     app.config["JOB_RADAR_SETTINGS_PATH"] = str(runtime_paths.settings_path)
+
+    initialize_database(runtime_paths.database_path)
 
     @app.get("/")
     def index() -> str:
@@ -697,6 +798,10 @@ def create_app(
             f"--email-preview {email_preview_path}"
         )
 
+        scan_status = _build_scan_status_payload(
+            runtime_paths.database_path
+        )
+
         return render_template(
             "scan.html",
             scan_command=scan_command,
@@ -707,6 +812,15 @@ def create_app(
             scan_email_preview_path=email_preview_path,
             scan_result=request.args.get("scan_result"),
             scan_error=request.args.get("scan_error", "").strip(),
+            scan_status=scan_status,
+        )
+
+    @app.get("/scan/status")
+    def scan_status():
+        runtime_paths = _get_runtime_paths(app)
+
+        return jsonify(
+            _build_scan_status_payload(runtime_paths.database_path)
         )
 
     @app.post("/scan/run")
@@ -1140,7 +1254,10 @@ def _get_report_file_views(reports_path: str) -> list[ReportFileView]:
             ReportFileView(
                 name=path.name,
                 size_bytes=stat.st_size,
-                modified_at=date.fromtimestamp(stat.st_mtime).isoformat(),
+                modified_at=datetime.fromtimestamp(stat.st_mtime).strftime(
+                    "%Y-%m-%d %I:%M %p"
+                ),
+                modified_timestamp=stat.st_mtime,
                 description=(
                     primary_details["description"]
                     if primary_details
@@ -1155,7 +1272,11 @@ def _get_report_file_views(reports_path: str) -> list[ReportFileView]:
             )
         )
 
-    return sorted(report_files, key=lambda report: report.modified_at, reverse=True)
+    return sorted(
+        report_files,
+        key=lambda report: report.modified_timestamp,
+        reverse=True,
+    )
 
 
 def _get_tracker_application_views(database_path: str) -> list[TrackerApplicationView]:
