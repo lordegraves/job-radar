@@ -40,28 +40,17 @@ from job_radar.scoring import (
 )
 from job_radar.storage import (
     complete_scan_run,
-    delete_job_history_record,
     fail_scan_run,
     fetch_included_job_history_records,
     initialize_database,
     record_scan_error,
     start_scan_run,
     update_scan_run_progress,
-    upsert_job_history_record,
     upsert_job_posting,
 )
 from job_radar.tracker.tracker_models import ApplicationRecord
-from job_radar.tracker.tracker_service import (
-    build_application_record_from_history_record,
-    get_application_workflow_state,
-    should_track_history_record,
-)
-from job_radar.tracker.tracker_storage import (
-    delete_application,
-    get_application,
-    list_applications,
-    upsert_application,
-)
+from job_radar.tracker.tracker_service import get_application_workflow_state
+from job_radar.tracker.tracker_storage import get_application, list_applications
 
 
 def _load_candidate_context(
@@ -149,52 +138,6 @@ def _dedupe_preserving_order(values: list[str]) -> list[str]:
             deduped_values.append(value)
 
     return deduped_values
-
-
-def _import_history_records(
-    *,
-    database_path: str,
-    records: list,
-) -> tuple[int, int, int, int, int]:
-    history_imported_count = 0
-    history_updated_count = 0
-    tracker_imported_count = 0
-    tracker_updated_count = 0
-    tracker_skipped_count = 0
-
-    for record in records:
-        tracker_record = build_application_record_from_history_record(record)
-
-        if should_track_history_record(record):
-            delete_job_history_record(database_path, record.import_key)
-
-            tracker_upsert_result = upsert_application(database_path, tracker_record)
-
-            if tracker_upsert_result == "new":
-                tracker_imported_count += 1
-            elif tracker_upsert_result == "updated":
-                tracker_updated_count += 1
-
-            continue
-
-        delete_application(database_path, tracker_record.job_radar_id)
-
-        history_upsert_result = upsert_job_history_record(database_path, record)
-
-        if history_upsert_result == "new":
-            history_imported_count += 1
-        elif history_upsert_result == "updated":
-            history_updated_count += 1
-
-        tracker_skipped_count += 1
-
-    return (
-        history_imported_count,
-        history_updated_count,
-        tracker_imported_count,
-        tracker_updated_count,
-        tracker_skipped_count,
-    )
 
 
 def _build_tracker_workflow_summary(database_path: str) -> dict[str, int]:

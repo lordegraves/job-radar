@@ -3,7 +3,6 @@ import argparse
 from job_radar import __version__
 from job_radar.config import ConfigError
 from job_radar.history_summary import build_history_summary, format_history_summary
-from job_radar.job_history import load_job_history_workbook
 from job_radar.runtime_paths import (
     DEFAULT_COMPANY_CONFIG_PATH,
     DEFAULT_SCORING_CONFIG_PATH,
@@ -11,10 +10,7 @@ from job_radar.runtime_paths import (
     RuntimePaths,
     UserDataPaths,
 )
-from job_radar.scan_service import (
-    _import_history_records,
-    handle_scan,
-)
+from job_radar.scan_service import handle_scan
 from job_radar.scoring import ScoringConfigError
 from job_radar.storage import initialize_database
 from job_radar.tracker.tracker_models import ApplicationRecord
@@ -158,24 +154,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional email preview path to validate output directory access",
     )
 
-    import_history_parser = subparsers.add_parser(
-        "import-history",
-        help="Import job history from the tracking workbook",
-    )
-    import_history_parser.add_argument(
-        "--workbook",
-        required=True,
-        help="Path to job-history.xlsx",
-    )
-    import_history_parser.add_argument(
-        "--settings",
-        default=None,
-        help="Optional explicit path to settings.yaml",
-    )
-
     history_summary_parser = subparsers.add_parser(
         "history-summary",
-        help="Summarize imported job history",
+        help="Summarize application history",
     )
     history_summary_parser.add_argument(
         "--settings",
@@ -185,31 +166,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     history_parser = subparsers.add_parser(
         "history",
-        help="Work with imported job history",
+        help="Work with application history",
     )
     history_subparsers = history_parser.add_subparsers(
         dest="history_command",
         required=True,
     )
 
-    history_import_parser = history_subparsers.add_parser(
-        "import",
-        help="Import job history from the tracking workbook",
-    )
-    history_import_parser.add_argument(
-        "--workbook",
-        required=True,
-        help="Path to job-history.xlsx",
-    )
-    history_import_parser.add_argument(
-        "--settings",
-        default=None,
-        help="Optional explicit path to settings.yaml",
-    )
-
     history_summary_group_parser = history_subparsers.add_parser(
         "summary",
-        help="Summarize imported job history",
+        help="Summarize application history",
     )
     history_summary_group_parser.add_argument(
         "--settings",
@@ -406,39 +372,6 @@ def handle_bootstrap_user_data(
 
     for copy_result in result.preserved_files:
         print(f"Preserved: {copy_result.destination}")
-
-
-def handle_import_history(
-    workbook_path: str,
-    settings_path: str | None,
-) -> None:
-    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
-    database_path = runtime_paths.database_path
-    initialize_database(database_path)
-
-    import_result = load_job_history_workbook(workbook_path)
-
-    (
-        imported_count,
-        updated_count,
-        tracker_imported_count,
-        tracker_updated_count,
-        tracker_skipped_count,
-    ) = _import_history_records(
-        database_path=database_path,
-        records=import_result.records,
-    )
-
-    print("Application history import complete")
-    print(f"Workbook: {workbook_path}")
-    print(f"Database: {database_path}")
-    print(f"Rows read: {import_result.rows_read}")
-    print(f"Rows imported: {imported_count}")
-    print(f"Rows updated: {updated_count}")
-    print(f"Rows skipped: {import_result.rows_skipped}")
-    print(f"Tracker rows imported: {tracker_imported_count}")
-    print(f"Tracker rows updated: {tracker_updated_count}")
-    print(f"Tracker rows skipped: {tracker_skipped_count}")
 
 
 def handle_history_summary(settings_path: str | None) -> None:
@@ -694,25 +627,11 @@ def main() -> None:
             )
             return
 
-        if args.command == "import-history":
-            handle_import_history(
-                workbook_path=args.workbook,
-                settings_path=args.settings,
-            )
-            return
-
         if args.command == "history-summary":
             handle_history_summary(settings_path=args.settings)
             return
 
         if args.command == "history":
-            if args.history_command == "import":
-                handle_import_history(
-                    workbook_path=args.workbook,
-                    settings_path=args.settings,
-                )
-                return
-
             if args.history_command == "summary":
                 handle_history_summary(settings_path=args.settings)
                 return
