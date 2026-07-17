@@ -7,7 +7,6 @@ from pathlib import Path
 from flask import (
     Flask,
     abort,
-    jsonify,
     redirect,
     render_template,
     request,
@@ -20,20 +19,9 @@ from job_radar.report_snapshot import (
     ReportSnapshotJob,
     load_report_snapshot,
 )
-from job_radar.runtime_paths import (
-    DEFAULT_COMPANY_CONFIG_PATH,
-    DEFAULT_EMAIL_PREVIEW_PATH,
-    DEFAULT_REPORT_PATH,
-    DEFAULT_SCORING_CONFIG_PATH,
-    RuntimePaths,
-)
-from job_radar.scan_lock import ScanAlreadyRunningError
+from job_radar.runtime_paths import RuntimePaths
 from job_radar.scan_service import handle_scan
-from job_radar.storage import (
-    fetch_active_scan_run,
-    fetch_latest_scan_run,
-    initialize_database,
-)
+from job_radar.storage import initialize_database
 from job_radar.tracker.tracker_ids import build_manual_job_radar_id
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import (
@@ -54,6 +42,7 @@ from job_radar.web_routes.common import (
 from job_radar.web_routes.companies import register_company_routes
 from job_radar.web_routes.history import register_history_routes
 from job_radar.web_routes.profile import register_profile_routes
+from job_radar.web_routes.scan import register_scan_routes
 from job_radar.web_routes.settings import register_settings_routes
 
 TRACKER_NEEDS_ACTION_WORKFLOW_STATES = {
@@ -278,11 +267,6 @@ REPORT_SECTION_DETAILS = {
 
 DEFAULT_REPORT_FILE_DESCRIPTION = "Additional file in the reports directory."
 
-DEFAULT_SCAN_CONFIG_PATH = DEFAULT_COMPANY_CONFIG_PATH
-DEFAULT_SCAN_SCORING_PATH = DEFAULT_SCORING_CONFIG_PATH
-DEFAULT_SCAN_REPORT_PATH = DEFAULT_REPORT_PATH
-DEFAULT_SCAN_EMAIL_PREVIEW_PATH = DEFAULT_EMAIL_PREVIEW_PATH
-
 
 @dataclass(frozen=True)
 class TrackerApplicationView:
@@ -353,93 +337,6 @@ class ReportFileView:
     sort_order: int
 
 
-def _build_scan_status_payload(
-    database_path: str | Path,
-) -> dict[str, object]:
-    active_scan_run = fetch_active_scan_run(database_path)
-    scan_run = active_scan_run or fetch_latest_scan_run(database_path)
-
-    if scan_run is None:
-        return {
-            "status": "idle",
-            "is_running": False,
-            "stage": None,
-            "stage_label": "No scan is currently running.",
-            "companies_scanned": 0,
-            "companies_enabled": 0,
-            "progress_percent": 0,
-            "progress_determinate": False,
-            "jobs_found": 0,
-            "collector_errors": 0,
-            "has_results": False,
-            "failure_summary": None,
-        }
-
-    status = str(scan_run["status"])
-    stage = str(scan_run["current_stage"] or "")
-    companies_scanned = int(scan_run["companies_scanned"] or 0)
-    companies_enabled = int(scan_run["companies_enabled"] or 0)
-
-    stage_labels = {
-        "configuration": "Loading configuration and candidate profile",
-        "history_import": "Preparing application history",
-        "collection": "Scanning company job sources",
-        "scoring": "Scoring collected jobs",
-        "storage": "Saving actionable results",
-        "report_generation": "Generating reports",
-        "email_delivery": "Sending email report",
-        "completed": "Scan completed",
-    }
-    stage_label = stage_labels.get(
-        stage,
-        stage.replace("_", " ").strip().title() or "Scan is running",
-    )
-
-    progress_determinate = (
-        companies_enabled > 0
-        and (
-            stage
-            in {
-                "collection",
-                "scoring",
-                "storage",
-                "report_generation",
-                "email_delivery",
-                "completed",
-            }
-            or status != "running"
-        )
-    )
-    progress_percent = (
-        min(
-            100,
-            round((companies_scanned / companies_enabled) * 100),
-        )
-        if progress_determinate
-        else 0
-    )
-
-    has_results = (
-        status in {"completed", "completed_with_warnings"}
-        and scan_run["report_status"] == "completed"
-    )
-
-    return {
-        "status": status,
-        "is_running": status == "running",
-        "stage": stage or None,
-        "stage_label": stage_label,
-        "companies_scanned": companies_scanned,
-        "companies_enabled": companies_enabled,
-        "progress_percent": progress_percent,
-        "progress_determinate": progress_determinate,
-        "jobs_found": int(scan_run["jobs_found"] or 0),
-        "collector_errors": int(scan_run["collector_errors"] or 0),
-        "has_results": has_results,
-        "failure_summary": scan_run["failure_summary"],
-    }
-
-
 def create_app(
     settings_path: str | Path | None = None,
     *,
@@ -499,79 +396,11 @@ def create_app(
         tracker_edit_outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
     )
 
-    @app.get("/scan")
-    def scan() -> str:
-        runtime_paths = _get_runtime_paths(app)
-        settings_path = str(runtime_paths.settings_path)
-        company_config_path = str(runtime_paths.company_config_path)
-        scoring_config_path = str(runtime_paths.scoring_config_path)
-        report_path = str(runtime_paths.resolve(DEFAULT_SCAN_REPORT_PATH))
-        email_preview_path = str(
-            runtime_paths.resolve(DEFAULT_SCAN_EMAIL_PREVIEW_PATH)
-        )
-        scan_command = (
-            "python -m job_radar scan "
-            f"--config {company_config_path} "
-            f"--settings {settings_path} "
-            f"--report {report_path} "
-            f"--email-preview {email_preview_path}"
-        )
-
-        scan_status = _build_scan_status_payload(
-            runtime_paths.database_path
-        )
-
-        return render_template(
-            "scan.html",
-            scan_command=scan_command,
-            scan_config_path=company_config_path,
-            scan_settings_path=settings_path,
-            scan_scoring_path=scoring_config_path,
-            scan_report_path=report_path,
-            scan_email_preview_path=email_preview_path,
-            scan_result=request.args.get("scan_result"),
-            scan_error=request.args.get("scan_error", "").strip(),
-            scan_status=scan_status,
-        )
-
-    @app.get("/scan/status")
-    def scan_status():
-        runtime_paths = _get_runtime_paths(app)
-
-        return jsonify(
-            _build_scan_status_payload(runtime_paths.database_path)
-        )
-
-    @app.post("/scan/run")
-    def run_scan():
-        runtime_paths = _get_runtime_paths(app)
-
-        try:
-            handle_scan(
-                config_path=str(runtime_paths.company_config_path),
-                settings_path=str(runtime_paths.settings_path),
-                report_path=str(
-                    runtime_paths.resolve(DEFAULT_SCAN_REPORT_PATH)
-                ),
-                scoring_path=str(runtime_paths.scoring_config_path),
-                email_preview_path=str(
-                    runtime_paths.resolve(DEFAULT_SCAN_EMAIL_PREVIEW_PATH)
-                ),
-                send_email=False,
-                base_directory=str(runtime_paths.base_directory),
-            )
-        except ScanAlreadyRunningError:
-            return redirect(url_for("scan", scan_result="busy"))
-        except Exception as error:
-            return redirect(
-                url_for(
-                    "scan",
-                    scan_result="error",
-                    scan_error=str(error),
-                )
-            )
-
-        return redirect(url_for("scan", scan_result="success"))
+    register_scan_routes(
+        app,
+        get_runtime_paths=lambda: _get_runtime_paths(app),
+        handle_scan_func=handle_scan,
+    )
 
     @app.get("/reports/section/<section_name>")
     def report_section_view(section_name: str) -> str:
