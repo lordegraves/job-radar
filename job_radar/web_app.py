@@ -15,8 +15,6 @@ from flask import (
     url_for,
 )
 
-from job_radar.config import ConfigError
-from job_radar.profile_service import build_candidate_profile_view, save_uploaded_resume
 from job_radar.report_snapshot import (
     ReportSnapshotCollectorError,
     ReportSnapshotJob,
@@ -53,6 +51,7 @@ from job_radar.tracker.tracker_storage import (
     upsert_application,
 )
 from job_radar.web_routes.companies import register_company_routes
+from job_radar.web_routes.profile import register_profile_routes
 from job_radar.web_routes.settings import register_settings_routes
 
 TRACKER_NEEDS_ACTION_WORKFLOW_STATES = {
@@ -547,52 +546,11 @@ def create_app(
         ),
     )
 
-    @app.get("/profile")
-    def profile() -> str:
-        runtime_paths = _get_runtime_paths(app)
-        profile_view = build_candidate_profile_view(
-            app.config["JOB_RADAR_SETTINGS_PATH"],
-            base_directory=str(runtime_paths.base_directory),
-        )
-
-        return render_template(
-            "profile.html",
-            profile=profile_view,
-            upload_result=request.args.get("upload_result", "").strip(),
-            upload_error=request.args.get("upload_error", "").strip(),
-        )
-
-    @app.post("/profile/resume")
-    def upload_resume():
-        uploaded_file = request.files.get("resume_file")
-
-        if uploaded_file is None or not uploaded_file.filename:
-            return redirect(
-                url_for(
-                    "profile",
-                    upload_result="error",
-                    upload_error="Choose a resume file to upload.",
-                )
-            )
-
-        try:
-            runtime_paths = _get_runtime_paths(app)
-            save_uploaded_resume(
-                app.config["JOB_RADAR_SETTINGS_PATH"],
-                uploaded_file.filename,
-                uploaded_file.read(),
-                base_directory=str(runtime_paths.base_directory),
-            )
-        except ConfigError as error:
-            return redirect(
-                url_for(
-                    "profile",
-                    upload_result="error",
-                    upload_error=str(error),
-                )
-            )
-
-        return redirect(url_for("profile", upload_result="success"))
+    register_profile_routes(
+        app,
+        settings_path=app.config["JOB_RADAR_SETTINGS_PATH"],
+        base_directory=str(_get_runtime_paths(app).base_directory),
+    )
 
     @app.get("/history")
     def history() -> str:
