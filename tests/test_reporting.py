@@ -2,12 +2,9 @@ from pathlib import Path
 
 from job_radar.models import JobPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
-from job_radar.reporting import (
-    ScanReport,
-    ScoredPosting,
-    render_html_report,
-    write_html_report,
-)
+from job_radar.html_report import render_html_report, write_html_report
+from job_radar.report_models import ScanReport
+from job_radar.scored_posting import ScoredPosting
 
 
 def make_posting(
@@ -378,8 +375,8 @@ def test_render_html_report_explains_top_match_and_review_needed_cards() -> None
 
 def test_below_floor_compensation_blocks_recommendation() -> None:
     from job_radar.compensation import CompensationResult
-    from job_radar.reporting import _format_hiring_risk_flags
-    from job_radar.reporting import _get_recommended_action
+    from job_radar.recommendations import _format_hiring_risk_flags
+    from job_radar.recommendations import _get_recommended_action
 
     posting = make_posting(
         title="Senior Infrastructure Engineer",
@@ -410,7 +407,7 @@ def test_below_floor_compensation_blocks_recommendation() -> None:
 
 
 def test_clean_apply_requires_very_strong_resume_match() -> None:
-    from job_radar.reporting import _get_recommended_action
+    from job_radar.recommendations import _get_recommended_action
     from job_radar.resume_match import ResumeMatchResult
 
     posting = make_posting(
@@ -440,7 +437,7 @@ def test_clean_apply_requires_very_strong_resume_match() -> None:
 
 
 def test_clean_apply_allows_very_strong_resume_match() -> None:
-    from job_radar.reporting import _get_recommended_action
+    from job_radar.recommendations import _get_recommended_action
     from job_radar.resume_match import ResumeMatchResult
 
     posting = make_posting(
@@ -475,7 +472,7 @@ def test_clean_apply_allows_very_strong_resume_match() -> None:
 
 
 def test_hiring_probability_requires_very_strong_resume_match_for_high() -> None:
-    from job_radar.reporting import _get_hiring_probability_label
+    from job_radar.recommendations import _get_hiring_probability_label
     from job_radar.resume_match import ResumeMatchResult
 
     posting = make_posting(
@@ -505,7 +502,7 @@ def test_hiring_probability_requires_very_strong_resume_match_for_high() -> None
 
 
 def test_hiring_probability_allows_high_with_very_strong_resume_match() -> None:
-    from job_radar.reporting import _get_hiring_probability_label
+    from job_radar.recommendations import _get_hiring_probability_label
     from job_radar.resume_match import ResumeMatchResult
 
     posting = make_posting(
@@ -540,7 +537,7 @@ def test_hiring_probability_allows_high_with_very_strong_resume_match() -> None:
 
 
 def test_hiring_probability_caps_weak_resume_match_at_low() -> None:
-    from job_radar.reporting import _get_hiring_probability_label
+    from job_radar.recommendations import _get_hiring_probability_label
     from job_radar.resume_match import ResumeMatchResult
 
     posting = make_posting(
@@ -570,8 +567,8 @@ def test_hiring_probability_caps_weak_resume_match_at_low() -> None:
 
 
 def test_profile_avoid_match_blocks_recommendation() -> None:
-    from job_radar.reporting import _format_hiring_risk_flags
-    from job_radar.reporting import _get_recommended_action
+    from job_radar.recommendations import _format_hiring_risk_flags
+    from job_radar.recommendations import _get_recommended_action
     from job_radar.resume_match import ResumeMatchResult
 
     posting = make_posting(
@@ -611,8 +608,8 @@ def test_profile_avoid_match_blocks_recommendation() -> None:
 
 
 def test_profile_avoid_match_blocks_even_without_existing_role_family_mismatch() -> None:
-    from job_radar.reporting import _format_hiring_risk_flags
-    from job_radar.reporting import _get_recommended_action
+    from job_radar.recommendations import _format_hiring_risk_flags
+    from job_radar.recommendations import _get_recommended_action
     from job_radar.resume_match import ResumeMatchResult
 
     posting = make_posting(

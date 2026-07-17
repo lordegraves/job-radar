@@ -22,11 +22,8 @@ from job_radar.history_match import (
 from job_radar.history_summary import build_history_summary
 from job_radar.job_history import load_job_history_workbook
 from job_radar.normalize import clean_text
-from job_radar.reporting import (
-    ScanError,
-    ScanReport,
-    write_html_report,
-)
+from job_radar.html_report import write_html_report
+from job_radar.report_models import ScanError, ScanReport
 from job_radar.report_snapshot import write_report_snapshot
 from job_radar.runtime_paths import DEFAULT_SCORING_CONFIG_PATH, RuntimePaths
 from job_radar.scored_posting import ScoredPosting

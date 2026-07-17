@@ -26,7 +26,8 @@ from job_radar.recommendations import (
     _get_resume_match_label,
     _get_technical_match_label,
 )
-from job_radar.reporting import ScanReport, ScoredPosting
+from job_radar.report_models import ScanReport
+from job_radar.scored_posting import ScoredPosting
 
 
 EMAIL_POSTINGS_LIMIT = 10

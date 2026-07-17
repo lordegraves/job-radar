@@ -8,7 +8,7 @@ from job_radar.report_snapshot import (
     load_report_snapshot,
     write_report_snapshot,
 )
-from job_radar.reporting import ScanError, ScanReport
+from job_radar.report_models import ScanError, ScanReport
 from job_radar.scored_posting import ScoredPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
 

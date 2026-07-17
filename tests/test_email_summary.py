@@ -6,7 +6,8 @@ from job_radar.email_summary import (
     write_email_preview,
 )
 from job_radar.models import JobPosting
-from job_radar.reporting import ScanReport, ScoredPosting
+from job_radar.report_models import ScanReport
+from job_radar.scored_posting import ScoredPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
 
 

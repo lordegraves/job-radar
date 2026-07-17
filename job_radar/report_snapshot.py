@@ -11,9 +11,7 @@ from job_radar.recommendations import (
     _get_resume_match_label,
     _get_technical_match_label,
 )
-from job_radar.report_models import ScanReport
-from job_radar.report_view_model import build_report_view_model
-from job_radar.reporting import (
+from job_radar.html_report import (
     PASSED_JOBS_REPORT_LIMIT,
     _format_history_context,
     _format_history_risk,
@@ -21,6 +19,8 @@ from job_radar.reporting import (
     _get_omitted_postings,
     _get_ordered_omitted_postings,
 )
+from job_radar.report_models import ScanReport
+from job_radar.report_view_model import build_report_view_model
 from job_radar.scored_posting import ScoredPosting
 
 
