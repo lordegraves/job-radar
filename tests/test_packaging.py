@@ -60,6 +60,7 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
             "job_radar/bootstrap_defaults/scoring.yaml",
             "job_radar/cli.py",
             "job_radar/collectors/__init__.py",
+            "job_radar/desktop_launcher.py",
             "job_radar/tracker/__init__.py",
             "job_radar/web_routes/__init__.py",
             "job_radar/templates/base.html",
@@ -75,6 +76,10 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
 
     assert "job-radar = job_radar.cli:main" in entry_points
     assert "job-radar-web = job_radar.web_app:main" in entry_points
+    assert (
+        "job-radar-desktop = job_radar.desktop_launcher:main"
+        in entry_points
+    )
 
     private_runtime_prefixes = (
         "config/",

@@ -26,6 +26,9 @@ dev = [
 job-radar = "job_radar.cli:main"
 job-radar-web = "job_radar.web_app:main"
 
+[project.gui-scripts]
+job-radar-desktop = "job_radar.desktop_launcher:main"
+
 [tool.setuptools.packages.find]
 include = ["job_radar*"]
 
