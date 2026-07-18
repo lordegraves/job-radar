@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tarfile
 import zipfile
 from importlib.metadata import version
 from pathlib import Path
@@ -82,6 +83,106 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
     assert not any(
         archive_name.startswith(private_runtime_prefixes)
         for archive_name in archive_names
+    )
+
+
+def test_built_source_distribution_excludes_private_runtime_data(
+    tmp_path: Path,
+) -> None:
+    source_directory = tmp_path / "source"
+    distribution_directory = tmp_path / "dist"
+
+    shutil.copytree(PROJECT_ROOT / "job_radar", source_directory / "job_radar")
+    shutil.copytree(PROJECT_ROOT / "tests", source_directory / "tests")
+    shutil.copy2(PROJECT_ROOT / "pyproject.toml", source_directory)
+    shutil.copy2(PROJECT_ROOT / "README.md", source_directory)
+
+    synthetic_private_files = {
+        "config/local-private-settings.yaml": "smtp_password: private-value\n",
+        "data/private.sqlite3": "private database sentinel\n",
+        "logs/private.log": "private log sentinel\n",
+        "profiles/private/profile.yaml": "candidate: private\n",
+        "profiles/private/resume.md": "private resume sentinel\n",
+        "reports/private-report.html": "private report sentinel\n",
+        "job-radar-foundation-6-private-audit.txt": "private audit sentinel\n",
+    }
+
+    for relative_path, content in synthetic_private_files.items():
+        private_file = source_directory / relative_path
+        private_file.parent.mkdir(parents=True, exist_ok=True)
+        private_file.write_text(content, encoding="utf-8")
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "build",
+            "--sdist",
+            "--outdir",
+            str(distribution_directory),
+        ],
+        cwd=source_directory,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    source_distributions = tuple(
+        distribution_directory.glob("job_radar-*.tar.gz")
+    )
+    assert len(source_distributions) == 1
+
+    with tarfile.open(source_distributions[0], mode="r:gz") as archive:
+        archive_names = {
+            member.name.replace("\\", "/")
+            for member in archive.getmembers()
+        }
+
+    normalized_names = {
+        archive_name.split("/", maxsplit=1)[1]
+        for archive_name in archive_names
+        if "/" in archive_name
+    }
+
+    required_files = {
+        "README.md",
+        "pyproject.toml",
+        "job_radar/__init__.py",
+        "job_radar/cli.py",
+        "job_radar/templates/base.html",
+        "tests/test_packaging.py",
+    }
+    assert required_files <= normalized_names
+
+    forbidden_prefixes = (
+        "config/",
+        "data/",
+        "logs/",
+        "profiles/",
+        "reports/",
+    )
+    assert not any(
+        archive_name.startswith(forbidden_prefixes)
+        for archive_name in normalized_names
+    )
+    assert not any(
+        "job-radar-foundation-6-" in archive_name
+        for archive_name in normalized_names
+    )
+    assert not any(
+        archive_name.endswith(
+            (
+                ".sqlite3",
+                ".db",
+                ".log",
+                ".env",
+                ".xlsx",
+                ".xls",
+                ".pdf",
+                ".docx",
+            )
+        )
+        for archive_name in normalized_names
     )
 
 
@@ -228,14 +329,6 @@ def test_installed_wheel_renders_home_page_with_user_owned_data(
 database_path: {database_file}
 reports_path: {reports_directory}
 logs_path: {logs_directory}
-
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )

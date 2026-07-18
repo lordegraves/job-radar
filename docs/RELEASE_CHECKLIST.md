@@ -31,10 +31,12 @@ python -m pytest -q tests\test_packaging.py
 
 - [ ] Wheel builds from a clean temporary source copy.
 - [ ] Wheel contains all required packages and templates.
+- [ ] Source distribution builds from a clean temporary source copy.
+- [ ] Source distribution excludes private runtime data and local inspection artifacts.
 - [ ] Package installs outside the repository.
 - [ ] Installed CLI starts.
 - [ ] Installed web application renders using temporary user-owned data.
-- [ ] Release artifact does not depend on the source tree.
+- [ ] Release artifacts do not depend on the source tree.
 
 ## Database and upgrade safety
 
@@ -50,7 +52,7 @@ python -m pytest -q tests\test_packaging.py
 - [ ] Home dashboard loads and links correctly.
 - [ ] Scan page starts and reports progress.
 - [ ] Latest HTML report opens.
-- [ ] Reports page distinguishes primary outputs from additional files.
+- [ ] Reports page shows only the current HTML report and email preview.
 - [ ] Active Applications list, detail, add, edit, quick actions, and filters work.
 - [ ] Tracker-to-History movement works.
 - [ ] Application History list, detail, edit, filters, and restore work.

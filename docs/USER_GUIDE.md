@@ -120,7 +120,7 @@ Company add/edit/disable workflows are future productization work.
 
 The current Settings page is read-only.
 
-It surfaces active runtime paths, retention values, scan defaults, profile paths, and email readiness without displaying secrets.
+It surfaces active runtime paths, the current latest-scan-only report policy, scan defaults, profile paths, and email readiness without displaying secrets.
 
 ## Email
 

@@ -18,6 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "build>=1.2.0",
     "pytest>=8.0.0",
 ]
 
