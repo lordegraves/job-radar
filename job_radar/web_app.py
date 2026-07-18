@@ -1,10 +1,14 @@
 import argparse
-from datetime import date
+import sys
+import traceback
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from flask import Flask, render_template
 
-from job_radar.runtime_paths import RuntimePaths
+from job_radar import __version__
+from job_radar.config import ConfigError
+from job_radar.runtime_paths import RuntimePaths, get_default_user_data_directory
 from job_radar.scan_service import handle_scan
 from job_radar.storage import initialize_database
 from job_radar.web_routes.companies import register_company_routes
@@ -152,10 +156,162 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _resolve_startup_settings_path(
+    settings_path: str | Path | None,
+) -> Path:
+    if settings_path is not None:
+        return Path(settings_path).expanduser().resolve()
+
+    return get_default_user_data_directory() / "config" / "settings.yaml"
+
+
+def _resolve_startup_log_path(
+    settings_path: str | Path | None,
+) -> Path:
+    resolved_settings_path = _resolve_startup_settings_path(settings_path)
+
+    if resolved_settings_path.parent.name.casefold() == "config":
+        workspace_root = resolved_settings_path.parent.parent
+    else:
+        workspace_root = resolved_settings_path.parent
+
+    return workspace_root / "logs" / "startup-errors.log"
+
+
+def _write_startup_diagnostic_log(
+    error: Exception,
+    *,
+    settings_path: str | Path | None,
+) -> Path | None:
+    log_path = _resolve_startup_log_path(settings_path)
+    stack_frames = traceback.extract_tb(error.__traceback__)
+
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(UTC).isoformat()
+
+        with log_path.open("a", encoding="utf-8") as log_file:
+            log_file.write(
+                f"[{timestamp}] Job Radar startup failure\n"
+                f"Version: {__version__}\n"
+                f"Settings file: {_resolve_startup_settings_path(settings_path)}\n"
+                f"Error type: {type(error).__name__}\n"
+                "Stack frames:\n"
+            )
+
+            if stack_frames:
+                for frame in stack_frames:
+                    log_file.write(
+                        f"- {frame.filename}:{frame.lineno} "
+                        f"in {frame.name}\n"
+                    )
+            else:
+                log_file.write("- unavailable\n")
+
+            log_file.write(
+                "Exception messages and local variables are intentionally "
+                "omitted to reduce the risk of logging credentials.\n"
+                "-----\n"
+            )
+    except OSError:
+        return None
+
+    return log_path
+
+
+def _format_configuration_startup_error(
+    error: ConfigError,
+    *,
+    settings_path: str | Path | None,
+) -> str:
+    technical_details = str(error)
+    resolved_settings_path = _resolve_startup_settings_path(settings_path)
+
+    if technical_details.startswith("Config file does not exist:"):
+        return (
+            "Job Radar could not start because its settings file was not found.\n\n"
+            "What to do:\n"
+            "Run this command once to create your Job Radar workspace:\n\n"
+            "    job-radar bootstrap-user-data\n\n"
+            "Then start Job Radar again.\n\n"
+            "Technical details:\n"
+            f"{technical_details}\n"
+        )
+
+    return (
+        "Job Radar could not start because its settings are invalid.\n\n"
+        "What to do:\n"
+        "Open the settings file shown below and correct the reported problem, "
+        "then start Job Radar again.\n\n"
+        "Technical details:\n"
+        f"{technical_details}\n\n"
+        "Settings file:\n"
+        f"{resolved_settings_path}\n"
+    )
+
+
+def _format_unexpected_startup_error(
+    error: Exception,
+    *,
+    settings_path: str | Path | None,
+    diagnostic_log_path: Path | None,
+) -> str:
+    resolved_settings_path = _resolve_startup_settings_path(settings_path)
+    diagnostic_guidance = (
+        f"Diagnostic log:\n{diagnostic_log_path}\n\n"
+        if diagnostic_log_path is not None
+        else (
+            "Diagnostic log:\n"
+            "Job Radar could not write the diagnostic log. Include the technical "
+            "details below when requesting support.\n\n"
+        )
+    )
+
+    return (
+        "Job Radar could not start because of an unexpected problem.\n\n"
+        "This is probably not something you can fix through Job Radar's settings.\n\n"
+        "What to do:\n"
+        "Contact Clayton Graves at claytonmgraves@outlook.com and include the "
+        "diagnostic log location and technical details shown below.\n\n"
+        "Do not include passwords, access tokens, or other credentials in your "
+        "support message.\n\n"
+        f"{diagnostic_guidance}"
+        "Technical details:\n"
+        f"Job Radar version: {__version__}\n"
+        f"Error type: {type(error).__name__}\n"
+        f"Settings file: {resolved_settings_path}\n"
+        "The exception message was omitted to avoid exposing credentials or "
+        "other private data.\n"
+    )
+
+
 def main() -> None:
     args = build_parser().parse_args()
-    app = create_app(settings_path=args.settings)
-    app.run(host=args.host, port=args.port, debug=args.debug)
+
+    try:
+        app = create_app(settings_path=args.settings)
+        app.run(host=args.host, port=args.port, debug=args.debug)
+    except ConfigError as error:
+        sys.stderr.write(
+            _format_configuration_startup_error(
+                error,
+                settings_path=args.settings,
+            )
+        )
+        raise SystemExit(1) from error
+    except Exception as error:
+        diagnostic_log_path = _write_startup_diagnostic_log(
+            error,
+            settings_path=args.settings,
+        )
+        sys.stderr.write(
+            _format_unexpected_startup_error(
+                error,
+                settings_path=args.settings,
+                diagnostic_log_path=diagnostic_log_path,
+            )
+        )
+        raise SystemExit(1) from error
 
 
 if __name__ == "__main__":
