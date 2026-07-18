@@ -108,7 +108,7 @@ Run the full test suite:
 python -m pytest -q tests
 ```
 
-Packaging validation is covered by `tests/test_packaging.py`, including clean-wheel installation and installed web rendering outside the source tree.
+Packaging validation is covered by `tests/test_packaging.py`, including clean-wheel installation, installed desktop-launcher startup, and installed web rendering outside the source tree.
 
 ## Configuration and private data
 

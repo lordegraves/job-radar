@@ -19,7 +19,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Safe packaged bootstrap defaults for starter settings, an empty company list, and starter scoring rules.
 - Optional non-destructive migration of existing settings, company configuration, scoring configuration, profiles, and a SQLite database.
 - Bootstrap protection that rejects imported settings containing literal credential values while allowing environment-variable references.
-- Packaging tests for wheel and source-distribution contents, clean installation outside the source tree, first-time bootstrap, and installed Flask rendering.
+- Packaging tests for wheel and source-distribution contents, clean installation outside the source tree, installed desktop-launcher startup, first-time bootstrap, and installed Flask rendering.
 
 ### Changed
 

@@ -311,6 +311,24 @@ def test_installed_wheel_runs_outside_source_checkout(
     assert "--host" in web_help.stdout
     assert "--port" in web_help.stdout
 
+    desktop_help = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "job_radar.desktop_launcher",
+            "--help",
+        ],
+        cwd=execution_directory,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "Launch the Job Radar desktop interface" in desktop_help.stdout
+    assert "--host" in desktop_help.stdout
+    assert "--port" in desktop_help.stdout
+    assert "--no-browser" in desktop_help.stdout
+
     user_data_directory = tmp_path / "bootstrapped-user-data"
 
     bootstrap_result = subprocess.run(
