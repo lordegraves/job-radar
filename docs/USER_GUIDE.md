@@ -73,15 +73,15 @@ Occasional company or network errors may be temporary. The interface preserves e
 
 ## Reports
 
-The Reports page emphasizes the latest scan results.
+The Reports page opens the latest successful scan outputs.
 
-Current primary outputs are:
+Current scan artifacts are:
 
-- HTML scan report
-- structured JSON snapshot used by the GUI
-- plain-text email preview
+- HTML scan report — the primary user-facing report
+- plain-text email preview — the message that can be reviewed before delivery
+- structured JSON snapshot — internal structured data used by the application
 
-Older or additional files in the reports directory may also be displayed. Retention settings are not yet fully user-configurable through the GUI.
+Each successful scan replaces the previous fixed-name outputs. The Reports page does not expose arbitrary files from the reports directory. Configurable report history and retention are planned but are not implemented yet.
 
 ## Active Applications
 

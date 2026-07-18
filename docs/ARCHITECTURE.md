@@ -132,6 +132,18 @@ Current report architecture:
 
 HTML is the primary user-facing report. The GUI reads structured data rather than parsing Markdown.
 
+### Runtime artifacts and retention
+
+Scan artifacts belong in the user-owned `reports` directory:
+
+- the fixed-name HTML scan report is the primary user-facing report
+- the fixed-name plain-text email preview supports review before delivery
+- the fixed-name structured JSON snapshot supports application behavior and is not a separate user-facing report
+
+Each successful scan replaces the previous fixed-name outputs. Arbitrary files in the reports directory are not part of the normal Reports-page interface. Configurable report history, retention, and rotation remain future product work.
+
+Databases belong in `data`, logs belong in `logs`, and migration backups are safety artifacts rather than user reports. None of these runtime artifacts belong in source control or release packages.
+
 ### Web interface
 
 `web_app.py` creates the Flask application and registers route modules.

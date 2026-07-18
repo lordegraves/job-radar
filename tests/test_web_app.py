@@ -1287,7 +1287,7 @@ def test_history_page_handles_empty_history(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert "Application History" in html
     assert "History records shown:</strong> 0" in html
-    assert "No imported job history records." in html
+    assert "No application history records." in html
 
 
 def test_profile_page_shows_resume_upload_form(tmp_path: Path) -> None:

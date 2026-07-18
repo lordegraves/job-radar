@@ -122,6 +122,8 @@ Development and live-validation configuration remains under `config/` and is not
 
 Runtime databases, reports, logs, private settings, resumes, profiles, and credentials must remain outside source control.
 
+A successful scan writes fixed-name outputs in the user-owned `reports` directory. The current HTML report and email preview replace the previous versions. The structured JSON snapshot supports the application internally and is not presented as a separate user report. Configurable report history and retention are not implemented yet.
+
 SMTP passwords must not be stored in YAML, SQLite, logs, reports, previews, bootstrap files, packages, or source control. Environment variables remain the supported credential mechanism for the current implementation.
 
 ## Documentation
