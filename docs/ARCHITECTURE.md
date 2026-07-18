@@ -116,6 +116,8 @@ Managed profile storage is connected to GUI creation, editing, active-profile se
 
 The broader preference model can store target roles, locations, work arrangements, employment types, and travel tolerance, but those fields do not yet replace the existing scoring configuration. Current scan behavior consumes the managed profile's strengths, adjacent areas, gaps, exclusions, compensation values, and resume through the existing candidate-scoring boundary.
 
+`profile_migration.py` owns the controlled legacy-YAML conversion boundary. Planning validates the source without creating the database, destination, or backup directory. Applying a plan refuses duplicate names, IDs, existing resume destinations, and backup paths outside the user-data root. It completes a private recovery bundle before creating managed files, preserves source files unchanged, and removes only newly created managed files if the database transaction fails. The migration service is internal until a guided migration or setup workflow is approved.
+
 ### Tracker and History
 
 Active Applications and Application History are separate but related workflows.

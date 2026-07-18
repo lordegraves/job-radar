@@ -49,6 +49,39 @@ def create_profile(
     return profile
 
 
+def create_and_select_profile(
+    database_path: str | Path,
+    profile: ManagedProfile,
+) -> ManagedProfile:
+    """Create and select an imported profile in one database transaction."""
+
+    db_path = initialize_database(database_path)
+
+    try:
+        with connect_database(db_path) as connection:
+            _insert_profile(connection, profile)
+            connection.execute(
+                """
+                INSERT INTO active_profile_selection (
+                    singleton_id,
+                    profile_id,
+                    updated_at
+                )
+                VALUES (1, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(singleton_id) DO UPDATE SET
+                    profile_id = excluded.profile_id,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (profile.profile_id,),
+            )
+    except sqlite3.IntegrityError as error:
+        raise ProfileAlreadyExistsError(
+            f"profile already exists: {profile.profile_id}"
+        ) from error
+
+    return profile
+
+
 def get_profile(
     database_path: str | Path,
     profile_id: str,

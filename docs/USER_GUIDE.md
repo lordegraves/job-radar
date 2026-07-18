@@ -154,6 +154,8 @@ Resume replacement is written to the active user-data area. For a managed profil
 
 Managed profiles can retain additional preferences for later product stages. Target roles, locations, work arrangements, employment types, and travel tolerance do not yet replace the existing scoring configuration, so saving those fields alone does not currently change all scan-scoring behavior.
 
+Existing YAML profiles are not migrated automatically. Job Radar now has an internal backup-first migration service, but it is not yet a normal GUI action. Do not manually move, rename, delete, or rewrite your working profile, resume, or database in an attempt to migrate it. Migration of real data should occur only after a rehearsal on copies and an explicit backup confirmation.
+
 ## Companies
 
 The current Companies pages are read-only.

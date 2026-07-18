@@ -26,6 +26,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Database-backed active-profile selection with an unchanged YAML fallback when no managed profile is selected.
 - GUI workflows for managed profile creation, editing, switching, reversible archival, restoration, and managed resume upload.
 - SQLite migration version 5 for the optional active-profile selection record; the migration does not select or change existing profile data.
+- A controlled legacy-profile migration service with read-only planning, private recovery bundles, destination-collision checks, atomic profile selection, and managed-file rollback on failure.
 
 ### Changed
 
