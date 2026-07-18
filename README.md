@@ -13,7 +13,7 @@ Job Radar does **not** apply to jobs automatically, contact employers, scrape Li
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-The current release is a functional single-user local application. Packaging, guided setup, editable configuration, scheduling, backup/export, and broader release-readiness work are still in progress.
+The current release is a functional single-user local application. Python wheel and source-package validation are complete. A standalone executable, installer, guided setup, editable configuration, scheduling, backup/export, and broader release-readiness work are still in progress.
 
 See [CHANGELOG.md](CHANGELOG.md) for released and unreleased changes.
 

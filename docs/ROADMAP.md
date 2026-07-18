@@ -33,7 +33,7 @@ The single-user local MVP established:
 - guarded email behavior
 - a local Flask GUI
 
-### Productization foundations — in progress
+### Productization foundations — completed
 
 Completed foundation work includes:
 
@@ -47,6 +47,9 @@ Completed foundation work includes:
 - bootstrap rejection of literal credential values
 - collector HTTP consolidation
 - clean wheel, source-distribution, installed-bootstrap, and installed-rendering tests
+- a browser-opening desktop launcher with readiness checks and safe startup errors
+- focused user, developer, architecture, security, release, and roadmap documentation
+- repository-wide file-purpose explanations for maintainability
 - retirement of Markdown scan output
 - retirement of the spreadsheet import bridge
 
@@ -54,11 +57,10 @@ Completed foundation work includes:
 
 ### Documentation and release discipline
 
-- replace the monolithic README with focused documentation
-- maintain a changelog
-- add repeatable release checks
-- document user, developer, architecture, security, recovery, and operations workflows
-- audit all current instructions against actual CLI behavior
+- keep the focused documentation and changelog synchronized with implemented behavior
+- expand recovery and operations guidance as backup, restore, scheduling, and service modes are implemented
+- run repeatable release checks for each stable milestone
+- audit instructions against actual CLI, GUI, packaged, and installer behavior before each release
 
 ### Artifact taxonomy and retention
 
@@ -107,8 +109,7 @@ Completed foundation work includes:
 
 ### Packaging and launch
 
-- friendly local launcher
-- normal browser opening behavior
+- build on the completed browser-opening local launcher
 - Windows executable
 - Windows installer
 - Linux tarball distribution

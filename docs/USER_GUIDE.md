@@ -23,6 +23,16 @@ Existing Job Radar data can be brought over deliberately with the optional `--so
 
 ## Launching the application
 
+The current installed desktop-style entry point is:
+
+```powershell
+job-radar-desktop
+```
+
+It creates the user-owned workspace when needed, starts Job Radar locally, waits for the interface to become ready, and opens the default browser. If Job Radar is already running on the selected local address, the launcher reuses that instance instead of starting another server.
+
+This is a browser-opening launcher, not the final native desktop window or Windows installer. Those remain future productization work.
+
 From an activated development environment:
 
 ```powershell
@@ -156,7 +166,13 @@ It surfaces active runtime paths, the current latest-scan-only report policy, sc
 
 ## Email
 
-Email delivery requires explicit configuration and an explicit send action.
+Email delivery requires explicit configuration and the CLI `--send-email` option. The GUI Scan page currently creates the email preview but does not send email.
+
+To run a scan and deliberately request configured SMTP delivery:
+
+```powershell
+python -m job_radar scan --config config\target-companies.yaml --settings config\settings.yaml --report reports\target-scan.html --email-preview reports\target-email-preview.txt --send-email
+```
 
 The application can still launch and perform unrelated work when email is disabled or a credential is unavailable.
 

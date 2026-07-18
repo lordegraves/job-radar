@@ -9,9 +9,11 @@ cd C:\dev\job-radar
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e .
-python -m pip install pytest ruff
+python -m pip install -e ".[dev]"
+python -m pip install ruff
 ```
+
+The `dev` extra installs pytest and the `build` package required by the packaging tests. Ruff is installed separately because it is a repository validation tool rather than an application dependency.
 
 ## Core commands
 

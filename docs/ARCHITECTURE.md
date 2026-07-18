@@ -5,13 +5,30 @@
 Job Radar is one local-first Python application with multiple launch surfaces:
 
 ```text
-CLI
-Flask web interface
-future packaged desktop launcher
-future unattended service/container mode
+Developer and automation CLI
+Local Flask web interface
+Browser-opening desktop launcher
+Future native desktop shell and installer
+Future unattended service/container mode
 ```
 
 These surfaces must share the same service and storage layers rather than becoming separate products.
+
+## Entry points and operating modes
+
+- `job-radar` / `job_radar.cli`: developer, automation, validation, scan, history, database, and tracker commands.
+- `job-radar-web` / `job_radar.web_app`: local browser/server mode. An explicit settings path may be supplied; otherwise runtime-path resolution selects bootstrapped user settings when present and falls back to repository settings for development compatibility.
+- `job-radar-desktop` / `job_radar.desktop_launcher`: the current desktop-style launcher. It prepares packaged user configuration when needed, starts a local Werkzeug server, waits for readiness, and opens the default browser.
+- A future native desktop shell may wrap the shared Flask interface, but it must not duplicate application rules.
+- Future unattended Windows, Linux, container, and Kubernetes modes must call the same scan and storage services.
+
+## Startup and shutdown flow
+
+The web application resolves runtime paths, loads settings, initializes or migrates the SQLite database, and then registers feature routes. Startup failures are converted into safe user-facing messages, with sanitized diagnostics written under the user-owned logs directory when possible.
+
+The desktop launcher first checks whether Job Radar already responds at its configured local address. If so, it opens the existing interface. Otherwise, it ensures the user-owned workspace exists, creates the Flask application, starts a local server, waits for readiness, and opens the browser.
+
+The current launcher stops its server when its process exits or startup fails, but it does not yet provide a native application window, a GUI Exit command, focus an existing native window, or manage an unattended background service. Complete shutdown controls and service lifecycle integration remain future product work.
 
 ## Major layers
 
@@ -189,10 +206,10 @@ config/                         development and live-validation configuration
 job_radar/                      application package
 job_radar/bootstrap_defaults/   safe installed starter configuration
 job_radar/collectors/           source integrations
-job_radar/tracker/      tracker storage and workflow services
-job_radar/web_routes/   Flask feature routes
-job_radar/templates/    Jinja templates
-tests/                  unit, integration, web, and packaging tests
-scripts/                operational helpers
-data/ reports/ logs/    ignored runtime output roots
+job_radar/tracker/              tracker storage and workflow services
+job_radar/web_routes/           Flask feature routes
+job_radar/templates/            Jinja templates
+tests/                          unit, integration, web, and packaging tests
+scripts/                        operational helpers
+data/ reports/ logs/            ignored runtime output roots
 ```

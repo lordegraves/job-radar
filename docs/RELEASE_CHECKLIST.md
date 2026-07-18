@@ -42,6 +42,7 @@ python -m pytest -q tests\test_packaging.py
 - [ ] A second bootstrap run preserves existing destination files.
 - [ ] Optional migration rejects settings containing literal credentials and allows credential references.
 - [ ] Installed web application renders using temporary user-owned data.
+- [ ] Installed desktop launcher starts, waits for readiness, opens or reuses the local interface, and reports startup failures safely.
 - [ ] Release artifacts do not depend on the source tree.
 
 ## Database and upgrade safety
@@ -64,6 +65,7 @@ python -m pytest -q tests\test_packaging.py
 - [ ] Application History list, detail, edit, filters, and restore work.
 - [ ] Profile / Resume page loads and resume replacement works.
 - [ ] Companies and Settings pages load accurately.
+- [ ] Desktop-launcher startup and shutdown behavior matches the documented current limitations.
 - [ ] Destructive actions require explicit confirmation.
 - [ ] Error and empty states are readable.
 

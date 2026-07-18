@@ -123,7 +123,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan_parser.add_argument(
         "--send-email",
         action="store_true",
-        help="Call the email send path after scan. Current implementation does not send SMTP email.",
+        help="Send the configured SMTP email after the scan.",
     )
     scan_parser.add_argument(
         "--scoring",
