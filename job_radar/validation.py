@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from job_radar.candidate_profile import load_candidate_profile
-from job_radar.config import ConfigError, load_companies, load_settings
+from job_radar.config import ConfigError, load_companies
 from job_radar.resume_loader import load_resume_text
+from job_radar.runtime_paths import RuntimePaths
 from job_radar.scoring import load_scoring_config
 
 
@@ -23,30 +23,37 @@ def validate_configuration(
 ) -> ValidationResult:
     checks: list[str] = []
 
-    companies = load_companies(config_path)
-    checks.append(f"company config loaded: {config_path}")
+    base_directory = _get_settings_base_directory(settings_path)
+    runtime_paths = RuntimePaths.from_settings(
+        settings_path=settings_path,
+        company_config_path=config_path,
+        scoring_config_path=scoring_path,
+        base_directory=base_directory,
+    )
+
+    companies = load_companies(runtime_paths.company_config_path)
+    checks.append(f"company config loaded: {runtime_paths.company_config_path}")
 
     if not companies:
         raise ConfigError("company config has no enabled companies")
 
     checks.append(f"enabled companies: {len(companies)}")
 
-    settings = load_settings(settings_path)
-    checks.append(f"settings loaded: {settings_path}")
+    checks.append(f"settings loaded: {runtime_paths.settings_path}")
 
-    load_scoring_config(scoring_path)
-    checks.append(f"scoring config loaded: {scoring_path}")
+    load_scoring_config(runtime_paths.scoring_config_path)
+    checks.append(f"scoring config loaded: {runtime_paths.scoring_config_path}")
 
-    _validate_database_path(settings)
-    checks.append(f"database path writable: {settings['database_path']}")
+    _validate_writable_parent(runtime_paths.database_path)
+    checks.append(f"database path writable: {runtime_paths.database_path}")
 
-    _validate_configured_directory(settings, "reports_path")
-    checks.append(f"reports path writable: {settings['reports_path']}")
+    _validate_writable_directory(runtime_paths.reports_path)
+    checks.append(f"reports path writable: {runtime_paths.reports_path}")
 
-    _validate_configured_directory(settings, "logs_path")
-    checks.append(f"logs path writable: {settings['logs_path']}")
+    _validate_writable_directory(runtime_paths.logs_path)
+    checks.append(f"logs path writable: {runtime_paths.logs_path}")
 
-    _validate_candidate_profile(settings, checks)
+    _validate_candidate_profile(runtime_paths, checks)
 
     if report_path is not None:
         _validate_output_parent(report_path, "report")
@@ -57,55 +64,44 @@ def validate_configuration(
     return ValidationResult(passed=True, checks=checks)
 
 
-def _validate_database_path(settings: dict[str, Any]) -> None:
-    database_path = settings.get("database_path")
+def _get_settings_base_directory(settings_path: str | Path) -> Path:
+    resolved_settings_path = Path(settings_path).expanduser().resolve()
 
-    if not isinstance(database_path, str):
-        raise ConfigError("settings.yaml database_path must be a string")
+    if resolved_settings_path.parent.name.casefold() == "config":
+        return resolved_settings_path.parent.parent
 
-    _validate_writable_parent(Path(database_path))
-
-
-def _validate_configured_directory(
-    settings: dict[str, Any],
-    key: str,
-) -> None:
-    directory_path = settings.get(key)
-
-    if not isinstance(directory_path, str):
-        raise ConfigError(f"settings.yaml {key} must be a string")
-
-    _validate_writable_directory(Path(directory_path))
+    return resolved_settings_path.parent
 
 
 def _validate_candidate_profile(
-    settings: dict[str, Any],
+    runtime_paths: RuntimePaths,
     checks: list[str],
 ) -> None:
-    candidate_profile_path = settings.get("candidate_profile_path")
+    candidate_profile_path = runtime_paths.candidate_profile_path
 
     if candidate_profile_path is None:
         checks.append("candidate profile not configured")
         return
 
-    if not isinstance(candidate_profile_path, str):
-        raise ConfigError("settings.yaml candidate_profile_path must be a string")
-
-    candidate_profile = load_candidate_profile(candidate_profile_path)
+    candidate_profile = load_candidate_profile(
+        candidate_profile_path,
+        base_directory=runtime_paths.base_directory,
+    )
     checks.append(f"candidate profile loaded: {candidate_profile_path}")
 
     if candidate_profile.resume is None:
         checks.append("resume not configured")
         return
 
-    load_resume_text(candidate_profile.resume.source_path)
-    checks.append(f"resume loaded: {candidate_profile.resume.source_path}")
+    resume_source_path = Path(candidate_profile.resume.source_path)
+    load_resume_text(resume_source_path)
+    checks.append(f"resume loaded: {resume_source_path}")
 
     if candidate_profile.resume.normalized_text_path is not None:
-        _validate_writable_parent(Path(candidate_profile.resume.normalized_text_path))
+        normalized_text_path = Path(candidate_profile.resume.normalized_text_path)
+        _validate_writable_parent(normalized_text_path)
         checks.append(
-            "normalized resume output path writable: "
-            f"{candidate_profile.resume.normalized_text_path}"
+            f"normalized resume output path writable: {normalized_text_path}"
         )
 
 
