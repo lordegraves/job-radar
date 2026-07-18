@@ -401,10 +401,26 @@ Project path:
 cd C:\dev\job-radar
 ```
 
-Virtual environment:
+Human PowerShell sessions may activate the virtual environment with:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
+```
+
+Codex must not rely on virtual-environment activation persisting across commands.
+
+Codex must use the repository-local interpreter explicitly:
+
+```powershell
+.\.venv\Scripts\python.exe
+```
+
+Codex Python command examples:
+
+```powershell
+.\.venv\Scripts\python.exe --version
+.\.venv\Scripts\python.exe -m pip --version
+.\.venv\Scripts\python.exe -m job_radar --help
 ```
 
 Avoid commands that create confusing multiline PowerShell prompts when a simple one-line command works.
@@ -418,13 +434,13 @@ Run focused tests first.
 Example:
 
 ```powershell
-python -m pytest -q tests\test_specific_file.py
+.\.venv\Scripts\python.exe -m pytest -q tests\test_specific_file.py
 ```
 
 The standard full-suite command is:
 
 ```powershell
-python -m pytest -q tests
+.\.venv\Scripts\python.exe -m pytest -q tests
 ```
 
 Always preserve quiet pytest output with `-q`.
@@ -432,7 +448,7 @@ Always preserve quiet pytest output with `-q`.
 Run Ruff after code changes:
 
 ```powershell
-python -m ruff check .
+.\.venv\Scripts\python.exe -m ruff check .
 ```
 
 Run whitespace validation:
