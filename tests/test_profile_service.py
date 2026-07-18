@@ -17,13 +17,6 @@ reports_path: {settings_file.parent / "reports"}
 logs_path: {settings_file.parent / "logs"}
 candidate_profile_path: {profile_file}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -99,7 +92,6 @@ reports_path: reports
 logs_path: logs
 candidate_profile_path: profiles/example/profile.yaml
 
-retention: {}
 """,
         encoding="utf-8",
     )
@@ -202,7 +194,6 @@ reports_path: reports
 logs_path: logs
 candidate_profile_path: profiles/example/profile.yaml
 
-retention: {}
 """,
         encoding="utf-8",
     )

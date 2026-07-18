@@ -226,13 +226,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -340,7 +333,6 @@ reports_path: reports
 logs_path: logs
 candidate_profile_path: profiles/example/profile.yaml
 
-retention: {}
 """,
         encoding="utf-8",
     )
@@ -446,13 +438,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -537,13 +522,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -608,13 +586,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -721,13 +692,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -885,13 +849,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -1007,13 +964,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -1145,13 +1095,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -1284,13 +1227,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -1391,13 +1327,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 
 email:
   enabled: false
@@ -1833,7 +1762,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention: {}
 """,
         encoding="utf-8",
     )
@@ -1867,7 +1795,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention: {}
 """,
         encoding="utf-8",
     )
@@ -2006,7 +1933,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention: {}
 """,
         encoding="utf-8",
     )
@@ -2047,7 +1973,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention: {}
 """,
         encoding="utf-8",
     )
@@ -2087,13 +2012,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -2180,13 +2098,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -2255,13 +2166,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -2370,13 +2274,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -2443,13 +2340,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -2528,13 +2418,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )

@@ -87,7 +87,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention: {}
 """,
     )
     monkeypatch.setenv(
@@ -118,7 +117,6 @@ database_path: data/explicit.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention: {}
 """,
     )
     monkeypatch.chdir(repository_root)
@@ -152,7 +150,6 @@ reports_path: reports
 logs_path: logs
 candidate_profile_path: profiles/example/profile.yaml
 
-retention: {}
 """,
     )
     monkeypatch.setenv(
@@ -194,7 +191,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention: {}
 """,
     )
     monkeypatch.chdir(repository_root)
@@ -230,7 +226,6 @@ reports_path: reports
 logs_path: logs
 candidate_profile_path: profiles/example/profile.yaml
 
-retention: {}
 """,
     )
 
@@ -271,7 +266,6 @@ reports_path: {reports_path}
 logs_path: {logs_path}
 candidate_profile_path: {profile_path}
 
-retention: {{}}
 """,
     )
 
@@ -297,7 +291,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention: {}
 """,
     )
 
@@ -320,7 +313,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention: {}
 """,
     )
 
@@ -353,7 +345,6 @@ reports_path: reports
 logs_path: logs
 candidate_profile_path: profiles/example/profile.yaml
 
-retention: {}
 """,
     )
     settings = load_settings(settings_path)
@@ -394,7 +385,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention: {}
 """,
     )
 

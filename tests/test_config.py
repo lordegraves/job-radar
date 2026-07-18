@@ -110,8 +110,7 @@ def test_load_settings_rejects_non_string_paths(
 database_path: {database_path}
 reports_path: {reports_path}
 logs_path: {logs_path}
-{candidate_profile_line}retention: {{}}
-""",
+{candidate_profile_line}""",
         encoding="utf-8",
     )
 
@@ -150,13 +149,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
@@ -198,8 +190,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 candidate_profile_path: {profile_path}
-
-retention: {{}}
 """,
         encoding="utf-8",
     )
@@ -220,14 +210,6 @@ def test_load_settings_reads_email_settings(tmp_path: Path) -> None:
 database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
-
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 
 email:
   enabled: false
@@ -262,14 +244,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
-
 email:
   enabled: false
   sender_name:
@@ -289,14 +263,6 @@ def test_load_settings_rejects_invalid_email_recipients(tmp_path: Path) -> None:
 database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
-
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 
 email:
   enabled: false
@@ -321,14 +287,6 @@ def test_load_settings_accepts_enabled_email_when_password_env_exists(
 database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
-
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 
 email:
   enabled: true
@@ -361,14 +319,6 @@ def test_load_settings_accepts_enabled_email_without_password_env_value(
 database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
-
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 
 email:
   enabled: true
@@ -404,14 +354,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
-
 email:
   enabled: true
   sender: ""
@@ -438,14 +380,6 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
-
 email:
   enabled: false
   smtp_tls_mode: bad_tls_mode
@@ -468,14 +402,6 @@ def test_load_settings_rejects_enabled_email_without_smtp_username(
 database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
-
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 
 email:
   enabled: true

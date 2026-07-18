@@ -61,13 +61,6 @@ database_path: {database_file}
 reports_path: {tmp_path}
 logs_path: {tmp_path}
 
-retention:
-  report_retention_days: 90
-  routine_event_retention_days: 90
-  log_max_mb: 5
-  log_backup_count: 5
-  raw_capture_enabled: false
-  raw_capture_retention_days: 7
 """,
         encoding="utf-8",
     )
