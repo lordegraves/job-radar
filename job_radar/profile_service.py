@@ -8,6 +8,8 @@ import yaml
 
 from job_radar.candidate_profile import load_candidate_profile
 from job_radar.config import ConfigError
+from job_radar.profile_context import managed_profile_to_candidate_profile
+from job_radar.profile_storage import get_active_profile
 from job_radar.resume_loader import (
     SUPPORTED_RESUME_EXTENSIONS,
     load_resume_display_text,
@@ -64,6 +66,69 @@ def build_candidate_profile_view(
     )
     resolved_settings_path = str(runtime_paths.settings_path)
     profile_path = runtime_paths.candidate_profile_path
+    managed_profile = get_active_profile(runtime_paths.database_path)
+
+    if managed_profile is not None:
+        candidate_profile = managed_profile_to_candidate_profile(
+            managed_profile,
+            base_directory=runtime_paths.base_directory,
+        )
+        resume_source_path = (
+            Path(candidate_profile.resume.source_path)
+            if candidate_profile.resume is not None
+            else None
+        )
+        normalized_text_path = (
+            Path(candidate_profile.resume.normalized_text_path)
+            if candidate_profile.resume is not None
+            and candidate_profile.resume.normalized_text_path is not None
+            else None
+        )
+        resume_text = None
+        resume_error = None
+
+        if resume_source_path is not None:
+            try:
+                resume_text = load_resume_display_text(resume_source_path)
+            except ConfigError as error:
+                resume_error = str(error)
+
+        return CandidateProfileView(
+            settings_path=resolved_settings_path,
+            candidate_profile_path=f"Managed profile: {managed_profile.profile_id}",
+            candidate_profile_exists=True,
+            load_error=resume_error,
+            candidate_name=candidate_profile.name,
+            compensation_floor_usd=candidate_profile.compensation_floor_usd,
+            preferred_base_usd=candidate_profile.preferred_base_usd,
+            resume_source_path=(
+                str(resume_source_path) if resume_source_path is not None else None
+            ),
+            resume_source_file_name=(
+                resume_source_path.name if resume_source_path is not None else None
+            ),
+            resume_source_exists=(
+                resume_source_path.exists() if resume_source_path is not None else False
+            ),
+            normalized_text_path=(
+                str(normalized_text_path)
+                if normalized_text_path is not None
+                else None
+            ),
+            normalized_text_exists=(
+                normalized_text_path.exists()
+                if normalized_text_path is not None
+                else False
+            ),
+            resume_character_count=(
+                len(resume_text) if resume_text is not None else None
+            ),
+            resume_preview=_build_resume_preview(resume_text),
+            core_strengths=candidate_profile.core_strengths,
+            credible_adjacent=candidate_profile.credible_adjacent,
+            learning_or_gap=candidate_profile.learning_or_gap,
+            avoid=candidate_profile.avoid,
+        )
 
     if profile_path is None:
         return CandidateProfileView(

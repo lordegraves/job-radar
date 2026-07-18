@@ -256,6 +256,18 @@
     </div>
     {% endif %}
 
+    {% if profile_result and profile_result != "error" %}
+    <div class="success">
+        <strong>Profile saved.</strong> The managed-profile change is ready for future scans.
+    </div>
+    {% endif %}
+
+    {% if profile_result == "error" and profile_error %}
+    <div class="error">
+        <strong>Profile change failed:</strong> {{ profile_error }}
+    </div>
+    {% endif %}
+
     {% if profile.load_error %}
     <div class="error">
         <strong>Profile/resume warning:</strong> {{ profile.load_error }}
@@ -305,6 +317,83 @@
             {% endif %}
         </div>
     </div>
+</div>
+
+<div class="section">
+    <h2>Manage profiles</h2>
+    <p class="muted">Profiles keep each job search and résumé together inside Job Radar. Archiving is reversible; profiles cannot be permanently deleted here.</p>
+
+    <form method="post" action="{{ url_for('create_profile_route') }}">
+        <label for="new-profile-name">New profile name</label>
+        <input id="new-profile-name" name="display_name" type="text" required>
+        <div class="actions">
+            <button type="submit">Create and select profile</button>
+        </div>
+    </form>
+
+    {% if profile_management.profiles %}
+        {% for managed in profile_management.profiles %}
+        <details class="technical-details" {% if managed.profile_id == profile_management.active_profile_id %}open{% endif %}>
+            <summary>
+                {{ managed.display_name }}
+                {% if managed.profile_id == profile_management.active_profile_id %} — Active{% endif %}
+                {% if managed.archived %} — Archived{% endif %}
+            </summary>
+            <div class="technical-details-content">
+                {% if not managed.archived and managed.profile_id != profile_management.active_profile_id %}
+                <form method="post" action="{{ url_for('select_profile_route') }}">
+                    <input name="profile_id" type="hidden" value="{{ managed.profile_id }}">
+                    <button type="submit">Use this profile</button>
+                </form>
+                {% endif %}
+
+                <form method="post" action="{{ url_for('edit_profile_route', profile_id=managed.profile_id) }}">
+                    <label>Profile name</label>
+                    <input name="display_name" type="text" value="{{ managed.display_name }}" required>
+                    <label>Target roles — one per line</label>
+                    <textarea name="target_roles" rows="3">{{ managed.preferences.target_roles | join('\n') }}</textarea>
+                    <label>Seniority levels — one per line</label>
+                    <textarea name="seniority_levels" rows="2">{{ managed.preferences.seniority_levels | join('\n') }}</textarea>
+                    <label>Core strengths — one per line</label>
+                    <textarea name="core_strengths" rows="4">{{ managed.preferences.core_strengths | join('\n') }}</textarea>
+                    <label>Credible adjacent areas — one per line</label>
+                    <textarea name="credible_adjacent" rows="3">{{ managed.preferences.credible_adjacent | join('\n') }}</textarea>
+                    <label>Learning or gap areas — one per line</label>
+                    <textarea name="learning_or_gap" rows="3">{{ managed.preferences.learning_or_gap | join('\n') }}</textarea>
+                    <label>Roles or signals to avoid — one per line</label>
+                    <textarea name="exclusions" rows="3">{{ managed.preferences.exclusions | join('\n') }}</textarea>
+                    <label>Preferred locations — one per line</label>
+                    <textarea name="preferred_locations" rows="3">{{ managed.preferences.preferred_locations | join('\n') }}</textarea>
+                    <label>Work arrangements — one per line</label>
+                    <textarea name="work_arrangements" rows="2">{{ managed.preferences.work_arrangements | join('\n') }}</textarea>
+                    <label>Employment types — one per line</label>
+                    <textarea name="employment_types" rows="2">{{ managed.preferences.employment_types | join('\n') }}</textarea>
+                    <label>Compensation floor</label>
+                    <input name="compensation_floor_usd" type="number" min="0" value="{{ managed.preferences.compensation_floor_usd or '' }}">
+                    <label>Compensation target</label>
+                    <input name="compensation_target_usd" type="number" min="0" value="{{ managed.preferences.compensation_target_usd or '' }}">
+                    <label>Travel tolerance</label>
+                    <input name="travel_tolerance" type="text" value="{{ managed.preferences.travel_tolerance or '' }}">
+                    <div class="actions">
+                        <button type="submit">Save profile</button>
+                    </div>
+                </form>
+
+                {% if managed.archived %}
+                <form method="post" action="{{ url_for('restore_profile_route', profile_id=managed.profile_id) }}">
+                    <button class="button-secondary" type="submit">Restore profile</button>
+                </form>
+                {% else %}
+                <form method="post" action="{{ url_for('archive_profile_route', profile_id=managed.profile_id) }}">
+                    <button class="button-secondary" type="submit">Archive profile</button>
+                </form>
+                {% endif %}
+            </div>
+        </details>
+        {% endfor %}
+    {% else %}
+    <p>No managed profiles exist yet. The existing YAML profile remains active until you create one.</p>
+    {% endif %}
 </div>
 
 <div class="section">

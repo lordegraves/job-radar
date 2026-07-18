@@ -23,6 +23,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - A managed-profile storage foundation with stable profile IDs, profile-owned preferences, company associations, scoring/report settings, and app-owned resume filenames.
 - A common user-owned `resumes` directory that prevents managed profiles from depending on files in Documents, Downloads, or other external locations.
 - SQLite migration version 4 for empty managed-profile tables, protected by the existing pre-migration backup and atomic rollback behavior.
+- Database-backed active-profile selection with an unchanged YAML fallback when no managed profile is selected.
+- GUI workflows for managed profile creation, editing, switching, reversible archival, restoration, and managed resume upload.
+- SQLite migration version 5 for the optional active-profile selection record; the migration does not select or change existing profile data.
 
 ### Changed
 

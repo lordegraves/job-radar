@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from job_radar.candidate_profile import CandidateProfile, load_candidate_profile
+from job_radar.candidate_profile import CandidateProfile
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import evaluate_compensation
@@ -23,12 +23,12 @@ from job_radar.history_match import (
 )
 from job_radar.history_summary import build_history_summary
 from job_radar.normalize import clean_text
+from job_radar.profile_context import load_active_candidate_context
 from job_radar.html_report import write_html_report
 from job_radar.report_models import ScanError, ScanReport
 from job_radar.report_snapshot import write_report_snapshot
 from job_radar.runtime_paths import DEFAULT_SCORING_CONFIG_PATH, RuntimePaths
 from job_radar.scored_posting import ScoredPosting
-from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
 from job_radar.resume_match import match_resume_to_posting
 from job_radar.scan_lock import acquire_scan_lock
 from job_radar.recommendation_policy import (
@@ -53,33 +53,6 @@ from job_radar.storage import (
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import get_application_workflow_state
 from job_radar.tracker.tracker_storage import get_application, list_applications
-
-
-def _load_candidate_context(
-    candidate_profile_path: Path | None,
-    *,
-    base_directory: Path,
-) -> tuple[object | None, str | None]:
-    if candidate_profile_path is None:
-        return None, None
-
-    candidate_profile = load_candidate_profile(
-        candidate_profile_path,
-        base_directory=base_directory,
-    )
-
-    if candidate_profile.resume is None:
-        return candidate_profile, None
-
-    resume_text = load_resume_text(candidate_profile.resume.source_path)
-
-    if candidate_profile.resume.normalized_text_path:
-        write_normalized_resume_text(
-            source_path=candidate_profile.resume.source_path,
-            normalized_text_path=candidate_profile.resume.normalized_text_path,
-        )
-
-    return candidate_profile, resume_text
 
 
 def _find_profile_avoid_matches(
@@ -262,10 +235,13 @@ def _handle_scan_unlocked(
 
     try:
         scoring_config = load_scoring_config(scoring_path)
-        candidate_profile, resume_text = _load_candidate_context(
+        candidate_context = load_active_candidate_context(
+            database_path,
             candidate_profile_path,
             base_directory=base_directory,
         )
+        candidate_profile = candidate_context.candidate_profile
+        resume_text = candidate_context.resume_text
 
         print("Scan requested")
         print(f"Config: {config_path}")

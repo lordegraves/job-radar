@@ -139,7 +139,9 @@ Tracker and History are mutually exclusive. A record should not exist in both at
 
 ## Profile / Resume
 
-The Profile / Resume page shows candidate readiness and resume-derived fit information.
+The Profile / Resume page shows candidate readiness and resume-derived fit information. It also allows you to create, edit, select, archive, and restore managed profiles without editing YAML. Archiving is reversible; permanent profile deletion is not currently offered.
+
+When a managed profile is selected, future scans use its candidate-fit signals, compensation values, and managed resume. If no managed profile is selected, the existing YAML profile remains in use. Job Radar does not automatically convert, overwrite, or remove an existing YAML profile.
 
 Supported resume formats:
 
@@ -148,7 +150,9 @@ Supported resume formats:
 - Markdown
 - plain text
 
-Resume replacement is written to the active user-data area. Private resumes and profiles must not be committed to the repository.
+Resume replacement is written to the active user-data area. For a managed profile, Job Radar copies the upload under `resumes/<profile-id>/` using an app-owned filename such as `resume.pdf`; moving or renaming the original uploaded file cannot break the profile. To use a revised resume, upload it again through the Profile / Resume page. Private resumes and profiles must not be committed to the repository.
+
+Managed profiles can retain additional preferences for later product stages. Target roles, locations, work arrangements, employment types, and travel tolerance do not yet replace the existing scoring configuration, so saving those fields alone does not currently change all scan-scoring behavior.
 
 ## Companies
 

@@ -112,7 +112,9 @@ Database protections include:
 - atomic tracker/history moves
 - compatibility migrations for older databases
 
-Managed profile storage currently exists as an internal foundation and is not yet connected to profile selection, scans, or GUI profile management. Migration of an existing candidate profile and assignment of existing operational records will occur only after those workflows are complete and validated against temporary copies.
+Managed profile storage is connected to GUI creation, editing, active-profile selection, reversible archival, resume upload, and scan-time candidate matching. A selected managed profile takes priority; when none is selected, the existing YAML profile path continues to work unchanged. Existing candidate data and operational records are not migrated or assigned automatically. Any migration of real user data must first be validated against temporary copies and separately approved.
+
+The broader preference model can store target roles, locations, work arrangements, employment types, and travel tolerance, but those fields do not yet replace the existing scoring configuration. Current scan behavior consumes the managed profile's strengths, adjacent areas, gaps, exclusions, compensation values, and resume through the existing candidate-scoring boundary.
 
 ### Tracker and History
 

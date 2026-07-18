@@ -9,6 +9,7 @@ from pathlib import Path
 import job_radar.web_app as web_app_module
 
 from job_radar.history_models import JobHistoryRecord
+from job_radar.profile_storage import get_active_profile
 from job_radar.scan_lock import ScanAlreadyRunningError
 from job_radar.storage import (
     complete_scan_run,
@@ -25,6 +26,76 @@ from job_radar.tracker.tracker_storage import (
     upsert_application,
 )
 from job_radar.web_app import create_app
+
+
+def test_profile_gui_creates_edits_and_archives_managed_profile(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file), base_directory=str(tmp_path))
+    client = app.test_client()
+
+    response = client.post(
+        "/profile/create",
+        data={"display_name": "Example Search"},
+    )
+    assert response.status_code == 302
+    profile = get_active_profile(database_file)
+    assert profile is not None
+
+    response = client.post(
+        f"/profile/{profile.profile_id}/edit",
+        data={
+            "display_name": "Platform Search",
+            "core_strengths": "Linux\nHPC",
+            "compensation_floor_usd": "150000",
+        },
+    )
+    assert response.status_code == 302
+    updated = get_active_profile(database_file)
+    assert updated is not None
+    assert updated.display_name == "Platform Search"
+    assert updated.preferences.core_strengths == ("Linux", "HPC")
+
+    page = client.get("/profile").get_data(as_text=True)
+    assert "Manage profiles" in page
+    assert "Platform Search" in page
+    assert "— Active" in page
+
+    response = client.post(f"/profile/{profile.profile_id}/archive")
+    assert response.status_code == 302
+    assert get_active_profile(database_file) is None
+
+
+def test_profile_gui_uploads_resume_to_managed_directory(tmp_path: Path) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file), base_directory=str(tmp_path))
+    client = app.test_client()
+    client.post("/profile/create", data={"display_name": "Example Search"})
+    profile = get_active_profile(database_file)
+    assert profile is not None
+
+    response = client.post(
+        "/profile/resume",
+        data={
+            "resume_file": (
+                BytesIO(b"# Example Resume\n\nLinux infrastructure"),
+                "renamed-later.md",
+            )
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 302
+    resume_directory = tmp_path / "resumes" / profile.profile_id
+    assert (resume_directory / "resume.md").is_file()
+    assert (resume_directory / "resume.normalized.txt").is_file()
 
 
 def write_settings_file(

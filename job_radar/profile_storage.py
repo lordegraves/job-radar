@@ -26,6 +26,10 @@ class ProfileAlreadyExistsError(ProfileStorageError):
     """Raised when a create operation would reuse an existing stable ID."""
 
 
+class ProfileSelectionError(ProfileStorageError):
+    """Raised when an unavailable profile is selected for normal use."""
+
+
 def create_profile(
     database_path: str | Path,
     profile: ManagedProfile,
@@ -89,6 +93,75 @@ def list_profiles(
         return [_row_to_profile(connection, row) for row in rows]
 
 
+def get_active_profile(database_path: str | Path) -> ManagedProfile | None:
+    """Load the selected non-archived profile, if the user chose one."""
+
+    db_path = initialize_database(database_path)
+
+    with connect_database(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+        row = connection.execute(
+            """
+            SELECT profiles.*
+            FROM active_profile_selection
+            JOIN profiles
+              ON profiles.profile_id = active_profile_selection.profile_id
+            WHERE active_profile_selection.singleton_id = 1
+              AND profiles.archived = 0
+            """
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        return _row_to_profile(connection, row)
+
+
+def set_active_profile(
+    database_path: str | Path,
+    profile_id: str | None,
+) -> None:
+    """Select one active profile, or clear the selection for YAML fallback."""
+
+    db_path = initialize_database(database_path)
+
+    with connect_database(db_path) as connection:
+        if profile_id is None:
+            connection.execute(
+                "DELETE FROM active_profile_selection WHERE singleton_id = 1"
+            )
+            return
+
+        available = connection.execute(
+            """
+            SELECT 1
+            FROM profiles
+            WHERE profile_id = ? AND archived = 0
+            """,
+            (profile_id,),
+        ).fetchone()
+
+        if available is None:
+            raise ProfileSelectionError(
+                f"active profile is missing or archived: {profile_id}"
+            )
+
+        connection.execute(
+            """
+            INSERT INTO active_profile_selection (
+                singleton_id,
+                profile_id,
+                updated_at
+            )
+            VALUES (1, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(singleton_id) DO UPDATE SET
+                profile_id = excluded.profile_id,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (profile_id,),
+        )
+
+
 def update_profile(
     database_path: str | Path,
     profile: ManagedProfile,
@@ -124,6 +197,12 @@ def set_profile_archived(
     db_path = initialize_database(database_path)
 
     with connect_database(db_path) as connection:
+        if archived:
+            # An archived profile cannot remain selected for future scans.
+            connection.execute(
+                "DELETE FROM active_profile_selection WHERE profile_id = ?",
+                (profile_id,),
+            )
         cursor = connection.execute(
             """
             UPDATE profiles

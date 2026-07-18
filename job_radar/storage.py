@@ -207,6 +207,11 @@ def _schema_migrations() -> tuple:
             "add managed profile storage",
             _migrate_managed_profile_tables,
         ),
+        (
+            5,
+            "add active profile selection",
+            _migrate_active_profile_selection,
+        ),
     )
 
 
@@ -461,6 +466,21 @@ def _migrate_managed_profile_tables(connection: sqlite3.Connection) -> None:
 
     for statement in statements:
         connection.execute(statement)
+
+
+def _migrate_active_profile_selection(connection: sqlite3.Connection) -> None:
+    """Add one optional active-profile choice without selecting existing data."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS active_profile_selection (
+            singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+            profile_id TEXT NOT NULL,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+        )
+        """
+    )
 
 
 def fetch_active_scan_run(

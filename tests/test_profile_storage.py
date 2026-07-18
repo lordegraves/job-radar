@@ -12,9 +12,12 @@ from job_radar.profile_models import (
 )
 from job_radar.profile_storage import (
     ProfileAlreadyExistsError,
+    ProfileSelectionError,
     create_profile,
+    get_active_profile,
     get_profile,
     list_profiles,
+    set_active_profile,
     set_profile_archived,
     update_profile,
 )
@@ -152,6 +155,39 @@ def test_archive_returns_false_for_missing_profile(tmp_path: Path) -> None:
         "profile_99999999",
         archived=True,
     ) is False
+
+
+def test_active_profile_selection_round_trip_and_clear(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    first_profile = make_profile(profile_id="profile_11111111")
+    second_profile = make_profile(profile_id="profile_22222222")
+    create_profile(database_path, first_profile)
+    create_profile(database_path, second_profile)
+
+    assert get_active_profile(database_path) is None
+
+    set_active_profile(database_path, first_profile.profile_id)
+    assert get_active_profile(database_path) == first_profile
+
+    set_active_profile(database_path, second_profile.profile_id)
+    assert get_active_profile(database_path) == second_profile
+
+    set_active_profile(database_path, None)
+    assert get_active_profile(database_path) is None
+
+
+def test_active_profile_selection_rejects_missing_or_archived_profile(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    archived_profile = make_profile(archived=True)
+    create_profile(database_path, archived_profile)
+
+    for profile_id in (archived_profile.profile_id, "profile_99999999"):
+        with pytest.raises(ProfileSelectionError, match=profile_id):
+            set_active_profile(database_path, profile_id)
+
+    assert get_active_profile(database_path) is None
 
 
 def test_profile_migration_does_not_change_existing_tables_or_rows(

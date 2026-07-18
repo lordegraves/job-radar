@@ -27,6 +27,7 @@ Job Radar currently provides:
 - structured scan snapshots and HTML reports
 - plain-text and HTML email previews with guarded SMTP delivery
 - a local Flask GUI with Home, Scan, Reports, Active Applications, Application History, Profile / Resume, Companies, and Settings pages
+- GUI-managed profile creation, editing, selection, reversible archival, and app-owned resume storage
 - tracker workflow states, follow-up dates, quick actions, archive/restore workflows, and guarded deletion
 - scan lifecycle records, progress state, cross-process locking, stage-specific failures, and bounded pagination
 - user-owned runtime paths and non-destructive configuration/database bootstrap
@@ -121,6 +122,8 @@ Safe starter files included in the install package:
 Development and live-validation configuration remains under `config/` and is not used as the installed application's automatic starting data.
 
 Runtime databases, reports, logs, private settings, resumes, profiles, and credentials must remain outside source control.
+
+Managed profiles and uploaded resumes are stored inside Job Radar's user-data area. Uploaded resume files receive stable app-owned names, so renaming or moving the original file does not break the active profile. Existing YAML profiles remain supported when no managed profile is selected; Job Radar does not automatically migrate or replace them.
 
 A successful scan writes fixed-name outputs in the user-owned `reports` directory. The current HTML report and email preview replace the previous versions. The structured JSON snapshot supports the application internally and is not presented as a separate user report. Configurable report history and retention are not implemented yet.
 
