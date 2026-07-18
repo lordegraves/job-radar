@@ -4,7 +4,6 @@ from job_radar import __version__
 from job_radar.config import ConfigError
 from job_radar.history_summary import build_history_summary, format_history_summary
 from job_radar.runtime_paths import (
-    DEFAULT_COMPANY_CONFIG_PATH,
     DEFAULT_SCORING_CONFIG_PATH,
     DEFAULT_SETTINGS_PATH,
     RuntimePaths,
@@ -22,7 +21,7 @@ from job_radar.tracker.tracker_storage import (
 )
 from job_radar.user_data_bootstrap import (
     UserDataBootstrapError,
-    bootstrap_user_configuration,
+    bootstrap_packaged_user_configuration,
 )
 from job_radar.validation import validate_configuration
 
@@ -56,32 +55,32 @@ def build_parser() -> argparse.ArgumentParser:
 
     bootstrap_parser = subparsers.add_parser(
         "bootstrap-user-data",
-        help="Copy initial settings and profiles into user-owned storage",
+        help="Create user-owned storage from safe packaged defaults",
     )
     bootstrap_parser.add_argument(
         "--source-settings",
-        default=DEFAULT_SETTINGS_PATH,
-        help="Existing settings file to copy",
+        default=None,
+        help="Optional existing settings file to migrate safely",
     )
     bootstrap_parser.add_argument(
         "--source-companies",
-        default=DEFAULT_COMPANY_CONFIG_PATH,
-        help="Existing company configuration file to copy",
+        default=None,
+        help="Optional existing company configuration file to migrate",
     )
     bootstrap_parser.add_argument(
         "--source-scoring",
-        default=DEFAULT_SCORING_CONFIG_PATH,
-        help="Existing scoring configuration file to copy",
+        default=None,
+        help="Optional existing scoring configuration file to migrate",
     )
     bootstrap_parser.add_argument(
         "--source-profiles",
-        default="profiles",
-        help="Existing profiles directory to copy",
+        default=None,
+        help="Optional existing profiles directory to migrate",
     )
     bootstrap_parser.add_argument(
         "--source-database",
         default=None,
-        help="Optional existing SQLite database to copy safely",
+        help="Optional existing SQLite database to migrate safely",
     )
     bootstrap_parser.add_argument(
         "--destination",
@@ -341,10 +340,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def handle_bootstrap_user_data(
     *,
-    source_settings_path: str,
-    source_company_config_path: str,
-    source_scoring_config_path: str,
-    source_profiles_path: str,
+    source_settings_path: str | None = None,
+    source_company_config_path: str | None = None,
+    source_scoring_config_path: str | None = None,
+    source_profiles_path: str | None = None,
     source_database_path: str | None = None,
     destination: str | None = None,
 ) -> None:
@@ -353,7 +352,7 @@ def handle_bootstrap_user_data(
         if destination is not None
         else UserDataPaths.default()
     )
-    result = bootstrap_user_configuration(
+    result = bootstrap_packaged_user_configuration(
         source_settings_path=source_settings_path,
         source_company_config_path=source_company_config_path,
         source_scoring_config_path=source_scoring_config_path,

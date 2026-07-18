@@ -20,6 +20,7 @@ These surfaces must share the same service and storage layers rather than becomi
 - `config.py` loads typed application settings.
 - `runtime_paths.py` resolves repository or user-owned paths.
 - `user_data_bootstrap.py` creates and populates user-owned storage without replacing existing files.
+- `bootstrap_defaults/` contains the safe starter settings, empty company list, and starter scoring rules included in installed packages.
 
 `JOB_RADAR_DATA_DIR` is the supported explicit runtime-root override.
 
@@ -29,6 +30,10 @@ Default user-data roots:
 - Linux and other POSIX systems: `$XDG_DATA_HOME/job-radar` or `~/.local/share/job-radar`
 
 The user-data root contains separate `config`, `profiles`, `data`, `reports`, and `logs` directories.
+
+A normal bootstrap uses only packaged starter files. Repository profiles, resumes, databases, live company configuration, and credentials are not automatic bootstrap sources. Existing data is migrated only when the user supplies an explicit source argument.
+
+Imported settings are parsed before copying. Literal password, token, API-key, credential, or secret values are rejected, while references such as `smtp_password_env` remain allowed.
 
 ### Collection
 
@@ -161,14 +166,17 @@ Keep these concerns separate:
 - route handlers do not own business rules
 - templates do not mutate configuration
 - runtime bootstrap does not overwrite existing user data
+- normal bootstrap does not copy repository profiles, databases, live company configuration, or credentials
+- optional migration sources are explicit and imported settings containing literal credentials are rejected
 - packages and release artifacts do not include private runtime data or credentials
 
 ## Repository shape
 
 ```text
-config/                 shipped configuration
-job_radar/              application package
-job_radar/collectors/   source integrations
+config/                         development and live-validation configuration
+job_radar/                      application package
+job_radar/bootstrap_defaults/   safe installed starter configuration
+job_radar/collectors/           source integrations
 job_radar/tracker/      tracker storage and workflow services
 job_radar/web_routes/   Flask feature routes
 job_radar/templates/    Jinja templates

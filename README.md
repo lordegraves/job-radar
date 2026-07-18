@@ -82,11 +82,15 @@ List active applications:
 python -m job_radar tracker list --settings config\settings.yaml
 ```
 
-Bootstrap configuration into user-owned storage:
+Create a new user-owned Job Radar workspace:
 
 ```powershell
 python -m job_radar bootstrap-user-data
 ```
+
+This creates safe starter settings, an empty company list, and starter scoring rules. It does not copy a profile, résumé, database, credentials, or the repository's live company list.
+
+Existing settings, companies, scoring rules, profiles, or a database can be brought over only by supplying the matching optional `--source-*` argument.
 
 Job Radar uses bootstrapped user settings by default when they are present. Set `JOB_RADAR_DATA_DIR` to override the user-data root for testing, recovery, or alternate deployments.
 
@@ -108,13 +112,13 @@ Packaging validation is covered by `tests/test_packaging.py`, including clean-wh
 
 ## Configuration and private data
 
-Shipped configuration files:
+Safe starter files included in the install package:
 
-- `config/settings.yaml`
-- `config/scoring.yaml`
-- `config/target-companies.yaml`
-- `config/demo-companies.yaml`
-- `config/live-test-settings.yaml`
+- `job_radar/bootstrap_defaults/settings.yaml`
+- `job_radar/bootstrap_defaults/scoring.yaml`
+- `job_radar/bootstrap_defaults/target-companies.yaml`
+
+Development and live-validation configuration remains under `config/` and is not used as the installed application's automatic starting data.
 
 Runtime databases, reports, logs, private settings, resumes, profiles, and credentials must remain outside source control.
 

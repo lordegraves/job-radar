@@ -30,7 +30,10 @@ job-radar-web = "job_radar.web_app:main"
 include = ["job_radar*"]
 
 [tool.setuptools.package-data]
-job_radar = ["templates/*.html"]
+job_radar = [
+    "bootstrap_defaults/*.yaml",
+    "templates/*.html",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

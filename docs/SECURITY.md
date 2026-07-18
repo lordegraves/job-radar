@@ -69,11 +69,15 @@ These limits must be communicated wherever credentials are saved or managed.
 
 Bootstrap operations are non-destructive:
 
+- normal setup uses safe packaged starter settings, an empty company list, and starter scoring rules
+- profiles, résumés, databases, and live company configuration are not copied automatically
 - existing destination files are preserved
 - an existing destination database is preserved
 - SQLite database copies use SQLite-safe backup behavior
-- credentials are not copied
-- private user data is not moved into the repository
+- existing data is imported only when the user supplies an optional source argument
+- imported settings containing literal passwords, tokens, API keys, or other secret values are rejected
+- credential references such as `smtp_password_env` remain allowed
+- private user data is not moved into the repository or included in release packages
 
 ## Database safety
 

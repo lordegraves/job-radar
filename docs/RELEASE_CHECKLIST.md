@@ -30,11 +30,17 @@ python -m pytest -q tests\test_packaging.py
 ```
 
 - [ ] Wheel builds from a clean temporary source copy.
-- [ ] Wheel contains all required packages and templates.
+- [ ] Wheel contains all required packages, templates, and safe bootstrap starter files.
 - [ ] Source distribution builds from a clean temporary source copy.
+- [ ] Source distribution includes safe bootstrap starter files.
 - [ ] Source distribution excludes private runtime data and local inspection artifacts.
 - [ ] Package installs outside the repository.
 - [ ] Installed CLI starts.
+- [ ] Default bootstrap succeeds from outside the source repository.
+- [ ] Default bootstrap creates starter settings, an empty company list, and starter scoring rules.
+- [ ] Default bootstrap creates empty profile and data directories without copying a profile, resume, or database.
+- [ ] A second bootstrap run preserves existing destination files.
+- [ ] Optional migration rejects settings containing literal credentials and allows credential references.
 - [ ] Installed web application renders using temporary user-owned data.
 - [ ] Release artifacts do not depend on the source tree.
 
@@ -75,12 +81,13 @@ python -m pytest -q tests\test_packaging.py
 Inspect the repository, build context, wheel, release archive, installer, and container context.
 
 - [ ] No passwords, tokens, credentials, or private environment values.
-- [ ] No real resumes, profiles, or personal settings.
+- [ ] No real resumes, profiles, personal settings, or personal scoring/location preferences.
 - [ ] No real SQLite databases.
 - [ ] No private reports, logs, or email previews.
 - [ ] No recruiter/contact details or personal application notes.
 - [ ] No local cache, build, or inspection artifacts.
-- [ ] SMTP password values are absent from all artifacts.
+- [ ] SMTP password values and other literal secrets are absent from all artifacts.
+- [ ] Packaged company defaults contain no live or private company targets.
 - [ ] Credential limitations are documented accurately.
 
 ## Documentation and support

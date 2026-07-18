@@ -16,8 +16,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Cross-process scan locking, stage-specific failures, progress state, and bounded pagination.
 - Structured scoring evidence, recommendation-policy boundaries, report snapshots, and shared report view models.
 - User-owned runtime paths and `JOB_RADAR_DATA_DIR` override support.
-- Non-destructive user-data bootstrap for settings, company configuration, scoring configuration, profiles, and an optional SQLite database.
-- Packaging tests for wheel contents, clean installation outside the source tree, and installed Flask rendering.
+- Safe packaged bootstrap defaults for starter settings, an empty company list, and starter scoring rules.
+- Optional non-destructive migration of existing settings, company configuration, scoring configuration, profiles, and a SQLite database.
+- Bootstrap protection that rejects imported settings containing literal credential values while allowing environment-variable references.
+- Packaging tests for wheel and source-distribution contents, clean installation outside the source tree, first-time bootstrap, and installed Flask rendering.
 
 ### Changed
 

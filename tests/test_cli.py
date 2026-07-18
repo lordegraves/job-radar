@@ -1630,10 +1630,10 @@ def test_parser_uses_bootstrap_user_data_defaults() -> None:
     args = parser.parse_args(["bootstrap-user-data"])
 
     assert args.command == "bootstrap-user-data"
-    assert args.source_settings == "config/settings.yaml"
-    assert args.source_companies == "config/target-companies.yaml"
-    assert args.source_scoring == "config/scoring.yaml"
-    assert args.source_profiles == "profiles"
+    assert args.source_settings is None
+    assert args.source_companies is None
+    assert args.source_scoring is None
+    assert args.source_profiles is None
     assert args.source_database is None
     assert args.destination is None
 

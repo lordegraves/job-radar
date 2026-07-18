@@ -72,11 +72,13 @@ Packaging behavior is tested in `tests/test_packaging.py`.
 The tests verify:
 
 - recursive package discovery
-- inclusion of templates and subpackages
+- inclusion of templates, subpackages, and safe bootstrap starter files
 - wheel construction from a clean temporary source copy
 - installation into an isolated environment outside the repository
 - CLI startup from the installed package
+- first-time user-data setup without relying on the source repository
 - Flask home-page rendering from the installed wheel using temporary user-owned data
+- exclusion of private runtime data, profiles, databases, credentials, and live configuration
 
 Run:
 
@@ -88,7 +90,9 @@ Installer creation is a later milestone. Wheel correctness and clean installed e
 
 ## Runtime data during development
 
-Default runtime resolution prefers bootstrapped user settings when present and otherwise falls back to repository configuration.
+Default runtime resolution prefers bootstrapped user settings when present and otherwise falls back to repository configuration during development.
+
+The normal bootstrap command uses safe files packaged under `job_radar/bootstrap_defaults/`. Repository profiles, databases, and live company configuration are never automatic bootstrap sources.
 
 Use an isolated root for tests or manual experiments:
 

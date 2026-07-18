@@ -1,0 +1,14 @@
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+
+email:
+  enabled: false
+  sender: ""
+  sender_name: "Job Radar"
+  recipients: []
+  smtp_host: ""
+  smtp_port: 587
+  smtp_username: ""
+  smtp_password_env: ""
+  smtp_tls_mode: "starttls"

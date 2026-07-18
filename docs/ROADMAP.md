@@ -42,9 +42,11 @@ Completed foundation work includes:
 - shared scan lifecycle and durable progress
 - structured scoring evidence and report snapshots
 - route and reporting modularization
-- user-owned runtime paths and bootstrap
+- user-owned runtime paths and safe packaged bootstrap defaults
+- optional non-destructive migration of existing settings, profiles, and databases
+- bootstrap rejection of literal credential values
 - collector HTTP consolidation
-- clean wheel and installed-rendering tests
+- clean wheel, source-distribution, installed-bootstrap, and installed-rendering tests
 - retirement of Markdown scan output
 - retirement of the spreadsheet import bridge
 
@@ -96,7 +98,7 @@ Completed foundation work includes:
 ### First-run experience
 
 - guided setup
-- user-data initialization
+- build on the completed safe user-data initialization foundation
 - profile and resume setup
 - company and preference setup
 - email readiness

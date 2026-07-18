@@ -55,6 +55,9 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
         required_files = {
             "job_radar/__init__.py",
             "job_radar/__main__.py",
+            "job_radar/bootstrap_defaults/settings.yaml",
+            "job_radar/bootstrap_defaults/target-companies.yaml",
+            "job_radar/bootstrap_defaults/scoring.yaml",
             "job_radar/cli.py",
             "job_radar/collectors/__init__.py",
             "job_radar/tracker/__init__.py",
@@ -148,6 +151,9 @@ def test_built_source_distribution_excludes_private_runtime_data(
         "README.md",
         "pyproject.toml",
         "job_radar/__init__.py",
+        "job_radar/bootstrap_defaults/settings.yaml",
+        "job_radar/bootstrap_defaults/target-companies.yaml",
+        "job_radar/bootstrap_defaults/scoring.yaml",
         "job_radar/cli.py",
         "job_radar/templates/base.html",
         "tests/test_packaging.py",
@@ -299,6 +305,48 @@ def test_installed_wheel_runs_outside_source_checkout(
     assert "--settings" in web_help.stdout
     assert "--host" in web_help.stdout
     assert "--port" in web_help.stdout
+
+    user_data_directory = tmp_path / "bootstrapped-user-data"
+
+    bootstrap_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "job_radar",
+            "bootstrap-user-data",
+            "--destination",
+            str(user_data_directory),
+        ],
+        cwd=execution_directory,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "User data bootstrap complete" in bootstrap_result.stdout
+    assert "Files copied: 3" in bootstrap_result.stdout
+    assert "Existing files preserved: 0" in bootstrap_result.stdout
+
+    settings_path = user_data_directory / "config" / "settings.yaml"
+    company_config_path = (
+        user_data_directory / "config" / "target-companies.yaml"
+    )
+    scoring_config_path = user_data_directory / "config" / "scoring.yaml"
+
+    assert settings_path.is_file()
+    assert company_config_path.is_file()
+    assert scoring_config_path.is_file()
+    assert tuple((user_data_directory / "profiles").iterdir()) == ()
+    assert tuple((user_data_directory / "data").iterdir()) == ()
+
+    settings_text = settings_path.read_text(encoding="utf-8")
+    company_config_text = company_config_path.read_text(encoding="utf-8")
+
+    assert "smtp_password:" not in settings_text
+    assert "companies: []" in company_config_text
+    assert "example_ai" not in company_config_text
+    assert "nebius" not in company_config_text
 
 
 def test_installed_wheel_renders_home_page_with_user_owned_data(

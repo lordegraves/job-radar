@@ -2,6 +2,25 @@
 
 This guide describes the current local application. It does not assume that installer or first-run onboarding work is complete.
 
+## First-time setup
+
+Create a user-owned Job Radar workspace:
+
+```powershell
+python -m job_radar bootstrap-user-data
+```
+
+This creates:
+
+- safe starter settings
+- an empty company list
+- starter scoring rules
+- empty data, profile, report, and log directories
+
+It does not copy a personal profile, résumé, database, credentials, or live company list.
+
+Existing Job Radar data can be brought over deliberately with the optional `--source-settings`, `--source-companies`, `--source-scoring`, `--source-profiles`, and `--source-database` arguments. Existing destination files are always preserved.
+
 ## Launching the application
 
 From an activated development environment:

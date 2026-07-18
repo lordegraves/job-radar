@@ -6,9 +6,11 @@ import pytest
 from job_radar.runtime_paths import UserDataPaths
 from job_radar.user_data_bootstrap import (
     UserDataBootstrapError,
+    bootstrap_packaged_user_configuration,
     bootstrap_user_configuration,
     copy_bootstrap_database,
     copy_bootstrap_file,
+    copy_bootstrap_settings_file,
     copy_bootstrap_tree,
     create_user_data_directories,
 )
@@ -105,7 +107,10 @@ def test_bootstrap_user_configuration_preserves_existing_user_files(
     source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
     source_settings.parent.mkdir(parents=True)
     source_profile.parent.mkdir(parents=True)
-    source_settings.write_text("source settings\n", encoding="utf-8")
+    source_settings.write_text(
+        "database_path: data/job_radar.sqlite3\n",
+        encoding="utf-8",
+    )
     source_company_config.write_text("source companies\n", encoding="utf-8")
     source_scoring_config.write_text("source scoring\n", encoding="utf-8")
     source_profile.write_text("source profile\n", encoding="utf-8")
@@ -229,7 +234,10 @@ def test_bootstrap_user_configuration_preserves_existing_database(
     source_settings.parent.mkdir(parents=True)
     source_profile.parent.mkdir(parents=True)
     source_database.parent.mkdir(parents=True)
-    source_settings.write_text("source settings\n", encoding="utf-8")
+    source_settings.write_text(
+        "database_path: data/job_radar.sqlite3\n",
+        encoding="utf-8",
+    )
     source_company_config.write_text("companies: []\n", encoding="utf-8")
     source_scoring_config.write_text(
         "positive_keywords: {}\n",
@@ -479,14 +487,13 @@ def test_copy_bootstrap_tree_preserves_existing_destination_files(
     )
 
 
-def test_bootstrap_user_configuration_allows_missing_profiles_directory(
+def test_bootstrap_user_configuration_allows_profiles_to_be_omitted(
     tmp_path: Path,
 ) -> None:
     source_root = tmp_path / "source"
     source_settings = source_root / "config" / "settings.yaml"
     source_company_config = source_root / "config" / "target-companies.yaml"
     source_scoring_config = source_root / "config" / "scoring.yaml"
-    missing_profiles = source_root / "profiles"
     source_settings.parent.mkdir(parents=True)
     source_settings.write_text(
         "database_path: data/job_radar.sqlite3\n",
@@ -506,7 +513,6 @@ def test_bootstrap_user_configuration_allows_missing_profiles_directory(
         source_settings_path=source_settings,
         source_company_config_path=source_company_config,
         source_scoring_config_path=source_scoring_config,
-        source_profiles_path=missing_profiles,
         user_data_paths=user_data_paths,
     )
 
@@ -571,3 +577,130 @@ def test_copy_bootstrap_file_rejects_directory_destination(
         match="Bootstrap destination is not a file",
     ):
         copy_bootstrap_file(source, destination)
+
+
+def test_packaged_bootstrap_creates_safe_empty_user_workspace(
+    tmp_path: Path,
+) -> None:
+    user_data_paths = UserDataPaths.from_root(tmp_path / "user-data")
+
+    result = bootstrap_packaged_user_configuration(
+        user_data_paths=user_data_paths,
+    )
+
+    assert len(result.copied_files) == 3
+    assert result.preserved_files == ()
+    assert result.profile_results == ()
+    assert result.database_result is None
+
+    settings_path = user_data_paths.config / "settings.yaml"
+    company_config_path = user_data_paths.config / "target-companies.yaml"
+    scoring_config_path = user_data_paths.config / "scoring.yaml"
+
+    assert settings_path.is_file()
+    assert company_config_path.is_file()
+    assert scoring_config_path.is_file()
+    assert tuple(user_data_paths.profiles.iterdir()) == ()
+    assert tuple(user_data_paths.data.iterdir()) == ()
+
+    settings_text = settings_path.read_text(encoding="utf-8")
+    company_config_text = company_config_path.read_text(encoding="utf-8")
+
+    assert "smtp_password:" not in settings_text
+    assert 'smtp_password_env: ""' in settings_text
+    assert "companies: []" in company_config_text
+    assert "example_ai" not in company_config_text
+    assert "nebius" not in company_config_text
+
+
+def test_copy_bootstrap_settings_file_rejects_literal_password(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source" / "settings.yaml"
+    destination = tmp_path / "destination" / "settings.yaml"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        """
+email:
+  smtp_password: private-password
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        UserDataBootstrapError,
+        match="literal credential value at email.smtp_password",
+    ):
+        copy_bootstrap_settings_file(source, destination)
+
+    assert not destination.exists()
+
+
+def test_copy_bootstrap_settings_file_allows_environment_reference(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source" / "settings.yaml"
+    destination = tmp_path / "destination" / "settings.yaml"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        """
+email:
+  smtp_password_env: JOB_RADAR_SMTP_PASSWORD
+""",
+        encoding="utf-8",
+    )
+
+    result = copy_bootstrap_settings_file(source, destination)
+
+    assert result.copied is True
+    assert destination.read_text(encoding="utf-8") == (
+        "\nemail:\n"
+        "  smtp_password_env: JOB_RADAR_SMTP_PASSWORD\n"
+    )
+
+
+def test_existing_settings_are_preserved_without_reading_unsafe_source(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source" / "settings.yaml"
+    destination = tmp_path / "destination" / "settings.yaml"
+    source.parent.mkdir(parents=True)
+    destination.parent.mkdir(parents=True)
+    source.write_text(
+        "email:\n  smtp_password: private-password\n",
+        encoding="utf-8",
+    )
+    destination.write_text(
+        "database_path: data/job_radar.sqlite3\n",
+        encoding="utf-8",
+    )
+
+    result = copy_bootstrap_settings_file(source, destination)
+
+    assert result.copied is False
+    assert destination.read_text(encoding="utf-8") == (
+        "database_path: data/job_radar.sqlite3\n"
+    )
+
+
+def test_copy_bootstrap_settings_file_rejects_common_secret_variations(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source" / "settings.yaml"
+    destination = tmp_path / "destination" / "settings.yaml"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        """
+service:
+  client_secret: private-secret
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        UserDataBootstrapError,
+        match="literal credential value at service.client_secret",
+    ):
+        copy_bootstrap_settings_file(source, destination)
+
+    assert not destination.exists()
