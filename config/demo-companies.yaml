@@ -1,8 +1,8 @@
-# Sample company configuration used for local/demo testing.
-# These entries are placeholders, not real live scan targets.
+# Sample company configuration used for local development and demonstrations.
+# These entries are fictional placeholders, not real scan targets.
 #
-# For live validation, use:
-#   config/target-companies.yaml
+# New user workspaces begin with an empty target-companies.yaml.
+# Add real companies through the Job Radar GUI before running a scan.
 
 companies:
   - company_key: example_ai
