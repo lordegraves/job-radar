@@ -275,21 +275,32 @@ def _apply_schema_migrations(connection: sqlite3.Connection) -> None:
         ).fetchall()
     }
 
-    for version, name, migration in _schema_migrations():
-        if version in applied_versions:
-            continue
+    # Keep the entire pending upgrade atomic so a failed migration cannot leave
+    # a user's database with only part of the new schema applied.
+    connection.execute("SAVEPOINT apply_schema_migrations")
 
-        migration(connection)
-        connection.execute(
-            """
-            INSERT INTO schema_migrations (
-                version,
-                name
+    try:
+        for version, name, migration in _schema_migrations():
+            if version in applied_versions:
+                continue
+
+            migration(connection)
+            connection.execute(
+                """
+                INSERT INTO schema_migrations (
+                    version,
+                    name
+                )
+                VALUES (?, ?)
+                """,
+                (version, name),
             )
-            VALUES (?, ?)
-            """,
-            (version, name),
-        )
+    except BaseException:
+        connection.execute("ROLLBACK TO SAVEPOINT apply_schema_migrations")
+        connection.execute("RELEASE SAVEPOINT apply_schema_migrations")
+        raise
+    else:
+        connection.execute("RELEASE SAVEPOINT apply_schema_migrations")
 
 
 def _migrate_baseline_schema(connection: sqlite3.Connection) -> None:

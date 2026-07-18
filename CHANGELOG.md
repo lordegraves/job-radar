@@ -31,6 +31,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Moved the application-history record model into `history_models.py`.
 - Made structured snapshots and HTML the application-facing report path.
 - Simplified runtime path resolution for CLI and web execution.
+- Made pending SQLite schema migrations atomic so a failed upgrade rolls back incomplete changes.
 
 ### Removed
 

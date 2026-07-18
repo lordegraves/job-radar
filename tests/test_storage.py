@@ -1,6 +1,9 @@
 import sqlite3
 from pathlib import Path
 
+import pytest
+
+from job_radar import storage
 from job_radar.database import connect_database
 from job_radar.history_models import JobHistoryRecord
 from job_radar.storage import (
@@ -31,6 +34,93 @@ def table_exists(database_path: Path, table_name: str) -> bool:
             (table_name,),
         )
         return cursor.fetchone() is not None
+
+
+def create_v010_database(database_path: Path) -> None:
+    """Create synthetic data using the schema shipped in the v0.1.0 release."""
+
+    legacy_schema = storage.SCHEMA_SQL
+
+    for current_only_column in (
+        "    requested_at TEXT,\n",
+        "    current_stage TEXT,\n",
+        "    failure_summary TEXT,\n",
+        "    report_status TEXT NOT NULL DEFAULT 'not_started',\n",
+        "    email_status TEXT NOT NULL DEFAULT 'not_requested',\n",
+    ):
+        assert current_only_column in legacy_schema
+        legacy_schema = legacy_schema.replace(current_only_column, "", 1)
+
+    with sqlite3.connect(database_path) as connection:
+        connection.executescript(legacy_schema)
+        storage.initialize_tracker_schema(connection)
+        connection.execute(
+            """
+            INSERT INTO companies (company_key, name, source_type)
+            VALUES ('synthetic_company', 'Synthetic Company', 'greenhouse')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO job_postings (
+                company_key,
+                source_type,
+                source_job_id,
+                source_url,
+                title,
+                canonical_key,
+                content_hash
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "synthetic_company",
+                "greenhouse",
+                "synthetic-job-1",
+                "https://example.invalid/jobs/1",
+                "Synthetic Infrastructure Engineer",
+                "synthetic-company:synthetic-job-1",
+                "synthetic-content-hash",
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO job_history (
+                history_type,
+                company,
+                role,
+                import_key,
+                notes
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                "application",
+                "Synthetic Company",
+                "Synthetic Reliability Engineer",
+                "synthetic-history-1",
+                "Invented test data only",
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO application_tracker (
+                job_radar_id,
+                company_name,
+                role_title,
+                source_url,
+                notes
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                "posting-url:https://example.invalid/jobs/1",
+                "Synthetic Company",
+                "Synthetic Infrastructure Engineer",
+                "https://example.invalid/jobs/1",
+                "Invented tracker note",
+            ),
+        )
 
 
 def test_initialize_database_creates_database_file(tmp_path: Path) -> None:
@@ -99,6 +189,151 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     )
 
     assert len(backup_paths_after_second_initialization) == 1
+
+
+def test_initialize_database_upgrades_v010_database_without_data_loss(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "synthetic-v0.1.0.sqlite3"
+    create_v010_database(database_path)
+
+    initialize_database(database_path)
+
+    with connect_database(database_path) as connection:
+        job_row = connection.execute(
+            "SELECT company_key, title FROM job_postings"
+        ).fetchone()
+        history_row = connection.execute(
+            "SELECT company, role, notes FROM job_history"
+        ).fetchone()
+        tracker_row = connection.execute(
+            """
+            SELECT job_radar_id, company_name, role_title, notes
+            FROM application_tracker
+            """
+        ).fetchone()
+        migration_versions = connection.execute(
+            "SELECT version FROM schema_migrations ORDER BY version"
+        ).fetchall()
+        scan_run_columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(scan_runs)")
+        }
+        foreign_key_errors = connection.execute(
+            "PRAGMA foreign_key_check"
+        ).fetchall()
+
+    assert job_row == (
+        "synthetic_company",
+        "Synthetic Infrastructure Engineer",
+    )
+    assert history_row == (
+        "Synthetic Company",
+        "Synthetic Reliability Engineer",
+        "Invented test data only",
+    )
+    assert tracker_row is not None
+    assert tracker_row[0].startswith("jr_manual_")
+    assert tracker_row[1:] == (
+        "Synthetic Company",
+        "Synthetic Infrastructure Engineer",
+        "Invented tracker note",
+    )
+    assert migration_versions == [(1,), (2,), (3,)]
+    assert {
+        "requested_at",
+        "current_stage",
+        "failure_summary",
+        "report_status",
+        "email_status",
+    } <= scan_run_columns
+    assert foreign_key_errors == []
+
+    backup_paths = list(
+        (tmp_path / "backups").glob(
+            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v3-*.bak"
+        )
+    )
+    assert len(backup_paths) == 1
+
+    with sqlite3.connect(backup_paths[0]) as backup_connection:
+        backup_job_row = backup_connection.execute(
+            "SELECT company_key, title FROM job_postings"
+        ).fetchone()
+        backup_tracker_id = backup_connection.execute(
+            "SELECT job_radar_id FROM application_tracker"
+        ).fetchone()[0]
+
+    assert backup_job_row == job_row
+    assert backup_tracker_id == "posting-url:https://example.invalid/jobs/1"
+
+    initialize_database(database_path)
+
+    assert len(list((tmp_path / "backups").glob("*.bak"))) == 1
+
+
+def test_initialize_database_rolls_back_failed_migration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = tmp_path / "synthetic-current.sqlite3"
+    initialize_database(database_path)
+
+    def fail_after_temporary_change(connection: sqlite3.Connection) -> None:
+        connection.execute(
+            "CREATE TABLE migration_should_roll_back (value TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO migration_should_roll_back VALUES ('temporary')"
+        )
+        raise RuntimeError("synthetic migration failure")
+
+    existing_migrations = storage._schema_migrations()
+    monkeypatch.setattr(
+        storage,
+        "_schema_migrations",
+        lambda: (
+            *existing_migrations,
+            (4, "synthetic failing migration", fail_after_temporary_change),
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="synthetic migration failure"):
+        initialize_database(database_path)
+
+    with connect_database(database_path) as connection:
+        failed_table = connection.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+            AND name = 'migration_should_roll_back'
+            """
+        ).fetchone()
+        migration_version = connection.execute(
+            "SELECT version FROM schema_migrations WHERE version = 4"
+        ).fetchone()
+        foreign_key_errors = connection.execute(
+            "PRAGMA foreign_key_check"
+        ).fetchall()
+
+    assert failed_table is None
+    assert migration_version is None
+    assert foreign_key_errors == []
+
+    backup_paths = list(
+        (tmp_path / "backups").glob(
+            "synthetic-current.sqlite3.pre-migration-v4-v4-*.bak"
+        )
+    )
+    assert len(backup_paths) == 1
+
+    with sqlite3.connect(backup_paths[0]) as backup_connection:
+        backup_versions = backup_connection.execute(
+            "SELECT version FROM schema_migrations ORDER BY version"
+        ).fetchall()
+
+    assert backup_versions == [(1,), (2,), (3,)]
 
 
 def test_initialize_database_creates_expected_tables(tmp_path: Path) -> None:
