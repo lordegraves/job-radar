@@ -126,6 +126,14 @@ A successful scan writes fixed-name outputs in the user-owned `reports` director
 
 SMTP passwords must not be stored in YAML, SQLite, logs, reports, previews, bootstrap files, packages, or source control. Environment variables remain the supported credential mechanism for the current implementation.
 
+## Database upgrade recovery
+
+Before changing an existing database structure, Job Radar creates a backup in the `backups` directory beside the active database. The default Windows location is `%LOCALAPPDATA%\JobRadar\data\backups`. Backup filenames identify the database and migration range, for example `job_radar.sqlite3.pre-migration-v1-v3-<timestamp>.bak`.
+
+If Job Radar reports an upgrade failure, close Job Radar and do not delete, rename, replace, or repeatedly reopen the active database or its backups. Preserve the complete `data` directory and contact Clayton Graves at `claytonmgraves@outlook.com`. Include the displayed technical details and diagnostic-log location, but do not send the database, résumé, profile, passwords, access tokens, or other credentials unless an approved secure support process is provided.
+
+Job Radar does not yet provide self-service restore controls. Do not manually replace the active database with a backup unless the replacement has first been copied to a separate recovery location and validated through the supported recovery process.
+
 ## Documentation
 
 - [User Guide](docs/USER_GUIDE.md)

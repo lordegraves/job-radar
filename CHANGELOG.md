@@ -32,6 +32,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Made structured snapshots and HTML the application-facing report path.
 - Simplified runtime path resolution for CLI and web execution.
 - Made pending SQLite schema migrations atomic so a failed upgrade rolls back incomplete changes.
+- Made the desktop launcher resolve database, report, log, and profile paths from the user-owned workspace instead of its launch directory.
 
 ### Removed
 

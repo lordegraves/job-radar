@@ -37,6 +37,19 @@ When bootstrapped user settings exist, Job Radar can use them by default:
 python -m job_radar.web_app
 ```
 
+## Database upgrade recovery
+
+Job Radar creates a backup before changing an existing database structure. Under the default Windows workspace, migration backups are stored in `%LOCALAPPDATA%\JobRadar\data\backups`.
+
+If an upgrade fails:
+
+1. Close Job Radar.
+2. Do not delete, rename, replace, or repeatedly reopen the active database or any backup.
+3. Preserve the complete Job Radar `data` directory.
+4. Contact Clayton Graves at `claytonmgraves@outlook.com` with the displayed technical details and diagnostic-log location.
+
+Do not send your database, résumé, profile, passwords, access tokens, or other credentials unless an approved secure support process is provided. Job Radar does not currently provide a self-service restore screen, so do not manually replace the active database with a backup.
+
 ## Home
 
 The Home page summarizes the latest scan and active application work.

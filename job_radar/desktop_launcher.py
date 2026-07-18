@@ -151,7 +151,12 @@ def launch_desktop() -> None:
         return
 
     settings_path = ensure_desktop_workspace()
-    app = create_app(settings_path=settings_path)
+    # Packaged settings use paths relative to the user-owned workspace, not the
+    # launcher's working directory or immutable installation location.
+    app = create_app(
+        settings_path=settings_path,
+        base_directory=settings_path.parent.parent,
+    )
     server = make_server(args.host, args.port, app)
 
     run_desktop_server(

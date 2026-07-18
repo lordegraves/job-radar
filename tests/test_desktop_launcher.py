@@ -123,8 +123,13 @@ def test_main_bootstraps_starts_and_opens_job_radar(
     monkeypatch.setattr(
         desktop_launcher,
         "create_app",
-        lambda *, settings_path: (
-            calls.setdefault("settings_path", settings_path),
+        lambda *, settings_path, base_directory: (
+            calls.update(
+                {
+                    "settings_path": settings_path,
+                    "base_directory": base_directory,
+                }
+            ),
             fake_app,
         )[1],
     )
@@ -158,6 +163,7 @@ def test_main_bootstraps_starts_and_opens_job_radar(
 
     assert calls == {
         "settings_path": settings_path,
+        "base_directory": tmp_path,
         "host": "127.0.0.1",
         "port": 5000,
         "app": fake_app,
