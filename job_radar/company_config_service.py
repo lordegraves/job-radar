@@ -1,3 +1,5 @@
+"""Prepare company-source settings for safe display and future GUI editing."""
+
 import importlib.util
 
 from dataclasses import dataclass

@@ -1,3 +1,5 @@
+"""Tests tracker database creation, migration, and record updates in temporary data."""
+
 import sqlite3
 from pathlib import Path
 

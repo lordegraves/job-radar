@@ -1,3 +1,5 @@
+"""Sort scored jobs into the report and email sections users actually see."""
+
 from dataclasses import dataclass
 
 from job_radar.recommendation_constants import (

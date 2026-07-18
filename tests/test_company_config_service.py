@@ -1,3 +1,5 @@
+"""Tests company-setting views, filters, summaries, and safe editing readiness."""
+
 from pathlib import Path
 
 from job_radar.company_config_service import (

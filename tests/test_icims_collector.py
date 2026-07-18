@@ -1,3 +1,5 @@
+"""Tests iCIMS HTML parsing, pagination, duplicate handling, and failures."""
+
 from __future__ import annotations
 
 from typing import Any

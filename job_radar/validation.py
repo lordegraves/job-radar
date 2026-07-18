@@ -1,3 +1,10 @@
+"""Check configuration and runtime prerequisites without starting a scan.
+
+Validation loads the same settings, company, scoring, profile, and path rules
+used by normal execution, then reports whether required inputs and writable
+output locations are ready. It does not collect jobs or send email.
+"""
+
 from dataclasses import dataclass
 from pathlib import Path
 

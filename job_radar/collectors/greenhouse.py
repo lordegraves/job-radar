@@ -1,3 +1,5 @@
+"""Collect Greenhouse jobs and define the common collector failure type."""
+
 from typing import Any
 
 from job_radar.collectors.collector_http import get_json

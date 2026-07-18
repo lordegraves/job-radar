@@ -1,3 +1,5 @@
+"""Collect and normalize education jobs from SchoolSpring's API."""
+
 import re
 from html import unescape
 from typing import Any

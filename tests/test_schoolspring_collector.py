@@ -1,3 +1,5 @@
+"""Tests SchoolSpring list and detail requests, pagination, and normalization."""
+
 import pytest
 
 from job_radar.collectors.greenhouse import CollectorError

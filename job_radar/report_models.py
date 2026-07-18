@@ -1,3 +1,5 @@
+"""Define the complete scan result shared by report and email builders."""
+
 from dataclasses import dataclass
 
 from job_radar.models import JobPosting

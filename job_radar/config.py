@@ -1,3 +1,10 @@
+"""Load and validate Job Radar's YAML configuration into typed settings.
+
+This module rejects malformed company, path, profile, and email configuration
+before application work begins. Its mapping-compatible settings objects preserve
+released callers while newer code uses explicit, easier-to-understand fields.
+"""
+
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path

@@ -1,3 +1,5 @@
+"""Apply tracker workflow rules and keep active applications aligned with history."""
+
 from datetime import date
 
 from job_radar.database import connect_database

@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from Oracle SelectMinds HTML pages."""
+
 from __future__ import annotations
 
 from html.parser import HTMLParser

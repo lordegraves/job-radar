@@ -1,3 +1,5 @@
+"""Tests user-facing scan progress for running, completed, and failed scans."""
+
 from pathlib import Path
 
 from job_radar.scan_progress import build_scan_progress_view

@@ -1,3 +1,5 @@
+"""Tests how scored jobs are divided among report and email sections."""
+
 from job_radar.models import JobPosting
 from job_radar.report_view_model import build_report_view_model
 from job_radar.scored_posting import ScoredPosting

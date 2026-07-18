@@ -1,3 +1,5 @@
+"""Tests SelectMinds HTML parsing, normalized postings, and failures."""
+
 from __future__ import annotations
 
 import pytest

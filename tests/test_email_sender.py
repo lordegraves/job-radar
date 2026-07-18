@@ -1,3 +1,5 @@
+"""Tests guarded email delivery using fake SMTP connections and credentials."""
+
 from job_radar.email_sender import get_email_readiness, send_email_report
 
 

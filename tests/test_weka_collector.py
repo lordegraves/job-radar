@@ -1,3 +1,5 @@
+"""Tests WEKA careers-page parsing, normalized postings, and failures."""
+
 import pytest
 import requests
 

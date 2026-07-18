@@ -1,3 +1,5 @@
+"""Tests Rippling page-data parsing, pagination, normalization, and failures."""
+
 import copy
 import json
 
@@ -231,4 +233,3 @@ def test_collect_rippling_jobs_stops_at_configured_max_pages(
         "https://ats.rippling.com/cbts/jobs?page=1",
     ]
     assert len(postings) == 2
-    

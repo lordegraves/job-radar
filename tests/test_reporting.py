@@ -1,3 +1,5 @@
+"""Tests HTML report content, recommendation explanations, escaping, and output."""
+
 from pathlib import Path
 
 from job_radar.models import JobPosting

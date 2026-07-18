@@ -1,3 +1,5 @@
+"""Compare resume evidence with a posting and explain strengths and gaps."""
+
 from dataclasses import dataclass
 
 from job_radar.candidate_profile import CandidateProfile

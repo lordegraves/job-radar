@@ -1,3 +1,5 @@
+"""Tests GUI profile display and safe resume uploads using temporary user files."""
+
 from pathlib import Path
 
 import pytest

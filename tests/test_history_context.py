@@ -1,3 +1,5 @@
+"""Tests the plain-language scan context produced from prior job-search results."""
+
 from job_radar.history_context import build_history_context
 from job_radar.history_summary import HistorySummary
 

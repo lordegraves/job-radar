@@ -1,3 +1,10 @@
+"""Verify desktop startup, workspace ownership, readiness, and error handling.
+
+Browser and server interactions are replaced with controlled test doubles so
+the suite can prove launcher decisions without opening a real browser or using
+the operator's live Job Radar workspace.
+"""
+
 import sys
 from pathlib import Path
 from typing import Any

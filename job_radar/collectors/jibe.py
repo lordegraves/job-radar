@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from Jibe-backed career-site APIs."""
+
 from __future__ import annotations
 
 from typing import Any

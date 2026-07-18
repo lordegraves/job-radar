@@ -1,3 +1,10 @@
+"""Verify database creation, upgrades, rollback safety, and stored records.
+
+The suite uses synthetic temporary databases to test the v0.1.0 upgrade path,
+pre-migration backups, atomic failure rollback, scan lifecycle state, job
+storage, and application history without accessing a live Job Radar database.
+"""
+
 import sqlite3
 from pathlib import Path
 

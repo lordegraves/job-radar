@@ -1,3 +1,10 @@
+"""Verify CLI parsing and end-to-end command behavior across shared services.
+
+These tests cover scans, lifecycle records, reports, email handoff, bootstrap,
+history, database initialization, and tracker commands using temporary or
+invented data rather than a real Job Radar workspace.
+"""
+
 import json
 import sqlite3
 import sys

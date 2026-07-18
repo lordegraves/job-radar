@@ -1,3 +1,5 @@
+"""Shared form, filtering, and date helpers used by multiple web pages."""
+
 from datetime import date
 
 from flask import request

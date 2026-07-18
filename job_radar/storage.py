@@ -1,3 +1,11 @@
+"""Own Job Radar's main SQLite schema, migrations, and stored scan history.
+
+This module creates and upgrades the database, records scan lifecycle state,
+stores job postings, and preserves application history. Existing databases are
+backed up before numbered migrations, and pending migrations run atomically so
+a failure cannot leave only part of an upgrade applied.
+"""
+
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path

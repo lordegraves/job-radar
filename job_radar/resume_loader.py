@@ -1,3 +1,5 @@
+"""Read supported resume files and produce consistent searchable text."""
+
 from pathlib import Path
 
 from docx import Document

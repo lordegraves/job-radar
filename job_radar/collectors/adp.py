@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from ADP recruiting portals."""
+
 from __future__ import annotations
 
 import re

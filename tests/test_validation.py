@@ -1,3 +1,10 @@
+"""Verify configuration readiness checks against isolated temporary workspaces.
+
+The tests confirm that settings-owned paths resolve correctly outside the
+repository and that validation checks inputs and writable outputs without
+running a job scan.
+"""
+
 from pathlib import Path
 
 from job_radar.validation import validate_configuration

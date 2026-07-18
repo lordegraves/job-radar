@@ -1,3 +1,5 @@
+"""Load and validate the candidate profile, including its private resume paths."""
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any

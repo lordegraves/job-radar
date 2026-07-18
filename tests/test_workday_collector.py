@@ -1,3 +1,5 @@
+"""Tests Workday pagination, response parsing, normalized jobs, and failures."""
+
 import pytest
 
 from job_radar.collectors.greenhouse import CollectorError

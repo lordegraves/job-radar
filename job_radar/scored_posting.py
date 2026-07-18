@@ -1,3 +1,5 @@
+"""Bundle a job posting with every score, decision, and history result it earned."""
+
 from dataclasses import dataclass
 
 from job_radar.compensation import CompensationResult

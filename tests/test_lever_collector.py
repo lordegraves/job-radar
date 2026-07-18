@@ -1,3 +1,5 @@
+"""Tests Lever response parsing, normalized postings, and collection failures."""
+
 import pytest
 
 from job_radar.collectors.greenhouse import CollectorError

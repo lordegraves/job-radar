@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from Lever's public postings API."""
+
 from typing import Any
 
 from job_radar.collectors.collector_http import get_json

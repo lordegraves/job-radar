@@ -1,3 +1,5 @@
+"""Prepare profile details for the GUI and safely store uploaded resumes."""
+
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import fill

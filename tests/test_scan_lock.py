@@ -1,3 +1,5 @@
+"""Tests that concurrent scans are blocked without deleting uncertain lock files."""
+
 import json
 import os
 import socket

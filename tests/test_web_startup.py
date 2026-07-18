@@ -1,3 +1,10 @@
+"""Verify safe, understandable failures during web application startup.
+
+The tests cover missing or invalid settings, unexpected exceptions, diagnostic
+log redaction, support guidance, and server startup failures without exposing
+raw private error messages.
+"""
+
 import sys
 from pathlib import Path
 

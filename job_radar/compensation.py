@@ -1,3 +1,5 @@
+"""Interpret advertised pay ranges and compare them with the candidate's floor."""
+
 from dataclasses import dataclass
 import re
 

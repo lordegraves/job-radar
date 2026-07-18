@@ -1,3 +1,5 @@
+"""Serve the candidate profile page and safe resume-replacement workflow."""
+
 from flask import Flask, redirect, render_template, request, url_for
 
 from job_radar.config import ConfigError

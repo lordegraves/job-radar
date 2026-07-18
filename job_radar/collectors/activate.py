@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from employer sites powered by Activate."""
+
 from __future__ import annotations
 
 import re

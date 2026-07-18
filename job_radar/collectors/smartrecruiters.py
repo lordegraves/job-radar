@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from SmartRecruiters search APIs."""
+
 from __future__ import annotations
 
 import re

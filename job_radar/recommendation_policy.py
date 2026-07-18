@@ -1,3 +1,5 @@
+"""Apply the eligibility rules that decide where scored jobs may be displayed."""
+
 from typing import Any
 
 from job_radar.models import JobPosting

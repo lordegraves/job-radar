@@ -1,3 +1,5 @@
+"""Define the common record shape used for imported job-search history."""
+
 from dataclasses import dataclass
 
 

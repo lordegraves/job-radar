@@ -1,3 +1,5 @@
+"""Prepare and serve the read-only view of active application settings."""
+
 from dataclasses import dataclass
 
 from flask import Flask, render_template

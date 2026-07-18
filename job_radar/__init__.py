@@ -1,3 +1,9 @@
+"""Expose the installed Job Radar version to every application entry point.
+
+The CLI, web startup messages, diagnostics, and packaging tests use this shared
+value so they all report the version installed in the active Python environment.
+"""
+
 from importlib.metadata import PackageNotFoundError, version
 
 

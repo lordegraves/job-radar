@@ -1,3 +1,5 @@
+"""Tests scoring configuration, evidence, location rules, and display eligibility."""
+
 from pathlib import Path
 
 import pytest

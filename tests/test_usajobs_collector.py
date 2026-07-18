@@ -1,3 +1,5 @@
+"""Tests USAJOBS credentials, pagination, normalization, and safe failures."""
+
 from __future__ import annotations
 
 import pytest

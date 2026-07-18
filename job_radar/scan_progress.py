@@ -1,3 +1,5 @@
+"""Turn stored scan-run details into understandable GUI progress information."""
+
 from dataclasses import dataclass
 from sqlite3 import Row
 

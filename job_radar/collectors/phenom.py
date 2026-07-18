@@ -1,3 +1,5 @@
+"""Collect and normalize jobs embedded in Phenom career-site pages."""
+
 from __future__ import annotations
 
 import json

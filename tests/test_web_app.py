@@ -1,3 +1,5 @@
+"""Tests the complete web interface and its workflows with temporary user data."""
+
 import json
 import os
 from datetime import date, datetime

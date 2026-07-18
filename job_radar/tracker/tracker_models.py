@@ -1,3 +1,5 @@
+"""Define the saved application-tracker record shared across the app."""
+
 from dataclasses import dataclass
 
 

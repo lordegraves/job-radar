@@ -1,3 +1,5 @@
+"""Create, migrate, and safely update application-tracker records in SQLite."""
+
 import sqlite3
 from pathlib import Path
 

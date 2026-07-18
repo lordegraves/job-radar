@@ -1,3 +1,5 @@
+"""Serve active-application tracking, filtering, and workflow update pages."""
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, timedelta

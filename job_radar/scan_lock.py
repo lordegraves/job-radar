@@ -1,3 +1,5 @@
+"""Prevent two Job Radar processes from changing scan data at the same time."""
+
 import json
 import os
 import socket

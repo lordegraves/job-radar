@@ -1,3 +1,10 @@
+"""Verify that release packages are complete, private-data-free, and runnable.
+
+These tests build temporary wheel and source archives, inspect their contents,
+install outside the repository, exercise CLI and desktop entry points, bootstrap
+synthetic user data, and render the installed web application.
+"""
+
 import os
 import shutil
 import subprocess

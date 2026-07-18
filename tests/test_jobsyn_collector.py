@@ -1,3 +1,5 @@
+"""Tests JobSync pagination, duplicate handling, normalization, and failures."""
+
 from __future__ import annotations
 
 import pytest

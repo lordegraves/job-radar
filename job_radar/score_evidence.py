@@ -1,3 +1,5 @@
+"""Describe one positive or negative fact that contributed to a job score."""
+
 from dataclasses import dataclass
 
 

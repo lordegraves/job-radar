@@ -1,3 +1,5 @@
+"""Render a complete, safe-to-open HTML report from one scan result."""
+
 from datetime import datetime
 from html import escape
 from pathlib import Path

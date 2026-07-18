@@ -1,3 +1,9 @@
+"""Verify YAML configuration loading, defaults, and helpful rejection of errors.
+
+The cases cover company-source rules, runtime paths, legacy mapping compatibility,
+active profiles, and email settings without reading personal configuration.
+"""
+
 from pathlib import Path
 
 import pytest

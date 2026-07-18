@@ -1,3 +1,5 @@
+"""Tests Oracle HCM pagination, job normalization, and failure handling."""
+
 from __future__ import annotations
 
 import pytest

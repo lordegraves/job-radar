@@ -1,3 +1,5 @@
+"""Turn a scan report into concise plain-text and HTML email summaries."""
+
 from datetime import datetime
 from html import escape
 from pathlib import Path

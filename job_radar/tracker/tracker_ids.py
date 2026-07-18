@@ -1,3 +1,5 @@
+"""Create stable Job Radar IDs for manually entered or imported jobs."""
+
 import hashlib
 from uuid import uuid4
 

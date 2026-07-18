@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from paginated iCIMS career sites."""
+
 from __future__ import annotations
 
 from html.parser import HTMLParser

@@ -1,3 +1,5 @@
+"""Tests salary parsing and comparison with the candidate's compensation floor."""
+
 from job_radar.compensation import evaluate_compensation, parse_salary_range_usd
 
 

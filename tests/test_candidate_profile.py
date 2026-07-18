@@ -1,3 +1,5 @@
+"""Tests profile loading, path resolution, and rejection of invalid profile data."""
+
 import pytest
 
 from job_radar.candidate_profile import load_candidate_profile

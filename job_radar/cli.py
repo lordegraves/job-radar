@@ -1,3 +1,11 @@
+"""Define Job Radar's command-line interface for advanced and automated use.
+
+This module translates CLI arguments into shared services for scanning,
+validation, database setup, history summaries, and application tracking. It is
+an interface layer: the underlying product rules remain in reusable modules so
+the web and desktop entry points do not need separate implementations.
+"""
+
 import argparse
 
 from job_radar import __version__

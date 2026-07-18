@@ -1,3 +1,5 @@
+"""Tests application workflow rules and safe movement between tracker and history."""
+
 import sqlite3
 from datetime import date
 from pathlib import Path

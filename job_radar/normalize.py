@@ -1,3 +1,5 @@
+"""Clean job text and build stable keys used to recognize duplicate postings."""
+
 import hashlib
 import re
 

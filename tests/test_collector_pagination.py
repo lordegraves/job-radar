@@ -1,3 +1,5 @@
+"""Tests shared collector page limits and protection from invalid settings."""
+
 from job_radar.collectors.pagination import (
     ABSOLUTE_MAX_PAGES,
     get_max_pages,

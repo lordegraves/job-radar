@@ -1,3 +1,5 @@
+"""Translate past job-search results into short context for the current scan."""
+
 from job_radar.history_summary import HistorySummary
 
 

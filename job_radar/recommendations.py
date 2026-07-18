@@ -1,3 +1,5 @@
+"""Convert scored job facts into user-facing actions, reasons, and risk labels."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

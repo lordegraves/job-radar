@@ -1,3 +1,5 @@
+"""Check email readiness and send reports without storing SMTP credentials."""
+
 import os
 import smtplib
 from dataclasses import dataclass

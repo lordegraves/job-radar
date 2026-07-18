@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from Workday recruiting APIs."""
+
 from typing import Any
 
 import requests

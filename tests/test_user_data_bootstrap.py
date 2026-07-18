@@ -1,3 +1,10 @@
+"""Verify safe first-run workspace creation and explicit data migration.
+
+These tests prove that packaged defaults are private-data-free, existing files
+are preserved, SQLite copies are valid, optional profiles remain optional, and
+settings containing literal credentials are rejected. All data is synthetic.
+"""
+
 import sqlite3
 from pathlib import Path
 

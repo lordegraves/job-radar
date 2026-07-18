@@ -1,3 +1,5 @@
+"""Collect federal jobs from USAJOBS using credentials kept in the environment."""
+
 from __future__ import annotations
 
 import os

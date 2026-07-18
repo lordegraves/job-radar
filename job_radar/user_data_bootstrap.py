@@ -1,3 +1,10 @@
+"""Create or migrate a Job Radar user workspace without replacing user files.
+
+Normal first-run setup copies only safe packaged defaults. Profiles, databases,
+and existing configuration move only from explicitly supplied sources, and
+imported settings are checked for literal credentials before any copy occurs.
+"""
+
 from contextlib import ExitStack
 from dataclasses import dataclass
 from importlib.resources import as_file, files

@@ -1,3 +1,5 @@
+"""Tests matching current jobs to prior decisions and assigning history risks."""
+
 from job_radar.history_match import (
     build_posting_history_context,
     find_history_matches,

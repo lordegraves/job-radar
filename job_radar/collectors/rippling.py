@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from Rippling applicant-tracking pages."""
+
 import json
 import re
 from html import unescape

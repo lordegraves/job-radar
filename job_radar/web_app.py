@@ -1,3 +1,5 @@
+"""Create and launch the Job Radar web interface with safe startup diagnostics."""
+
 import argparse
 import sys
 import traceback

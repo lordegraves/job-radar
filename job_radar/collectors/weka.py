@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from WEKA's custom careers page."""
+
 from __future__ import annotations
 
 import re

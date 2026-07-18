@@ -1,3 +1,5 @@
+"""Route each configured company to the collector for its recruiting platform."""
+
 from typing import Any
 
 from job_radar.collectors.ashby import collect_ashby_jobs

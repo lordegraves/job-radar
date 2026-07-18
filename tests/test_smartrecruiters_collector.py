@@ -1,3 +1,5 @@
+"""Tests SmartRecruiters pagination, normalized fields, and failures."""
+
 from __future__ import annotations
 
 import pytest

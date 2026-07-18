@@ -1,3 +1,5 @@
+"""Tests Activate collection, pagination, field cleanup, and failure handling."""
+
 from __future__ import annotations
 
 from typing import Any

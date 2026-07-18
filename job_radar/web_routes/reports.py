@@ -1,3 +1,5 @@
+"""Serve saved reports and structured sections from the latest scan snapshot."""
+
 import re
 from collections.abc import Callable
 from dataclasses import dataclass

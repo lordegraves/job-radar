@@ -1,3 +1,5 @@
+"""Coordinate the full scan from collection through storage, reports, and email."""
+
 from datetime import UTC, datetime
 from pathlib import Path
 

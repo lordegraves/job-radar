@@ -1,3 +1,5 @@
+"""Serve manual scan controls and progress updates for the web interface."""
+
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any

@@ -1,3 +1,5 @@
+"""Serve the company-source list and read-only company detail pages."""
+
 from collections.abc import Callable
 
 from flask import Flask, abort, render_template, request

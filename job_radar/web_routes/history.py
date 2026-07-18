@@ -1,3 +1,5 @@
+"""Serve archived job decisions, filtering, editing, and deletion workflows."""
+
 from collections.abc import Callable
 from dataclasses import dataclass
 

@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from Ashby's public job-board API."""
+
 from typing import Any
 
 from job_radar.collectors.collector_http import get_json

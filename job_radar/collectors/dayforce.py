@@ -1,3 +1,5 @@
+"""Collect and normalize jobs from Dayforce recruiting portals."""
+
 from __future__ import annotations
 
 import html

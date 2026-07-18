@@ -1,3 +1,10 @@
+"""Launch Job Radar's browser-based interface as a desktop-style application.
+
+The launcher prepares the user-owned workspace, starts a local-only web server,
+waits for readiness, and then opens the browser. It reuses an existing Job Radar
+instance when possible and presents safe graphical startup errors on Windows.
+"""
+
 import argparse
 import ctypes
 import sys

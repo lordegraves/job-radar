@@ -1,3 +1,5 @@
+"""Tests Ashby response parsing, normalized postings, and collection failures."""
+
 import pytest
 
 from job_radar.collectors.ashby import (

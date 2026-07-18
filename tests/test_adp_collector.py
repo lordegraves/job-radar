@@ -1,3 +1,5 @@
+"""Tests ADP collection, pagination, job details, and failure handling."""
+
 from __future__ import annotations
 
 import pytest

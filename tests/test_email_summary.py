@@ -1,3 +1,5 @@
+"""Tests the content, limits, and safety of text and HTML email summaries."""
+
 from job_radar.email_summary import (
     EMAIL_POSTINGS_LIMIT,
     build_email_body,

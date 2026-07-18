@@ -1,3 +1,10 @@
+"""Verify that every runtime path resolves to the intended ownership boundary.
+
+The tests cover OS defaults, explicit overrides, user-workspace preference,
+development fallbacks, absolute paths, and relative path resolution using only
+temporary directories.
+"""
+
 from pathlib import Path
 
 import job_radar.runtime_paths as runtime_paths_module

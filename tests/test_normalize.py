@@ -1,3 +1,5 @@
+"""Tests consistent text cleanup, duplicate keys, and change-detection hashes."""
+
 from job_radar.normalize import clean_text, make_canonical_key, make_content_hash, normalize_for_key
 
 

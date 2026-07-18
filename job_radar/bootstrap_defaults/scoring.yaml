@@ -1,3 +1,4 @@
+# Default scoring and eligibility rules copied into a new user's data directory.
 positive_keywords:
   linux: 10
   infrastructure: 10

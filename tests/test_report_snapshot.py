@@ -1,3 +1,5 @@
+"""Tests saving and reloading the structured scan results used by the GUI."""
+
 from pathlib import Path
 
 from job_radar.compensation import CompensationResult

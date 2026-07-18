@@ -1,3 +1,5 @@
+"""Tests how resume evidence and gaps are identified for a job posting."""
+
 from job_radar.candidate_profile import CandidateProfile, CandidateResumeConfig
 from job_radar.models import JobPosting
 from job_radar.resume_match import match_resume_to_posting

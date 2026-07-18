@@ -1,3 +1,5 @@
+"""Tests supported resume formats, readable text extraction, and invalid files."""
+
 import pytest
 from docx import Document
 from pypdf import PdfWriter

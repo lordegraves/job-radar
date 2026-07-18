@@ -1,3 +1,5 @@
+"""Collect jobs from career pages that expose ordinary HTML links."""
+
 from __future__ import annotations
 
 import re

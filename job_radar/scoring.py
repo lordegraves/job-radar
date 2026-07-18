@@ -1,3 +1,5 @@
+"""Validate scoring rules, score postings, and classify location eligibility."""
+
 from pathlib import Path
 from typing import Any
 

@@ -1,3 +1,5 @@
+"""Tests the complete scan pipeline with synthetic jobs and a temporary database."""
+
 import json
 import sqlite3
 from pathlib import Path

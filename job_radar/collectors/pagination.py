@@ -1,3 +1,5 @@
+"""Keep collector page sizes and page limits within safe configured bounds."""
+
 from typing import Any
 
 

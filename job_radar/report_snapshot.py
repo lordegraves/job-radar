@@ -1,3 +1,5 @@
+"""Save and reload a stable report snapshot that the GUI can display later."""
+
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path

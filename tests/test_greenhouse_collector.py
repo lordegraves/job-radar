@@ -1,3 +1,5 @@
+"""Tests Greenhouse response parsing, normalized postings, and failures."""
+
 import pytest
 
 from job_radar.collectors.greenhouse import (

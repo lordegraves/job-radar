@@ -1,3 +1,5 @@
+"""Tests job discovery and normalization from ordinary HTML career pages."""
+
 from __future__ import annotations
 
 from typing import Any

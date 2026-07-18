@@ -1,3 +1,5 @@
+"""Tests that each company source type is routed to the correct collector."""
+
 import pytest
 
 from job_radar.collectors.greenhouse import CollectorError

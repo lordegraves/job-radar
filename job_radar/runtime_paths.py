@@ -1,3 +1,11 @@
+"""Resolve the files and writable directories used by one Job Radar run.
+
+These shared rules keep user-owned databases, settings, reports, logs, profiles,
+and resumes separate from installed application files. CLI, web, and desktop
+entry points use the same path model so they cannot silently disagree about
+where relative paths belong.
+"""
+
 import os
 import sys
 from dataclasses import dataclass

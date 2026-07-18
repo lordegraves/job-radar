@@ -1,3 +1,4 @@
+# Safe first-run paths and disabled-by-default email settings for a new user.
 database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
