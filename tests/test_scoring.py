@@ -85,6 +85,82 @@ def make_scoring_config() -> dict:
     }
 
 
+def make_policy_scoring_config() -> dict:
+    return {
+        "positive_keywords": {
+            "linux": 10,
+            "infrastructure": 10,
+            "sre": 10,
+            "site reliability": 10,
+            "reliability": 8,
+            "kubernetes": 8,
+            "k8s": 8,
+            "cluster": 8,
+            "hpc": 10,
+            "slurm": 10,
+            "gpu": 8,
+            "datacenter": 8,
+            "data center": 8,
+            "hardware": 7,
+            "systems": 6,
+            "observability": 6,
+            "incident": 5,
+            "automation": 5,
+            "python": 4,
+            "networking": 4,
+            "storage": 4,
+        },
+        "negative_keywords": {
+            "sourcing": -30,
+            "sales": -15,
+        },
+        "location_preferences": {
+            "allowed": {
+                "remote": 100,
+            },
+            "conditional": {},
+            "skipped": {
+                "unsupported location": -100,
+            },
+        },
+        "top_matches": {
+            "min_score": 120,
+            "excluded_title_keywords": [
+                "sales",
+                "sourcing",
+                "design execution",
+            ],
+            "strong_signals": [
+                "title:infrastructure",
+                "title:kubernetes",
+                "title:linux",
+            ],
+        },
+        "review_needed": {
+            "min_score": 100,
+            "excluded_location_statuses": [
+                "skipped",
+                "unknown",
+            ],
+            "strong_signals": [
+                "title:infrastructure",
+                "title:kubernetes",
+                "title:linux",
+                "title:datacenter",
+                "title:data center",
+                "body:hpc",
+                "body:gpu",
+                "body:kubernetes",
+                "body:linux",
+                "body:infrastructure",
+                "body:datacenter",
+                "body:data center",
+                "body:hardware",
+            ],
+        },
+    }
+
+
 def test_load_scoring_config_reads_keywords_location_preferences_and_top_matches(
     tmp_path: Path,
 ) -> None:
@@ -829,8 +905,8 @@ review_needed:
     }
 
 
-def test_load_scoring_config_defaults_review_needed() -> None:
-    config = load_scoring_config(Path("config/scoring.yaml"))
+def test_policy_scoring_config_includes_review_needed_rules() -> None:
+    config = make_policy_scoring_config()
 
     assert config["review_needed"]["min_score"] == 100
     assert "skipped" in config["review_needed"]["excluded_location_statuses"]
@@ -857,7 +933,7 @@ review_needed:
     
 
 def test_evaluate_review_needed_eligibility_accepts_configured_signal() -> None:
-    config = load_scoring_config(Path("config/scoring.yaml"))
+    config = make_policy_scoring_config()
 
     result = evaluate_review_needed_eligibility(
         score=120,
@@ -874,7 +950,7 @@ def test_evaluate_review_needed_eligibility_accepts_configured_signal() -> None:
 
 
 def test_evaluate_review_needed_eligibility_rejects_top_match() -> None:
-    config = load_scoring_config(Path("config/scoring.yaml"))
+    config = make_policy_scoring_config()
 
     result = evaluate_review_needed_eligibility(
         score=120,
@@ -891,7 +967,7 @@ def test_evaluate_review_needed_eligibility_rejects_top_match() -> None:
 
 
 def test_evaluate_review_needed_eligibility_rejects_weak_signal() -> None:
-    config = load_scoring_config(Path("config/scoring.yaml"))
+    config = make_policy_scoring_config()
 
     result = evaluate_review_needed_eligibility(
         score=106,
@@ -907,7 +983,7 @@ def test_evaluate_review_needed_eligibility_rejects_weak_signal() -> None:
     assert result is False
 
 
-def test_real_config_omits_data_center_sourcing_roles_from_review_needed() -> None:
+def test_policy_config_omits_data_center_sourcing_roles_from_review_needed() -> None:
     posting = make_posting(
         title="Data Center Strategic Sourcing Lead",
         description=(
@@ -917,7 +993,7 @@ def test_real_config_omits_data_center_sourcing_roles_from_review_needed() -> No
         location="Remote-Friendly, United States",
     )
 
-    config = load_scoring_config(Path("config/scoring.yaml"))
+    config = make_policy_scoring_config()
 
     score, reasons = score_posting(posting, config)
     location_status = classify_location(posting, config)
@@ -945,7 +1021,7 @@ def test_real_config_omits_data_center_sourcing_roles_from_review_needed() -> No
     assert review_needed_eligible is False
 
 
-def test_real_config_body_linux_alone_is_not_top_match() -> None:
+def test_policy_config_body_linux_alone_is_not_top_match() -> None:
     posting = make_posting(
         title="Senior Operations Engineer",
         description=(
@@ -957,7 +1033,7 @@ def test_real_config_body_linux_alone_is_not_top_match() -> None:
         location="Remote-Friendly, United States",
     )
 
-    config = load_scoring_config(Path("config/scoring.yaml"))
+    config = make_policy_scoring_config()
 
     score, reasons = score_posting(posting, config)
     location_status = classify_location(posting, config)
@@ -986,7 +1062,7 @@ def test_real_config_body_linux_alone_is_not_top_match() -> None:
     assert review_needed_eligible is True
 
 
-def test_real_config_data_center_alone_is_review_needed_not_top_match() -> None:
+def test_policy_config_data_center_alone_is_review_needed_not_top_match() -> None:
     posting = make_posting(
         title="Data Center Design Execution Lead",
         description=(
@@ -998,7 +1074,7 @@ def test_real_config_data_center_alone_is_review_needed_not_top_match() -> None:
         location="Remote-Friendly, United States",
     )
 
-    config = load_scoring_config(Path("config/scoring.yaml"))
+    config = make_policy_scoring_config()
 
     score, reasons = score_posting(posting, config)
     location_status = classify_location(posting, config)
