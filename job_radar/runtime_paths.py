@@ -33,6 +33,7 @@ class UserDataPaths:
     data: Path
     logs: Path
     profiles: Path
+    resumes: Path
     reports: Path
 
     @classmethod
@@ -45,6 +46,7 @@ class UserDataPaths:
             data=resolved_root / "data",
             logs=resolved_root / "logs",
             profiles=resolved_root / "profiles",
+            resumes=resolved_root / "resumes",
             reports=resolved_root / "reports",
         )
 

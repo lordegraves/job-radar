@@ -61,6 +61,7 @@ def test_user_data_paths_define_standard_writable_layout(
     assert user_data_paths.data == root.resolve() / "data"
     assert user_data_paths.logs == root.resolve() / "logs"
     assert user_data_paths.profiles == root.resolve() / "profiles"
+    assert user_data_paths.resumes == root.resolve() / "resumes"
     assert user_data_paths.reports == root.resolve() / "reports"
 
 
@@ -79,6 +80,7 @@ def test_default_user_data_paths_use_default_root(
     assert user_data_paths.root == root.resolve()
     assert user_data_paths.data == root.resolve() / "data"
     assert user_data_paths.profiles == root.resolve() / "profiles"
+    assert user_data_paths.resumes == root.resolve() / "resumes"
 
 
 def test_runtime_paths_settings_argument_uses_active_default_for_none(

@@ -101,6 +101,7 @@ def create_user_data_directories(user_data_paths: UserDataPaths) -> None:
         user_data_paths.data,
         user_data_paths.logs,
         user_data_paths.profiles,
+        user_data_paths.resumes,
         user_data_paths.reports,
     ):
         directory.mkdir(parents=True, exist_ok=True)

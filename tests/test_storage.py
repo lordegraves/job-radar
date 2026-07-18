@@ -165,7 +165,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     backup_directory = tmp_path / "backups"
     backup_paths = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v3-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v4-*.bak"
         )
     )
 
@@ -191,7 +191,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
 
     backup_paths_after_second_initialization = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v3-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v4-*.bak"
         )
     )
 
@@ -246,7 +246,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
         "Synthetic Infrastructure Engineer",
         "Invented tracker note",
     )
-    assert migration_versions == [(1,), (2,), (3,)]
+    assert migration_versions == [(1,), (2,), (3,), (4,)]
     assert {
         "requested_at",
         "current_stage",
@@ -258,7 +258,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v3-*.bak"
+            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v4-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -301,7 +301,7 @@ def test_initialize_database_rolls_back_failed_migration(
         "_schema_migrations",
         lambda: (
             *existing_migrations,
-            (4, "synthetic failing migration", fail_after_temporary_change),
+            (5, "synthetic failing migration", fail_after_temporary_change),
         ),
     )
 
@@ -318,7 +318,7 @@ def test_initialize_database_rolls_back_failed_migration(
             """
         ).fetchone()
         migration_version = connection.execute(
-            "SELECT version FROM schema_migrations WHERE version = 4"
+            "SELECT version FROM schema_migrations WHERE version = 5"
         ).fetchone()
         foreign_key_errors = connection.execute(
             "PRAGMA foreign_key_check"
@@ -330,7 +330,7 @@ def test_initialize_database_rolls_back_failed_migration(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-current.sqlite3.pre-migration-v4-v4-*.bak"
+            "synthetic-current.sqlite3.pre-migration-v5-v5-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -340,7 +340,7 @@ def test_initialize_database_rolls_back_failed_migration(
             "SELECT version FROM schema_migrations ORDER BY version"
         ).fetchall()
 
-    assert backup_versions == [(1,), (2,), (3,)]
+    assert backup_versions == [(1,), (2,), (3,), (4,)]
 
 
 def test_initialize_database_creates_expected_tables(tmp_path: Path) -> None:
@@ -357,6 +357,9 @@ def test_initialize_database_creates_expected_tables(tmp_path: Path) -> None:
         "job_seen_events",
         "job_history",
         "application_tracker",
+        "profiles",
+        "profile_preferences",
+        "profile_company_associations",
         "schema_migrations",
     ]
 
@@ -386,6 +389,7 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
         (1, "baseline current schema"),
         (2, "backfill companies for stored jobs"),
         (3, "add durable scan lifecycle fields"),
+        (4, "add managed profile storage"),
     ]
 
 

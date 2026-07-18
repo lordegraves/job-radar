@@ -202,6 +202,11 @@ def _schema_migrations() -> tuple:
             "add durable scan lifecycle fields",
             _migrate_scan_runs_table,
         ),
+        (
+            4,
+            "add managed profile storage",
+            _migrate_managed_profile_tables,
+        ),
     )
 
 
@@ -393,6 +398,69 @@ def _migrate_job_history_table(connection: sqlite3.Connection) -> None:
         connection.execute(
             f"ALTER TABLE job_history ADD COLUMN {column_name} {column_definition}"
         )
+
+
+def _migrate_managed_profile_tables(connection: sqlite3.Connection) -> None:
+    """Create profile records without assigning existing user data yet."""
+
+    # sqlite3.executescript() commits implicitly and would end the migration
+    # savepoint. Execute each statement separately so failure rolls back every
+    # profile table and index as one atomic migration.
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS profiles (
+            profile_id TEXT PRIMARY KEY,
+            schema_version INTEGER NOT NULL,
+            display_name TEXT NOT NULL,
+            archived INTEGER NOT NULL DEFAULT 0,
+            resume_source_file_name TEXT,
+            resume_normalized_text_file_name TEXT,
+            scoring_config_file_name TEXT NOT NULL DEFAULT 'scoring.yaml',
+            report_settings_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS profile_preferences (
+            profile_id TEXT PRIMARY KEY,
+            target_roles_json TEXT NOT NULL DEFAULT '[]',
+            seniority_levels_json TEXT NOT NULL DEFAULT '[]',
+            core_strengths_json TEXT NOT NULL DEFAULT '[]',
+            credible_adjacent_json TEXT NOT NULL DEFAULT '[]',
+            learning_or_gap_json TEXT NOT NULL DEFAULT '[]',
+            exclusions_json TEXT NOT NULL DEFAULT '[]',
+            preferred_locations_json TEXT NOT NULL DEFAULT '[]',
+            work_arrangements_json TEXT NOT NULL DEFAULT '[]',
+            employment_types_json TEXT NOT NULL DEFAULT '[]',
+            compensation_floor_usd INTEGER,
+            compensation_target_usd INTEGER,
+            travel_tolerance TEXT,
+            FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS profile_company_associations (
+            profile_id TEXT NOT NULL,
+            company_id TEXT NOT NULL,
+            PRIMARY KEY (profile_id, company_id),
+            FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS idx_profiles_archived_display_name
+        ON profiles(archived, display_name)
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS idx_profile_company_associations_company_id
+        ON profile_company_associations(company_id)
+        """,
+    )
+
+    for statement in statements:
+        connection.execute(statement)
 
 
 def fetch_active_scan_run(

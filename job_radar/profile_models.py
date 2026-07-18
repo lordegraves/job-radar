@@ -64,6 +64,42 @@ class ProfilePreferences:
     compensation_target_usd: int | None = None
     travel_tolerance: str | None = None
 
+    def __post_init__(self) -> None:
+        list_fields = (
+            self.target_roles,
+            self.seniority_levels,
+            self.core_strengths,
+            self.credible_adjacent,
+            self.learning_or_gap,
+            self.exclusions,
+            self.preferred_locations,
+            self.work_arrangements,
+            self.employment_types,
+        )
+
+        for values in list_fields:
+            if not all(isinstance(value, str) and value.strip() for value in values):
+                raise ValueError("profile preference lists require non-empty strings")
+
+        for value in (
+            self.compensation_floor_usd,
+            self.compensation_target_usd,
+        ):
+            if value is not None and (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value < 0
+            ):
+                raise ValueError(
+                    "profile compensation values must be non-negative integers"
+                )
+
+        if self.travel_tolerance is not None and (
+            not isinstance(self.travel_tolerance, str)
+            or not self.travel_tolerance.strip()
+        ):
+            raise ValueError("travel_tolerance must be a non-empty string")
+
 
 @dataclass(frozen=True)
 class ManagedProfile:
@@ -93,6 +129,18 @@ class ManagedProfile:
 
         if scoring_path.name != self.scoring_config_file_name:
             raise ValueError("scoring config must be a file name, not a path")
+
+        if self.scoring_config_file_name != "scoring.yaml":
+            raise ValueError("scoring config must use the app-owned name 'scoring.yaml'")
+
+        if len(set(self.company_ids)) != len(self.company_ids):
+            raise ValueError("company_ids cannot contain duplicates")
+
+        if not all(
+            isinstance(company_id, str) and company_id.strip()
+            for company_id in self.company_ids
+        ):
+            raise ValueError("company_ids require non-empty strings")
 
         if self.schema_version != PROFILE_SCHEMA_VERSION:
             raise ValueError(

@@ -46,7 +46,7 @@ Default user-data roots:
 - Windows: `%LOCALAPPDATA%\JobRadar`
 - Linux and other POSIX systems: `$XDG_DATA_HOME/job-radar` or `~/.local/share/job-radar`
 
-The user-data root contains separate `config`, `profiles`, `data`, `reports`, and `logs` directories.
+The user-data root contains separate `config`, `profiles`, `resumes`, `data`, `reports`, and `logs` directories. Managed resume files use app-owned names under `resumes/<profile-id>/` so moving or renaming the original uploaded file cannot break an active profile.
 
 A normal bootstrap uses only packaged starter files. Repository profiles, resumes, databases, live company configuration, and credentials are not automatic bootstrap sources. Existing data is migrated only when the user supplies an explicit source argument.
 
@@ -100,6 +100,7 @@ SQLite is the system of record for:
 - scan runs and errors
 - active applications
 - application history
+- managed profile identity, preferences, company associations, and app-owned resume metadata
 
 `database.py` owns connections and transaction behavior. `storage.py` owns general persistence. Tracker persistence lives under `job_radar/tracker/`.
 
@@ -110,6 +111,8 @@ Database protections include:
 - backup before schema migration
 - atomic tracker/history moves
 - compatibility migrations for older databases
+
+Managed profile storage currently exists as an internal foundation and is not yet connected to profile selection, scans, or GUI profile management. Migration of an existing candidate profile and assignment of existing operational records will occur only after those workflows are complete and validated against temporary copies.
 
 ### Tracker and History
 

@@ -35,6 +35,7 @@ def test_create_user_data_directories_creates_standard_layout(
     assert user_data_paths.data.is_dir()
     assert user_data_paths.logs.is_dir()
     assert user_data_paths.profiles.is_dir()
+    assert user_data_paths.resumes.is_dir()
     assert user_data_paths.reports.is_dir()
 
 

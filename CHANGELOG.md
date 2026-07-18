@@ -20,6 +20,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Optional non-destructive migration of existing settings, company configuration, scoring configuration, profiles, and a SQLite database.
 - Bootstrap protection that rejects imported settings containing literal credential values while allowing environment-variable references.
 - Packaging tests for wheel and source-distribution contents, clean installation outside the source tree, installed desktop-launcher startup, first-time bootstrap, and installed Flask rendering.
+- A managed-profile storage foundation with stable profile IDs, profile-owned preferences, company associations, scoring/report settings, and app-owned resume filenames.
+- A common user-owned `resumes` directory that prevents managed profiles from depending on files in Documents, Downloads, or other external locations.
+- SQLite migration version 4 for empty managed-profile tables, protected by the existing pre-migration backup and atomic rollback behavior.
 
 ### Changed
 
