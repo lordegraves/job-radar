@@ -11,8 +11,10 @@ from pathlib import Path
 
 from job_radar.database import connect_database
 from job_radar.profile_models import (
+    LocationPreference,
     ManagedProfile,
     ManagedResume,
+    OccupationPreference,
     ProfilePreferences,
 )
 from job_radar.storage import initialize_database
@@ -354,9 +356,12 @@ def _replace_profile_preferences(
             employment_types_json,
             compensation_floor_usd,
             compensation_target_usd,
-            travel_tolerance
+            travel_tolerance,
+            schedule_preference,
+            occupation_selections_json,
+            location_selections_json
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             profile.profile_id,
@@ -372,6 +377,25 @@ def _replace_profile_preferences(
             preferences.compensation_floor_usd,
             preferences.compensation_target_usd,
             preferences.travel_tolerance,
+            preferences.schedule_preference,
+            _dump_json(
+                [
+                    {"value": item.value, "label": item.label}
+                    for item in preferences.occupation_selections
+                ]
+            ),
+            _dump_json(
+                [
+                    {
+                        "value": item.value,
+                        "label": item.label,
+                        "latitude": item.latitude,
+                        "longitude": item.longitude,
+                        "radius_miles": item.radius_miles,
+                    }
+                    for item in preferences.location_selections
+                ]
+            ),
         ),
     )
 
@@ -448,6 +472,13 @@ def _row_to_profile(
             compensation_floor_usd=preference_row["compensation_floor_usd"],
             compensation_target_usd=preference_row["compensation_target_usd"],
             travel_tolerance=preference_row["travel_tolerance"],
+            schedule_preference=preference_row["schedule_preference"],
+            occupation_selections=_load_occupation_preferences(
+                preference_row["occupation_selections_json"]
+            ),
+            location_selections=_load_location_preferences(
+                preference_row["location_selections_json"]
+            ),
         )
         resume = _build_resume_from_row(row)
         report_settings = _load_json_object(row["report_settings_json"])
@@ -501,6 +532,38 @@ def _load_string_tuple(raw_value: str) -> tuple[str, ...]:
         raise ValueError("stored profile preference must be a list of strings")
 
     return tuple(value)
+
+
+def _load_occupation_preferences(
+    raw_value: str,
+) -> tuple[OccupationPreference, ...]:
+    value = json.loads(raw_value)
+    if not isinstance(value, list):
+        raise ValueError("stored occupations must be a list")
+    return tuple(
+        OccupationPreference(value=item["value"], label=item["label"])
+        for item in value
+        if isinstance(item, dict)
+    )
+
+
+def _load_location_preferences(
+    raw_value: str,
+) -> tuple[LocationPreference, ...]:
+    value = json.loads(raw_value)
+    if not isinstance(value, list):
+        raise ValueError("stored locations must be a list")
+    return tuple(
+        LocationPreference(
+            value=item["value"],
+            label=item["label"],
+            latitude=item.get("latitude"),
+            longitude=item.get("longitude"),
+            radius_miles=item["radius_miles"],
+        )
+        for item in value
+        if isinstance(item, dict)
+    )
 
 
 def _load_json_object(raw_value: str) -> dict[str, object]:

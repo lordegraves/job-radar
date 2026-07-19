@@ -786,7 +786,7 @@ top_matches:
     assert "Jobs seen: 0" in output
     assert "Jobs changed: 0" in output
     assert "Collector errors: 0" in output
-    assert "<h1>Job Radar Report</h1>" in report_text
+    assert "<h1>junior Report</h1>" in report_text
     assert "<strong>Companies enabled:</strong> 1" in report_text
     assert "<strong>Jobs collected:</strong> 1" in report_text
     assert "<strong>Actionable jobs stored:</strong> 1" in report_text
@@ -1441,12 +1441,12 @@ top_matches:
     assert html_report_file.exists()
     assert report_file.with_suffix(".json").exists()
     assert captured_email_call["attachment_path"] == html_report_file
-    assert captured_email_call["subject"].startswith("Job Radar Report - ")
+    assert captured_email_call["subject"].startswith("junior Report - ")
     assert "Full report:" in captured_email_call["body"]
     assert "Attached as HTML file." in captured_email_call["body"]
     assert str(report_file) not in captured_email_call["body"]
     assert captured_email_call["html_body"] is not None
-    assert "<h1>Job Radar Report</h1>" in captured_email_call["html_body"]
+    assert "<h1>junior Report</h1>" in captured_email_call["html_body"]
     assert "View posting" in captured_email_call["html_body"]
     assert f"HTML report written: {html_report_file}" in output
     assert "Email send result: Email sent" in output

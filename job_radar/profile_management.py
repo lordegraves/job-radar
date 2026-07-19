@@ -5,6 +5,7 @@ There is deliberately no delete operation: archival is reversible and protects
 profile-owned data until a future backup-aware deletion workflow exists.
 """
 
+import json
 import os
 import secrets
 import shutil
@@ -13,7 +14,9 @@ from pathlib import Path
 
 from job_radar.config import ConfigError
 from job_radar.profile_models import (
+    LocationPreference,
     ManagedProfile,
+    OccupationPreference,
     ProfilePreferences,
     build_managed_resume,
     get_managed_resume_directory,
@@ -35,6 +38,27 @@ from job_radar.runtime_paths import RuntimePaths
 class ProfileManagementView:
     profiles: list[ManagedProfile]
     active_profile_id: str | None
+
+
+JOB_LEVELS = {"Entry-level", "Mid-level", "Senior", "Executive"}
+EMPLOYMENT_TYPES = {
+    "Full-time",
+    "Part-time",
+    "Contract",
+    "Temporary",
+    "Seasonal",
+    "Internship or apprenticeship",
+}
+WORKPLACE_ARRANGEMENTS = {"Remote", "Hybrid", "On-site"}
+SCHEDULE_PREFERENCES = {
+    "Any schedule",
+    "Day shift",
+    "Evening shift",
+    "Night shift",
+    "Weekdays",
+    "Weekends accepted",
+    "Flexible schedule",
+}
 
 
 def build_profile_management_view(
@@ -103,9 +127,69 @@ def update_managed_profile_from_form(
             values.get("compensation_target_usd", ""), "Compensation target"
         ),
         travel_tolerance=values.get("travel_tolerance", "").strip() or None,
+        schedule_preference=current.preferences.schedule_preference,
+        occupation_selections=current.preferences.occupation_selections,
+        location_selections=current.preferences.location_selections,
     )
     updated = replace(current, display_name=display_name, preferences=preferences)
     update_profile(runtime_paths.database_path, updated)
+    return updated
+
+
+def update_managed_search_preferences(
+    settings_path: str | None,
+    *,
+    occupation_selections_json: str,
+    location_selections_json: str,
+    seniority_levels: list[str],
+    employment_types: list[str],
+    work_arrangements: list[str],
+    schedule_preference: str,
+    compensation_floor_usd: str,
+    travel_percentage: str,
+    base_directory: str | Path | None = None,
+) -> ManagedProfile:
+    """Validate and save only the fields owned by Search Preferences."""
+
+    runtime_paths = _runtime_paths(settings_path, base_directory)
+    current = get_active_profile(runtime_paths.database_path)
+    if current is None:
+        raise ConfigError(
+            "Create or select a managed profile before saving search preferences."
+        )
+
+    occupations = _occupation_preferences(occupation_selections_json)
+    locations = _location_preferences(location_selections_json)
+    levels = _allowed_selections(seniority_levels, JOB_LEVELS, "job level")
+    employment = _allowed_selections(
+        employment_types, EMPLOYMENT_TYPES, "employment type"
+    )
+    arrangements = _allowed_selections(
+        work_arrangements, WORKPLACE_ARRANGEMENTS, "workplace arrangement"
+    )
+    schedule = schedule_preference.strip()
+    if schedule not in SCHEDULE_PREFERENCES:
+        raise ConfigError("Choose a valid schedule preference.")
+    travel = _percentage(travel_percentage, "Maximum travel")
+
+    preferences = replace(
+        current.preferences,
+        target_roles=tuple(item.label for item in occupations),
+        seniority_levels=levels,
+        preferred_locations=tuple(item.label for item in locations),
+        work_arrangements=arrangements,
+        employment_types=employment,
+        compensation_floor_usd=_optional_non_negative_int(
+            compensation_floor_usd, "Minimum annual compensation"
+        ),
+        travel_tolerance=str(travel),
+        schedule_preference=schedule,
+        occupation_selections=occupations,
+        location_selections=locations,
+    )
+    updated = replace(current, preferences=preferences)
+    if not update_profile(runtime_paths.database_path, updated):
+        raise ConfigError("The selected profile no longer exists.")
     return updated
 
 
@@ -239,3 +323,86 @@ def _optional_non_negative_int(value: str, label: str) -> int | None:
     if result < 0:
         raise ConfigError(f"{label} cannot be negative.")
     return result
+
+
+def _allowed_selections(
+    values: list[str], allowed: set[str], label: str
+) -> tuple[str, ...]:
+    selections = tuple(
+        dict.fromkeys(value.strip() for value in values if value.strip())
+    )
+    if any(value not in allowed for value in selections):
+        raise ConfigError(f"Choose a valid {label}.")
+    return selections
+
+
+def _percentage(value: str, label: str) -> int:
+    try:
+        percentage = int(value)
+    except ValueError as error:
+        raise ConfigError(f"{label} must be between 0% and 100%.") from error
+    if not 0 <= percentage <= 100:
+        raise ConfigError(f"{label} must be between 0% and 100%.")
+    return percentage
+
+
+def _occupation_preferences(raw_value: str) -> tuple[OccupationPreference, ...]:
+    values = _json_list(raw_value, "occupations")
+    if len(values) > 50:
+        raise ConfigError("Choose no more than 50 occupations.")
+    try:
+        selections = tuple(
+            OccupationPreference(
+                value=str(item["value"]).strip(),
+                label=str(item["label"]).strip(),
+            )
+            for item in values
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise ConfigError("The selected occupations are invalid.") from error
+    return _unique_by_value(selections)
+
+
+def _location_preferences(raw_value: str) -> tuple[LocationPreference, ...]:
+    values = _json_list(raw_value, "locations")
+    if len(values) > 20:
+        raise ConfigError("Choose no more than 20 locations.")
+    try:
+        selections = tuple(
+            LocationPreference(
+                value=str(item["value"]).strip(),
+                label=str(item["label"]).strip(),
+                latitude=(
+                    float(item["latitude"])
+                    if item.get("latitude") is not None
+                    else None
+                ),
+                longitude=(
+                    float(item["longitude"])
+                    if item.get("longitude") is not None
+                    else None
+                ),
+                radius_miles=int(item["radius"]),
+            )
+            for item in values
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise ConfigError("The selected locations are invalid.") from error
+    return _unique_by_value(selections)
+
+
+def _json_list(raw_value: str, label: str) -> list[object]:
+    try:
+        value = json.loads(raw_value)
+    except json.JSONDecodeError as error:
+        raise ConfigError(f"The selected {label} are invalid.") from error
+    if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+        raise ConfigError(f"The selected {label} are invalid.")
+    return value
+
+
+def _unique_by_value(values: tuple) -> tuple:
+    unique = {}
+    for value in values:
+        unique[value.value.casefold()] = value
+    return tuple(unique.values())

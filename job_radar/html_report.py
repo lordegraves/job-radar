@@ -89,7 +89,7 @@ def render_html_report(report: ScanReport) -> str:
         "<html>",
         "<head>",
         '<meta charset="utf-8">',
-        "<title>Job Radar Report</title>",
+        "<title>junior Report</title>",
         "<style>",
         "body { font-family: Arial, sans-serif; line-height: 1.4; margin: 24px; }",
         "h1 { margin-bottom: 8px; }",
@@ -106,7 +106,7 @@ def render_html_report(report: ScanReport) -> str:
         "</style>",
         "</head>",
         "<body>",
-        "<h1>Job Radar Report</h1>",
+        "<h1>junior Report</h1>",
         "<h2>Summary</h2>",
         '<ul class="summary">',
     ]

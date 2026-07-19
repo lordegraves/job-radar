@@ -212,6 +212,11 @@ def _schema_migrations() -> tuple:
             "add active profile selection",
             _migrate_active_profile_selection,
         ),
+        (
+            6,
+            "add structured search preferences",
+            _migrate_structured_search_preferences,
+        ),
     )
 
 
@@ -481,6 +486,31 @@ def _migrate_active_profile_selection(connection: sqlite3.Connection) -> None:
         )
         """
     )
+
+
+def _migrate_structured_search_preferences(
+    connection: sqlite3.Connection,
+) -> None:
+    """Add normalized GUI selections without changing existing preference data."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(profile_preferences)"
+        ).fetchall()
+    }
+    required_columns = {
+        "schedule_preference": "TEXT",
+        "occupation_selections_json": "TEXT NOT NULL DEFAULT '[]'",
+        "location_selections_json": "TEXT NOT NULL DEFAULT '[]'",
+    }
+
+    for column_name, column_definition in required_columns.items():
+        if column_name not in existing_columns:
+            connection.execute(
+                f"ALTER TABLE profile_preferences "
+                f"ADD COLUMN {column_name} {column_definition}"
+            )
 
 
 def fetch_active_scan_run(

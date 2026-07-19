@@ -6,7 +6,9 @@ from pathlib import Path
 import pytest
 
 from job_radar.profile_models import (
+    LocationPreference,
     ManagedProfile,
+    OccupationPreference,
     ProfilePreferences,
     build_managed_resume,
 )
@@ -43,6 +45,21 @@ def make_profile(
             preferred_locations=("Remote",),
             work_arrangements=("remote",),
             employment_types=("full-time",),
+            schedule_preference="Weekdays",
+            occupation_selections=(
+                OccupationPreference(
+                    value="15-1252.00", label="Software Developers"
+                ),
+            ),
+            location_selections=(
+                LocationPreference(
+                    value="place:0827425",
+                    label="Fort Collins, Colorado",
+                    latitude=40.5853,
+                    longitude=-105.0844,
+                    radius_miles=25,
+                ),
+            ),
             compensation_floor_usd=120000,
             compensation_target_usd=145000,
             travel_tolerance="limited",

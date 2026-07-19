@@ -162,7 +162,7 @@ def test_scan_pipeline_tracks_new_then_seen(
         "https://boards.greenhouse.io/exampleai/jobs/123"
     )
 
-    assert "<h1>Job Radar Report</h1>" in first_html
+    assert "<h1>junior Report</h1>" in first_html
     assert "<h2>Top Matches</h2>" in first_html
     assert "Senior Infrastructure Engineer" in first_html
 
@@ -195,6 +195,6 @@ def test_scan_pipeline_tracks_new_then_seen(
         "infrastructure, linux, remote"
     )
 
-    assert "<h1>Job Radar Report</h1>" in second_html
+    assert "<h1>junior Report</h1>" in second_html
     assert "<h2>Top Matches</h2>" in second_html
     assert "Senior Infrastructure Engineer" in second_html

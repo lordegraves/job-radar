@@ -42,7 +42,7 @@ def build_email_subject(report: ScanReport) -> str:
     review_needed = _get_review_needed(email_scored_postings)
 
     return (
-        f"Job Radar Report - {report_date} - "
+        f"junior Report - {report_date} - "
         f"{report.jobs_collected} jobs - "
         f"{len(top_matches)} top match"
         f"{_plural_suffix(len(top_matches))} - "
@@ -144,7 +144,7 @@ def build_email_html_body(
         "<!doctype html>",
         "<html>",
         "<body>",
-        "<h1>Job Radar Report</h1>",
+        "<h1>junior Report</h1>",
         "<h2>Summary</h2>",
         "<ul>",
         f"<li><strong>Generated at:</strong> "

@@ -1,6 +1,6 @@
 # Release Checklist
 
-Use this checklist for every tagged Job Radar release.
+Use this checklist for every tagged junior release.
 
 ## Release scope
 

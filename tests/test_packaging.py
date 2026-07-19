@@ -68,6 +68,8 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
             "job_radar/cli.py",
             "job_radar/collectors/__init__.py",
             "job_radar/desktop_launcher.py",
+            "job_radar/static/junior_icon_v2.png",
+            "job_radar/static/junior_logo.png",
             "job_radar/tracker/__init__.py",
             "job_radar/web_routes/__init__.py",
             "job_radar/templates/base.html",
@@ -313,7 +315,7 @@ def test_installed_wheel_runs_outside_source_checkout(
         capture_output=True,
         text=True,
     )
-    assert "Local Job Radar web interface" in web_help.stdout
+    assert "Local junior web interface" in web_help.stdout
     assert "--settings" in web_help.stdout
     assert "--host" in web_help.stdout
     assert "--port" in web_help.stdout
@@ -331,7 +333,7 @@ def test_installed_wheel_runs_outside_source_checkout(
         capture_output=True,
         text=True,
     )
-    assert "Launch the Job Radar desktop interface" in desktop_help.stdout
+    assert "Launch the junior desktop interface" in desktop_help.stdout
     assert "--host" in desktop_help.stdout
     assert "--port" in desktop_help.stdout
     assert "--no-browser" in desktop_help.stdout

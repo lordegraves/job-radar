@@ -12,6 +12,7 @@ from job_radar.profile_management import (
     save_managed_profile_resume,
     select_managed_profile,
     update_managed_profile_from_form,
+    update_managed_search_preferences,
 )
 
 
@@ -86,6 +87,51 @@ def test_create_edit_select_archive_and_restore_profile(tmp_path: Path) -> None:
         str(settings_path), base_directory=tmp_path
     ).profiles[0]
     assert restored.archived is False
+
+
+def test_search_preferences_preserve_resume_owned_profile_fields(
+    tmp_path: Path,
+) -> None:
+    settings_path = write_settings(tmp_path)
+    profile = create_managed_profile(
+        str(settings_path), "Infrastructure Search", base_directory=tmp_path
+    )
+    update_managed_profile_from_form(
+        str(settings_path),
+        profile.profile_id,
+        {
+            "display_name": "Infrastructure Search",
+            "core_strengths": "Linux\nHPC",
+            "credible_adjacent": "Platform engineering",
+            "compensation_target_usd": "185000",
+        },
+        base_directory=tmp_path,
+    )
+
+    updated = update_managed_search_preferences(
+        str(settings_path),
+        occupation_selections_json=(
+            '[{"value":"15-1252.00","label":"Platform Engineers"}]'
+        ),
+        location_selections_json=(
+            '[{"value":"place:0827425","label":"Fort Collins, Colorado",'
+            '"latitude":40.5853,"longitude":-105.0844,"radius":25}]'
+        ),
+        seniority_levels=["Mid-level", "Senior"],
+        employment_types=["Full-time", "Contract"],
+        work_arrangements=["Remote", "Hybrid"],
+        schedule_preference="Any schedule",
+        compensation_floor_usd="160000",
+        travel_percentage="15",
+        base_directory=tmp_path,
+    )
+
+    assert updated.preferences.target_roles == ("Platform Engineers",)
+    assert updated.preferences.core_strengths == ("Linux", "HPC")
+    assert updated.preferences.credible_adjacent == ("Platform engineering",)
+    assert updated.preferences.compensation_target_usd == 185000
+    assert updated.preferences.compensation_floor_usd == 160000
+    assert updated.preferences.travel_tolerance == "15"
 
 
 def test_managed_resume_upload_uses_app_owned_names(tmp_path: Path) -> None:

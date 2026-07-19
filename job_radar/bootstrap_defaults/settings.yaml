@@ -6,7 +6,7 @@ logs_path: logs
 email:
   enabled: false
   sender: ""
-  sender_name: "Job Radar"
+  sender_name: "junior"
   recipients: []
   smtp_host: ""
   smtp_port: 587

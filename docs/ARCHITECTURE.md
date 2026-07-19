@@ -2,7 +2,7 @@
 
 ## Overview
 
-Job Radar is one local-first Python application with multiple launch surfaces:
+junior is one local-first Python application with multiple launch surfaces:
 
 ```text
 Developer and automation CLI
@@ -26,7 +26,7 @@ These surfaces must share the same service and storage layers rather than becomi
 
 The web application resolves runtime paths, loads settings, initializes or migrates the SQLite database, and then registers feature routes. Startup failures are converted into safe user-facing messages, with sanitized diagnostics written under the user-owned logs directory when possible.
 
-The desktop launcher first checks whether Job Radar already responds at its configured local address. If so, it opens the existing interface. Otherwise, it ensures the user-owned workspace exists, creates the Flask application, starts a local server, waits for readiness, and opens the browser.
+The desktop launcher first checks whether junior already responds at its configured local address. If so, it opens the existing interface. Otherwise, it ensures the user-owned workspace exists, creates the Flask application, starts a local server, waits for readiness, and opens the browser.
 
 The current launcher stops its server when its process exits or startup fails, but it does not yet provide a native application window, a GUI Exit command, focus an existing native window, or manage an unattended background service. Complete shutdown controls and service lifecycle integration remain future product work.
 
@@ -186,7 +186,7 @@ Templates render data prepared by routes and services. Business behavior should 
 
 ## Identity
 
-Scanned postings receive stable Job Radar IDs.
+Scanned postings receive stable app-owned Job Radar IDs. The established label remains for data compatibility during the branding transition.
 
 Manual tracker records receive app-owned `jr_manual_*` IDs. Posting URLs are evidence and fallback matching signals, not primary keys.
 

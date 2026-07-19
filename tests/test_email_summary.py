@@ -81,7 +81,7 @@ def test_build_email_subject_summarizes_report() -> None:
     subject = build_email_subject(report)
 
     assert subject == (
-        "Job Radar Report - 2026-06-24 - "
+        "junior Report - 2026-06-24 - "
         "811 jobs - 1 top match - 1 review needed"
     )
 
@@ -380,7 +380,7 @@ def test_email_summary_excludes_tracked_applications() -> None:
     body = build_email_body(report, "reports/test.md")
     html_body = build_email_html_body(report, "reports/test.html")
 
-    assert subject == "Job Radar Report - 2026-07-08 - 1 jobs - 0 top matches - 0 review needed"
+    assert subject == "junior Report - 2026-07-08 - 1 jobs - 0 top matches - 0 review needed"
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
     assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
     assert "Site Reliability Engineer" not in body
@@ -408,7 +408,7 @@ def test_build_email_body_handles_empty_sections() -> None:
     body = build_email_body(report, "reports/empty.md")
 
     assert subject == (
-        "Job Radar Report - unknown-date - "
+        "junior Report - unknown-date - "
         "0 jobs - 0 top matches - 0 review needed"
     )
     assert "Generated at: Unknown" in body
@@ -559,7 +559,7 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
 
     assert written_path == preview_path
     assert preview_text.startswith(
-        "Subject: Job Radar Report - 2026-06-24 - "
+        "Subject: junior Report - 2026-06-24 - "
         "811 jobs - 1 top match - 0 review needed"
     )
     assert "Generated at: 2026-06-24 17:08 UTC" in preview_text
@@ -738,7 +738,7 @@ def test_build_email_html_body_includes_clickable_posting_links() -> None:
         include_report_path=False,
     )
 
-    assert "<h1>Job Radar Report</h1>" in html_body
+    assert "<h1>junior Report</h1>" in html_body
     assert "Data Center Design Execution Lead" in html_body
     assert "Senior Data Center Infrastructure Engineer" in html_body
     assert (

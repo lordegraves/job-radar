@@ -1,10 +1,10 @@
-# Job Radar User Guide
+# junior User Guide
 
 This guide describes the current local application. It does not assume that installer or first-run onboarding work is complete.
 
 ## First-time setup
 
-Create a user-owned Job Radar workspace:
+Create a user-owned junior workspace:
 
 ```powershell
 python -m job_radar bootstrap-user-data
@@ -19,7 +19,7 @@ This creates:
 
 It does not copy a personal profile, résumé, database, credentials, or live company list.
 
-Existing Job Radar data can be brought over deliberately with the optional `--source-settings`, `--source-companies`, `--source-scoring`, `--source-profiles`, and `--source-database` arguments. Existing destination files are always preserved.
+Existing junior data can be brought over deliberately with the optional `--source-settings`, `--source-companies`, `--source-scoring`, `--source-profiles`, and `--source-database` arguments. Existing destination files are always preserved.
 
 ## Launching the application
 
@@ -29,7 +29,7 @@ The current installed desktop-style entry point is:
 job-radar-desktop
 ```
 
-It creates the user-owned workspace when needed, starts Job Radar locally, waits for the interface to become ready, and opens the default browser. If Job Radar is already running on the selected local address, the launcher reuses that instance instead of starting another server.
+It creates the user-owned workspace when needed, starts junior locally, waits for the interface to become ready, and opens the default browser. If junior is already running on the selected local address, the launcher reuses that instance instead of starting another server.
 
 This is a browser-opening launcher, not the final native desktop window or Windows installer. Those remain future productization work.
 
@@ -41,7 +41,7 @@ python -m job_radar.web_app --settings config\settings.yaml
 
 Open `http://127.0.0.1:5000/`.
 
-When bootstrapped user settings exist, Job Radar can use them by default:
+When bootstrapped user settings exist, junior can use them by default:
 
 ```powershell
 python -m job_radar.web_app
@@ -49,16 +49,16 @@ python -m job_radar.web_app
 
 ## Database upgrade recovery
 
-Job Radar creates a backup before changing an existing database structure. Under the default Windows workspace, migration backups are stored in `%LOCALAPPDATA%\JobRadar\data\backups`.
+junior creates a backup before changing an existing database structure. The established default Windows workspace remains `%LOCALAPPDATA%\JobRadar`, and migration backups are stored in its `data\backups` directory.
 
 If an upgrade fails:
 
-1. Close Job Radar.
+1. Close junior.
 2. Do not delete, rename, replace, or repeatedly reopen the active database or any backup.
-3. Preserve the complete Job Radar `data` directory.
+3. Preserve the complete junior `data` directory.
 4. Contact Clayton Graves at `claytonmgraves@outlook.com` with the displayed technical details and diagnostic-log location.
 
-Do not send your database, résumé, profile, passwords, access tokens, or other credentials unless an approved secure support process is provided. Job Radar does not currently provide a self-service restore screen, so do not manually replace the active database with a backup.
+Do not send your database, résumé, profile, passwords, access tokens, or other credentials unless an approved secure support process is provided. junior does not currently provide a self-service restore screen, so do not manually replace the active database with a backup.
 
 ## Home
 
@@ -120,11 +120,11 @@ Typical actions include:
 - move terminal applications to Application History
 - delete a record through explicit confirmation
 
-Job Radar assigns app-owned IDs to manual records. Posting URLs remain source evidence, not primary identity.
+junior assigns app-owned IDs to manual records. Posting URLs remain source evidence, not primary identity.
 
 ## Application History
 
-Application History is a permanent SQLite-backed part of Job Radar.
+Application History is a permanent SQLite-backed part of junior.
 
 History contains terminal, passed, withdrawn, rejected, closed, and archived records. It supports:
 
@@ -141,7 +141,7 @@ Tracker and History are mutually exclusive. A record should not exist in both at
 
 The Profile / Resume page shows candidate readiness and resume-derived fit information. It also allows you to create, edit, select, archive, and restore managed profiles without editing YAML. Archiving is reversible; permanent profile deletion is not currently offered.
 
-When a managed profile is selected, future scans use its candidate-fit signals, compensation values, and managed resume. If no managed profile is selected, the existing YAML profile remains in use. Job Radar does not automatically convert, overwrite, or remove an existing YAML profile.
+When a managed profile is selected, future scans use its candidate-fit signals, compensation values, and managed resume. If no managed profile is selected, the existing YAML profile remains in use. junior does not automatically convert, overwrite, or remove an existing YAML profile.
 
 Supported resume formats:
 
@@ -150,11 +150,11 @@ Supported resume formats:
 - Markdown
 - plain text
 
-Resume replacement is written to the active user-data area. For a managed profile, Job Radar copies the upload under `resumes/<profile-id>/` using an app-owned filename such as `resume.pdf`; moving or renaming the original uploaded file cannot break the profile. To use a revised resume, upload it again through the Profile / Resume page. Private resumes and profiles must not be committed to the repository.
+Resume replacement is written to the active user-data area. For a managed profile, junior copies the upload under `resumes/<profile-id>/` using an app-owned filename such as `resume.pdf`; moving or renaming the original uploaded file cannot break the profile. To use a revised resume, upload it again through the Profile / Resume page. Private resumes and profiles must not be committed to the repository.
 
 Managed profiles can retain additional preferences for later product stages. Target roles, locations, work arrangements, employment types, and travel tolerance do not yet replace the existing scoring configuration, so saving those fields alone does not currently change all scan-scoring behavior.
 
-Existing YAML profiles are not migrated automatically. Job Radar now has an internal backup-first migration service, but it is not yet a normal GUI action. Do not manually move, rename, delete, or rewrite your working profile, resume, or database in an attempt to migrate it. Migration of real data should occur only after a rehearsal on copies and an explicit backup confirmation.
+Existing YAML profiles are not migrated automatically. junior now has an internal backup-first migration service, but it is not yet a normal GUI action. Do not manually move, rename, delete, or rewrite your working profile, resume, or database in an attempt to migrate it. Migration of real data should occur only after a rehearsal on copies and an explicit backup confirmation.
 
 ## Companies
 

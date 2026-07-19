@@ -28,29 +28,29 @@ from job_radar.web_app import (
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 5000
 DEFAULT_STARTUP_TIMEOUT_SECONDS = 10.0
-DESKTOP_ERROR_TITLE = "Job Radar could not start"
+DESKTOP_ERROR_TITLE = "junior could not start"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="job-radar-desktop",
-        description="Launch the Job Radar desktop interface",
+        description="Launch the junior desktop interface",
     )
     parser.add_argument(
         "--host",
         default=DEFAULT_HOST,
-        help="Host interface for the local Job Radar server",
+        help="Host interface for the local junior server",
     )
     parser.add_argument(
         "--port",
         default=DEFAULT_PORT,
         type=int,
-        help="Port for the local Job Radar server",
+        help="Port for the local junior server",
     )
     parser.add_argument(
         "--no-browser",
         action="store_true",
-        help="Start Job Radar without opening the default web browser",
+        help="Start junior without opening the default web browser",
     )
     return parser
 
@@ -84,7 +84,7 @@ def is_job_radar_running(url: str) -> bool:
     except (OSError, URLError):
         return False
 
-    return response.status == 200 and "Job Radar" in response_text
+    return response.status == 200 and "junior" in response_text
 
 
 def wait_until_ready(
@@ -101,7 +101,7 @@ def wait_until_ready(
         time.sleep(0.05)
 
     raise RuntimeError(
-        "Job Radar started its local server, but the interface did not become "
+        "junior started its local server, but the interface did not become "
         f"available within {timeout_seconds:g} seconds."
     )
 

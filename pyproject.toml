@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "job-radar"
 version = "0.1.0"
-description = "Local-first job discovery, triage, reporting, and application tracking"
+description = "junior: local-first job discovery, triage, reporting, and application tracking"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -35,6 +35,9 @@ include = ["job_radar*"]
 [tool.setuptools.package-data]
 job_radar = [
     "bootstrap_defaults/*.yaml",
+    "reference_data/*.json",
+    "static/*.ico",
+    "static/*.png",
     "templates/*.html",
 ]
 

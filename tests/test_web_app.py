@@ -3421,7 +3421,7 @@ def test_tracker_add_page_shows_application_form(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Add Application" in html
-    assert "Job Radar assigns the ID when one is not already linked from a scan result." in html
+    assert "junior assigns the ID when one is not already linked from a scan result." in html
     assert 'id="job_radar_id" name="job_radar_id" value="" readonly' in html
     assert 'name="company_name"' in html
     assert 'name="role_title"' in html
@@ -3833,7 +3833,7 @@ candidate:
 
     assert response.status_code == 200
     assert "Profile / Resume" in html
-    assert "Confirm the candidate profile and resume Job Radar currently uses" in html
+    assert "Confirm the candidate profile and resume junior currently uses" in html
     assert "Active candidate" in html
     assert "Compensation floor" in html
     assert "Preferred base" in html
@@ -3860,6 +3860,255 @@ candidate:
     assert "production Kubernetes ownership" in html
     assert "frontend" in html
     assert "Large-scale Linux and HPC operations." in html
+
+
+def test_search_preferences_page_requires_a_managed_profile_for_saving(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    scoring_file = tmp_path / "config" / "scoring.yaml"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    scoring_file.write_text(
+        """
+positive_keywords:
+  linux: 10
+negative_keywords:
+  sales: -15
+location_preferences:
+  allowed:
+    remote: 100
+    northern colorado: 100
+  conditional:
+    denver: -25
+  skipped:
+    new york: -100
+top_matches:
+  min_score: 120
+  excluded_title_keywords:
+    - sales
+  strong_signals:
+    - title:linux
+review_needed:
+  min_score: 100
+  excluded_location_statuses:
+    - skipped
+    - unknown
+  strong_signals:
+    - body:linux
+""",
+        encoding="utf-8",
+    )
+
+    app = create_app(
+        settings_path=str(settings_file),
+        base_directory=str(tmp_path),
+    )
+    response = app.test_client().get("/preferences")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Search Preferences" in html
+    assert "Select a managed profile before saving" in html
+    assert "Save search preferences" in html
+    assert "You are not running a job-board search from this page" in html
+    assert "during company scans" in html
+    assert "Find an occupation" in html
+    assert "Job requirements" in html
+    assert 'id="add-occupation"' not in html
+    assert 'id="add-location"' not in html
+    assert 'aria-live="polite"' in html
+    assert "enter your own wording" in html
+    assert "Workplace arrangements" in html
+    assert "City, state, or ZIP" in html
+    assert "What junior will look for" in html
+    assert "Jobs must pay at least" in html
+    assert "junior will place it in Needs Review" in html
+    assert "How recommendations should be explained" not in html
+    assert "Roles included in this search" in html
+    assert "Entry-level" in html
+    assert "Mid-level" in html
+    assert "Senior" in html
+    assert "Executive" in html
+    assert "Employment types to include" in html
+    assert "Choose job levels" in html
+    assert "Choose employment types" in html
+    assert "Choose workplace arrangements" in html
+    assert "checklist-select" in html
+    assert 'name="employment-type" type="checkbox" value="Full-time"' in html
+    assert 'name="employment-type" type="checkbox" value="Contract"' in html
+    assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
+    assert 'value="Remote" checked' not in html
+    assert "If arrangement or location is unclear" not in html
+    assert "Add a location" in html
+    assert "Select every arrangement you are willing to accept" in html
+    assert "approximate straight-line distance" in html
+    assert "genuinely plan to move" in html
+    assert "junior will mark it Do Not Apply and explain why" in html
+    assert "workplace-arrangement" in html
+    assert "additional_cities" in html
+    assert "more major communities" in html
+
+
+def test_search_preferences_save_normalized_profile_data(tmp_path: Path) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file), base_directory=str(tmp_path))
+    client = app.test_client()
+    client.post("/profile/create", data={"display_name": "Baker Search"})
+
+    response = client.post(
+        "/preferences",
+        data={
+            "occupation_selections_json": json.dumps(
+                [{"value": "51-3011.00", "label": "Bakers"}]
+            ),
+            "location_selections_json": json.dumps(
+                [
+                    {
+                        "value": "place:0827425",
+                        "label": "Fort Collins, Colorado",
+                        "latitude": 40.5853,
+                        "longitude": -105.0844,
+                        "radius": 25,
+                    }
+                ]
+            ),
+            "responsibility-level": ["Entry-level", "Mid-level"],
+            "employment-type": ["Full-time", "Part-time"],
+            "workplace-arrangement": ["Hybrid", "On-site"],
+            "schedule_preference": "Day shift",
+            "compensation_floor_usd": "60000",
+            "travel_percentage": "10",
+        },
+    )
+
+    assert response.status_code == 302
+    assert "preference_result=saved" in response.headers["Location"]
+    profile = get_active_profile(database_file)
+    assert profile is not None
+    assert profile.preferences.target_roles == ("Bakers",)
+    assert profile.preferences.seniority_levels == ("Entry-level", "Mid-level")
+    assert profile.preferences.employment_types == ("Full-time", "Part-time")
+    assert profile.preferences.work_arrangements == ("Hybrid", "On-site")
+    assert profile.preferences.schedule_preference == "Day shift"
+    assert profile.preferences.compensation_floor_usd == 60000
+    assert profile.preferences.travel_tolerance == "10"
+    assert profile.preferences.occupation_selections[0].value == "51-3011.00"
+    assert profile.preferences.location_selections[0].radius_miles == 25
+
+    saved_page = client.get(response.headers["Location"]).get_data(as_text=True)
+    assert "Your search preferences were saved" in saved_page
+    assert "Fort Collins, Colorado" in saved_page
+
+
+def test_search_preferences_reject_invalid_values_without_changing_profile(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file), base_directory=str(tmp_path))
+    client = app.test_client()
+    client.post("/profile/create", data={"display_name": "Safe Search"})
+    original = get_active_profile(database_file)
+
+    response = client.post(
+        "/preferences",
+        data={
+            "occupation_selections_json": "[]",
+            "location_selections_json": "[]",
+            "responsibility-level": "Invented level",
+            "schedule_preference": "Any schedule",
+            "travel_percentage": "250",
+        },
+    )
+
+    assert response.status_code == 302
+    assert "preference_result=error" in response.headers["Location"]
+    assert get_active_profile(database_file) == original
+
+
+def test_search_preferences_suggests_cross_industry_occupations(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file), base_directory=str(tmp_path))
+    client = app.test_client()
+
+    baker_results = client.get(
+        "/preferences/occupation-suggestions?q=baker"
+    ).get_json()
+    cook_results = client.get(
+        "/preferences/occupation-suggestions?q=head+cook"
+    ).get_json()
+    platform_results = client.get(
+        "/preferences/occupation-suggestions?q=platform+engineer"
+    ).get_json()
+    catering_results = client.get(
+        "/preferences/occupation-suggestions?q=catering+coordinator"
+    ).get_json()
+
+    assert any("Baker" in item["label"] for item in baker_results)
+    assert any("Cook" in item["label"] for item in cook_results)
+    assert any("Platform Engineer" in item["label"] for item in platform_results)
+    assert any("Catering Coordinator" in item["label"] for item in catering_results)
+
+
+def test_search_preferences_normalizes_location_suggestions(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file), base_directory=str(tmp_path))
+    client = app.test_client()
+
+    abbreviated = client.get(
+        "/preferences/location-suggestions?q=Ft+Collins+CO"
+    ).get_json()
+    spelled_out = client.get(
+        "/preferences/location-suggestions?q=Fort+Collins+Colorado"
+    ).get_json()
+    zip_results = client.get(
+        "/preferences/location-suggestions?q=80525"
+    ).get_json()
+
+    assert abbreviated[0]["label"] == "Fort Collins, Colorado"
+    assert spelled_out[0]["label"] == "Fort Collins, Colorado"
+    assert zip_results[0]["label"] == "ZIP 80525 — Fort Collins, Colorado"
+
+    radius_result = client.get(
+        "/preferences/location-radius"
+        "?latitude=40.5383&longitude=-105.0563&miles=25"
+    ).get_json()
+    assert radius_result["center_city"] == "Fort Collins, Colorado"
+    featured_labels = [item["label"] for item in radius_result["featured_cities"]]
+    assert "Fort Collins, Colorado" in featured_labels
+    assert "Loveland, Colorado" in featured_labels
+    assert radius_result["covered_community_count"] > len(featured_labels)
+    assert not set(featured_labels) & {
+        item["label"] for item in radius_result["additional_cities"]
+    }
+
+    wide_radius = client.get(
+        "/preferences/location-radius"
+        "?latitude=40.5383&longitude=-105.0563&miles=100"
+    ).get_json()
+    wide_featured = [item["label"] for item in wide_radius["featured_cities"]]
+    wide_additional = [item["label"] for item in wide_radius["additional_cities"]]
+    assert len(wide_featured) == 10
+    assert "Boulder, Colorado" in wide_featured
+    assert "Denver, Colorado" in wide_featured
+    assert not set(wide_featured) & set(wide_additional)
 
 
 def test_profile_page_resolves_relative_paths_from_runtime_base(
@@ -3969,7 +4218,14 @@ candidate:
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    for route in ["/tracker", "/history", "/profile", "/reports", "/scan"]:
+    for route in [
+        "/tracker",
+        "/history",
+        "/profile",
+        "/preferences",
+        "/reports",
+        "/scan",
+    ]:
         response = client.get(route)
         html = response.get_data(as_text=True)
 
@@ -3980,6 +4236,7 @@ candidate:
         assert 'href="/tracker">Active Applications</a>' in normalized_html
         assert 'href="/history">Application History</a>' in normalized_html
         assert 'href="/profile">Profile / Resume</a>' in normalized_html
+        assert 'href="/preferences">Search Preferences</a>' in normalized_html
         assert 'href="/reports">Reports</a>' in normalized_html
         assert 'href="/scan">Scan</a>' in normalized_html
         assert "active-nav" in normalized_html
@@ -4023,6 +4280,7 @@ candidate:
         "/tracker": '<a class="active-nav" href="/tracker">Active Applications</a>',
         "/history": '<a class="active-nav" href="/history">Application History</a>',
         "/profile": '<a class="active-nav" href="/profile">Profile / Resume</a>',
+        "/preferences": '<a class="active-nav" href="/preferences">Search Preferences</a>',
         "/reports": '<a class="active-nav" href="/reports">Reports</a>',
         "/scan": '<a class="active-nav" href="/scan">Scan</a>',
     }

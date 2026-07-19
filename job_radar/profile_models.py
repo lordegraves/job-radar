@@ -18,6 +18,41 @@ NORMALIZED_RESUME_FILENAME = "resume.normalized.txt"
 
 
 @dataclass(frozen=True)
+class OccupationPreference:
+    """Keep a readable occupation label with its normalized catalog identity."""
+
+    value: str
+    label: str
+
+    def __post_init__(self) -> None:
+        if not self.value.strip() or not self.label.strip():
+            raise ValueError("occupation preferences require a value and label")
+
+
+@dataclass(frozen=True)
+class LocationPreference:
+    """Keep one selected place and its commute radius as structured data."""
+
+    value: str
+    label: str
+    radius_miles: int
+    latitude: float | None = None
+    longitude: float | None = None
+
+    def __post_init__(self) -> None:
+        if not self.value.strip() or not self.label.strip():
+            raise ValueError("location preferences require a value and label")
+        if self.radius_miles not in {10, 25, 50, 75, 100}:
+            raise ValueError("location radius must be 10, 25, 50, 75, or 100 miles")
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("location coordinates must be provided together")
+        if self.latitude is not None and not -90 <= self.latitude <= 90:
+            raise ValueError("location latitude is outside the valid range")
+        if self.longitude is not None and not -180 <= self.longitude <= 180:
+            raise ValueError("location longitude is outside the valid range")
+
+
+@dataclass(frozen=True)
 class ManagedResume:
     """Identify resume files stored inside Job Radar's managed user-data area."""
 
@@ -60,6 +95,9 @@ class ProfilePreferences:
     preferred_locations: tuple[str, ...] = ()
     work_arrangements: tuple[str, ...] = ()
     employment_types: tuple[str, ...] = ()
+    schedule_preference: str | None = None
+    occupation_selections: tuple[OccupationPreference, ...] = ()
+    location_selections: tuple[LocationPreference, ...] = ()
     compensation_floor_usd: int | None = None
     compensation_target_usd: int | None = None
     travel_tolerance: str | None = None
@@ -99,6 +137,12 @@ class ProfilePreferences:
             or not self.travel_tolerance.strip()
         ):
             raise ValueError("travel_tolerance must be a non-empty string")
+
+        if self.schedule_preference is not None and (
+            not isinstance(self.schedule_preference, str)
+            or not self.schedule_preference.strip()
+        ):
+            raise ValueError("schedule_preference must be a non-empty string")
 
 
 @dataclass(frozen=True)

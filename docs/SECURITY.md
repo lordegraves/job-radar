@@ -2,7 +2,7 @@
 
 ## Local-first model
 
-Job Radar is designed to run under the user's control. It is not a hosted SaaS service.
+junior is designed to run under the user's control. It is not a hosted SaaS service.
 
 Private data may include:
 
@@ -44,15 +44,15 @@ Future desktop setup should use native operating-system credential storage by de
 
 Environment variables remain supported for containers, servers, automation, CI, existing configurations, and compatibility use.
 
-Job Radar configuration should store only a credential reference, never the credential value.
+junior configuration should store only a credential reference, never the credential value.
 
 Upgrades must preserve references and must not expose, migrate, overwrite, or delete stored credentials automatically.
 
-A lost credential may be replaced, but Job Radar must not display or recover it.
+A lost credential may be replaced, but junior must not display or recover it.
 
 ## Protection limits
 
-Operating-system credential storage protects against ordinary file access and accidental inclusion in Job Radar data. It is not absolute protection.
+Operating-system credential storage protects against ordinary file access and accidental inclusion in junior data. It is not absolute protection.
 
 It does not protect against:
 
@@ -93,7 +93,7 @@ Required protections:
 
 ## Network and source behavior
 
-Job Radar scans only configured sources.
+junior scans only configured sources.
 
 It must not:
 

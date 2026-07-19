@@ -87,6 +87,7 @@ def create_app(
         app,
         settings_path=app.config["JOB_RADAR_SETTINGS_PATH"],
         base_directory=str(_get_runtime_paths(app).base_directory),
+        scoring_path=str(_get_runtime_paths(app).scoring_config_path),
     )
 
     register_history_routes(
@@ -131,7 +132,7 @@ def _get_database_path(app: Flask) -> str:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="job_radar.web_app",
-        description="Local Job Radar web interface",
+        description="Local junior web interface",
     )
     parser.add_argument(
         "--settings",
@@ -194,7 +195,7 @@ def _write_startup_diagnostic_log(
 
         with log_path.open("a", encoding="utf-8") as log_file:
             log_file.write(
-                f"[{timestamp}] Job Radar startup failure\n"
+                f"[{timestamp}] junior startup failure\n"
                 f"Version: {__version__}\n"
                 f"Settings file: {_resolve_startup_settings_path(settings_path)}\n"
                 f"Error type: {type(error).__name__}\n"
@@ -231,20 +232,20 @@ def _format_configuration_startup_error(
 
     if technical_details.startswith("Config file does not exist:"):
         return (
-            "Job Radar could not start because its settings file was not found.\n\n"
+            "junior could not start because its settings file was not found.\n\n"
             "What to do:\n"
-            "Run this command once to create your Job Radar workspace:\n\n"
+            "Run this command once to create your junior workspace:\n\n"
             "    job-radar bootstrap-user-data\n\n"
-            "Then start Job Radar again.\n\n"
+            "Then start junior again.\n\n"
             "Technical details:\n"
             f"{technical_details}\n"
         )
 
     return (
-        "Job Radar could not start because its settings are invalid.\n\n"
+        "junior could not start because its settings are invalid.\n\n"
         "What to do:\n"
         "Open the settings file shown below and correct the reported problem, "
-        "then start Job Radar again.\n\n"
+        "then start junior again.\n\n"
         "Technical details:\n"
         f"{technical_details}\n\n"
         "Settings file:\n"
@@ -264,14 +265,14 @@ def _format_unexpected_startup_error(
         if diagnostic_log_path is not None
         else (
             "Diagnostic log:\n"
-            "Job Radar could not write the diagnostic log. Include the technical "
+            "junior could not write the diagnostic log. Include the technical "
             "details below when requesting support.\n\n"
         )
     )
 
     return (
-        "Job Radar could not start because of an unexpected problem.\n\n"
-        "This is probably not something you can fix through Job Radar's settings.\n\n"
+        "junior could not start because of an unexpected problem.\n\n"
+        "This is probably not something you can fix through junior's settings.\n\n"
         "What to do:\n"
         "Contact Clayton Graves at claytonmgraves@outlook.com and include the "
         "diagnostic log location and technical details shown below.\n\n"
@@ -279,7 +280,7 @@ def _format_unexpected_startup_error(
         "support message.\n\n"
         f"{diagnostic_guidance}"
         "Technical details:\n"
-        f"Job Radar version: {__version__}\n"
+        f"junior version: {__version__}\n"
         f"Error type: {type(error).__name__}\n"
         f"Settings file: {resolved_settings_path}\n"
         "The exception message was omitted to avoid exposing credentials or "

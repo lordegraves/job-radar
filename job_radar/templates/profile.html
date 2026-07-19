@@ -1,7 +1,7 @@
 {# Shows candidate-profile status, resume details, and the resume upload form. #}
 {% extends "base.html" %}
 
-{% block title %}Profile / Resume - Job Radar{% endblock %}
+{% block title %}Profile / Resume - junior{% endblock %}
 
 {% block page_styles %}
 <style>
@@ -242,7 +242,7 @@
 {% block content %}
 <div class="page-card">
     <h1 class="page-title">Profile / Resume</h1>
-    <p class="muted">Confirm the candidate profile and resume Job Radar currently uses for scans and fit scoring.</p>
+    <p class="muted">Confirm the candidate profile and resume junior currently uses for scans and fit scoring.</p>
 
     {% if upload_result == "success" %}
     <div class="success">
@@ -321,7 +321,7 @@
 
 <div class="section">
     <h2>Manage profiles</h2>
-    <p class="muted">Profiles keep each job search and résumé together inside Job Radar. Archiving is reversible; profiles cannot be permanently deleted here.</p>
+    <p class="muted">Profiles keep each job search and résumé together inside junior. Archiving is reversible; profiles cannot be permanently deleted here.</p>
 
     <form method="post" action="{{ url_for('create_profile_route') }}">
         <label for="new-profile-name">New profile name</label>
@@ -398,7 +398,7 @@
 
 <div class="section">
     <h2>Candidate fit profile</h2>
-    <p class="muted">These profile signals help Job Radar distinguish strong fits, adjacent roles, experience gaps, and roles to avoid.</p>
+    <p class="muted">These profile signals help junior distinguish strong fits, adjacent roles, experience gaps, and roles to avoid.</p>
 
     <div class="profile-grid">
         <div class="profile-category-card">
@@ -457,7 +457,7 @@
 
 <div class="section">
     <h2>Resume preview</h2>
-    <p class="muted">Readable preview of the resume content currently available to Job Radar.</p>
+    <p class="muted">Readable preview of the resume content currently available to junior.</p>
 
     {% if profile.resume_preview %}
     <div class="resume-preview-shell">
@@ -471,7 +471,7 @@
 
 <div class="section">
     <h2>Replace resume</h2>
-    <p class="muted">Supported formats: .md, .txt, .pdf, and .docx. Job Radar validates and extracts the new file before replacing the active resume.</p>
+    <p class="muted">Supported formats: .md, .txt, .pdf, and .docx. junior validates and extracts the new file before replacing the active resume.</p>
 
     <div class="resume-upload-panel">
         <div class="current-resume-summary">

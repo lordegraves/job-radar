@@ -4,7 +4,8 @@
 
 <head>
     <meta charset="utf-8">
-    <title>{% block title %}Job Radar{% endblock %}</title>
+    <title>{% block title %}junior{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='junior_icon_v2.png') }}">
     <style>
         :root {
             --background: #0f0f10;
@@ -75,21 +76,19 @@
             white-space: nowrap;
         }
 
-        .brand::before {
-            background: linear-gradient(135deg, var(--link), var(--accent));
+        .brand-logo {
             border-radius: 7px;
             box-shadow: 0 0 18px rgba(96, 205, 255, 0.25);
-            content: "";
-            display: inline-block;
-            height: 22px;
-            width: 22px;
+            height: 38px;
+            object-fit: contain;
+            width: 38px;
         }
 
         .site-nav {
             align-items: center;
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 4px;
             justify-content: flex-end;
         }
 
@@ -97,7 +96,7 @@
             border: 1px solid transparent;
             border-radius: 999px;
             color: var(--muted);
-            padding: 6px 11px;
+            padding: 6px 8px;
             text-decoration: none;
         }
 
@@ -329,12 +328,16 @@
 <body>
     <header class="app-header">
         <div class="app-header-inner">
-            <a class="brand" href="{{ url_for('index') }}">Job Radar</a>
+            <a class="brand" href="{{ url_for('index') }}">
+                <img class="brand-logo" src="{{ url_for('static', filename='junior_icon_v2.png') }}" alt="">
+                <span>junior</span>
+            </a>
             <nav class="site-nav" aria-label="Primary navigation">
                 <a class="{% if request.endpoint == 'index' %}active-nav{% endif %}" href="{{ url_for('index') }}">Home</a>
                 <a class="{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application'] %}active-nav{% endif %}" href="{{ url_for('tracker') }}">Active Applications</a>
                 <a class="{% if request.endpoint in ['history', 'edit_history_record'] %}active-nav{% endif %}" href="{{ url_for('history') }}">Application History</a>
                 <a class="{% if request.endpoint in ['profile', 'upload_resume'] %}active-nav{% endif %}" href="{{ url_for('profile') }}">Profile / Resume</a>
+                <a class="{% if request.endpoint == 'preferences' %}active-nav{% endif %}" href="{{ url_for('preferences') }}">Search Preferences</a>
                 <a class="{% if request.endpoint in ['reports', 'report_view'] %}active-nav{% endif %}" href="{{ url_for('reports') }}">Reports</a>
                 <a class="{% if request.endpoint == 'companies' %}active-nav{% endif %}" href="{{ url_for('companies') }}">Companies</a>
                 <a class="{% if request.endpoint in ['scan', 'run_scan'] %}active-nav{% endif %}" href="{{ url_for('scan') }}">Scan</a>

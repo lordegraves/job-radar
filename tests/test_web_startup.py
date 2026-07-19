@@ -26,12 +26,12 @@ def test_configuration_startup_error_explains_missing_settings(
     )
 
     assert (
-        "Job Radar could not start because its settings file was not found."
+        "junior could not start because its settings file was not found."
         in message
     )
     assert "What to do:" in message
     assert "job-radar bootstrap-user-data" in message
-    assert "Then start Job Radar again." in message
+    assert "Then start junior again." in message
     assert "Technical details:" in message
     assert str(settings_path) in message
 
@@ -47,7 +47,7 @@ def test_configuration_startup_error_explains_invalid_settings(
         settings_path=settings_path,
     )
 
-    assert "Job Radar could not start because its settings are invalid." in message
+    assert "junior could not start because its settings are invalid." in message
     assert "Open the settings file shown below" in message
     assert "settings.yaml reports_path must be a string" in message
     assert "Settings file:" in message
@@ -172,7 +172,7 @@ def test_unexpected_startup_failure_writes_diagnostic_log(
 
     log_text = diagnostic_log_path.read_text(encoding="utf-8")
 
-    assert "Job Radar startup failure" in log_text
+    assert "junior startup failure" in log_text
     assert "Error type: RuntimeError" in log_text
     assert "Stack frames:" in log_text
     assert "test_unexpected_startup_failure_writes_diagnostic_log" in log_text

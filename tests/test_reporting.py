@@ -61,7 +61,7 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
 
     html = render_html_report(report)
 
-    assert "<h1>Job Radar Report</h1>" in html
+    assert "<h1>junior Report</h1>" in html
     assert "<strong>Generated at:</strong> 2026-06-24 12:34 UTC" in html
     assert "<strong>Actionable jobs stored:</strong> 1" in html
     assert "<strong>Jobs not actionable:</strong> 0" in html
@@ -314,7 +314,7 @@ def test_write_html_report_writes_file(tmp_path: Path) -> None:
 
     assert written_path == report_path
     assert report_path.exists()
-    assert "<h1>Job Radar Report</h1>" in report_path.read_text(encoding="utf-8")
+    assert "<h1>junior Report</h1>" in report_path.read_text(encoding="utf-8")
 
 
 def test_render_html_report_explains_top_match_and_review_needed_cards() -> None:

@@ -1,0 +1,929 @@
+{# Interactive design preview for profile-owned search preferences. #}
+{% extends "base.html" %}
+
+{% block title %}Search Preferences - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .preview-banner {
+        align-items: flex-start;
+        background: rgba(242, 204, 96, 0.1);
+        border: 1px solid rgba(242, 204, 96, 0.5);
+        border-radius: 12px;
+        display: flex;
+        gap: 12px;
+        margin-top: 18px;
+        padding: 15px 18px;
+    }
+
+    .preview-badge {
+        background: #f2cc60;
+        border-radius: 999px;
+        color: #171717;
+        flex: 0 0 auto;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 4px 9px;
+        text-transform: uppercase;
+    }
+
+    .preference-layout {
+        align-items: stretch;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.85fr);
+    }
+
+    .preference-panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        margin-bottom: 18px;
+        padding: 22px;
+    }
+
+    .preference-panel h2,
+    .preference-panel h3 {
+        margin-top: 0;
+    }
+
+    .preference-layout > div > .preference-panel:last-child {
+        margin-bottom: 0;
+    }
+
+    .field-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .employment-settings {
+        align-items: start;
+        display: grid;
+        gap: 20px 24px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .checklist-select {
+        position: relative;
+    }
+
+    .checklist-select summary {
+        background: var(--input-bg);
+        border: 1px solid var(--border-strong);
+        border-radius: 7px;
+        box-sizing: border-box;
+        color: var(--text);
+        cursor: pointer;
+        font: inherit;
+        height: 38px;
+        line-height: 20px;
+        list-style: none;
+        overflow: hidden;
+        padding: 8px 34px 8px 11px;
+        position: relative;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        width: 100%;
+    }
+
+    .checklist-select summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .checklist-select summary::after {
+        content: "▾";
+        position: absolute;
+        right: 11px;
+    }
+
+    .checklist-menu {
+        background: var(--surface-muted);
+        border: 1px solid var(--border-strong);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        display: grid;
+        gap: 4px;
+        left: 0;
+        padding: 8px;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 5px);
+        z-index: 15;
+    }
+
+    .checklist-menu label {
+        align-items: center;
+        border-radius: 5px;
+        cursor: pointer;
+        display: flex;
+        gap: 9px;
+        margin: 0;
+        padding: 7px;
+    }
+
+    .checklist-menu label:hover {
+        background: rgba(96, 205, 255, 0.1);
+    }
+
+    .checklist-menu input {
+        margin: 0;
+        width: auto;
+    }
+
+    .employment-settings > div {
+        min-width: 0;
+    }
+
+    .control-field {
+        align-content: start;
+        display: grid;
+        grid-template-rows: 52px 58px 38px;
+    }
+
+    .employment-settings select,
+    .employment-settings input[type="number"] {
+        box-sizing: border-box;
+        height: 38px;
+        max-width: none;
+        width: 100%;
+    }
+
+    .arrangement-content {
+        align-items: start;
+        display: grid;
+        gap: 22px;
+        grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+    }
+
+    .arrangement-content > .field-help {
+        margin-top: 28px;
+    }
+
+    .field-stack {
+        margin-bottom: 18px;
+    }
+
+    .field-stack:last-child {
+        margin-bottom: 0;
+    }
+
+    .field-help {
+        color: var(--muted);
+        display: block;
+        font-size: 0.9rem;
+        margin: 5px 0 8px;
+    }
+
+    .input-row {
+        align-items: end;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(0, 1fr) minmax(170px, 0.4fr) auto;
+    }
+
+    .role-input-row {
+        display: block;
+    }
+
+    .location-row {
+        grid-template-columns: minmax(320px, 1fr) 150px;
+    }
+
+    #location-search {
+        max-width: none;
+        width: 100%;
+    }
+
+    #compensation-floor {
+        appearance: textfield;
+        -moz-appearance: textfield;
+    }
+
+    #compensation-floor::-webkit-inner-spin-button,
+    #compensation-floor::-webkit-outer-spin-button {
+        appearance: none;
+        margin: 0;
+    }
+
+    .search-box {
+        position: relative;
+    }
+
+    .suggestions {
+        background: var(--surface-muted);
+        border: 1px solid var(--border-strong);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+        display: none;
+        left: 0;
+        max-height: 300px;
+        overflow-y: auto;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 5px);
+        z-index: 20;
+    }
+
+    .suggestions.is-visible {
+        display: block;
+    }
+
+    .suggestion-button {
+        background: transparent;
+        border: 0;
+        border-bottom: 1px solid var(--border);
+        border-radius: 0;
+        color: var(--text);
+        cursor: pointer;
+        display: block;
+        padding: 11px 13px;
+        text-align: left;
+        width: 100%;
+    }
+
+    .suggestion-button:hover,
+    .suggestion-button:focus {
+        background: rgba(96, 205, 255, 0.1);
+    }
+
+    .suggestion-button strong,
+    .suggestion-button span {
+        display: block;
+    }
+
+    .suggestion-button span {
+        color: var(--muted);
+        font-size: 0.82rem;
+        margin-top: 3px;
+    }
+
+    .selection-groups {
+        margin-top: 16px;
+    }
+
+    .selection-group {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        min-height: 92px;
+        padding: 13px;
+    }
+
+    .selection-group h4 {
+        margin: 0 0 9px;
+    }
+
+    .chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+    }
+
+    .choice-chip {
+        align-items: center;
+        background: rgba(96, 205, 255, 0.1);
+        border: 1px solid rgba(96, 205, 255, 0.35);
+        border-radius: 999px;
+        display: inline-flex;
+        gap: 7px;
+        padding: 6px 9px 6px 11px;
+    }
+
+    .remove-chip {
+        background: transparent;
+        border: 0;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 1rem;
+        line-height: 1;
+        padding: 0 2px;
+    }
+
+    .range-row {
+        align-items: center;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: minmax(0, 1fr) 74px;
+    }
+
+    .range-output {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-weight: 700;
+        padding: 8px;
+        text-align: center;
+    }
+
+    .policy-summary {
+        min-width: 0;
+    }
+
+    .policy-summary-card {
+        background: linear-gradient(145deg, rgba(30, 86, 114, 0.25), var(--surface));
+        border: 1px solid rgba(96, 205, 255, 0.4);
+        border-radius: 14px;
+        box-sizing: border-box;
+        height: 100%;
+        padding: 22px;
+    }
+
+    .policy-summary-card h2 {
+        margin-top: 0;
+    }
+
+    .summary-section {
+        border-top: 1px solid var(--border);
+        margin-top: 16px;
+        padding-top: 16px;
+    }
+
+    .summary-section h3 {
+        font-size: 1rem;
+        margin: 0 0 8px;
+    }
+
+    .summary-section ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+
+    .summary-section li {
+        margin-bottom: 7px;
+    }
+
+    .preview-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    .location-selection-list {
+        margin-top: 14px;
+    }
+
+    .location-coverage {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        display: none;
+        margin-top: 14px;
+        padding: 14px;
+    }
+
+    .location-coverage.is-visible {
+        display: block;
+    }
+
+    .location-coverage h3 {
+        font-size: 1rem;
+        margin: 0 0 8px;
+    }
+
+    .covered-city-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 10px;
+    }
+
+    .all-communities {
+        margin-top: 12px;
+    }
+
+    .all-communities summary {
+        color: var(--link);
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    .covered-city {
+        background: rgba(96, 205, 255, 0.08);
+        border: 1px solid rgba(96, 205, 255, 0.25);
+        border-radius: 999px;
+        padding: 5px 9px;
+    }
+
+    .location-entry {
+        margin-top: 20px;
+    }
+
+    .travel-control {
+        max-width: 520px;
+    }
+
+    @media (max-width: 1050px) {
+        .preference-layout {
+            grid-template-columns: 1fr;
+        }
+
+    }
+
+    @media (max-width: 720px) {
+        .field-grid,
+        .selection-groups,
+        .employment-settings,
+        .arrangement-content,
+        .input-row,
+        .location-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">Search Preferences</h1>
+    <p class="muted">Build the profile junior will use to evaluate jobs for <strong>{{ profile.candidate_name or (active_managed_profile.display_name if active_managed_profile else "the active profile") }}</strong> during company scans.</p>
+    <p class="muted">You are not running a job-board search from this page. junior scans companies you deliberately chose, then uses this profile to sort the jobs it finds.</p>
+    {% if preference_result == "saved" %}
+    <div class="preview-banner">
+        <span class="preview-badge">Saved</span>
+        <div>
+            <strong>Your search preferences were saved to the active profile.</strong>
+            Scoring and recommendations still use the existing rules until that connection is separately reviewed and approved.
+        </div>
+    </div>
+    {% elif preference_result == "error" %}
+    <div class="error"><strong>Preferences were not saved.</strong> {{ preference_error }}</div>
+    {% elif active_managed_profile %}
+    <div class="preview-banner">
+        <span class="preview-badge">Profile</span>
+        <div>
+            <strong>Changes can now be saved to {{ active_managed_profile.display_name }}.</strong>
+            The summary updates as you work. Scoring and recommendations remain unchanged for now.
+        </div>
+    </div>
+    {% else %}
+    <div class="error"><strong>Select a managed profile before saving.</strong> You can still explore the controls, but there is no managed profile available to receive these settings.</div>
+    {% endif %}
+</div>
+
+<form id="preferences-form" method="post" action="{{ url_for('save_preferences') }}">
+<input id="occupation-selections-json" name="occupation_selections_json" type="hidden">
+<input id="location-selections-json" name="location_selections_json" type="hidden">
+<div class="preference-layout">
+    <div>
+        <section class="preference-panel">
+            <h2>Target roles</h2>
+            <p class="muted">Choose broad occupations as starting points. junior should still judge the responsibilities in each description, not rely on the title alone.</p>
+
+            <div class="input-row role-input-row">
+                <div class="search-box">
+                    <label for="occupation-search">Find an occupation</label>
+                    <span class="field-help">Search the occupation catalog, or enter your own wording and press Enter when a changing title is not listed. Try “baker” or “head cook.”</span>
+                    <input id="occupation-search" type="search" autocomplete="off" placeholder="Start typing an occupation">
+                    <div id="occupation-suggestions" class="suggestions" role="listbox" aria-label="Occupation suggestions"></div>
+                </div>
+            </div>
+
+            <div class="selection-groups">
+                <div class="selection-group"><h4>Roles included in this search</h4><div id="target-role-list" class="chip-list" aria-live="polite"></div></div>
+            </div>
+        </section>
+
+        <section class="preference-panel">
+            <h2>Job requirements</h2>
+            <div class="employment-settings">
+                <div class="control-field">
+                    <label>Job levels to include</label>
+                    <span class="field-help">Select every level that belongs in this profile. junior will classify each posting.</span>
+                    <details id="job-levels" class="checklist-select">
+                        <summary id="job-levels-summary">Choose job levels</summary>
+                        <div class="checklist-menu">
+                            {% for level in ["Entry-level", "Mid-level", "Senior", "Executive"] %}
+                            <label><input name="responsibility-level" type="checkbox" value="{{ level }}"{% if saved_preferences and level in saved_preferences.seniority_levels %} checked{% endif %}>{{ level }}</label>
+                            {% endfor %}
+                        </div>
+                    </details>
+                </div>
+                <div class="control-field">
+                    <label>Employment types to include</label>
+                    <span class="field-help">Select every type you are willing to accept.</span>
+                    <details id="employment-types" class="checklist-select">
+                        <summary id="employment-types-summary">Choose employment types</summary>
+                        <div class="checklist-menu">
+                            {% for value, label in [("Full-time", "Full-time"), ("Part-time", "Part-time"), ("Contract", "Contract"), ("Temporary", "Temporary"), ("Seasonal", "Seasonal"), ("Internship or apprenticeship", "Internship / apprenticeship")] %}
+                            <label><input name="employment-type" type="checkbox" value="{{ value }}"{% if saved_preferences and value in saved_preferences.employment_types %} checked{% endif %}>{{ label }}</label>
+                            {% endfor %}
+                        </div>
+                    </details>
+                </div>
+                <div class="control-field">
+                    <label for="schedule-preference">Schedule preference</label>
+                    <span class="field-help">Choose when you are willing to work.</span>
+                    <select id="schedule-preference" name="schedule_preference">
+                        {% set selected_schedule = saved_preferences.schedule_preference if saved_preferences and saved_preferences.schedule_preference else "Any schedule" %}
+                        {% for schedule in ["Any schedule", "Day shift", "Evening shift", "Night shift", "Weekdays", "Weekends accepted", "Flexible schedule"] %}
+                        <option value="{{ schedule }}"{% if schedule == selected_schedule %} selected{% endif %}>{{ schedule }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="control-field">
+                    <label for="compensation-floor">Minimum acceptable annual compensation</label>
+                    <span class="field-help">Higher compensation will not make an unsuitable job a better fit.</span>
+                    <input id="compensation-floor" name="compensation_floor_usd" type="number" min="0" step="1000" value="{{ saved_preferences.compensation_floor_usd if saved_preferences and saved_preferences.compensation_floor_usd is not none else '' }}" placeholder="Example: 75000">
+                </div>
+            </div>
+        </section>
+
+        <section class="preference-panel">
+            <h2>Workplace arrangements</h2>
+            <div class="arrangement-content">
+                <div>
+                    <label>Arrangements to include</label>
+                    <span class="field-help">Select every arrangement you are willing to accept.</span>
+                    <details id="workplace-arrangements" class="checklist-select">
+                        <summary id="workplace-arrangements-summary">Choose workplace arrangements</summary>
+                        <div class="checklist-menu">
+                            {% for arrangement in ["Remote", "Hybrid", "On-site"] %}
+                            <label><input name="workplace-arrangement" type="checkbox" value="{{ arrangement }}"{% if saved_preferences and arrangement in saved_preferences.work_arrangements %} checked{% endif %}>{{ arrangement }}</label>
+                            {% endfor %}
+                        </div>
+                    </details>
+                </div>
+                <p class="field-help">A truly remote job is not limited by commuting distance. If an employer restricts remote hiring to a region, that requirement is checked against your selected locations.</p>
+            </div>
+        </section>
+
+        <section class="preference-panel location-panel">
+            <h2>Add your desired locations</h2>
+            <p class="muted">Add where you live or genuinely plan to move. These locations define acceptable commutes for hybrid and on-site jobs and residency eligibility for region-restricted remote jobs.</p>
+            <div class="field-stack location-entry">
+                <div class="location-row input-row">
+                    <div class="search-box">
+                        <label for="location-search">Add a location</label>
+                        <span class="field-help">Search by U.S. city/state or ZIP, then choose a suggestion or press Enter. Try “Ft Collins CO,” “Fort Collins Colorado,” or “80525.”</span>
+                        <input id="location-search" type="search" autocomplete="off" placeholder="City, state, or ZIP">
+                        <div id="location-suggestions" class="suggestions" role="listbox" aria-label="Location suggestions"></div>
+                    </div>
+                    <div>
+                        <label for="location-radius">Distance</label>
+                        <select id="location-radius">
+                            <option value="10">Within 10 miles</option>
+                            <option value="25" selected>Within 25 miles</option>
+                            <option value="50">Within 50 miles</option>
+                            <option value="75">Within 75 miles</option>
+                            <option value="100">Within 100 miles</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="location-list" class="chip-list location-selection-list"></div>
+                <div id="location-coverage" class="location-coverage" aria-live="polite"></div>
+                <p class="field-help">Commuting areas use approximate straight-line distance. Actual driving distance and time vary with roads, route, and traffic.</p>
+            </div>
+
+            <div class="travel-control">
+                <div>
+                    <label for="travel-tolerance">Maximum travel</label>
+                    <div class="range-row">
+                        {% set saved_travel = saved_preferences.travel_tolerance if saved_preferences and saved_preferences.travel_tolerance and saved_preferences.travel_tolerance.isdigit() else "0" %}
+                        <input id="travel-tolerance" name="travel_percentage" type="range" min="0" max="100" step="5" value="{{ saved_travel }}">
+                        <output id="travel-output" class="range-output" for="travel-tolerance">{{ saved_travel }}%</output>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <aside class="policy-summary">
+        <div class="policy-summary-card">
+            <h2>What junior will look for</h2>
+            <p class="muted">A plain-English preview of the jobs this profile is intended to find. These settings are not currently used by scans.</p>
+
+            <div class="summary-section">
+                <h3>Work</h3>
+                <ul id="work-summary"><li>No occupations selected yet.</li></ul>
+            </div>
+            <div class="summary-section">
+                <h3>Employment</h3>
+                <ul id="employment-summary"></ul>
+            </div>
+            <div class="summary-section">
+                <h3>Workplace arrangements</h3>
+                <ul id="arrangement-summary"></ul>
+            </div>
+            <div class="summary-section">
+                <h3>Locations</h3>
+                <ul id="location-summary"></ul>
+            </div>
+            <div class="preview-actions">
+                <button type="submit"{% if not active_managed_profile %} disabled{% endif %}>Save search preferences</button>
+                <button id="reset-preview" class="button-secondary" type="button">Discard unsaved changes</button>
+            </div>
+        </div>
+    </aside>
+</div>
+</form>
+
+<div class="section">
+    <details class="technical-details">
+        <summary>Show the legacy rules scans still use today</summary>
+        <div class="technical-details-content">
+            {% if scoring_preferences.load_error %}
+            <p>{{ scoring_preferences.load_error }}</p>
+            {% else %}
+            <p><strong>Important:</strong> These existing keyword safeguards remain unchanged. The preview controls above do not replace or modify them.</p>
+            <p><strong>Current positive signals:</strong> {{ scoring_preferences.positive_keywords | map(attribute='term') | join(', ') }}</p>
+            <p><strong>Current explicit title safeguards:</strong> {{ scoring_preferences.excluded_title_keywords | join(', ') }}</p>
+            <p><strong>Current recognized allowed-location terms:</strong> {{ scoring_preferences.allowed_locations | join(', ') }}</p>
+            {% endif %}
+        </div>
+    </details>
+    <p class="muted">Occupation suggestions use the O*NET 30.3 Database from the U.S. Department of Labor, Employment and Training Administration under the CC BY 4.0 license. Location suggestions use the U.S. Census Bureau 2025 Gazetteer Files. junior has reduced both sources to the fields needed for this preview; neither source has approved or tested these changes.</p>
+</div>
+
+<script>
+(() => {
+    const state = {
+        occupations: {{ occupation_selections | tojson }},
+        locations: {{ location_selections | tojson }},
+        selectedOccupation: null,
+        selectedLocation: null,
+    };
+
+    const occupationInput = document.getElementById("occupation-search");
+    const occupationSuggestions = document.getElementById("occupation-suggestions");
+    const locationInput = document.getElementById("location-search");
+    const locationSuggestions = document.getElementById("location-suggestions");
+    const locationCoverage = document.getElementById("location-coverage");
+    const checklistSelects = document.querySelectorAll(".checklist-select");
+    let occupationTimer;
+    let locationTimer;
+
+    checklistSelects.forEach((checklist) => {
+        checklist.addEventListener("toggle", () => {
+            if (!checklist.open) return;
+            checklistSelects.forEach((other) => {
+                if (other !== checklist) other.open = false;
+            });
+        });
+    });
+
+    function escapeHtml(value) {
+        const element = document.createElement("div");
+        element.textContent = value;
+        return element.innerHTML;
+    }
+
+    async function getSuggestions(url, query) {
+        const response = await fetch(`${url}?q=${encodeURIComponent(query)}`);
+        if (!response.ok) return [];
+        return response.json();
+    }
+
+    function showSuggestions(container, items, choose) {
+        container.innerHTML = "";
+        items.forEach((item) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "suggestion-button";
+            button.innerHTML = `<strong>${escapeHtml(item.label)}</strong>${item.description ? `<span>${escapeHtml(item.description)}</span>` : ""}`;
+            button.addEventListener("click", () => choose(item));
+            container.appendChild(button);
+        });
+        container.classList.toggle("is-visible", items.length > 0);
+    }
+
+    function addOccupation(occupation = null) {
+        const customLabel = occupationInput.value.trim();
+        const choice = occupation || state.selectedOccupation || (customLabel ? {
+            value: `custom:${customLabel.toLowerCase()}`,
+            label: customLabel,
+            description: "User-defined role wording",
+        } : null);
+        if (!choice) {
+            occupationInput.focus();
+            return;
+        }
+        if (!state.occupations.some((item) => item.value === choice.value)) {
+            state.occupations.push(choice);
+        }
+        state.selectedOccupation = null;
+        occupationInput.value = "";
+        occupationSuggestions.classList.remove("is-visible");
+        render();
+    }
+
+    async function addLocation(location) {
+        const radius = Number(document.getElementById("location-radius").value);
+        await updateLocationCoverage(location, radius);
+        const existing = state.locations.find((item) => item.value === location.value);
+        if (existing) {
+            Object.assign(existing, location, {radius});
+        } else {
+            state.locations.push({...location, radius});
+        }
+        state.selectedLocation = null;
+        locationInput.value = "";
+        locationSuggestions.classList.remove("is-visible");
+        render();
+    }
+
+    occupationInput.addEventListener("input", () => {
+        state.selectedOccupation = null;
+        clearTimeout(occupationTimer);
+        if (occupationInput.value.trim().length < 2) {
+            occupationSuggestions.classList.remove("is-visible");
+            return;
+        }
+        occupationTimer = setTimeout(async () => {
+            const items = await getSuggestions("{{ url_for('occupation_suggestions') }}", occupationInput.value);
+            showSuggestions(occupationSuggestions, items, (item) => {
+                addOccupation(item);
+            });
+        }, 180);
+    });
+
+    occupationInput.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        const firstSuggestion = occupationSuggestions.querySelector(".suggestion-button");
+        if (occupationSuggestions.classList.contains("is-visible") && firstSuggestion) {
+            firstSuggestion.click();
+            return;
+        }
+        addOccupation();
+    });
+
+    locationInput.addEventListener("input", () => {
+        state.selectedLocation = null;
+        render();
+        clearTimeout(locationTimer);
+        if (locationInput.value.trim().length < 2) {
+            locationSuggestions.classList.remove("is-visible");
+            return;
+        }
+        locationTimer = setTimeout(async () => {
+            const items = await getSuggestions("{{ url_for('location_suggestions') }}", locationInput.value);
+            showSuggestions(locationSuggestions, items, (item) => addLocation(item));
+        }, 180);
+    });
+
+    locationInput.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        const firstSuggestion = locationSuggestions.querySelector(".suggestion-button");
+        if (locationSuggestions.classList.contains("is-visible") && firstSuggestion) {
+            firstSuggestion.click();
+        }
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!event.target.closest(".search-box")) {
+            occupationSuggestions.classList.remove("is-visible");
+            locationSuggestions.classList.remove("is-visible");
+        }
+        if (!event.target.closest(".checklist-select")) {
+            checklistSelects.forEach((checklist) => {
+                checklist.open = false;
+            });
+        }
+    });
+
+    document.getElementById("location-radius").addEventListener("change", async (event) => {
+        const radius = Number(event.target.value);
+        if (state.selectedLocation) {
+            await updateLocationCoverage(state.selectedLocation, radius);
+        }
+        await Promise.all(state.locations.map(async (item) => {
+            item.radius = radius;
+            await updateLocationCoverage(item, radius);
+        }));
+        render();
+    });
+
+    document.querySelectorAll("select, input[type='number'], input[type='range'], input[type='checkbox']").forEach((control) => {
+        control.addEventListener("input", render);
+        control.addEventListener("change", render);
+    });
+
+    document.getElementById("reset-preview").addEventListener("click", () => window.location.reload());
+
+    function removeOccupation(value) {
+        state.occupations = state.occupations.filter((item) => item.value !== value);
+        render();
+    }
+
+    function removeLocation(value) {
+        state.locations = state.locations.filter((item) => item.value !== value);
+        render();
+    }
+
+    function renderChips(container, items, remove) {
+        container.innerHTML = "";
+        items.forEach((item) => {
+            const chip = document.createElement("span");
+            chip.className = "choice-chip";
+            chip.append(document.createTextNode(item.label));
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "remove-chip";
+            button.setAttribute("aria-label", `Remove ${item.label}`);
+            button.textContent = "×";
+            button.addEventListener("click", () => remove(item));
+            chip.appendChild(button);
+            container.appendChild(chip);
+        });
+    }
+
+    function listItems(element, values) {
+        element.innerHTML = values.map((value) => `<li>${escapeHtml(value)}</li>`).join("");
+    }
+
+    async function updateLocationCoverage(item, radius) {
+        const query = new URLSearchParams({
+            latitude: item.latitude,
+            longitude: item.longitude,
+            miles: radius,
+        });
+        const response = await fetch(`{{ url_for('location_radius') }}?${query}`);
+        if (!response.ok) {
+            item.coverage = null;
+            return;
+        }
+        item.coverage = await response.json();
+    }
+
+    function renderLocationCoverage() {
+        const locations = state.selectedLocation
+            ? [{...state.selectedLocation, radius: Number(document.getElementById("location-radius").value)}]
+            : state.locations;
+        const ready = locations.filter((item) => item.coverage);
+        if (!ready.length) {
+            locationCoverage.classList.remove("is-visible");
+            locationCoverage.innerHTML = "";
+            return;
+        }
+        locationCoverage.innerHTML = ready.map((item) => {
+            const center = item.coverage.center_city
+                ? `<p><strong>This ZIP or area is centered near:</strong> ${escapeHtml(item.coverage.center_city)}</p>`
+                : "";
+            const featured = item.coverage.featured_cities.length
+                ? item.coverage.featured_cities.map((city) => `<span class="covered-city">${escapeHtml(city.label)} — about ${city.distance_miles} miles</span>`).join("")
+                : '<span class="muted">No Census-listed cities fall inside this distance.</span>';
+            const allCommunities = item.coverage.additional_cities.length > 0
+                ? `<details class="all-communities"><summary>Show ${item.coverage.additional_cities.length} more major communities</summary><div class="covered-city-list">${item.coverage.additional_cities.map((city) => `<span class="covered-city">${escapeHtml(city.label)} — about ${city.distance_miles} miles</span>`).join("")}</div></details>`
+                : "";
+            return `<h3>${escapeHtml(item.label)} — within ${item.radius} miles</h3>${center}<p class="muted">Notable nearby cities by straight-line distance:</p><div class="covered-city-list">${featured}</div>${allCommunities}`;
+        }).join("");
+        locationCoverage.classList.add("is-visible");
+    }
+
+    function render() {
+        renderChips(document.getElementById("target-role-list"), state.occupations, (item) => removeOccupation(item.value));
+
+        const locationItems = state.locations.map((item) => ({...item, label: `${item.label} — within ${item.radius} miles`}));
+        renderChips(document.getElementById("location-list"), locationItems, (item) => removeLocation(item.value));
+        renderLocationCoverage();
+        document.getElementById("occupation-selections-json").value = JSON.stringify(state.occupations.map((item) => ({value: item.value, label: item.label})));
+        document.getElementById("location-selections-json").value = JSON.stringify(state.locations.map((item) => ({value: item.value, label: item.label, latitude: item.latitude, longitude: item.longitude, radius: item.radius})));
+
+        const workSummary = [];
+        workSummary.push(state.occupations.length ? `Jobs involving: ${state.occupations.map((item) => item.label).join(", ")}` : "No occupations selected yet.");
+        const selectedLevels = Array.from(document.querySelectorAll("input[name='responsibility-level']:checked")).map((input) => input.value);
+        document.getElementById("job-levels-summary").textContent = selectedLevels.join(", ") || "Choose job levels";
+        workSummary.push(selectedLevels.length ? `At these job levels: ${selectedLevels.join(", ")}` : "No job levels selected yet.");
+        listItems(document.getElementById("work-summary"), workSummary);
+
+        const floor = document.getElementById("compensation-floor").value;
+        const employmentTypes = Array.from(document.querySelectorAll("input[name='employment-type']:checked")).map((input) => input.value);
+        document.getElementById("employment-types-summary").textContent = employmentTypes.join(", ") || "Choose employment types";
+        listItems(document.getElementById("employment-summary"), [
+            `Employment types you will consider: ${employmentTypes.join(", ") || "None selected"}`,
+            `Preferred schedule: ${document.getElementById("schedule-preference").value}`,
+            floor ? `Jobs must pay at least $${Number(floor).toLocaleString()} per year.` : "No minimum annual compensation selected yet.",
+        ]);
+
+        const travel = document.getElementById("travel-tolerance").value;
+        document.getElementById("travel-output").value = `${travel}%`;
+        const arrangements = Array.from(document.querySelectorAll("input[name='workplace-arrangement']:checked")).map((input) => input.value);
+        document.getElementById("workplace-arrangements-summary").textContent = arrangements.join(", ") || "Choose workplace arrangements";
+        listItems(document.getElementById("arrangement-summary"), [
+            `Workplace options you will consider: ${arrangements.join(", ") || "None selected"}`,
+        ]);
+        const areas = state.locations.length
+            ? state.locations.map((item) => `${item.label} within ${item.radius} miles`).join("; ")
+            : "No locations selected yet";
+        const locationSummary = [
+            `Locations you selected: ${areas}`,
+            "If a job does not clearly say whether it is remote, hybrid, or on-site, junior will place it in Needs Review.",
+            `Jobs may require up to ${travel}% travel.`,
+        ];
+        if (arrangements.includes("Remote")) {
+            locationSummary.unshift(
+                "Fully remote jobs can be based anywhere the employer is legally allowed to hire you.",
+                "If a remote job requires you to live in a specific region, that region must match one of your selected locations. Otherwise, junior will mark it Do Not Apply and explain why.",
+            );
+        }
+        listItems(document.getElementById("location-summary"), locationSummary);
+
+    }
+
+    render();
+})();
+</script>
+{% endblock %}

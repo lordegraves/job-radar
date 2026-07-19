@@ -4,7 +4,7 @@ This document is a high-level public summary of product direction. It does not r
 
 ## Product goal
 
-Job Radar should become a configurable local-first job-search operations application that a non-developer can install, launch, configure, and use without editing source files or YAML by hand.
+junior should become a configurable local-first job-search operations application that a non-developer can install, launch, configure, and use without editing source files or YAML by hand.
 
 The product is not intended to become:
 

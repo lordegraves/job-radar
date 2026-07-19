@@ -1,18 +1,18 @@
 {# Form for adding a manually found job or application to the tracker. #}
 {% extends "base.html" %}
 
-{% block title %}Add Application - Job Radar{% endblock %}
+{% block title %}Add Application - junior{% endblock %}
 
 {% block content %}
 <div class="page-card form-page">
     <h1 class="page-title">Add Application</h1>
 
-    <p class="muted">Create a tracker record for an application or external lead. Job Radar assigns the ID when one is not already linked from a scan result.</p>
+    <p class="muted">Create a tracker record for an application or external lead. junior assigns the ID when one is not already linked from a scan result.</p>
 
     <form method="post">
         <label for="job_radar_id">Job Radar ID</label>
         <input id="job_radar_id" name="job_radar_id" value="{{ prefill_values.job_radar_id }}" readonly>
-        <p class="muted">Leave blank for Job Radar to assign a manual tracker ID.</p>
+        <p class="muted">Leave blank for junior to assign a manual tracker ID.</p>
 
         <label for="company_name">Company</label>
         <input id="company_name" name="company_name" value="{{ prefill_values.company_name }}" required>

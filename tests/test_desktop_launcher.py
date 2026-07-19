@@ -301,7 +301,7 @@ def test_main_shows_graphical_support_error_for_unexpected_failure(
 
     message = shown_messages[0]
 
-    assert "Job Radar could not start" in message
+    assert "junior could not start" in message
     assert "claytonmgraves@outlook.com" in message
     assert str(diagnostic_log_path) in message
     assert "Error type: RuntimeError" in message
@@ -336,7 +336,7 @@ def test_show_desktop_error_uses_windows_message_box(
         (
             None,
             "Helpful failure message",
-            "Job Radar could not start",
+            "junior could not start",
             0x00000010,
         )
     ]
@@ -353,5 +353,5 @@ def test_show_desktop_error_falls_back_to_standard_error(
     captured = capsys.readouterr()
 
     assert captured.out == ""
-    assert "Job Radar could not start" in captured.err
+    assert "junior could not start" in captured.err
     assert "Helpful failure message" in captured.err

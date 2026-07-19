@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Job Radar are documented here.
+All notable changes to junior are documented here.
 
 This project follows the spirit of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version numbers are currently managed in `pyproject.toml`.
 
@@ -27,9 +27,12 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - GUI workflows for managed profile creation, editing, switching, reversible archival, restoration, and managed resume upload.
 - SQLite migration version 5 for the optional active-profile selection record; the migration does not select or change existing profile data.
 - A controlled legacy-profile migration service with read-only planning, private recovery bundles, destination-collision checks, atomic profile selection, and managed-file rollback on failure.
+- GUI-managed Search Preferences that save normalized occupations, structured locations and commute radii, job levels, employment types, schedules, workplace arrangements, compensation minimums, and travel percentages to the active managed profile without changing existing scoring behavior.
+- SQLite migration version 6 for structured occupation, location, and schedule preferences, protected by backup-before-migration and atomic rollback behavior.
 
 ### Changed
 
+- Renamed the user-facing application from Job Radar to junior and added the official logo to the shared interface and packaged application assets while preserving established package, command, environment-variable, and user-data compatibility names.
 - Split Flask routes into dedicated route modules.
 - Split report models and HTML rendering into dedicated modules.
 - Centralized collector HTTP behavior and pagination support.
