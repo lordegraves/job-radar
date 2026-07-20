@@ -197,6 +197,9 @@ def register_profile_routes(
                 employment_types=request.form.getlist("employment-type"),
                 work_arrangements=request.form.getlist("workplace-arrangement"),
                 schedule_preference=request.form.get("schedule_preference", ""),
+                on_call_preference=request.form.get(
+                    "on_call_preference", "Review each job"
+                ),
                 compensation_floor_usd=request.form.get(
                     "compensation_floor_usd", ""
                 ),

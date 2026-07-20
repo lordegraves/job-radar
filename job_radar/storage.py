@@ -217,6 +217,11 @@ def _schema_migrations() -> tuple:
             "add structured search preferences",
             _migrate_structured_search_preferences,
         ),
+        (
+            7,
+            "add on-call profile preference",
+            _migrate_on_call_profile_preference,
+        ),
     )
 
 
@@ -511,6 +516,25 @@ def _migrate_structured_search_preferences(
                 f"ALTER TABLE profile_preferences "
                 f"ADD COLUMN {column_name} {column_definition}"
             )
+
+
+def _migrate_on_call_profile_preference(
+    connection: sqlite3.Connection,
+) -> None:
+    """Add explicit on-call handling while preserving existing behavior."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(profile_preferences)"
+        ).fetchall()
+    }
+    if "on_call_preference" not in existing_columns:
+        connection.execute(
+            "ALTER TABLE profile_preferences "
+            "ADD COLUMN on_call_preference TEXT NOT NULL "
+            "DEFAULT 'Review each job'"
+        )
 
 
 def fetch_active_scan_run(

@@ -481,6 +481,16 @@
                     </select>
                 </div>
                 <div class="control-field">
+                    <label for="on-call-preference">On-call availability</label>
+                    <span class="field-help">Choose how junior should handle jobs that require an on-call rotation.</span>
+                    <select id="on-call-preference" name="on_call_preference">
+                        {% set selected_on_call = saved_preferences.on_call_preference if saved_preferences else "Review each job" %}
+                        {% for option in ["Willing to participate", "Not willing to participate", "Review each job"] %}
+                        <option value="{{ option }}"{% if option == selected_on_call %} selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="control-field">
                     <label for="compensation-floor">Minimum acceptable annual compensation</label>
                     <span class="field-help">Higher compensation will not make an unsuitable job a better fit.</span>
                     <input id="compensation-floor" name="compensation_floor_usd" type="number" min="0" step="1000" value="{{ saved_preferences.compensation_floor_usd if saved_preferences and saved_preferences.compensation_floor_usd is not none else '' }}" placeholder="Example: 75000">
@@ -551,7 +561,7 @@
     <aside class="policy-summary">
         <div class="policy-summary-card">
             <h2>Your profile at a glance</h2>
-            <p class="muted">Current profile insights and a plain-English preview of the jobs this profile is intended to find. These settings are not currently used by scans.</p>
+            <p class="muted">Current profile insights and a plain-English preview of the jobs this profile is intended to find. These settings are used by scans to evaluate practical eligibility.</p>
 
             <div class="summary-section">
                 <h3>Strengths</h3>
@@ -622,11 +632,17 @@
     <p class="muted">Occupation suggestions use the O*NET 30.3 Database from the U.S. Department of Labor, Employment and Training Administration under the CC BY 4.0 license. Location suggestions use the U.S. Census Bureau 2025 Gazetteer Files. junior has reduced both sources to the fields needed for this preview; neither source has approved or tested these changes.</p>
 </div>
 
+<script id="occupation-selections-data" type="application/json">{{ occupation_selections | tojson }}</script>
+<script id="location-selections-data" type="application/json">{{ location_selections | tojson }}</script>
 <script>
 (() => {
     const state = {
-        occupations: {{ occupation_selections | tojson }},
-        locations: {{ location_selections | tojson }},
+        occupations: JSON.parse(
+            document.getElementById("occupation-selections-data").textContent
+        ),
+        locations: JSON.parse(
+            document.getElementById("location-selections-data").textContent
+        ),
         selectedOccupation: null,
         selectedLocation: null,
     };
@@ -879,6 +895,7 @@
         listItems(document.getElementById("employment-summary"), [
             `Employment types you will consider: ${employmentTypes.join(", ") || "None selected"}`,
             `Preferred schedule: ${document.getElementById("schedule-preference").value}`,
+            `On-call availability: ${document.getElementById("on-call-preference").value}`,
             floor ? `Jobs must pay at least $${Number(floor).toLocaleString()} per year.` : "No minimum annual compensation selected yet.",
         ]);
 

@@ -538,13 +538,38 @@ def test_conflicting_schedule_is_not_eligible() -> None:
     assert result.reasons[-1].code == "schedule_conflicts_with_preference"
 
 
-def test_on_call_schedule_needs_review() -> None:
+@pytest.mark.parametrize(
+    ("on_call_preference", "expected_status", "expected_code"),
+    [
+        (
+            "Willing to participate",
+            ELIGIBILITY_ELIGIBLE,
+            "on_call_requirement_accepted",
+        ),
+        (
+            "Not willing to participate",
+            ELIGIBILITY_NOT_ELIGIBLE,
+            "on_call_requirement_not_accepted",
+        ),
+        (
+            "Review each job",
+            ELIGIBILITY_NEEDS_REVIEW,
+            "on_call_schedule_needs_review",
+        ),
+    ],
+)
+def test_on_call_preference_controls_eligibility(
+    on_call_preference: str,
+    expected_status: str,
+    expected_code: str,
+) -> None:
     posting = make_posting(
         description="Participate in an on-call rotation.",
     )
     preferences = ProfilePreferences(
         work_arrangements=("Remote",),
-        schedule_preference="Weekdays",
+        schedule_preference="Any schedule",
+        on_call_preference=on_call_preference,
     )
 
     result = evaluate_practical_eligibility(
@@ -554,8 +579,8 @@ def test_on_call_schedule_needs_review() -> None:
     )
 
     assert result is not None
-    assert result.status == ELIGIBILITY_NEEDS_REVIEW
-    assert result.reasons[-1].code == "on_call_schedule_needs_review"
+    assert result.status == expected_status
+    assert result.reasons[-1].code == expected_code
 
 
 @pytest.mark.parametrize(

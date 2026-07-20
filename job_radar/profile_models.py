@@ -101,6 +101,7 @@ class ProfilePreferences:
     compensation_floor_usd: int | None = None
     compensation_target_usd: int | None = None
     travel_tolerance: str | None = None
+    on_call_preference: str = "Review each job"
 
     def __post_init__(self) -> None:
         list_fields = (
@@ -143,6 +144,13 @@ class ProfilePreferences:
             or not self.schedule_preference.strip()
         ):
             raise ValueError("schedule_preference must be a non-empty string")
+
+        if self.on_call_preference not in {
+            "Willing to participate",
+            "Not willing to participate",
+            "Review each job",
+        }:
+            raise ValueError("unsupported on_call_preference")
 
 
 @dataclass(frozen=True)

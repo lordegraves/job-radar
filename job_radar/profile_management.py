@@ -61,6 +61,11 @@ SCHEDULE_PREFERENCES = {
     "Weekends accepted",
     "Flexible schedule",
 }
+ON_CALL_PREFERENCES = {
+    "Willing to participate",
+    "Not willing to participate",
+    "Review each job",
+}
 MAX_MANAGED_PROFILES = 5
 
 
@@ -132,6 +137,7 @@ def update_managed_profile_from_form(
         ),
         travel_tolerance=values.get("travel_tolerance", "").strip() or None,
         schedule_preference=current.preferences.schedule_preference,
+        on_call_preference=current.preferences.on_call_preference,
         occupation_selections=current.preferences.occupation_selections,
         location_selections=current.preferences.location_selections,
     )
@@ -209,6 +215,7 @@ def save_managed_search_profile(
     employment_types: list[str],
     work_arrangements: list[str],
     schedule_preference: str,
+    on_call_preference: str,
     compensation_floor_usd: str,
     travel_percentage: str,
     base_directory: str | Path | None = None,
@@ -244,6 +251,7 @@ def save_managed_search_profile(
         employment_types=employment_types,
         work_arrangements=work_arrangements,
         schedule_preference=schedule_preference,
+        on_call_preference=on_call_preference,
         compensation_floor_usd=compensation_floor_usd,
         travel_percentage=travel_percentage,
     )
@@ -281,6 +289,7 @@ def _validated_search_preferences(
     employment_types: list[str],
     work_arrangements: list[str],
     schedule_preference: str,
+    on_call_preference: str,
     compensation_floor_usd: str,
     travel_percentage: str,
 ) -> ProfilePreferences:
@@ -296,6 +305,11 @@ def _validated_search_preferences(
     schedule = schedule_preference.strip()
     if schedule not in SCHEDULE_PREFERENCES:
         raise ConfigError("Choose a valid schedule preference.")
+
+    on_call = on_call_preference.strip()
+    if on_call not in ON_CALL_PREFERENCES:
+        raise ConfigError("Choose a valid on-call preference.")
+
     travel = _percentage(travel_percentage, "Maximum travel")
 
     return replace(
@@ -310,6 +324,7 @@ def _validated_search_preferences(
         ),
         travel_tolerance=str(travel),
         schedule_preference=schedule,
+        on_call_preference=on_call,
         occupation_selections=occupations,
         location_selections=locations,
     )

@@ -378,10 +378,11 @@ def _replace_profile_preferences(
             compensation_target_usd,
             travel_tolerance,
             schedule_preference,
+            on_call_preference,
             occupation_selections_json,
             location_selections_json
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             profile.profile_id,
@@ -398,6 +399,7 @@ def _replace_profile_preferences(
             preferences.compensation_target_usd,
             preferences.travel_tolerance,
             preferences.schedule_preference,
+            preferences.on_call_preference,
             _dump_json(
                 [
                     {"value": item.value, "label": item.label}
@@ -493,6 +495,7 @@ def _row_to_profile(
             compensation_target_usd=preference_row["compensation_target_usd"],
             travel_tolerance=preference_row["travel_tolerance"],
             schedule_preference=preference_row["schedule_preference"],
+            on_call_preference=preference_row["on_call_preference"],
             occupation_selections=_load_occupation_preferences(
                 preference_row["occupation_selections_json"]
             ),

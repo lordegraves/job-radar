@@ -38,6 +38,9 @@ SCHEDULE_WEEKDAYS = "Weekdays"
 SCHEDULE_WEEKENDS = "Weekends accepted"
 SCHEDULE_FLEXIBLE = "Flexible schedule"
 
+ON_CALL_WILLING = "Willing to participate"
+ON_CALL_NOT_WILLING = "Not willing to participate"
+
 
 @dataclass(frozen=True)
 class EligibilityReason:
@@ -321,11 +324,52 @@ def _evaluate_schedule_eligibility(
     preferences: ProfilePreferences,
 ) -> EligibilityResult | None:
     selected_schedule = preferences.schedule_preference
+    detected_schedules = _detect_schedule_requirements(posting)
+
+    if "On-call" in detected_schedules:
+        if preferences.on_call_preference == ON_CALL_WILLING:
+            return EligibilityResult(
+                status=ELIGIBILITY_ELIGIBLE,
+                reasons=(
+                    EligibilityReason(
+                        code="on_call_requirement_accepted",
+                        message=(
+                            "The posting includes an on-call requirement and this "
+                            "profile is willing to participate."
+                        ),
+                    ),
+                ),
+            )
+
+        if preferences.on_call_preference == ON_CALL_NOT_WILLING:
+            return EligibilityResult(
+                status=ELIGIBILITY_NOT_ELIGIBLE,
+                reasons=(
+                    EligibilityReason(
+                        code="on_call_requirement_not_accepted",
+                        message=(
+                            "The posting includes an on-call requirement and this "
+                            "profile does not accept on-call work."
+                        ),
+                    ),
+                ),
+            )
+
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="on_call_schedule_needs_review",
+                    message=(
+                        "The posting includes an on-call requirement that this "
+                        "profile reviews individually."
+                    ),
+                ),
+            ),
+        )
 
     if selected_schedule is None or selected_schedule == SCHEDULE_ANY:
         return None
-
-    detected_schedules = _detect_schedule_requirements(posting)
 
     if not detected_schedules:
         return EligibilityResult(
@@ -336,20 +380,6 @@ def _evaluate_schedule_eligibility(
                     message=(
                         "The posting does not clearly identify a work schedule "
                         "that can be compared with this profile."
-                    ),
-                ),
-            ),
-        )
-
-    if "On-call" in detected_schedules:
-        return EligibilityResult(
-            status=ELIGIBILITY_NEEDS_REVIEW,
-            reasons=(
-                EligibilityReason(
-                    code="on_call_schedule_needs_review",
-                    message=(
-                        "The posting includes an on-call requirement that should "
-                        "be reviewed against this profile's schedule preference."
                     ),
                 ),
             ),

@@ -4085,6 +4085,7 @@ def test_search_preferences_creates_profile_and_guides_resume_upload(
             "employment-type": ["Full-time", "Part-time"],
             "workplace-arrangement": ["On-site"],
             "schedule_preference": "Day shift",
+            "on_call_preference": "Not willing to participate",
             "compensation_floor_usd": "60000",
             "travel_percentage": "10",
         },
@@ -4096,6 +4097,7 @@ def test_search_preferences_creates_profile_and_guides_resume_upload(
     assert profile is not None
     assert profile.display_name == "Colorado Kitchen Work"
     assert profile.preferences.target_roles == ("Cooks, Restaurant",)
+    assert profile.preferences.on_call_preference == "Not willing to participate"
 
     handoff_page = client.get(response.headers["Location"]).get_data(as_text=True)
     assert "Profile created." in handoff_page
@@ -4164,6 +4166,7 @@ def test_search_preferences_save_normalized_profile_data(tmp_path: Path) -> None
             "employment-type": ["Full-time", "Part-time"],
             "workplace-arrangement": ["Hybrid", "On-site"],
             "schedule_preference": "Day shift",
+            "on_call_preference": "Not willing to participate",
             "compensation_floor_usd": "60000",
             "travel_percentage": "10",
         },

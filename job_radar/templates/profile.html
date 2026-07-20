@@ -277,6 +277,7 @@
         <div class="profile-status-card"><strong>Workplace</strong><span>{{ active_managed_profile.preferences.work_arrangements | join(', ') or 'No workplace arrangements selected' }}</span></div>
         <div class="profile-status-card"><strong>Locations</strong><span>{{ active_managed_profile.preferences.preferred_locations | join(', ') or 'No locations selected' }}</span></div>
         <div class="profile-status-card"><strong>Schedule</strong><span>{{ active_managed_profile.preferences.schedule_preference or 'Any schedule' }}</span></div>
+        <div class="profile-status-card"><strong>On-call</strong><span>{{ active_managed_profile.preferences.on_call_preference }}</span></div>
         <div class="profile-status-card"><strong>Travel</strong><span>Jobs may require up to {{ active_managed_profile.preferences.travel_tolerance or '0' }}% travel</span></div>
     </div>
     {% endif %}

@@ -63,6 +63,7 @@ def make_profile(
             compensation_floor_usd=120000,
             compensation_target_usd=145000,
             travel_tolerance="limited",
+            on_call_preference="Not willing to participate",
         ),
         resume=build_managed_resume(".pdf"),
         company_ids=("example_company", "second_company"),
