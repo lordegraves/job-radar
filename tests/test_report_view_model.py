@@ -6,6 +6,7 @@ from job_radar.report_view_model import (
     build_job_output_view_model,
     build_report_view_model,
 )
+from job_radar.scan_service import _is_storage_relevant_posting
 from job_radar.scored_posting import ScoredPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
 
@@ -284,3 +285,68 @@ def test_tracked_role_preserves_track_status_when_not_eligible() -> None:
     assert view.review_needed == []
     assert view.tracked_applications == [tracked]
     assert view.email_scored_postings == []
+
+
+def test_storage_omits_new_not_eligible_role() -> None:
+    posting = make_scored_posting(
+        title="Not Eligible Infrastructure Engineer",
+        top_match_eligible=True,
+        review_needed_eligible=True,
+        eligibility=EligibilityResult(
+            status="not_eligible",
+            reasons=(
+                EligibilityReason(
+                    code="location_outside_selected_areas",
+                    message="The job location is outside this profile's selected areas.",
+                ),
+            ),
+        ),
+    )
+
+    assert not _is_storage_relevant_posting(posting)
+
+
+def test_storage_keeps_top_match_downgraded_to_review_needed() -> None:
+    posting = make_scored_posting(
+        title="Eligibility Review Infrastructure Engineer",
+        top_match_eligible=True,
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_unknown",
+                    message="The posting does not provide usable compensation.",
+                ),
+            ),
+        ),
+    )
+
+    assert _is_storage_relevant_posting(posting)
+
+
+def test_storage_keeps_legacy_actionable_role_without_eligibility() -> None:
+    posting = make_scored_posting(
+        title="Legacy Infrastructure Engineer",
+        top_match_eligible=True,
+    )
+
+    assert _is_storage_relevant_posting(posting)
+
+
+def test_storage_keeps_tracked_role_when_not_eligible() -> None:
+    posting = make_scored_posting(
+        title="Tracked Not Eligible Infrastructure Engineer",
+        top_match_eligible=True,
+        tracked=True,
+        eligibility=EligibilityResult(
+            status="not_eligible",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_below_floor",
+                    message="The advertised compensation is below the profile minimum.",
+                ),
+            ),
+        ),
+    )
+
+    assert _is_storage_relevant_posting(posting)

@@ -28,6 +28,10 @@ from job_radar.profile_context import load_active_candidate_context
 from job_radar.html_report import write_html_report
 from job_radar.report_models import ScanError, ScanReport
 from job_radar.report_snapshot import write_report_snapshot
+from job_radar.report_view_model import (
+    is_review_needed_report_posting,
+    is_top_match_report_posting,
+)
 from job_radar.runtime_paths import DEFAULT_SCORING_CONFIG_PATH, RuntimePaths
 from job_radar.scored_posting import ScoredPosting
 from job_radar.resume_match import match_resume_to_posting
@@ -159,6 +163,16 @@ def _build_scan_failure_type(stage: str) -> str:
         return "scan_failure"
 
     return f"{normalized_stage}_failure"
+
+
+def _is_storage_relevant_posting(scored_posting: ScoredPosting) -> bool:
+    if scored_posting.application is not None:
+        return True
+
+    return (
+        is_top_match_report_posting(scored_posting)
+        or is_review_needed_report_posting(scored_posting)
+    )
 
 
 def handle_scan(
@@ -421,10 +435,7 @@ def _handle_scan_unlocked(
         relevant_scored_postings = [
             scored_posting
             for scored_posting in scored_postings
-            if (
-                scored_posting.top_match_eligible
-                or scored_posting.review_needed_eligible
-            )
+            if _is_storage_relevant_posting(scored_posting)
         ]
 
         relevant_source_urls = {
@@ -562,12 +573,12 @@ def _handle_scan_unlocked(
             top_matches_count=sum(
                 1
                 for scored_posting in relevant_scored_postings
-                if scored_posting.top_match_eligible
+                if is_top_match_report_posting(scored_posting)
             ),
             review_needed_count=sum(
                 1
                 for scored_posting in relevant_scored_postings
-                if scored_posting.review_needed_eligible
+                if is_review_needed_report_posting(scored_posting)
             ),
             report_status=report_status,
             email_status=email_status,
