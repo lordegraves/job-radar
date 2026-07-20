@@ -96,6 +96,9 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     assert "<strong>Generated at:</strong> 2026-06-24 12:34 UTC" in html
     assert "<strong>Actionable jobs stored:</strong> 1" in html
     assert "<strong>Jobs not actionable:</strong> 0" in html
+    assert "<strong>Top matches:</strong> 1" in html
+    assert "<strong>Review needed:</strong> 0" in html
+    assert "<strong>Tracked applications:</strong> 0" in html
     assert "Data Center Design Execution Lead" in html
     assert (
         '<a href="https://boards.greenhouse.io/exampleai/jobs/123" '

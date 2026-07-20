@@ -150,6 +150,22 @@ def render_html_report(report: ScanReport) -> str:
             f"{report.jobs_omitted}</li>"
         )
 
+    if report.scored_postings is not None:
+        report_view = build_report_view_model(
+            scored_postings=report.scored_postings,
+            omitted_scored_postings=report.omitted_scored_postings,
+        )
+        lines.extend(
+            [
+                f"<li><strong>Top matches:</strong> "
+                f"{len(report_view.top_matches)}</li>",
+                f"<li><strong>Review needed:</strong> "
+                f"{len(report_view.review_needed)}</li>",
+                f"<li><strong>Tracked applications:</strong> "
+                f"{len(report_view.tracked_applications)}</li>",
+            ]
+        )
+
     if report.top_match_min_score is not None:
         lines.append(
             f"<li><strong>Top match score threshold:</strong> "
