@@ -9,6 +9,7 @@ from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import evaluate_compensation
 from job_radar.config import ApplicationSettings, load_companies, load_settings
 from job_radar.email_sender import send_email_report
+from job_radar.eligibility import evaluate_workplace_eligibility
 from job_radar.email_summary import (
     build_email_body,
     build_email_html_body,
@@ -242,6 +243,7 @@ def _handle_scan_unlocked(
         )
         candidate_profile = candidate_context.candidate_profile
         resume_text = candidate_context.resume_text
+        job_preferences = candidate_context.job_preferences
 
         print("Scan requested")
         print(f"Config: {config_path}")
@@ -393,6 +395,10 @@ def _handle_scan_unlocked(
                             if candidate_profile is not None
                             else None
                         ),
+                    ),
+                    eligibility=evaluate_workplace_eligibility(
+                        posting=posting,
+                        preferences=job_preferences,
                     ),
                     profile_avoid_matches=_find_profile_avoid_matches(
                         candidate_profile=candidate_profile,
