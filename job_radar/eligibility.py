@@ -1,6 +1,7 @@
 """Evaluate practical job eligibility separately from technical-fit scoring."""
 
 from dataclasses import dataclass
+import re
 
 from job_radar.models import JobPosting
 from job_radar.normalize import clean_text
@@ -99,18 +100,220 @@ def evaluate_workplace_eligibility(
             ),
         )
 
+    return _evaluate_location_based_arrangement(
+        posting=posting,
+        preferences=preferences,
+        arrangement=arrangement,
+    )
+
+
+def _evaluate_location_based_arrangement(
+    posting: JobPosting,
+    preferences: ProfilePreferences,
+    arrangement: str,
+) -> EligibilityResult:
+    selected_locations = tuple(
+        location.label for location in preferences.location_selections
+    ) or preferences.preferred_locations
+
+    if not selected_locations:
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="no_preferred_locations_configured",
+                    message=(
+                        f"The job is {arrangement.lower()}, but this profile does "
+                        "not have any approved commute locations configured."
+                    ),
+                ),
+            ),
+        )
+
+    posting_location = _normalize_location_label(posting.location)
+
+    if not posting_location:
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="job_location_unclear",
+                    message=(
+                        f"The job is {arrangement.lower()}, but the posting does "
+                        "not provide a clear workplace location."
+                    ),
+                ),
+            ),
+        )
+
+    for selected_location in selected_locations:
+        normalized_selected_location = _normalize_location_label(selected_location)
+
+        if _location_labels_match(
+            posting_location=posting_location,
+            selected_location=normalized_selected_location,
+        ):
+            return EligibilityResult(
+                status=ELIGIBILITY_ELIGIBLE,
+                reasons=(
+                    EligibilityReason(
+                        code="location_matches_selected_area",
+                        message=(
+                            f"The job is {arrangement.lower()} and its location "
+                            f"matches the selected area {selected_location}."
+                        ),
+                    ),
+                ),
+            )
+
+    if _looks_like_specific_city_state(posting.location):
+        approved_locations = "; ".join(selected_locations)
+        return EligibilityResult(
+            status=ELIGIBILITY_NOT_ELIGIBLE,
+            reasons=(
+                EligibilityReason(
+                    code="location_outside_selected_areas",
+                    message=(
+                        f"The job is {arrangement.lower()} in "
+                        f"{clean_text(posting.location)}, which does not match "
+                        f"the profile's selected areas: {approved_locations}."
+                    ),
+                ),
+            ),
+        )
+
     return EligibilityResult(
         status=ELIGIBILITY_NEEDS_REVIEW,
         reasons=(
             EligibilityReason(
-                code="commute_eligibility_not_evaluated",
+                code="job_location_ambiguous",
                 message=(
-                    f"The job is {arrangement.lower()} and that arrangement is "
-                    "accepted, but the job location still needs to be checked "
-                    "against the profile's selected commute areas."
+                    f"The job is {arrangement.lower()}, but its location could "
+                    "not be matched reliably against the profile's selected areas."
                 ),
             ),
         ),
+    )
+
+
+def _normalize_location_label(value: str | None) -> str:
+    normalized = clean_text(value).lower()
+
+    arrangement_markers = (
+        "on-site",
+        "onsite",
+        "on site",
+        "in-person",
+        "in person",
+        "hybrid",
+    )
+
+    for marker in arrangement_markers:
+        normalized = normalized.replace(marker, " ")
+
+    punctuation = ",;:/()[]|-"
+
+    for character in punctuation:
+        normalized = normalized.replace(character, " ")
+
+    state_names = {
+        "alabama": "al",
+        "alaska": "ak",
+        "arizona": "az",
+        "arkansas": "ar",
+        "california": "ca",
+        "colorado": "co",
+        "connecticut": "ct",
+        "delaware": "de",
+        "florida": "fl",
+        "georgia": "ga",
+        "hawaii": "hi",
+        "idaho": "id",
+        "illinois": "il",
+        "indiana": "in",
+        "iowa": "ia",
+        "kansas": "ks",
+        "kentucky": "ky",
+        "louisiana": "la",
+        "maine": "me",
+        "maryland": "md",
+        "massachusetts": "ma",
+        "michigan": "mi",
+        "minnesota": "mn",
+        "mississippi": "ms",
+        "missouri": "mo",
+        "montana": "mt",
+        "nebraska": "ne",
+        "nevada": "nv",
+        "new hampshire": "nh",
+        "new jersey": "nj",
+        "new mexico": "nm",
+        "new york": "ny",
+        "north carolina": "nc",
+        "north dakota": "nd",
+        "ohio": "oh",
+        "oklahoma": "ok",
+        "oregon": "or",
+        "pennsylvania": "pa",
+        "rhode island": "ri",
+        "south carolina": "sc",
+        "south dakota": "sd",
+        "tennessee": "tn",
+        "texas": "tx",
+        "utah": "ut",
+        "vermont": "vt",
+        "virginia": "va",
+        "washington": "wa",
+        "west virginia": "wv",
+        "wisconsin": "wi",
+        "wyoming": "wy",
+    }
+
+    for state_name in sorted(state_names, key=len, reverse=True):
+        normalized = re.sub(
+            rf"\b{re.escape(state_name)}\b",
+            state_names[state_name],
+            normalized,
+        )
+
+    return clean_text(normalized)
+
+
+def _location_labels_match(
+    *,
+    posting_location: str,
+    selected_location: str,
+) -> bool:
+    if not posting_location or not selected_location:
+        return False
+
+    return (
+        posting_location == selected_location
+        or posting_location in selected_location
+        or selected_location in posting_location
+    )
+
+
+def _looks_like_specific_city_state(value: str | None) -> bool:
+    normalized = clean_text(value)
+
+    if not normalized:
+        return False
+
+    broad_location_markers = (
+        "multiple locations",
+        "various locations",
+        "united states",
+        "us only",
+        "nationwide",
+        "regional",
+    )
+
+    if any(marker in normalized.lower() for marker in broad_location_markers):
+        return False
+
+    return "," in normalized or any(
+        character.isdigit() for character in normalized
     )
 
 

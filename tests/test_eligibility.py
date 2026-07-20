@@ -11,7 +11,7 @@ from job_radar.eligibility import (
     evaluate_workplace_eligibility,
 )
 from job_radar.models import JobPosting
-from job_radar.profile_models import ProfilePreferences
+from job_radar.profile_models import LocationPreference, ProfilePreferences
 from job_radar.scored_posting import ScoredPosting
 
 
@@ -154,10 +154,10 @@ def test_remote_job_is_not_eligible_when_remote_is_not_selected() -> None:
     ("location", "remote_status", "selected_arrangement"),
     [
         ("Fort Collins, CO", "Hybrid", "Hybrid"),
-        ("On-site - Denver, CO", None, "On-site"),
+        ("On-site - Fort Collins, CO", None, "On-site"),
     ],
 )
-def test_accepted_location_based_job_needs_commute_review(
+def test_location_based_job_is_eligible_when_location_matches(
     location: str,
     remote_status: str | None,
     selected_arrangement: str,
@@ -169,12 +169,96 @@ def test_accepted_location_based_job_needs_commute_review(
         ),
         preferences=ProfilePreferences(
             work_arrangements=(selected_arrangement,),
+            location_selections=(
+                LocationPreference(
+                    value="place:fort-collins",
+                    label="Fort Collins, Colorado",
+                    latitude=40.5853,
+                    longitude=-105.0844,
+                    radius_miles=25,
+                ),
+            ),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[0].code == "location_matches_selected_area"
+
+
+def test_location_matching_normalizes_multiword_state_names_safely() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Charleston, WV",
+            remote_status="On-site",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("On-site",),
+            preferred_locations=("Charleston, West Virginia",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[0].code == "location_matches_selected_area"
+
+
+def test_location_based_job_is_not_eligible_for_clear_mismatch() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Denver, CO",
+            remote_status="Hybrid",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Hybrid",),
+            location_selections=(
+                LocationPreference(
+                    value="place:fort-collins",
+                    label="Fort Collins, Colorado",
+                    latitude=40.5853,
+                    longitude=-105.0844,
+                    radius_miles=25,
+                ),
+            ),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "location_outside_selected_areas"
+
+
+def test_location_based_job_needs_review_without_selected_locations() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Fort Collins, CO",
+            remote_status="Hybrid",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Hybrid",),
         ),
     )
 
     assert result is not None
     assert result.status == ELIGIBILITY_NEEDS_REVIEW
-    assert result.reasons[0].code == "commute_eligibility_not_evaluated"
+    assert result.reasons[0].code == "no_preferred_locations_configured"
+
+
+def test_location_based_job_needs_review_for_broad_location() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Multiple locations",
+            remote_status="Hybrid",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Hybrid",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NEEDS_REVIEW
+    assert result.reasons[0].code == "job_location_ambiguous"
 
 
 def test_unclear_workplace_arrangement_needs_review() -> None:
