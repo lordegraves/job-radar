@@ -163,7 +163,7 @@ def test_scan_pipeline_tracks_new_then_seen(
     )
 
     assert "<h1>junior Report</h1>" in first_html
-    assert "<h2>Top Matches</h2>" in first_html
+    assert '<h2 id="top-matches">Top Matches</h2>' in first_html
     assert "Senior Infrastructure Engineer" in first_html
 
     handle_scan(
@@ -196,5 +196,5 @@ def test_scan_pipeline_tracks_new_then_seen(
     )
 
     assert "<h1>junior Report</h1>" in second_html
-    assert "<h2>Top Matches</h2>" in second_html
+    assert '<h2 id="top-matches">Top Matches</h2>' in second_html
     assert "Senior Infrastructure Engineer" in second_html

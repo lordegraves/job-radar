@@ -90,11 +90,14 @@ def render_html_report(report: ScanReport) -> str:
         '<meta charset="utf-8">',
         "<title>junior Report</title>",
         "<style>",
+        "html { scroll-behavior: smooth; }",
         "body { font-family: Arial, sans-serif; line-height: 1.4; margin: 24px; }",
         "h1 { margin-bottom: 8px; }",
-        "h2 { border-bottom: 1px solid #cccccc; padding-bottom: 4px; margin-top: 28px; }",
+        "h2 { border-bottom: 1px solid #cccccc; padding-bottom: 4px; margin-top: 28px; scroll-margin-top: 16px; }",
         "h3 { margin-bottom: 8px; }",
         "a { color: #0b66c3; }",
+        ".table-of-contents { background: #f6f8fa; border: 1px solid #dddddd; padding: 12px 16px; margin-bottom: 20px; }",
+        ".table-of-contents ul { margin-bottom: 0; }",
         ".summary { background: #f6f8fa; border: 1px solid #dddddd; padding: 12px 16px; }",
         ".job-card { border: 1px solid #dddddd; padding: 14px 16px; margin: 16px 0; border-radius: 6px; }",
         ".top-match { border-left: 6px solid #2e7d32; }",
@@ -106,9 +109,16 @@ def render_html_report(report: ScanReport) -> str:
         "</head>",
         "<body>",
         "<h1>junior Report</h1>",
-        "<h2>Summary</h2>",
-        '<ul class="summary">',
     ]
+
+    _append_html_table_of_contents(lines, report)
+
+    lines.extend(
+        [
+            '<h2 id="summary">Summary</h2>',
+            '<ul class="summary">',
+        ]
+    )
 
     if report.generated_at is not None:
         lines.append(
@@ -212,6 +222,50 @@ def write_html_report(report_path: str | Path, report: ScanReport) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render_html_report(report), encoding="utf-8")
     return path
+
+
+def _append_html_table_of_contents(
+    lines: list[str],
+    report: ScanReport,
+) -> None:
+    sections = [("summary", "Summary")]
+
+    if report.collector_errors:
+        sections.append(("collector-errors", "Collector Errors"))
+
+    if report.scored_postings is not None:
+        sections.extend(
+            [
+                ("top-matches", "Top Matches"),
+                ("northern-colorado-highlights", "Northern Colorado Highlights"),
+                ("review-needed", "Review Needed"),
+                ("tracked-applications", "Tracked Applications"),
+                ("new-jobs", "New Jobs"),
+                ("passed-not-recommended", "Passed / Not Recommended"),
+            ]
+        )
+    else:
+        sections.append(("jobs", "Jobs"))
+
+    lines.extend(
+        [
+            '<nav class="table-of-contents" aria-label="Report contents">',
+            "<h2>Report contents</h2>",
+            "<ul>",
+        ]
+    )
+
+    for section_id, section_label in sections:
+        lines.append(
+            f'<li><a href="#{section_id}">{escape(section_label)}</a></li>'
+        )
+
+    lines.extend(
+        [
+            "</ul>",
+            "</nav>",
+        ]
+    )
 
 
 def _count_companies(postings: list[JobPosting]) -> dict[str, int]:
@@ -866,7 +920,7 @@ def _append_html_collector_errors(
 ) -> None:
     lines.extend(
         [
-            "<h2>Collector Errors</h2>",
+            '<h2 id="collector-errors">Collector Errors</h2>',
             "<p>Some collector errors are temporary source or network issues and may clear on a later scan.</p>",
             "<ul>",
         ]
@@ -917,7 +971,7 @@ def _append_html_top_matches_section(
     lines: list[str],
     scored_postings: list[ScoredPosting],
 ) -> None:
-    lines.append("<h2>Top Matches</h2>")
+    lines.append('<h2 id="top-matches">Top Matches</h2>')
 
     top_matches = _get_top_matches(scored_postings)
 
@@ -959,7 +1013,9 @@ def _append_html_northern_colorado_highlights_section(
     lines: list[str],
     scored_postings: list[ScoredPosting],
 ) -> None:
-    lines.append("<h2>Northern Colorado Highlights</h2>")
+    lines.append(
+        '<h2 id="northern-colorado-highlights">Northern Colorado Highlights</h2>'
+    )
 
     highlights = _get_northern_colorado_highlights(scored_postings)
 
@@ -975,7 +1031,7 @@ def _append_html_review_needed_section(
     lines: list[str],
     scored_postings: list[ScoredPosting],
 ) -> None:
-    lines.append("<h2>Review Needed</h2>")
+    lines.append('<h2 id="review-needed">Review Needed</h2>')
 
     review_needed = _get_review_needed(scored_postings)
 
@@ -991,7 +1047,7 @@ def _append_html_tracked_applications_section(
     lines: list[str],
     scored_postings: list[ScoredPosting],
 ) -> None:
-    lines.append("<h2>Tracked Applications</h2>")
+    lines.append('<h2 id="tracked-applications">Tracked Applications</h2>')
 
     tracked_applications = _get_tracked_applications(scored_postings)
 
@@ -1007,7 +1063,7 @@ def _append_html_new_jobs_section(
     lines: list[str],
     new_scored_postings: list[ScoredPosting],
 ) -> None:
-    lines.append("<h2>New Jobs</h2>")
+    lines.append('<h2 id="new-jobs">New Jobs</h2>')
 
     if not new_scored_postings:
         lines.append("<p>No new actionable jobs were found in the latest scan.</p>")
@@ -1024,7 +1080,9 @@ def _append_html_omitted_jobs_section(
     omitted_postings = _get_omitted_postings(scored_postings)
     ordered_omitted_postings = _get_ordered_omitted_postings(omitted_postings)
 
-    lines.append("<h2>Passed / Not Recommended</h2>")
+    lines.append(
+        '<h2 id="passed-not-recommended">Passed / Not Recommended</h2>'
+    )
 
     if not omitted_postings:
         lines.append("<p>No passed jobs to show.</p>")
@@ -1141,7 +1199,7 @@ def _append_html_unscored_jobs_section(
     lines: list[str],
     postings: list[JobPosting],
 ) -> None:
-    lines.append("<h2>Jobs</h2>")
+    lines.append('<h2 id="jobs">Jobs</h2>')
 
     if not postings:
         lines.append("<p>No jobs were collected during this scan.</p>")

@@ -798,8 +798,11 @@ top_matches:
     assert "<strong>Top match score threshold:</strong> 1" in report_text
     assert "<strong>Review-needed score threshold:</strong> 100" in report_text
 
-    assert "<h2>Top Matches</h2>" in report_text
-    assert "<h2>Passed / Not Recommended</h2>" in report_text
+    assert '<h2 id="top-matches">Top Matches</h2>' in report_text
+    assert (
+        '<h2 id="passed-not-recommended">Passed / Not Recommended</h2>'
+        in report_text
+    )
     assert "<h2>All Jobs</h2>" not in report_text
     assert "Senior Infrastructure Engineer" in report_text
     assert "https://boards.greenhouse.io/exampleai/jobs/123" in report_text

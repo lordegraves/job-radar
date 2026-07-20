@@ -6,7 +6,7 @@ from job_radar.eligibility import EligibilityReason, EligibilityResult
 from job_radar.models import JobPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.html_report import render_html_report, write_html_report
-from job_radar.report_models import ScanReport
+from job_radar.report_models import ScanError, ScanReport
 from job_radar.scored_posting import ScoredPosting
 
 
@@ -63,6 +63,36 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     html = render_html_report(report)
 
     assert "<h1>junior Report</h1>" in html
+    assert 'class="table-of-contents"' in html
+    assert '<h2 id="summary">Summary</h2>' in html
+    assert '<a href="#summary">Summary</a>' in html
+    assert '<a href="#top-matches">Top Matches</a>' in html
+    assert (
+        '<a href="#northern-colorado-highlights">'
+        "Northern Colorado Highlights</a>"
+        in html
+    )
+    assert '<a href="#review-needed">Review Needed</a>' in html
+    assert '<a href="#tracked-applications">Tracked Applications</a>' in html
+    assert '<a href="#new-jobs">New Jobs</a>' in html
+    assert (
+        '<a href="#passed-not-recommended">Passed / Not Recommended</a>'
+        in html
+    )
+    assert '<a href="#collector-errors">Collector Errors</a>' not in html
+    assert '<h2 id="top-matches">Top Matches</h2>' in html
+    assert (
+        '<h2 id="northern-colorado-highlights">'
+        "Northern Colorado Highlights</h2>"
+        in html
+    )
+    assert '<h2 id="review-needed">Review Needed</h2>' in html
+    assert '<h2 id="tracked-applications">Tracked Applications</h2>' in html
+    assert '<h2 id="new-jobs">New Jobs</h2>' in html
+    assert (
+        '<h2 id="passed-not-recommended">Passed / Not Recommended</h2>'
+        in html
+    )
     assert "<strong>Generated at:</strong> 2026-06-24 12:34 UTC" in html
     assert "<strong>Actionable jobs stored:</strong> 1" in html
     assert "<strong>Jobs not actionable:</strong> 0" in html
@@ -73,7 +103,7 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
         "Data Center Design Execution Lead</a>"
         in html
     )
-    assert "<h2>Passed / Not Recommended</h2>" in html
+    assert '<h2 id="passed-not-recommended">Passed / Not Recommended</h2>' in html
 
     assert "<style>" in html
     assert 'class="summary"' in html
@@ -247,7 +277,7 @@ def test_render_html_report_includes_passed_job_details() -> None:
 
     html = render_html_report(report)
 
-    assert "<h2>Passed / Not Recommended</h2>" in html
+    assert '<h2 id="passed-not-recommended">Passed / Not Recommended</h2>' in html
     assert "<strong>Omitted jobs audit:</strong>" in html
     assert "<strong>Risk / pass signal summary:</strong>" in html
     assert html.count("One job may appear in more than one signal count.") == 2
@@ -431,6 +461,32 @@ def test_render_html_report_includes_tracker_action_summary() -> None:
     assert html.index("<strong>Tracker action summary:</strong>") < html.index(
         "<strong>Tracker workflow summary:</strong>"
     )
+
+
+def test_render_html_report_links_to_collector_errors_when_present() -> None:
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=0,
+        jobs_new=0,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[
+            ScanError(
+                company_key="example",
+                company_name="Example",
+                source_type="greenhouse",
+                message="Temporary collection failure.",
+            ),
+        ],
+        postings=[],
+    )
+
+    html = render_html_report(report)
+
+    assert '<a href="#collector-errors">Collector Errors</a>' in html
+    assert '<h2 id="collector-errors">Collector Errors</h2>' in html
+    assert '<a href="#jobs">Jobs</a>' in html
+    assert '<h2 id="jobs">Jobs</h2>' in html
 
 
 def test_write_html_report_writes_file(tmp_path: Path) -> None:
@@ -861,7 +917,7 @@ def test_render_html_report_styles_track_status_as_tracked_application() -> None
 
     html = render_html_report(report)
 
-    assert "<h2>Tracked Applications</h2>" in html
+    assert '<h2 id="tracked-applications">Tracked Applications</h2>' in html
     assert '<section class="job-card tracked-application">' in html
     assert '<section class="job-card review-needed">' not in html
     assert '<section class="job-card top-match">' not in html
