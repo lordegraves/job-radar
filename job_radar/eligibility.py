@@ -23,6 +23,21 @@ ARRANGEMENT_REMOTE = "Remote"
 ARRANGEMENT_HYBRID = "Hybrid"
 ARRANGEMENT_ON_SITE = "On-site"
 
+EMPLOYMENT_FULL_TIME = "Full-time"
+EMPLOYMENT_PART_TIME = "Part-time"
+EMPLOYMENT_CONTRACT = "Contract"
+EMPLOYMENT_TEMPORARY = "Temporary"
+EMPLOYMENT_SEASONAL = "Seasonal"
+EMPLOYMENT_INTERNSHIP = "Internship or apprenticeship"
+
+SCHEDULE_ANY = "Any schedule"
+SCHEDULE_DAY = "Day shift"
+SCHEDULE_EVENING = "Evening shift"
+SCHEDULE_NIGHT = "Night shift"
+SCHEDULE_WEEKDAYS = "Weekdays"
+SCHEDULE_WEEKENDS = "Weekends accepted"
+SCHEDULE_FLEXIBLE = "Flexible schedule"
+
 
 @dataclass(frozen=True)
 class EligibilityReason:
@@ -66,6 +81,18 @@ def evaluate_practical_eligibility(
         _evaluate_compensation_eligibility(
             preferences=preferences,
             compensation=compensation,
+        ),
+        _evaluate_employment_type_eligibility(
+            posting=posting,
+            preferences=preferences,
+        ),
+        _evaluate_schedule_eligibility(
+            posting=posting,
+            preferences=preferences,
+        ),
+        _evaluate_travel_eligibility(
+            posting=posting,
+            preferences=preferences,
         ),
     )
     evaluated_results = tuple(result for result in results if result is not None)
@@ -145,6 +172,418 @@ def evaluate_workplace_eligibility(
         posting=posting,
         preferences=preferences,
         arrangement=arrangement,
+    )
+
+
+def _posting_text(posting: JobPosting) -> str:
+    return clean_text(
+        " ".join(
+            value
+            for value in (
+                posting.title,
+                posting.location,
+                posting.description,
+            )
+            if value
+        )
+    ).lower()
+
+
+def _evaluate_employment_type_eligibility(
+    *,
+    posting: JobPosting,
+    preferences: ProfilePreferences,
+) -> EligibilityResult | None:
+    if not preferences.employment_types:
+        return None
+
+    detected_types = _detect_employment_types(posting)
+
+    if not detected_types:
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="employment_type_unclear",
+                    message=(
+                        "The posting does not clearly identify an employment type "
+                        "that can be compared with this profile."
+                    ),
+                ),
+            ),
+        )
+
+    matching_types = tuple(
+        employment_type
+        for employment_type in detected_types
+        if employment_type in preferences.employment_types
+    )
+
+    if matching_types:
+        return EligibilityResult(
+            status=ELIGIBILITY_ELIGIBLE,
+            reasons=(
+                EligibilityReason(
+                    code="employment_type_selected",
+                    message=(
+                        f"The posting identifies the job as "
+                        f"{', '.join(matching_types)}, which this profile accepts."
+                    ),
+                ),
+            ),
+        )
+
+    return EligibilityResult(
+        status=ELIGIBILITY_NOT_ELIGIBLE,
+        reasons=(
+            EligibilityReason(
+                code="employment_type_not_selected",
+                message=(
+                    f"The posting identifies the job as "
+                    f"{', '.join(detected_types)}, which is not included in "
+                    "this profile's selected employment types."
+                ),
+            ),
+        ),
+    )
+
+
+def _detect_employment_types(posting: JobPosting) -> tuple[str, ...]:
+    text = _posting_text(posting)
+    detected: list[str] = []
+
+    markers = (
+        (
+            EMPLOYMENT_INTERNSHIP,
+            (
+                "internship",
+                "apprenticeship",
+                "apprentice role",
+                "apprentice position",
+            ),
+        ),
+        (
+            EMPLOYMENT_PART_TIME,
+            (
+                "part-time",
+                "part time",
+            ),
+        ),
+        (
+            EMPLOYMENT_FULL_TIME,
+            (
+                "full-time",
+                "full time",
+            ),
+        ),
+        (
+            EMPLOYMENT_TEMPORARY,
+            (
+                "temporary role",
+                "temporary position",
+                "temporary employment",
+                "temp role",
+                "temp position",
+            ),
+        ),
+        (
+            EMPLOYMENT_SEASONAL,
+            (
+                "seasonal role",
+                "seasonal position",
+                "seasonal employment",
+            ),
+        ),
+        (
+            EMPLOYMENT_CONTRACT,
+            (
+                "contract role",
+                "contract position",
+                "contract employment",
+                "contractor role",
+                "contractor position",
+                "employment type contract",
+                "job type contract",
+            ),
+        ),
+    )
+
+    for employment_type, employment_markers in markers:
+        if any(marker in text for marker in employment_markers):
+            detected.append(employment_type)
+
+    return tuple(detected)
+
+
+def _evaluate_schedule_eligibility(
+    *,
+    posting: JobPosting,
+    preferences: ProfilePreferences,
+) -> EligibilityResult | None:
+    selected_schedule = preferences.schedule_preference
+
+    if selected_schedule is None or selected_schedule == SCHEDULE_ANY:
+        return None
+
+    detected_schedules = _detect_schedule_requirements(posting)
+
+    if not detected_schedules:
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="schedule_unclear",
+                    message=(
+                        "The posting does not clearly identify a work schedule "
+                        "that can be compared with this profile."
+                    ),
+                ),
+            ),
+        )
+
+    if "On-call" in detected_schedules:
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="on_call_schedule_needs_review",
+                    message=(
+                        "The posting includes an on-call requirement that should "
+                        "be reviewed against this profile's schedule preference."
+                    ),
+                ),
+            ),
+        )
+
+    if selected_schedule == SCHEDULE_WEEKENDS:
+        if SCHEDULE_WEEKENDS in detected_schedules:
+            return EligibilityResult(
+                status=ELIGIBILITY_ELIGIBLE,
+                reasons=(
+                    EligibilityReason(
+                        code="schedule_matches_preference",
+                        message=(
+                            "The posting includes weekend work and this profile "
+                            "accepts weekends."
+                        ),
+                    ),
+                ),
+            )
+
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="schedule_needs_confirmation",
+                    message=(
+                        "The posting identifies a schedule, but the profile's "
+                        "weekend acceptance does not establish whether that "
+                        "schedule is preferred."
+                    ),
+                ),
+            ),
+        )
+
+    if selected_schedule in detected_schedules:
+        return EligibilityResult(
+            status=ELIGIBILITY_ELIGIBLE,
+            reasons=(
+                EligibilityReason(
+                    code="schedule_matches_preference",
+                    message=(
+                        f"The posting's {selected_schedule.lower()} matches this "
+                        "profile's schedule preference."
+                    ),
+                ),
+            ),
+        )
+
+    return EligibilityResult(
+        status=ELIGIBILITY_NOT_ELIGIBLE,
+        reasons=(
+            EligibilityReason(
+                code="schedule_conflicts_with_preference",
+                message=(
+                    f"The posting requires {', '.join(detected_schedules)}, but "
+                    f"this profile selected {selected_schedule.lower()}."
+                ),
+            ),
+        ),
+    )
+
+
+def _detect_schedule_requirements(posting: JobPosting) -> tuple[str, ...]:
+    text = _posting_text(posting)
+    detected: list[str] = []
+
+    markers = (
+        (SCHEDULE_NIGHT, ("night shift", "overnight shift", "third shift", "3rd shift")),
+        (SCHEDULE_EVENING, ("evening shift", "second shift", "2nd shift")),
+        (SCHEDULE_DAY, ("day shift", "first shift", "1st shift")),
+        (
+            SCHEDULE_WEEKENDS,
+            (
+                "weekends required",
+                "weekend work required",
+                "must work weekends",
+                "weekend shift",
+            ),
+        ),
+        (
+            SCHEDULE_WEEKDAYS,
+            (
+                "weekday schedule",
+                "weekdays only",
+                "monday through friday",
+                "monday-friday",
+            ),
+        ),
+        (
+            SCHEDULE_FLEXIBLE,
+            (
+                "flexible schedule",
+                "flexible work schedule",
+                "flexible hours",
+            ),
+        ),
+        (
+            "On-call",
+            (
+                "on-call",
+                "on call",
+            ),
+        ),
+    )
+
+    for schedule, schedule_markers in markers:
+        if any(marker in text for marker in schedule_markers):
+            detected.append(schedule)
+
+    return tuple(detected)
+
+
+def _evaluate_travel_eligibility(
+    *,
+    posting: JobPosting,
+    preferences: ProfilePreferences,
+) -> EligibilityResult | None:
+    if preferences.travel_tolerance is None:
+        return None
+
+    try:
+        maximum_travel = int(preferences.travel_tolerance.rstrip("%"))
+    except ValueError:
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="travel_preference_unclear",
+                    message=(
+                        "This profile's maximum travel preference could not be "
+                        "interpreted as a percentage."
+                    ),
+                ),
+            ),
+        )
+
+    required_travel = _extract_travel_percentage(posting)
+
+    if required_travel is not None:
+        if required_travel > maximum_travel:
+            return EligibilityResult(
+                status=ELIGIBILITY_NOT_ELIGIBLE,
+                reasons=(
+                    EligibilityReason(
+                        code="travel_exceeds_profile_limit",
+                        message=(
+                            f"The posting may require up to {required_travel}% "
+                            f"travel, above this profile's {maximum_travel}% limit."
+                        ),
+                    ),
+                ),
+            )
+
+        return EligibilityResult(
+            status=ELIGIBILITY_ELIGIBLE,
+            reasons=(
+                EligibilityReason(
+                    code="travel_within_profile_limit",
+                    message=(
+                        f"The posting may require up to {required_travel}% travel, "
+                        f"within this profile's {maximum_travel}% limit."
+                    ),
+                ),
+            ),
+        )
+
+    if _has_vague_travel_requirement(posting):
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="travel_percentage_unclear",
+                    message=(
+                        "The posting requires travel but does not provide a clear "
+                        "percentage to compare with this profile's limit."
+                    ),
+                ),
+            ),
+        )
+
+    return None
+
+
+def _extract_travel_percentage(posting: JobPosting) -> int | None:
+    text = _posting_text(posting)
+    ranges = re.findall(
+        r"(\d{1,3})\s*(?:-|–|to)\s*(\d{1,3})\s*%\s*travel",
+        text,
+    )
+    percentages = [
+        int(value)
+        for value in re.findall(
+            r"(?:up to\s*)?(\d{1,3})\s*%\s*travel",
+            text,
+        )
+    ]
+
+    for lower, upper in ranges:
+        percentages.extend((int(lower), int(upper)))
+
+    travel_first_ranges = re.findall(
+        r"travel(?:\s+required)?(?:\s+up to)?\s+"
+        r"(\d{1,3})\s*(?:-|–|to)\s*(\d{1,3})\s*%",
+        text,
+    )
+    travel_first_percentages = re.findall(
+        r"travel(?:\s+required)?(?:\s+up to)?\s+(\d{1,3})\s*%",
+        text,
+    )
+
+    for lower, upper in travel_first_ranges:
+        percentages.extend((int(lower), int(upper)))
+
+    percentages.extend(int(value) for value in travel_first_percentages)
+
+    valid_percentages = [
+        percentage for percentage in percentages if 0 <= percentage <= 100
+    ]
+
+    return max(valid_percentages) if valid_percentages else None
+
+
+def _has_vague_travel_requirement(posting: JobPosting) -> bool:
+    text = _posting_text(posting)
+
+    return any(
+        marker in text
+        for marker in (
+            "travel required",
+            "requires travel",
+            "travel is required",
+            "must travel",
+            "willingness to travel",
+        )
     )
 
 

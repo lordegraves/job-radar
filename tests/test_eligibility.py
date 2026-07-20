@@ -22,6 +22,7 @@ def make_posting(
     location: str | None = "Remote",
     remote_status: str | None = None,
     salary_text: str | None = None,
+    description: str = "Build Linux infrastructure.",
 ) -> JobPosting:
     return JobPosting(
         company_key="example",
@@ -31,7 +32,7 @@ def make_posting(
         source_url="https://example.com/jobs/123",
         title="Senior Infrastructure Engineer",
         location=location,
-        description="Build Linux infrastructure.",
+        description=description,
         remote_status=remote_status,
         salary_text=salary_text,
         canonical_key="example:senior-infrastructure-engineer:remote",
@@ -438,3 +439,183 @@ def test_remote_national_or_multi_location_job_remains_eligible(
     assert result is not None
     assert result.status == ELIGIBILITY_ELIGIBLE
     assert result.reasons[0].code == "remote_arrangement_selected"
+
+
+def test_selected_employment_type_is_eligible() -> None:
+    posting = make_posting(
+        description="This is a full-time infrastructure engineering position.",
+    )
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        employment_types=("Full-time",),
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[-1].code == "employment_type_selected"
+
+
+def test_unselected_employment_type_is_not_eligible() -> None:
+    posting = make_posting(
+        description="This is a contract role supporting Linux infrastructure.",
+    )
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        employment_types=("Full-time",),
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[-1].code == "employment_type_not_selected"
+
+
+def test_unclear_employment_type_needs_review() -> None:
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        employment_types=("Full-time",),
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=make_posting(),
+        preferences=preferences,
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NEEDS_REVIEW
+    assert result.reasons[-1].code == "employment_type_unclear"
+
+
+def test_matching_schedule_is_eligible() -> None:
+    posting = make_posting(
+        description="This position works the day shift.",
+    )
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        schedule_preference="Day shift",
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[-1].code == "schedule_matches_preference"
+
+
+def test_conflicting_schedule_is_not_eligible() -> None:
+    posting = make_posting(
+        description="This position works the night shift.",
+    )
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        schedule_preference="Day shift",
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[-1].code == "schedule_conflicts_with_preference"
+
+
+def test_on_call_schedule_needs_review() -> None:
+    posting = make_posting(
+        description="Participate in an on-call rotation.",
+    )
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        schedule_preference="Weekdays",
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NEEDS_REVIEW
+    assert result.reasons[-1].code == "on_call_schedule_needs_review"
+
+
+@pytest.mark.parametrize(
+    ("description", "travel_limit", "expected_status", "expected_code"),
+    [
+        (
+            "Travel required 10-20%.",
+            "20",
+            ELIGIBILITY_ELIGIBLE,
+            "travel_within_profile_limit",
+        ),
+        (
+            "Up to 25% travel is required.",
+            "10",
+            ELIGIBILITY_NOT_ELIGIBLE,
+            "travel_exceeds_profile_limit",
+        ),
+        (
+            "Travel is required for customer sites.",
+            "10",
+            ELIGIBILITY_NEEDS_REVIEW,
+            "travel_percentage_unclear",
+        ),
+    ],
+)
+def test_travel_requirements_are_compared_with_profile_limit(
+    description: str,
+    travel_limit: str,
+    expected_status: str,
+    expected_code: str,
+) -> None:
+    posting = make_posting(description=description)
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        travel_tolerance=travel_limit,
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == expected_status
+    assert result.reasons[-1].code == expected_code
+
+
+def test_any_schedule_does_not_create_schedule_uncertainty() -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            schedule_preference="Any schedule",
+        ),
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert [reason.code for reason in result.reasons] == [
+        "remote_arrangement_selected",
+    ]
