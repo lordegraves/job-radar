@@ -29,6 +29,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - A controlled legacy-profile migration service with read-only planning, private recovery bundles, destination-collision checks, atomic profile selection, and managed-file rollback on failure.
 - GUI-managed Search Preferences that save normalized occupations, structured locations and commute radii, job levels, employment types, schedules, workplace arrangements, compensation minimums, and travel percentages to the active managed profile without changing existing scoring behavior.
 - SQLite migration version 6 for structured occupation, location, and schedule preferences, protected by backup-before-migration and atomic rollback behavior.
+- Profile creation through Search Preferences, including duplicate-name protection, atomic creation and selection, safe cancellation, and a guided résumé-upload handoff.
 
 ### Changed
 

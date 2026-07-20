@@ -9,7 +9,7 @@ from pathlib import Path
 import job_radar.web_app as web_app_module
 
 from job_radar.history_models import JobHistoryRecord
-from job_radar.profile_storage import get_active_profile
+from job_radar.profile_storage import get_active_profile, list_profiles
 from job_radar.scan_lock import ScanAlreadyRunningError
 from job_radar.storage import (
     complete_scan_run,
@@ -3862,7 +3862,7 @@ candidate:
     assert "Large-scale Linux and HPC operations." in html
 
 
-def test_search_preferences_page_requires_a_managed_profile_for_saving(
+def test_search_preferences_page_can_create_a_managed_profile(
     tmp_path: Path,
 ) -> None:
     settings_file = tmp_path / "config" / "settings.yaml"
@@ -3910,8 +3910,9 @@ review_needed:
 
     assert response.status_code == 200
     assert "Search Preferences" in html
-    assert "Select a managed profile before saving" in html
-    assert "Save search preferences" in html
+    assert "Create a new profile" in html
+    assert 'name="display_name"' in html
+    assert "Create profile" in html
     assert "You are not running a job-board search from this page" in html
     assert "during company scans" in html
     assert "Find an occupation" in html
@@ -3951,6 +3952,77 @@ review_needed:
     assert "more major communities" in html
 
 
+def test_search_preferences_creates_profile_and_guides_resume_upload(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file), base_directory=str(tmp_path))
+    client = app.test_client()
+
+    response = client.post(
+        "/preferences",
+        data={
+            "profile_mode": "create",
+            "display_name": "Colorado Kitchen Work",
+            "occupation_selections_json": json.dumps(
+                [{"value": "35-2014.00", "label": "Cooks, Restaurant"}]
+            ),
+            "location_selections_json": "[]",
+            "responsibility-level": ["Entry-level", "Mid-level"],
+            "employment-type": ["Full-time", "Part-time"],
+            "workplace-arrangement": ["On-site"],
+            "schedule_preference": "Day shift",
+            "compensation_floor_usd": "60000",
+            "travel_percentage": "10",
+        },
+    )
+
+    assert response.status_code == 302
+    assert "profile_result=created_from_preferences" in response.headers["Location"]
+    assert response.headers["Location"].endswith("#resume-upload")
+    profile = get_active_profile(database_file)
+    assert profile is not None
+    assert profile.display_name == "Colorado Kitchen Work"
+    assert profile.preferences.target_roles == ("Cooks, Restaurant",)
+
+    handoff_page = client.get(response.headers["Location"]).get_data(as_text=True)
+    assert "Profile created." in handoff_page
+    assert "Upload a résumé to complete this profile." in handoff_page
+
+
+def test_search_preferences_rejects_duplicate_profile_name_without_partial_create(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file), base_directory=str(tmp_path))
+    client = app.test_client()
+    client.post("/profile/create", data={"display_name": "Existing Search"})
+
+    response = client.post(
+        "/preferences",
+        data={
+            "profile_mode": "create",
+            "display_name": "existing search",
+            "occupation_selections_json": "[]",
+            "location_selections_json": "[]",
+            "schedule_preference": "Any schedule",
+            "travel_percentage": "0",
+        },
+    )
+
+    assert response.status_code == 302
+    assert "mode=create" in response.headers["Location"]
+    assert len(list_profiles(database_file, include_archived=True)) == 1
+    error_page = client.get(response.headers["Location"]).get_data(as_text=True)
+    assert "A profile with that name already exists" in error_page
+
+
 def test_search_preferences_save_normalized_profile_data(tmp_path: Path) -> None:
     settings_file = tmp_path / "config" / "settings.yaml"
     database_file = tmp_path / "data" / "job_radar.sqlite3"
@@ -3963,6 +4035,8 @@ def test_search_preferences_save_normalized_profile_data(tmp_path: Path) -> None
     response = client.post(
         "/preferences",
         data={
+            "profile_mode": "edit",
+            "display_name": "Baker Search",
             "occupation_selections_json": json.dumps(
                 [{"value": "51-3011.00", "label": "Bakers"}]
             ),
@@ -4020,6 +4094,8 @@ def test_search_preferences_reject_invalid_values_without_changing_profile(
     response = client.post(
         "/preferences",
         data={
+            "profile_mode": "edit",
+            "display_name": "Safe Search",
             "occupation_selections_json": "[]",
             "location_selections_json": "[]",
             "responsibility-level": "Invented level",

@@ -8,9 +8,9 @@ from job_radar.profile_management import (
     build_profile_management_view,
     create_managed_profile,
     save_managed_profile_resume,
+    save_managed_search_profile,
     select_managed_profile,
     update_managed_profile_from_form,
-    update_managed_search_preferences,
 )
 from job_radar.profile_storage import ProfileStorageError
 from job_radar.preference_reference import (
@@ -64,6 +64,7 @@ def register_profile_routes(
             settings_path,
             base_directory=base_directory,
         )
+        create_new = request.args.get("mode", "").strip() == "create"
         active_managed_profile = next(
             (
                 managed
@@ -72,6 +73,8 @@ def register_profile_routes(
             ),
             None,
         )
+        if create_new:
+            active_managed_profile = None
         saved_preferences = (
             active_managed_profile.preferences
             if active_managed_profile is not None
@@ -117,13 +120,16 @@ def register_profile_routes(
             saved_preferences=saved_preferences,
             occupation_selections=occupation_selections,
             location_selections=location_selections,
+            create_new=create_new,
         )
 
     @app.post("/preferences")
     def save_preferences():
         try:
-            update_managed_search_preferences(
+            _, created = save_managed_search_profile(
                 settings_path,
+                display_name=request.form.get("display_name", ""),
+                create_new=request.form.get("profile_mode", "") == "create",
                 occupation_selections_json=request.form.get(
                     "occupation_selections_json", "[]"
                 ),
@@ -141,11 +147,21 @@ def register_profile_routes(
                 base_directory=base_directory,
             )
         except (ConfigError, ProfileStorageError, ValueError) as error:
+            create_mode = request.form.get("profile_mode", "") == "create"
             return redirect(
                 url_for(
                     "preferences",
                     preference_result="error",
                     preference_error=str(error),
+                    mode="create" if create_mode else None,
+                )
+            )
+        if created:
+            return redirect(
+                url_for(
+                    "profile",
+                    profile_result="created_from_preferences",
+                    _anchor="resume-upload",
                 )
             )
         return redirect(url_for("preferences", preference_result="saved"))

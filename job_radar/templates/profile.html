@@ -256,7 +256,11 @@
     </div>
     {% endif %}
 
-    {% if profile_result and profile_result != "error" %}
+    {% if profile_result == "created_from_preferences" %}
+    <div class="success">
+        <strong>Profile created.</strong> Upload a résumé to complete this profile.
+    </div>
+    {% elif profile_result and profile_result != "error" %}
     <div class="success">
         <strong>Profile saved.</strong> The managed-profile change is ready for future scans.
     </div>
@@ -323,13 +327,9 @@
     <h2>Manage profiles</h2>
     <p class="muted">Profiles keep each job search and résumé together inside junior. Archiving is reversible; profiles cannot be permanently deleted here.</p>
 
-    <form method="post" action="{{ url_for('create_profile_route') }}">
-        <label for="new-profile-name">New profile name</label>
-        <input id="new-profile-name" name="display_name" type="text" required>
-        <div class="actions">
-            <button type="submit">Create and select profile</button>
-        </div>
-    </form>
+    <div class="actions">
+        <a class="button-link" href="{{ url_for('preferences', mode='create') }}">Create a new profile</a>
+    </div>
 
     {% if profile_management.profiles %}
         {% for managed in profile_management.profiles %}
@@ -469,7 +469,7 @@
     {% endif %}
 </div>
 
-<div class="section">
+<div class="section" id="resume-upload">
     <h2>Replace resume</h2>
     <p class="muted">Supported formats: .md, .txt, .pdf, and .docx. junior validates and extracts the new file before replacing the active resume.</p>
 

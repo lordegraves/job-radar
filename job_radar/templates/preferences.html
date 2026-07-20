@@ -434,10 +434,17 @@
 {% endblock %}
 
 {% block content %}
+<form id="preferences-form" method="post" action="{{ url_for('save_preferences') }}">
+<input name="profile_mode" type="hidden" value="{{ 'create' if create_new else 'edit' }}">
 <div class="page-card">
     <h1 class="page-title">Search Preferences</h1>
-    <p class="muted">Build the profile junior will use to evaluate jobs for <strong>{{ profile.candidate_name or (active_managed_profile.display_name if active_managed_profile else "the active profile") }}</strong> during company scans.</p>
+    <p class="muted">{% if create_new or not active_managed_profile %}Create the profile{% else %}Edit the profile{% endif %} junior will use to evaluate jobs during company scans.</p>
     <p class="muted">You are not running a job-board search from this page. junior scans companies you deliberately chose, then uses this profile to sort the jobs it finds.</p>
+    <div style="max-width: 24rem; margin-top: 1rem;">
+        <label for="profile-name">Profile name</label>
+        <span class="field-help">Use a name that will help you recognize this job plan later.</span>
+        <input id="profile-name" name="display_name" type="text" value="{{ active_managed_profile.display_name if active_managed_profile else '' }}" autocomplete="off" required>
+    </div>
     {% if preference_result == "saved" %}
     <div class="preview-banner">
         <span class="preview-badge">Saved</span>
@@ -457,11 +464,13 @@
         </div>
     </div>
     {% else %}
-    <div class="error"><strong>Select a managed profile before saving.</strong> You can still explore the controls, but there is no managed profile available to receive these settings.</div>
+    <div class="preview-banner">
+        <span class="preview-badge">New</span>
+        <div><strong>Create a new profile.</strong> Complete the preferences below, then continue to résumé upload.</div>
+    </div>
     {% endif %}
 </div>
 
-<form id="preferences-form" method="post" action="{{ url_for('save_preferences') }}">
 <input id="occupation-selections-json" name="occupation_selections_json" type="hidden">
 <input id="location-selections-json" name="location_selections_json" type="hidden">
 <div class="preference-layout">
@@ -611,8 +620,8 @@
                 <ul id="location-summary"></ul>
             </div>
             <div class="preview-actions">
-                <button type="submit"{% if not active_managed_profile %} disabled{% endif %}>Save search preferences</button>
-                <button id="reset-preview" class="button-secondary" type="button">Discard unsaved changes</button>
+                <button type="submit">{{ "Create profile" if create_new or not active_managed_profile else "Save changes" }}</button>
+                <a class="button-link button-secondary" href="{{ url_for('profile') }}">Cancel</a>
             </div>
         </div>
     </aside>
@@ -800,8 +809,6 @@
         control.addEventListener("input", render);
         control.addEventListener("change", render);
     });
-
-    document.getElementById("reset-preview").addEventListener("click", () => window.location.reload());
 
     function removeOccupation(value) {
         state.occupations = state.occupations.filter((item) => item.value !== value);

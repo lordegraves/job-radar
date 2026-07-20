@@ -22,6 +22,7 @@ from job_radar.profile_models import (
     get_managed_resume_directory,
 )
 from job_radar.profile_storage import (
+    create_and_select_profile,
     create_profile,
     get_active_profile,
     get_profile,
@@ -191,6 +192,129 @@ def update_managed_search_preferences(
     if not update_profile(runtime_paths.database_path, updated):
         raise ConfigError("The selected profile no longer exists.")
     return updated
+
+
+def save_managed_search_profile(
+    settings_path: str | None,
+    *,
+    display_name: str,
+    create_new: bool,
+    occupation_selections_json: str,
+    location_selections_json: str,
+    seniority_levels: list[str],
+    employment_types: list[str],
+    work_arrangements: list[str],
+    schedule_preference: str,
+    compensation_floor_usd: str,
+    travel_percentage: str,
+    base_directory: str | Path | None = None,
+) -> tuple[ManagedProfile, bool]:
+    """Create a complete search profile or update the active one safely."""
+
+    normalized_name = display_name.strip()
+    if not normalized_name:
+        raise ConfigError("Enter a profile name.")
+
+    runtime_paths = _runtime_paths(settings_path, base_directory)
+    current = None if create_new else get_active_profile(runtime_paths.database_path)
+    _reject_duplicate_display_name(
+        runtime_paths.database_path,
+        normalized_name,
+        current_profile_id=current.profile_id if current else None,
+    )
+    preferences = _validated_search_preferences(
+        current.preferences if current else ProfilePreferences(),
+        occupation_selections_json=occupation_selections_json,
+        location_selections_json=location_selections_json,
+        seniority_levels=seniority_levels,
+        employment_types=employment_types,
+        work_arrangements=work_arrangements,
+        schedule_preference=schedule_preference,
+        compensation_floor_usd=compensation_floor_usd,
+        travel_percentage=travel_percentage,
+    )
+
+    if current is None:
+        profile = ManagedProfile(
+            profile_id=f"profile_{secrets.token_hex(8)}",
+            display_name=normalized_name,
+            preferences=preferences,
+        )
+        # Creation and active selection share one transaction, so a failed save
+        # cannot leave behind a partial or unexpectedly inactive profile.
+        return (
+            create_and_select_profile(runtime_paths.database_path, profile),
+            True,
+        )
+
+    updated = replace(
+        current,
+        display_name=normalized_name,
+        preferences=preferences,
+    )
+    if not update_profile(runtime_paths.database_path, updated):
+        raise ConfigError("The selected profile no longer exists.")
+    return updated, False
+
+
+def _validated_search_preferences(
+    existing: ProfilePreferences,
+    *,
+    occupation_selections_json: str,
+    location_selections_json: str,
+    seniority_levels: list[str],
+    employment_types: list[str],
+    work_arrangements: list[str],
+    schedule_preference: str,
+    compensation_floor_usd: str,
+    travel_percentage: str,
+) -> ProfilePreferences:
+    occupations = _occupation_preferences(occupation_selections_json)
+    locations = _location_preferences(location_selections_json)
+    levels = _allowed_selections(seniority_levels, JOB_LEVELS, "job level")
+    employment = _allowed_selections(
+        employment_types, EMPLOYMENT_TYPES, "employment type"
+    )
+    arrangements = _allowed_selections(
+        work_arrangements, WORKPLACE_ARRANGEMENTS, "workplace arrangement"
+    )
+    schedule = schedule_preference.strip()
+    if schedule not in SCHEDULE_PREFERENCES:
+        raise ConfigError("Choose a valid schedule preference.")
+    travel = _percentage(travel_percentage, "Maximum travel")
+
+    return replace(
+        existing,
+        target_roles=tuple(item.label for item in occupations),
+        seniority_levels=levels,
+        preferred_locations=tuple(item.label for item in locations),
+        work_arrangements=arrangements,
+        employment_types=employment,
+        compensation_floor_usd=_optional_non_negative_int(
+            compensation_floor_usd, "Minimum annual compensation"
+        ),
+        travel_tolerance=str(travel),
+        schedule_preference=schedule,
+        occupation_selections=occupations,
+        location_selections=locations,
+    )
+
+
+def _reject_duplicate_display_name(
+    database_path: Path,
+    display_name: str,
+    *,
+    current_profile_id: str | None,
+) -> None:
+    for profile in list_profiles(database_path, include_archived=True):
+        if (
+            profile.profile_id != current_profile_id
+            and profile.display_name.casefold() == display_name.casefold()
+        ):
+            raise ConfigError(
+                "A profile with that name already exists. "
+                "Choose a different name or use the existing profile."
+            )
 
 
 def select_managed_profile(
