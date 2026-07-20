@@ -186,7 +186,7 @@ def test_report_snapshot_persists_eligibility_details(tmp_path: Path) -> None:
 
     write_report_snapshot(snapshot_path, report)
     loaded_snapshot = load_report_snapshot(snapshot_path)
-    loaded_job = loaded_snapshot.top_matches[0]
+    loaded_job = loaded_snapshot.review_needed[0]
 
     assert loaded_snapshot.schema_version == 2
     assert loaded_job.eligibility_status == "needs_review"

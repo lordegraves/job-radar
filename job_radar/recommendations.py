@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from job_radar.eligibility import (
+    ELIGIBILITY_NEEDS_REVIEW,
+    ELIGIBILITY_NOT_ELIGIBLE,
+)
 from job_radar.recommendation_constants import (
     ACTION_APPLY,
     ACTION_APPLY_WITH_RECRUITER,
@@ -225,11 +229,33 @@ def _get_hiring_probability_label(scored_posting: ScoredPosting) -> str:
 
 
 def _get_recommended_action(scored_posting: ScoredPosting) -> str:
-    # A tracked application is not a new lead. The scan may still see the
-    # posting, but reports should point back to the existing application.
+    # A tracked application is not a new lead. Preserve its existing workflow
+    # even when the current posting no longer matches practical preferences.
     if scored_posting.application is not None:
         return ACTION_TRACK_STATUS
 
+    if (
+        scored_posting.eligibility is not None
+        and scored_posting.eligibility.status == ELIGIBILITY_NOT_ELIGIBLE
+    ):
+        return ACTION_PASS
+
+    legacy_action = _get_legacy_recommended_action(scored_posting)
+
+    if (
+        scored_posting.eligibility is not None
+        and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
+        and legacy_action in {
+            ACTION_APPLY,
+            ACTION_APPLY_WITH_RECRUITER,
+        }
+    ):
+        return ACTION_HOLD
+
+    return legacy_action
+
+
+def _get_legacy_recommended_action(scored_posting: ScoredPosting) -> str:
     hiring_probability = _get_hiring_probability_label(scored_posting)
     technical_match = _get_technical_match_label(scored_posting)
     resume_match = _get_resume_match_label(scored_posting)
@@ -358,6 +384,29 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
     technical_match = _get_technical_match_label(scored_posting)
     resume_match = _get_resume_match_label(scored_posting)
     risks = _get_hiring_risk_flags(scored_posting)
+    eligibility_reason_text = _format_eligibility_reason_text(scored_posting)
+
+    if (
+        scored_posting.application is None
+        and scored_posting.eligibility is not None
+        and scored_posting.eligibility.status == ELIGIBILITY_NOT_ELIGIBLE
+    ):
+        return _append_history_rationale(
+            scored_posting,
+            f"Pass: practical eligibility does not match this profile. "
+            f"{eligibility_reason_text}",
+        )
+
+    if (
+        scored_posting.eligibility is not None
+        and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
+        and recommended_action == ACTION_HOLD
+    ):
+        return _append_history_rationale(
+            scored_posting,
+            f"Hold for eligibility review before applying. "
+            f"{eligibility_reason_text}",
+        )
 
     if recommended_action == ACTION_APPLY:
         return _append_history_rationale(
@@ -448,6 +497,24 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
     )
 
 
+def _format_eligibility_reason_text(
+    scored_posting: ScoredPosting,
+) -> str:
+    if scored_posting.eligibility is None:
+        return "No practical eligibility reasons were recorded."
+
+    messages = [
+        reason.message.strip()
+        for reason in scored_posting.eligibility.reasons
+        if reason.message.strip()
+    ]
+
+    if not messages:
+        return "No practical eligibility reasons were recorded."
+
+    return " ".join(messages)
+
+
 def _append_history_rationale(
     scored_posting: ScoredPosting,
     rationale: str,
@@ -484,6 +551,12 @@ def _is_actionable_posting(scored_posting: ScoredPosting) -> bool:
 
 def _is_top_match_display_posting(scored_posting: ScoredPosting) -> bool:
     if not scored_posting.top_match_eligible:
+        return False
+
+    if (
+        scored_posting.eligibility is not None
+        and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
+    ):
         return False
 
     if not _is_actionable_posting(scored_posting):

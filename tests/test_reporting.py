@@ -134,6 +134,93 @@ def test_render_html_report_displays_not_eligible_job_and_reasons() -> None:
         "Required travel exceeds the profile limit."
         in html
     )
+    assert '<section class="job-card top-match">' not in html
+    assert '<section class="job-card review-needed">' not in html
+    assert "<strong>Recommended action:</strong> Pass" in html
+    assert "Senior Infrastructure Engineer" in html
+
+
+def test_needs_review_eligibility_blocks_direct_apply_recommendation() -> None:
+    from job_radar.recommendations import _get_action_rationale
+    from job_radar.recommendations import _get_recommended_action
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(title="Senior Site Reliability Engineer")
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:site reliability",
+            "+10 body:linux",
+            "+8 body:cluster",
+            "+8 body:gpu",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        review_needed_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Very Strong",
+            evidence=[
+                "Linux infrastructure",
+                "cluster systems",
+                "reliability engineering",
+                "distributed compute",
+            ],
+            gaps=[],
+        ),
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_unknown",
+                    message="The posting does not provide usable compensation.",
+                ),
+            ),
+        ),
+    )
+
+    assert _get_recommended_action(scored_posting) == "Hold"
+    assert _get_action_rationale(scored_posting) == (
+        "Hold for eligibility review before applying. "
+        "The posting does not provide usable compensation."
+    )
+
+
+def test_tracked_application_overrides_not_eligible_recommendation() -> None:
+    from job_radar.recommendations import _get_recommended_action
+
+    posting = make_posting(title="Senior Site Reliability Engineer")
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:site reliability",
+            "+10 body:linux",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        review_needed_eligible=True,
+        eligibility=EligibilityResult(
+            status="not_eligible",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_below_floor",
+                    message="The advertised compensation is below the profile minimum.",
+                ),
+            ),
+        ),
+        application=ApplicationRecord(
+            job_radar_id=posting.job_radar_id,
+            company_name="Example AI",
+            role_title="Senior Site Reliability Engineer",
+            source_url=posting.source_url,
+            status="interviewing",
+            outcome="interviewing",
+        ),
+    )
+
+    assert _get_recommended_action(scored_posting) == "Track Status"
 
 
 def test_render_html_report_includes_passed_job_details() -> None:

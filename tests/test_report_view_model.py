@@ -213,3 +213,74 @@ def test_build_report_view_model_routes_tracked_role_out_of_apply_sections() -> 
     assert view.email_scored_postings == []
     assert view.email_top_matches == []
     assert view.email_review_needed == []
+
+
+def test_not_eligible_role_is_excluded_from_action_sections() -> None:
+    posting = make_scored_posting(
+        title="Senior Infrastructure Engineer",
+        top_match_eligible=True,
+        eligibility=EligibilityResult(
+            status="not_eligible",
+            reasons=(
+                EligibilityReason(
+                    code="location_outside_selected_areas",
+                    message="The job location is outside this profile's selected areas.",
+                ),
+            ),
+        ),
+    )
+
+    view = build_report_view_model(scored_postings=[posting])
+
+    assert view.top_matches == []
+    assert view.review_needed == []
+    assert view.email_top_matches == []
+    assert view.email_review_needed == []
+
+
+def test_needs_review_role_moves_from_top_match_to_review_needed() -> None:
+    posting = make_scored_posting(
+        title="Senior Infrastructure Engineer",
+        top_match_eligible=True,
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_unknown",
+                    message="The posting does not provide usable compensation.",
+                ),
+            ),
+        ),
+    )
+
+    view = build_report_view_model(scored_postings=[posting])
+
+    assert view.top_matches == []
+    assert view.review_needed == [posting]
+    assert view.email_top_matches == []
+    assert view.email_review_needed == [posting]
+
+
+def test_tracked_role_preserves_track_status_when_not_eligible() -> None:
+    tracked = make_scored_posting(
+        title="Tracked Infrastructure Engineer",
+        top_match_eligible=True,
+        review_needed_eligible=True,
+        tracked=True,
+        eligibility=EligibilityResult(
+            status="not_eligible",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_below_floor",
+                    message="The advertised compensation is below the profile minimum.",
+                ),
+            ),
+        ),
+    )
+
+    view = build_report_view_model(scored_postings=[tracked])
+
+    assert view.top_matches == []
+    assert view.review_needed == []
+    assert view.tracked_applications == [tracked]
+    assert view.email_scored_postings == []

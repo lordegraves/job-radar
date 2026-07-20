@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from job_radar.eligibility import ELIGIBILITY_NEEDS_REVIEW
 from job_radar.recommendation_constants import (
     ACTION_HOLD,
     ACTION_PASS,
@@ -219,7 +220,15 @@ def is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
     if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
         return False
 
-    return scored_posting.review_needed_eligible
+    eligibility_needs_review = (
+        scored_posting.eligibility is not None
+        and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
+    )
+
+    return scored_posting.review_needed_eligible or (
+        eligibility_needs_review
+        and scored_posting.top_match_eligible
+    )
 
 
 def is_email_top_match_posting(scored_posting: ScoredPosting) -> bool:
@@ -230,11 +239,22 @@ def is_email_top_match_posting(scored_posting: ScoredPosting) -> bool:
 
 
 def is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
-    if _get_recommended_action(scored_posting) in {
-        ACTION_HOLD,
+    recommended_action = _get_recommended_action(scored_posting)
+    eligibility_needs_review = (
+        scored_posting.eligibility is not None
+        and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
+    )
+
+    if recommended_action in {
         ACTION_PASS,
         ACTION_TRACK_STATUS,
     }:
         return False
 
-    return scored_posting.review_needed_eligible
+    if recommended_action == ACTION_HOLD and not eligibility_needs_review:
+        return False
+
+    return scored_posting.review_needed_eligible or (
+        eligibility_needs_review
+        and scored_posting.top_match_eligible
+    )
