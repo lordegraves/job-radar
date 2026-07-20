@@ -146,6 +146,8 @@ def make_report_snapshot_job(
     history_context: str = "None",
     history_risk: str | None = None,
     job_radar_id: str = "",
+    eligibility_status: str | None = None,
+    eligibility_reasons: list[str] | None = None,
 ) -> dict[str, object]:
     return {
         "title": title,
@@ -165,6 +167,8 @@ def make_report_snapshot_job(
         "history_context": history_context,
         "history_risk": history_risk,
         "job_radar_id": job_radar_id,
+        "eligibility_status": eligibility_status,
+        "eligibility_reasons": eligibility_reasons,
     }
 
 
@@ -658,6 +662,11 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
                 ),
                 history_risk="neutral: prior_similar_role",
                 job_radar_id="jr-runpod-655a542b",
+                eligibility_status="needs_review",
+                eligibility_reasons=[
+                    "The posting does not provide usable compensation.",
+                    "The posting includes an on-call requirement.",
+                ],
             )
         ],
         review_needed=[
@@ -691,6 +700,12 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "Site Reliability Engineer" in html
     assert "Remote - USA" in html
     assert "Hiring probability: High" in html
+    assert "Eligibility: Needs Review" in html
+    assert "Eligibility summary" in html
+    assert "Needs Review: 1" in html
+    assert "Eligibility review" in html
+    assert "The posting does not provide usable compensation." in html
+    assert "The posting includes an on-call requirement." in html
     assert "Recommended action" in html
     assert "Apply" in html
     assert "Why this is worth acting on" in html
@@ -779,6 +794,9 @@ def test_report_section_view_shows_new_jobs_from_latest_scan(tmp_path: Path) -> 
     assert "Remote - USA" in html
     assert "$180,000 - $220,000" in html
     assert "Hiring probability: Medium" in html
+    assert "Eligibility: Not Evaluated" in html
+    assert "Not Evaluated: 1" in html
+    assert "Eligibility review" not in html
     assert "Tailor Resume" in html
     assert "Strong infrastructure fit" in html
     assert "linux, infrastructure, automation, reliability" in html

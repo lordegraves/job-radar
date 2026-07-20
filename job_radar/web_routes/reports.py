@@ -113,6 +113,9 @@ class ReportJobCardView:
     history_context: str | None
     history_risk: str | None
     job_radar_id: str | None
+    eligibility_status: str | None
+    eligibility_label: str
+    eligibility_reasons: tuple[str, ...]
     tracker_add_url: str
 
 
@@ -160,6 +163,7 @@ def register_report_routes(
         snapshot = load_report_snapshot(snapshot_path)
         job_cards: list[ReportJobCardView] = []
         collector_errors: list[ReportCollectorErrorView] = []
+        eligibility_counts: dict[str, int] = {}
 
         if section_name == "collector_errors":
             collector_errors = [
@@ -172,6 +176,7 @@ def register_report_routes(
                 _build_report_job_card(job)
                 for job in snapshot_jobs
             ]
+            eligibility_counts = _count_eligibility_labels(job_cards)
 
         return render_template(
             "report_section.html",
@@ -181,6 +186,7 @@ def register_report_routes(
             empty_message=section_details["empty_message"],
             job_cards=job_cards,
             collector_errors=collector_errors,
+            eligibility_counts=eligibility_counts,
             html_report_name=html_report_name,
             html_report_exists=html_report_path.is_file(),
         )
@@ -371,6 +377,38 @@ def _build_report_collector_error_view(
     )
 
 
+def _format_eligibility_label(eligibility_status: str | None) -> str:
+    if eligibility_status is None:
+        return "Not Evaluated"
+
+    return {
+        "eligible": "Eligible",
+        "needs_review": "Needs Review",
+        "not_eligible": "Not Eligible",
+    }.get(eligibility_status, eligibility_status)
+
+
+def _count_eligibility_labels(
+    job_cards: list[ReportJobCardView],
+) -> dict[str, int]:
+    counts = {
+        "Eligible": 0,
+        "Needs Review": 0,
+        "Not Eligible": 0,
+        "Not Evaluated": 0,
+    }
+
+    for job_card in job_cards:
+        label = job_card.eligibility_label
+        counts[label] = counts.get(label, 0) + 1
+
+    return {
+        label: count
+        for label, count in counts.items()
+        if count > 0
+    }
+
+
 def _build_report_job_card(
     job: ReportSnapshotJob,
 ) -> ReportJobCardView:
@@ -392,6 +430,9 @@ def _build_report_job_card(
         history_context=job.history_context,
         history_risk=job.history_risk,
         job_radar_id=job.job_radar_id,
+        eligibility_status=job.eligibility_status,
+        eligibility_label=_format_eligibility_label(job.eligibility_status),
+        eligibility_reasons=tuple(job.eligibility_reasons or []),
         tracker_add_url=url_for(
             "add_tracker_application",
             job_radar_id=job.job_radar_id,

@@ -80,6 +80,47 @@
         padding: 4px 10px;
     }
 
+    .eligibility-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    .eligibility-summary span,
+    .eligibility-badge {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        display: inline-flex;
+        padding: 5px 10px;
+    }
+
+    .eligibility-eligible {
+        border-color: rgba(92, 184, 92, 0.65);
+    }
+
+    .eligibility-needs-review {
+        border-color: rgba(255, 193, 7, 0.65);
+    }
+
+    .eligibility-not-eligible {
+        border-color: rgba(220, 83, 83, 0.7);
+    }
+
+    .eligibility-not-evaluated {
+        color: var(--muted);
+    }
+
+    .eligibility-reasons {
+        margin: 6px 0 0 20px;
+        padding: 0;
+    }
+
+    .eligibility-reasons li {
+        margin: 4px 0;
+    }
+
     .job-action {
         background: rgba(96, 205, 255, 0.1);
         border: 1px solid rgba(96, 205, 255, 0.35);
@@ -244,6 +285,14 @@
         <a href="{{ url_for('report_view', report_name=html_report_name) }}">Open full HTML report</a>
         {% endif %}
     </div>
+
+    {% if eligibility_counts %}
+    <div class="eligibility-summary" aria-label="Eligibility summary">
+        {% for label, count in eligibility_counts.items() %}
+        <span>{{ label }}: {{ count }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
 </section>
 
 {% if collector_errors %}
@@ -288,6 +337,9 @@
                     {% if job.hiring_probability %}
                     <span>Hiring probability: {{ job.hiring_probability }}</span>
                     {% endif %}
+                    <span class="eligibility-badge eligibility-{{ job.eligibility_label|lower|replace(' ', '-') }}">
+                        Eligibility: {{ job.eligibility_label }}
+                    </span>
                 </div>
             </div>
 
@@ -310,6 +362,17 @@
         <section class="job-section">
             <h2>Matched because</h2>
             <p>{{ job.why_matched }}</p>
+        </section>
+        {% endif %}
+
+        {% if job.eligibility_reasons %}
+        <section class="job-section">
+            <h2>Eligibility review</h2>
+            <ul class="eligibility-reasons">
+                {% for reason in job.eligibility_reasons %}
+                <li>{{ reason }}</li>
+                {% endfor %}
+            </ul>
         </section>
         {% endif %}
 
