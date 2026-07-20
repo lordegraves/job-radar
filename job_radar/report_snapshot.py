@@ -5,25 +5,14 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from job_radar.eligibility import EligibilityResult
-from job_radar.recommendations import (
-    _format_hiring_risk_flags,
-    _get_action_rationale,
-    _get_compensation_range_label,
-    _get_hiring_probability_label,
-    _get_recommended_action,
-    _get_resume_match_label,
-    _get_technical_match_label,
-)
 from job_radar.html_report import (
     PASSED_JOBS_REPORT_LIMIT,
-    _format_history_context,
-    _format_history_risk,
-    _format_match_summary,
     _get_omitted_postings,
     _get_ordered_omitted_postings,
 )
 from job_radar.report_models import ScanReport
 from job_radar.report_view_model import build_report_view_model
+from job_radar.report_view_model import build_job_output_view_model
 from job_radar.scored_posting import ScoredPosting
 
 
@@ -178,7 +167,7 @@ def _build_snapshot_job(
     scored_posting: ScoredPosting,
 ) -> ReportSnapshotJob:
     posting = scored_posting.posting
-    history_risk = _format_history_risk(scored_posting)
+    job = build_job_output_view_model(scored_posting)
 
     return ReportSnapshotJob(
         title=posting.title,
@@ -186,19 +175,19 @@ def _build_snapshot_job(
         company=posting.company_name,
         location=posting.location,
         compensation=_clean_optional_value(
-            _get_compensation_range_label(scored_posting)
+            job.compensation_range
         ),
-        hiring_probability=_get_hiring_probability_label(scored_posting),
-        recommended_action=_get_recommended_action(scored_posting),
-        action_rationale=_get_action_rationale(scored_posting),
-        why_matched=_format_match_summary(scored_posting.score_reasons),
-        technical_match=_get_technical_match_label(scored_posting),
-        resume_match=_get_resume_match_label(scored_posting),
-        resume_evidence=_format_resume_evidence(scored_posting),
-        resume_gaps=_format_resume_gaps(scored_posting),
-        hiring_risks=_format_hiring_risk_flags(scored_posting),
-        history_context=_format_history_context(scored_posting),
-        history_risk=None if history_risk == "None" else history_risk,
+        hiring_probability=job.hiring_probability,
+        recommended_action=job.recommended_action,
+        action_rationale=job.action_rationale,
+        why_matched=job.why_matched,
+        technical_match=job.technical_match,
+        resume_match=job.resume_match,
+        resume_evidence=job.resume_evidence,
+        resume_gaps=job.resume_gaps,
+        hiring_risks=job.hiring_risks,
+        history_context=job.history_context,
+        history_risk=None if job.history_risk == "None" else job.history_risk,
         job_radar_id=posting.job_radar_id,
         eligibility_status=_get_eligibility_status(scored_posting.eligibility),
         eligibility_reasons=_get_eligibility_reasons(scored_posting.eligibility),
@@ -221,18 +210,6 @@ def _get_eligibility_reasons(
         return None
 
     return [reason.message for reason in eligibility.reasons]
-
-
-def _format_resume_evidence(scored_posting: ScoredPosting) -> str:
-    from job_radar.recommendations import _format_resume_evidence
-
-    return _format_resume_evidence(scored_posting)
-
-
-def _format_resume_gaps(scored_posting: ScoredPosting) -> str:
-    from job_radar.recommendations import _format_resume_gaps
-
-    return _format_resume_gaps(scored_posting)
 
 
 def _clean_optional_value(value: str | None) -> str | None:

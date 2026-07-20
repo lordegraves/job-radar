@@ -8,11 +8,107 @@ from job_radar.recommendation_constants import (
     ACTION_TRACK_STATUS,
 )
 from job_radar.recommendations import (
+    _format_hiring_risk_flags,
+    _format_resume_evidence,
+    _format_resume_gaps,
+    _get_action_rationale,
+    _get_compensation_label,
+    _get_compensation_range_label,
+    _get_hiring_probability_label,
     _get_recommended_action,
+    _get_resume_match_label,
+    _get_technical_match_label,
     _is_actionable_posting,
     _is_top_match_display_posting,
 )
 from job_radar.scored_posting import ScoredPosting
+
+
+@dataclass(frozen=True)
+class JobOutputViewModel:
+    """Prepare common job facts once for every report output format."""
+
+    scored_posting: ScoredPosting
+    title: str
+    company: str
+    location: str
+    source_type: str
+    source_url: str | None
+    canonical_key: str
+    job_radar_id: str
+    salary_text: str | None
+    score: int
+    technical_match: str
+    resume_match: str
+    resume_evidence: str
+    resume_gaps: str
+    compensation: str
+    compensation_range: str
+    hiring_probability: str
+    recommended_action: str
+    action_rationale: str
+    hiring_risks: str
+    why_matched: str
+    history_context: str
+    history_risk: str
+
+
+def build_job_output_view_model(
+    scored_posting: ScoredPosting,
+) -> JobOutputViewModel:
+    posting = scored_posting.posting
+    history_context = "; ".join(scored_posting.history_context or []) or "None"
+    history_risk = scored_posting.history_risk_level or "None"
+
+    if scored_posting.history_risk_level and scored_posting.history_risk_reasons:
+        history_risk = (
+            f"{scored_posting.history_risk_level}: "
+            f"{', '.join(scored_posting.history_risk_reasons)}"
+        )
+
+    return JobOutputViewModel(
+        scored_posting=scored_posting,
+        title=posting.title or "Unknown",
+        company=posting.company_name or "Unknown",
+        location=posting.location or "Unknown",
+        source_type=posting.source_type,
+        source_url=posting.source_url,
+        canonical_key=posting.canonical_key,
+        job_radar_id=posting.job_radar_id,
+        salary_text=posting.salary_text,
+        score=scored_posting.score,
+        technical_match=_get_technical_match_label(scored_posting),
+        resume_match=_get_resume_match_label(scored_posting),
+        resume_evidence=_format_resume_evidence(scored_posting),
+        resume_gaps=_format_resume_gaps(scored_posting),
+        compensation=_get_compensation_label(scored_posting),
+        compensation_range=_get_compensation_range_label(scored_posting),
+        hiring_probability=_get_hiring_probability_label(scored_posting),
+        recommended_action=_get_recommended_action(scored_posting),
+        action_rationale=_get_action_rationale(scored_posting),
+        hiring_risks=_format_hiring_risk_flags(scored_posting),
+        why_matched=_format_match_summary(scored_posting.score_reasons),
+        history_context=history_context,
+        history_risk=history_risk,
+    )
+
+
+def _format_match_summary(score_reasons: list[str]) -> str:
+    if not score_reasons:
+        return "No scoring reasons recorded"
+
+    labels: list[str] = []
+
+    for reason in score_reasons:
+        if reason.startswith("-") or ":" not in reason:
+            continue
+
+        keyword = reason.split(":", maxsplit=1)[1].strip()
+
+        if keyword and keyword not in labels:
+            labels.append(keyword)
+
+    return ", ".join(labels) if labels else "No positive match reasons"
 
 
 @dataclass(frozen=True)

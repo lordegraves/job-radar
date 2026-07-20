@@ -1,7 +1,10 @@
 """Tests how scored jobs are divided among report and email sections."""
 
 from job_radar.models import JobPosting
-from job_radar.report_view_model import build_report_view_model
+from job_radar.report_view_model import (
+    build_job_output_view_model,
+    build_report_view_model,
+)
 from job_radar.scored_posting import ScoredPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
 
@@ -88,6 +91,29 @@ def test_build_report_view_model_partitions_report_and_email_sections() -> None:
     ]
     assert view.email_top_matches == [top_match]
     assert view.email_review_needed == [review_needed]
+
+
+def test_build_job_output_view_model_prepares_shared_display_values() -> None:
+    scored_posting = make_scored_posting(
+        title="Infrastructure Engineer",
+        top_match_eligible=True,
+    )
+
+    job = build_job_output_view_model(scored_posting)
+
+    assert job.title == "Infrastructure Engineer"
+    assert job.company == "Example"
+    assert job.location == "Remote"
+    assert job.job_radar_id == scored_posting.posting.job_radar_id
+    assert job.score == 140
+    assert job.technical_match
+    assert job.resume_match
+    assert job.compensation
+    assert job.hiring_probability
+    assert job.recommended_action
+    assert job.action_rationale
+    assert job.hiring_risks
+    assert job.why_matched == "infrastructure, linux, remote"
 
 
 def test_build_report_view_model_applies_email_limit() -> None:

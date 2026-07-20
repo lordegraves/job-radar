@@ -7,6 +7,7 @@ from pathlib import Path
 from job_radar.models import JobPosting
 from job_radar.report_models import ScanError, ScanReport
 from job_radar.report_view_model import (
+    build_job_output_view_model,
     build_report_view_model,
     is_review_needed_report_posting,
     is_top_match_report_posting,
@@ -34,8 +35,6 @@ from job_radar.recommendation_constants import (
 )
 from job_radar.recommendations import (
     _format_hiring_risk_flags,
-    _get_action_rationale,
-    _get_hiring_probability_label,
     _get_hiring_risk_flags,
     _get_recommendation_summary_counts,
     _get_recommended_action,
@@ -1076,29 +1075,29 @@ def _append_html_passed_posting(
     lines: list[str],
     scored_posting: ScoredPosting,
 ) -> None:
-    posting = scored_posting.posting
+    job = build_job_output_view_model(scored_posting)
 
     lines.extend(
         [
             '<section class="job-card">',
-            f'<h3><a href="{escape(posting.source_url, quote=True)}" '
+            f'<h3><a href="{escape(job.source_url, quote=True)}" '
             'target="_blank" rel="noopener noreferrer">'
-            f"{escape(posting.title)}</a></h3>",
+            f"{escape(job.title)}</a></h3>",
             "<ul>",
-            f"<li><strong>Company:</strong> {escape(posting.company_name)}</li>",
-            f"<li><strong>Score:</strong> {scored_posting.score}</li>",
+            f"<li><strong>Company:</strong> {escape(job.company)}</li>",
+            f"<li><strong>Score:</strong> {job.score}</li>",
             f"<li><strong>Location:</strong> "
-            f"{escape(posting.location or 'Unknown')}</li>",
+            f"{escape(job.location)}</li>",
             f"<li><strong>Recommended action:</strong> "
-            f"{escape(_get_recommended_action(scored_posting))}</li>",
+            f"{escape(job.recommended_action)}</li>",
             f"<li><strong>Why not recommended:</strong> "
             f"{escape(_format_pass_reason(scored_posting))}</li>",
             f"<li><strong>Hiring risks:</strong> "
-            f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
+            f"{escape(job.hiring_risks)}</li>",
             f"<li><strong>Job Radar ID:</strong> "
-            f"<code>{escape(posting.job_radar_id)}</code></li>",
+            f"<code>{escape(job.job_radar_id)}</code></li>",
             f"<li><strong>Posting:</strong> "
-            f'<a href="{escape(posting.source_url, quote=True)}" '
+            f'<a href="{escape(job.source_url, quote=True)}" '
             'target="_blank" rel="noopener noreferrer">'
             "View posting</a></li>",
             "</ul>",
@@ -1173,9 +1172,10 @@ def _append_html_scored_posting(
     lines: list[str],
     scored_posting: ScoredPosting,
 ) -> None:
+    job = build_job_output_view_model(scored_posting)
     posting = scored_posting.posting
     section_class = "job-card"
-    recommended_action = _get_recommended_action(scored_posting)
+    recommended_action = job.recommended_action
 
     if recommended_action == ACTION_TRACK_STATUS:
         section_class = "job-card tracked-application"
@@ -1207,25 +1207,25 @@ def _append_html_scored_posting(
     lines.extend(
         [
             f"<li><strong>Why this matched:</strong> "
-            f"{escape(_format_match_summary(scored_posting.score_reasons))}</li>",
+            f"{escape(job.why_matched)}</li>",
             f"<li><strong>Technical match:</strong> "
-            f"{escape(_get_technical_match_label(scored_posting))}</li>",
+            f"{escape(job.technical_match)}</li>",
             f"<li><strong>Hiring probability:</strong> "
-            f"{escape(_get_hiring_probability_label(scored_posting))}</li>",
+            f"{escape(job.hiring_probability)}</li>",
             f"<li><strong>Recommended action:</strong> "
-            f"{escape(_get_recommended_action(scored_posting))}</li>",
+            f"{escape(job.recommended_action)}</li>",
             f"<li><strong>Action rationale:</strong> "
-            f"{escape(_get_action_rationale(scored_posting))}</li>",
+            f"{escape(job.action_rationale)}</li>",
             f"<li><strong>Hiring risks:</strong> "
-            f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
+            f"{escape(job.hiring_risks)}</li>",
             f"<li><strong>Job Radar ID:</strong> "
-            f"<code>{escape(posting.job_radar_id)}</code></li>",
+            f"<code>{escape(job.job_radar_id)}</code></li>",
             f"<li><strong>History context:</strong> "
-            f"{escape(_format_history_context(scored_posting))}</li>",
+            f"{escape(job.history_context)}</li>",
         ]
     )
 
-    history_risk = _format_history_risk(scored_posting)
+    history_risk = job.history_risk
 
     if history_risk != "None":
         lines.append(
@@ -1239,10 +1239,10 @@ def _append_html_scored_posting(
             f"<li><strong>Work location fit:</strong> "
             f"{escape(_format_work_arrangement(scored_posting))}</li>",
             f"<li><strong>Company:</strong> "
-            f"{escape(posting.company_name)}</li>",
-            f"<li><strong>Source:</strong> {escape(posting.source_type)}</li>",
+            f"{escape(job.company)}</li>",
+            f"<li><strong>Source:</strong> {escape(job.source_type)}</li>",
             f"<li><strong>Location:</strong> "
-            f"{escape(posting.location or 'Unknown')}</li>",
+            f"{escape(job.location)}</li>",
             f"<li><strong>Posting:</strong> "
             f'<a href="{escape(posting.source_url, quote=True)}" '
             'target="_blank" rel="noopener noreferrer">'

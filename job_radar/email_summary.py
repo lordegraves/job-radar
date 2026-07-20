@@ -11,22 +11,14 @@ from job_radar.recommendation_constants import (
 )
 
 from job_radar.report_view_model import (
+    build_job_output_view_model,
     build_report_view_model,
     is_email_review_needed_posting,
     is_email_top_match_posting,
 )
 from job_radar.recommendations import (
-    _format_hiring_risk_flags,
-    _format_resume_evidence,
-    _format_resume_gaps,
-    _get_action_rationale,
-    _get_compensation_label,
-    _get_compensation_range_label,
-    _get_hiring_probability_label,
     _get_recommendation_summary_counts,
     _get_recommended_action,
-    _get_resume_match_label,
-    _get_technical_match_label,
 )
 from job_radar.report_models import ScanReport
 from job_radar.scored_posting import ScoredPosting
@@ -328,25 +320,25 @@ def _append_email_posting_detail(
     index: int,
     section_type: str,
 ) -> None:
-    posting = scored_posting.posting
+    job = build_job_output_view_model(scored_posting)
 
     lines.extend(
         [
-            f"{index}. {_format_value(posting.title)}",
-            f"   Company: {_format_value(posting.company_name)}",
-            f"   Job Radar ID: {posting.job_radar_id}",
-            f"   Score: {scored_posting.score}",
-            f"   Location: {_format_value(posting.location)}",
-            f"   Technical match: {_get_technical_match_label(scored_posting)}",
-            f"   Resume match: {_get_resume_match_label(scored_posting)}",
-            f"   Resume evidence: {_format_resume_evidence(scored_posting)}",
-            f"   Resume gaps: {_format_resume_gaps(scored_posting)}",
-            f"   Compensation: {_get_compensation_label(scored_posting)}",
-            f"   Compensation range: {_get_compensation_range_label(scored_posting)}",
-            f"   Hiring probability: {_get_hiring_probability_label(scored_posting)}",
-            f"   Recommended action: {_get_recommended_action(scored_posting)}",
-            f"   Action rationale: {_get_action_rationale(scored_posting)}",
-            f"   Hiring risks: {_format_hiring_risk_flags(scored_posting)}",
+            f"{index}. {job.title}",
+            f"   Company: {job.company}",
+            f"   Job Radar ID: {job.job_radar_id}",
+            f"   Score: {job.score}",
+            f"   Location: {job.location}",
+            f"   Technical match: {job.technical_match}",
+            f"   Resume match: {job.resume_match}",
+            f"   Resume evidence: {job.resume_evidence}",
+            f"   Resume gaps: {job.resume_gaps}",
+            f"   Compensation: {job.compensation}",
+            f"   Compensation range: {job.compensation_range}",
+            f"   Hiring probability: {job.hiring_probability}",
+            f"   Recommended action: {job.recommended_action}",
+            f"   Action rationale: {job.action_rationale}",
+            f"   Hiring risks: {job.hiring_risks}",
         ]
     )
 
@@ -557,40 +549,40 @@ def _append_html_posting_detail(
     scored_posting: ScoredPosting,
     section_type: str,
 ) -> None:
-    posting = scored_posting.posting
+    job = build_job_output_view_model(scored_posting)
 
     lines.extend(
         [
             "<section>",
-            f"<h3>{escape(_format_value(posting.title))}</h3>",
+            f"<h3>{escape(job.title)}</h3>",
             "<ul>",
             f"<li><strong>Company:</strong> "
-            f"{escape(_format_value(posting.company_name))}</li>",
+            f"{escape(job.company)}</li>",
             f"<li><strong>Job Radar ID:</strong> "
-            f"<code>{escape(posting.job_radar_id)}</code></li>",
-            f"<li><strong>Score:</strong> {scored_posting.score}</li>",
+            f"<code>{escape(job.job_radar_id)}</code></li>",
+            f"<li><strong>Score:</strong> {job.score}</li>",
             f"<li><strong>Location:</strong> "
-            f"{escape(_format_value(posting.location))}</li>",
+            f"{escape(job.location)}</li>",
             f"<li><strong>Technical match:</strong> "
-            f"{escape(_get_technical_match_label(scored_posting))}</li>",
+            f"{escape(job.technical_match)}</li>",
             f"<li><strong>Resume match:</strong> "
-            f"{escape(_get_resume_match_label(scored_posting))}</li>",
+            f"{escape(job.resume_match)}</li>",
             f"<li><strong>Resume evidence:</strong> "
-            f"{escape(_format_resume_evidence(scored_posting))}</li>",
+            f"{escape(job.resume_evidence)}</li>",
             f"<li><strong>Resume gaps:</strong> "
-            f"{escape(_format_resume_gaps(scored_posting))}</li>",
+            f"{escape(job.resume_gaps)}</li>",
             f"<li><strong>Compensation:</strong> "
-            f"{escape(_get_compensation_label(scored_posting))}</li>",
+            f"{escape(job.compensation)}</li>",
             f"<li><strong>Compensation range:</strong> "
-            f"{escape(_get_compensation_range_label(scored_posting))}</li>",
+            f"{escape(job.compensation_range)}</li>",
             f"<li><strong>Hiring probability:</strong> "
-            f"{escape(_get_hiring_probability_label(scored_posting))}</li>",
+            f"{escape(job.hiring_probability)}</li>",
             f"<li><strong>Recommended action:</strong> "
-            f"{escape(_get_recommended_action(scored_posting))}</li>",
+            f"{escape(job.recommended_action)}</li>",
             f"<li><strong>Action rationale:</strong> "
-            f"{escape(_get_action_rationale(scored_posting))}</li>",
+            f"{escape(job.action_rationale)}</li>",
             f"<li><strong>Hiring risks:</strong> "
-            f"{escape(_format_hiring_risk_flags(scored_posting))}</li>",
+            f"{escape(job.hiring_risks)}</li>",
             f"<li><strong>Signals:</strong> "
             f"{escape(_format_signal_summary(scored_posting.score_reasons))}</li>",
             "</ul>",
@@ -611,9 +603,9 @@ def _append_html_posting_detail(
             reasons=_get_review_needed_reasons(scored_posting),
         )
 
-    if posting.source_url:
+    if job.source_url:
         lines.append(
-            f'<p><a href="{escape(posting.source_url, quote=True)}">'
+            f'<p><a href="{escape(job.source_url, quote=True)}">'
             "View posting"
             "</a></p>"
         )
