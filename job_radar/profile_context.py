@@ -12,18 +12,23 @@ from job_radar.candidate_profile import (
     CandidateResumeConfig,
     load_candidate_profile,
 )
-from job_radar.profile_models import ManagedProfile, get_managed_resume_directory
+from job_radar.profile_models import (
+    ManagedProfile,
+    ProfilePreferences,
+    get_managed_resume_directory,
+)
 from job_radar.profile_storage import get_active_profile
 from job_radar.resume_loader import load_resume_text, write_normalized_resume_text
 
 
 @dataclass(frozen=True)
 class ActiveCandidateContext:
-    """Provide the legacy-compatible values consumed by scoring and reports."""
+    """Provide both legacy scoring inputs and structured managed preferences."""
 
     candidate_profile: CandidateProfile | None
     resume_text: str | None
     managed_profile: ManagedProfile | None = None
+    job_preferences: ProfilePreferences | None = None
 
 
 def load_active_candidate_context(
@@ -45,6 +50,7 @@ def load_active_candidate_context(
             candidate_profile=candidate_profile,
             resume_text=_load_and_normalize_resume(candidate_profile),
             managed_profile=managed_profile,
+            job_preferences=managed_profile.preferences,
         )
 
     if candidate_profile_path is None:

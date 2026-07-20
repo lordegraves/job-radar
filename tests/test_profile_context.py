@@ -19,12 +19,19 @@ def test_load_active_candidate_context_uses_selected_managed_profile(
         profile_id="profile_1a2b3c4d",
         display_name="Managed Example",
         preferences=ProfilePreferences(
+            target_roles=("Platform Engineer",),
+            seniority_levels=("Senior",),
             core_strengths=("Platform operations",),
             credible_adjacent=("Reliability engineering",),
             learning_or_gap=("Product engineering",),
             exclusions=("Commission sales",),
+            preferred_locations=("Fort Collins, Colorado",),
+            work_arrangements=("Remote", "Hybrid"),
+            employment_types=("Full-time",),
+            schedule_preference="Day shift",
             compensation_floor_usd=125000,
             compensation_target_usd=150000,
+            travel_tolerance="20%",
         ),
         resume=build_managed_resume(".md"),
     )
@@ -43,6 +50,16 @@ def test_load_active_candidate_context_uses_selected_managed_profile(
     )
 
     assert context.managed_profile == profile
+    assert context.job_preferences == profile.preferences
+    assert context.job_preferences.target_roles == ("Platform Engineer",)
+    assert context.job_preferences.seniority_levels == ("Senior",)
+    assert context.job_preferences.preferred_locations == (
+        "Fort Collins, Colorado",
+    )
+    assert context.job_preferences.work_arrangements == ("Remote", "Hybrid")
+    assert context.job_preferences.employment_types == ("Full-time",)
+    assert context.job_preferences.schedule_preference == "Day shift"
+    assert context.job_preferences.travel_tolerance == "20%"
     assert context.candidate_profile is not None
     assert context.candidate_profile.name == "Managed Example"
     assert context.candidate_profile.compensation_floor_usd == 125000
@@ -85,6 +102,7 @@ candidate:
     )
 
     assert context.managed_profile is None
+    assert context.job_preferences is None
     assert context.candidate_profile is not None
     assert context.candidate_profile.name == "Legacy Example"
     assert context.resume_text == "Legacy resume"
