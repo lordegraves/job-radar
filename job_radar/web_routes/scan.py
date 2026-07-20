@@ -4,14 +4,14 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, jsonify, render_template, request
 
 from job_radar.runtime_paths import (
     DEFAULT_EMAIL_PREVIEW_PATH,
     DEFAULT_REPORT_PATH,
     RuntimePaths,
 )
-from job_radar.scan_lock import ScanAlreadyRunningError
+from job_radar.scan_task_runner import ScanTaskRunner
 from job_radar.storage import fetch_active_scan_run, fetch_latest_scan_run
 
 
@@ -22,6 +22,8 @@ def register_scan_routes(
     handle_scan_func: Callable[..., Any],
 ) -> None:
     """Register manual scan execution and progress routes."""
+    scan_runner = ScanTaskRunner(handle_scan_func)
+    app.extensions["junior_scan_runner"] = scan_runner
 
     @app.get("/scan")
     def scan() -> str:
@@ -63,49 +65,54 @@ def register_scan_routes(
         runtime_paths = get_runtime_paths()
 
         return jsonify(
-            _build_scan_status_payload(runtime_paths.database_path)
+            _build_scan_status_payload(
+                runtime_paths.database_path,
+                scan_runner=scan_runner,
+            )
         )
 
     @app.post("/scan/run")
     def run_scan():
         runtime_paths = get_runtime_paths()
 
-        try:
-            handle_scan_func(
-                config_path=str(runtime_paths.company_config_path),
-                settings_path=str(runtime_paths.settings_path),
-                report_path=str(
-                    runtime_paths.resolve(DEFAULT_REPORT_PATH)
-                ),
-                scoring_path=str(runtime_paths.scoring_config_path),
-                email_preview_path=str(
-                    runtime_paths.resolve(DEFAULT_EMAIL_PREVIEW_PATH)
-                ),
-                send_email=False,
-                base_directory=str(runtime_paths.base_directory),
-            )
-        except ScanAlreadyRunningError:
-            return redirect(url_for("scan", scan_result="busy"))
-        except Exception as error:
-            return redirect(
-                url_for(
-                    "scan",
-                    scan_result="error",
-                    scan_error=str(error),
-                )
-            )
+        if fetch_active_scan_run(runtime_paths.database_path) is not None:
+            return jsonify({"status": "busy"}), 409
 
-        return redirect(url_for("scan", scan_result="success"))
+        started = scan_runner.start(
+            config_path=str(runtime_paths.company_config_path),
+            settings_path=str(runtime_paths.settings_path),
+            report_path=str(runtime_paths.resolve(DEFAULT_REPORT_PATH)),
+            scoring_path=str(runtime_paths.scoring_config_path),
+            email_preview_path=str(
+                runtime_paths.resolve(DEFAULT_EMAIL_PREVIEW_PATH)
+            ),
+            send_email=False,
+            base_directory=str(runtime_paths.base_directory),
+        )
+
+        if not started:
+            return jsonify({"status": "busy"}), 409
+
+        return jsonify({"status": "starting"}), 202
 
 
 def _build_scan_status_payload(
     database_path: str | Path,
+    *,
+    scan_runner: ScanTaskRunner | None = None,
 ) -> dict[str, object]:
     active_scan_run = fetch_active_scan_run(database_path)
     scan_run = active_scan_run or fetch_latest_scan_run(database_path)
 
     if scan_run is None:
+        if scan_runner is not None and scan_runner.is_running:
+            return _build_starting_scan_payload()
+
+        if scan_runner is not None and scan_runner.failed:
+            return _build_worker_failure_payload()
+
         return {
+            "scan_run_id": None,
             "status": "idle",
             "is_running": False,
             "stage": None,
@@ -170,6 +177,7 @@ def _build_scan_status_payload(
     )
 
     return {
+        "scan_run_id": int(scan_run["id"]),
         "status": status,
         "is_running": status == "running",
         "stage": stage or None,
@@ -182,4 +190,42 @@ def _build_scan_status_payload(
         "collector_errors": int(scan_run["collector_errors"] or 0),
         "has_results": has_results,
         "failure_summary": scan_run["failure_summary"],
+    }
+
+
+def _build_starting_scan_payload() -> dict[str, object]:
+    return {
+        "scan_run_id": None,
+        "status": "running",
+        "is_running": True,
+        "stage": "starting",
+        "stage_label": "Starting scan",
+        "companies_scanned": 0,
+        "companies_enabled": 0,
+        "progress_percent": 0,
+        "progress_determinate": False,
+        "jobs_found": 0,
+        "collector_errors": 0,
+        "has_results": False,
+        "failure_summary": None,
+    }
+
+
+def _build_worker_failure_payload() -> dict[str, object]:
+    return {
+        "scan_run_id": None,
+        "status": "failed",
+        "is_running": False,
+        "stage": None,
+        "stage_label": "Scan failed",
+        "companies_scanned": 0,
+        "companies_enabled": 0,
+        "progress_percent": 0,
+        "progress_determinate": False,
+        "jobs_found": 0,
+        "collector_errors": 0,
+        "has_results": False,
+        "failure_summary": (
+            "junior could not complete the scan. Open the Scan page for details."
+        ),
     }

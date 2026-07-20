@@ -166,7 +166,6 @@
     const initialScanStatus = JSON.parse(
         document.getElementById("initial-scan-status").textContent
     );
-    const scanStatusUrl = "{{ url_for('scan_status') }}";
     const scanForm = document.getElementById("scan-form");
     const scanButton = document.getElementById("scan-submit-button");
     const scanRunning = document.getElementById("scan-running");
@@ -212,31 +211,6 @@
         }
     }
 
-    async function refreshScanStatus() {
-        try {
-            const response = await fetch(scanStatusUrl, {
-                cache: "no-store",
-                headers: {
-                    "Accept": "application/json",
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(`Scan status request failed: ${response.status}`);
-            }
-
-            const status = await response.json();
-            renderScanStatus(status);
-
-            if (status.is_running) {
-                window.setTimeout(refreshScanStatus, 2000);
-            }
-        } catch (error) {
-            console.error(error);
-            window.setTimeout(refreshScanStatus, 5000);
-        }
-    }
-
     scanForm.addEventListener("submit", async (event) => {
         event.preventDefault();
 
@@ -250,27 +224,35 @@
         scanProgressDetails.textContent =
             "Scan is starting. This may take a few minutes.";
 
-        window.setTimeout(refreshScanStatus, 500);
-
         try {
-            await fetch(scanForm.action, {
+            const response = await fetch(scanForm.action, {
                 method: "POST",
                 headers: {
-                    "Accept": "text/html",
+                    "Accept": "application/json",
                 },
             });
 
-            await refreshScanStatus();
+            if (response.status === 409) {
+                scanProgressDetails.textContent =
+                    "A scan is already running. Junior will show its progress here.";
+            } else if (!response.ok) {
+                throw new Error(`Scan start request failed: ${response.status}`);
+            }
+
+            window.juniorScanMonitor.watch();
         } catch (error) {
             console.error(error);
-            window.setTimeout(refreshScanStatus, 2000);
+            scanFailure.hidden = false;
+            scanFailureSummary.textContent =
+                "Junior could not start the scan. Try again or restart Junior.";
         }
+    });
+
+    window.addEventListener("junior:scan-status", (event) => {
+        renderScanStatus(event.detail);
     });
 
     renderScanStatus(initialScanStatus);
 
-    if (initialScanStatus.is_running) {
-        window.setTimeout(refreshScanStatus, 1000);
-    }
 </script>
 {% endblock %}

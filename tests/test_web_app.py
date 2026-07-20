@@ -2,6 +2,7 @@
 
 import json
 import os
+import threading
 from datetime import date, datetime
 from io import BytesIO
 from pathlib import Path
@@ -10,7 +11,6 @@ import job_radar.web_app as web_app_module
 
 from job_radar.history_models import JobHistoryRecord
 from job_radar.profile_storage import get_active_profile, list_profiles
-from job_radar.scan_lock import ScanAlreadyRunningError
 from job_radar.storage import (
     complete_scan_run,
     fetch_included_job_history_records,
@@ -2079,6 +2079,7 @@ def test_scan_status_endpoint_returns_durable_progress(
 
     assert response.status_code == 200
     assert payload == {
+        "scan_run_id": scan_run_id,
         "status": "running",
         "is_running": True,
         "stage": "collection",
@@ -2154,12 +2155,16 @@ def test_scan_run_calls_handle_scan_and_redirects(
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     calls = []
+    scan_started = threading.Event()
+    release_scan = threading.Event()
 
     write_settings_file(settings_file, database_file)
     monkeypatch.chdir(tmp_path)
 
     def fake_handle_scan(**kwargs):
         calls.append(kwargs)
+        scan_started.set()
+        release_scan.wait(timeout=5)
 
     monkeypatch.setattr(web_app_module, "handle_scan", fake_handle_scan)
 
@@ -2167,16 +2172,12 @@ def test_scan_run_calls_handle_scan_and_redirects(
     runtime_paths = app.config["JOB_RADAR_RUNTIME_PATHS"]
     client = app.test_client()
 
-    response = client.post("/scan/run", follow_redirects=True)
-    html = response.get_data(as_text=True)
+    response = client.post("/scan/run")
 
-    assert response.status_code == 200
-    assert "Latest scan completed." in html
-    assert "HTML report" in html
-    assert "Markdown report" not in html
-    assert "Email preview" in html
-    assert "/reports/view/target-scan.html" in html
-    assert "/reports/view/target-email-preview.txt" in html
+    assert response.status_code == 202
+    assert response.get_json() == {"status": "starting"}
+    assert scan_started.wait(timeout=2)
+    assert client.get("/").status_code == 200
     assert calls == [
         {
             "config_path": str(runtime_paths.company_config_path),
@@ -2194,6 +2195,7 @@ def test_scan_run_calls_handle_scan_and_redirects(
             "base_directory": str(runtime_paths.base_directory),
         }
     ]
+    release_scan.set()
 
 
 def test_scan_run_reports_busy_when_scan_is_already_running(
@@ -2205,26 +2207,31 @@ def test_scan_run_reports_busy_when_scan_is_already_running(
 
     write_settings_file(settings_file, database_file)
 
-    def reject_concurrent_scan(**kwargs):
-        raise ScanAlreadyRunningError(
-            "Another Job Radar scan is already running."
-        )
+    scan_started = threading.Event()
+    release_scan = threading.Event()
+
+    def hold_scan(**kwargs):
+        scan_started.set()
+        release_scan.wait(timeout=5)
 
     monkeypatch.setattr(
         web_app_module,
         "handle_scan",
-        reject_concurrent_scan,
+        hold_scan,
     )
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    response = client.post("/scan/run", follow_redirects=True)
-    html = response.get_data(as_text=True)
+    first_response = client.post("/scan/run")
+    assert first_response.status_code == 202
+    assert scan_started.wait(timeout=2)
 
-    assert response.status_code == 200
-    assert "Scan already running." in html
-    assert "Wait for the current scan to finish before starting another one." in html
+    response = client.post("/scan/run")
+
+    assert response.status_code == 409
+    assert response.get_json() == {"status": "busy"}
+    release_scan.set()
 
 
 def test_scan_run_reports_errors(
@@ -2244,12 +2251,36 @@ def test_scan_run_reports_errors(
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    response = client.post("/scan/run", follow_redirects=True)
-    html = response.get_data(as_text=True)
+    response = client.post("/scan/run")
 
-    assert response.status_code == 200
-    assert "Scan failed." in html
-    assert "scan exploded" in html
+    assert response.status_code == 202
+
+    runner = app.extensions["junior_scan_runner"]
+    for _ in range(100):
+        if not runner.is_running:
+            break
+        threading.Event().wait(0.01)
+
+    payload = client.get("/scan/status").get_json()
+    assert payload["status"] == "failed"
+    assert "could not complete the scan" in payload["failure_summary"]
+    assert "scan exploded" not in payload["failure_summary"]
+
+
+def test_every_page_includes_global_scan_monitor(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    html = client.get("/").get_data(as_text=True)
+
+    assert 'id="global-scan-status"' in html
+    assert 'id="scan-notification"' in html
+    assert 'url_for(\'scan_status\')' not in html
+    assert 'const statusUrl = "/scan/status"' in html
+    assert "junior:scan-status" in html
 
 
 def test_index_page_links_to_reports(tmp_path: Path) -> None:

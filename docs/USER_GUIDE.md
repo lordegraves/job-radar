@@ -80,6 +80,8 @@ Dashboard cards link to focused views rather than duplicating entire reports.
 
 The Scan page runs the shared scan pipeline.
 
+Starting a scan from this page returns control immediately. You may continue using other junior pages while the scan runs. A status indicator remains available throughout the interface, and junior displays an app-wide notification when the scan completes, completes with source warnings, or fails. The notification links to the latest results or scan details.
+
 A scan:
 
 1. loads settings, company sources, scoring configuration, profile, and resume

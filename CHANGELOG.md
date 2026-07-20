@@ -33,6 +33,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Changed
 
+- GUI-started scans now run without blocking the rest of junior and report progress, completion, source warnings, or failure throughout the interface.
+
 - Integrated profile preferences into Profile / Resume, removed the separate navigation page and informational banner, added dedicated create and edit pages with explicit save controls and first-profile guidance, and combined résumé insights with the plain-English search summary.
 - Replaced profile archiving controls with a compact five-profile manager supporting selection, editing, creation, and guarded permanent deletion of a profile and its Junior-managed résumé.
 - Renamed the user-facing application from Job Radar to junior and added the official logo to the shared interface and packaged application assets while preserving established package, command, environment-variable, and user-data compatibility names.

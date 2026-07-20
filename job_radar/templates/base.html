@@ -321,6 +321,62 @@
         .form-page textarea {
             width: 100%;
         }
+
+        .global-scan-status {
+            align-items: center;
+            background: var(--surface-muted);
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
+            color: var(--muted);
+            display: inline-flex;
+            font-size: 0.88rem;
+            gap: 7px;
+            padding: 5px 10px;
+            white-space: nowrap;
+        }
+
+        .global-scan-status[hidden] {
+            display: none;
+        }
+
+        .global-scan-dot {
+            background: var(--link);
+            border-radius: 50%;
+            height: 8px;
+            width: 8px;
+        }
+
+        .scan-notification {
+            background: #18242b;
+            border: 1px solid var(--link);
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            max-width: 420px;
+            padding: 14px 16px;
+            position: fixed;
+            right: 24px;
+            top: 82px;
+            z-index: 20;
+        }
+
+        .scan-notification[hidden] {
+            display: none;
+        }
+
+        .scan-notification.scan-notification-failed {
+            background: var(--danger-surface);
+            border-color: var(--danger-border);
+        }
+
+        .scan-notification p {
+            margin: 0 0 10px;
+        }
+
+        .scan-notification-actions {
+            align-items: center;
+            display: flex;
+            gap: 8px;
+        }
     </style>
     {% block page_styles %}{% endblock %}
 </head>
@@ -342,8 +398,20 @@
                 <a class="{% if request.endpoint in ['scan', 'run_scan'] %}active-nav{% endif %}" href="{{ url_for('scan') }}">Scan</a>
                 <a class="{% if request.endpoint == 'settings' %}active-nav{% endif %}" href="{{ url_for('settings') }}">Settings</a>
             </nav>
+            <div id="global-scan-status" class="global-scan-status" role="status" aria-live="polite" hidden>
+                <span class="global-scan-dot" aria-hidden="true"></span>
+                <span id="global-scan-status-text">Scan running</span>
+            </div>
         </div>
     </header>
+
+    <aside id="scan-notification" class="scan-notification" role="alert" hidden>
+        <p id="scan-notification-message"></p>
+        <div class="scan-notification-actions">
+            <a id="scan-notification-link" class="button-link" href="{{ url_for('reports') }}">View results</a>
+            <button id="scan-notification-dismiss" class="button-secondary" type="button">Dismiss</button>
+        </div>
+    </aside>
 
     <main class="page">
         {% block content %}{% endblock %}
@@ -354,6 +422,112 @@
             const confirmation = window.prompt(`${message}\n\nType DELETE to confirm.`);
             return confirmation === "DELETE";
         }
+
+        (() => {
+            const statusUrl = "{{ url_for('scan_status') }}";
+            const reportsUrl = "{{ url_for('reports') }}";
+            const scanPageUrl = "{{ url_for('scan') }}";
+            const statusBox = document.getElementById("global-scan-status");
+            const statusText = document.getElementById("global-scan-status-text");
+            const notification = document.getElementById("scan-notification");
+            const notificationMessage = document.getElementById("scan-notification-message");
+            const notificationLink = document.getElementById("scan-notification-link");
+            const dismissButton = document.getElementById("scan-notification-dismiss");
+            let pollTimer = null;
+            let watchedScanId = sessionStorage.getItem("juniorWatchedScanId");
+            let sawRunningScan = sessionStorage.getItem("juniorSawRunningScan") === "true";
+
+            function showTerminalNotification(status) {
+                const completedWithWarnings = status.status === "completed_with_warnings";
+                const failed = status.status === "failed";
+
+                if (failed) {
+                    notificationMessage.textContent =
+                        status.failure_summary || "junior could not complete the scan.";
+                    notificationLink.textContent = "View scan details";
+                    notificationLink.href = scanPageUrl;
+                    notification.classList.add("scan-notification-failed");
+                } else {
+                    const warningText = completedWithWarnings
+                        ? ` with ${status.collector_errors} source warning${status.collector_errors === 1 ? "" : "s"}`
+                        : "";
+                    notificationMessage.textContent =
+                        `Scan complete${warningText}. ${status.jobs_found} jobs found.`;
+                    notificationLink.textContent = "View results";
+                    notificationLink.href = reportsUrl;
+                    notification.classList.remove("scan-notification-failed");
+                }
+
+                notification.hidden = false;
+            }
+
+            function renderGlobalScanStatus(status) {
+                statusBox.hidden = !status.is_running;
+                statusText.textContent = status.stage_label || "Scan running";
+
+                if (status.is_running) {
+                    sawRunningScan = true;
+                    sessionStorage.setItem("juniorSawRunningScan", "true");
+
+                    if (status.scan_run_id !== null) {
+                        watchedScanId = String(status.scan_run_id);
+                        sessionStorage.setItem("juniorWatchedScanId", watchedScanId);
+                    }
+                } else if (sawRunningScan) {
+                    const terminalScanId = status.scan_run_id === null
+                        ? null
+                        : String(status.scan_run_id);
+
+                    if (terminalScanId === null || watchedScanId === null || terminalScanId === watchedScanId) {
+                        showTerminalNotification(status);
+                    }
+
+                    sawRunningScan = false;
+                    sessionStorage.removeItem("juniorSawRunningScan");
+                    sessionStorage.removeItem("juniorWatchedScanId");
+                    watchedScanId = null;
+                }
+
+                window.dispatchEvent(new CustomEvent("junior:scan-status", {
+                    detail: status,
+                }));
+            }
+
+            async function refresh() {
+                try {
+                    const response = await fetch(statusUrl, {
+                        cache: "no-store",
+                        headers: {"Accept": "application/json"},
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Scan status request failed: ${response.status}`);
+                    }
+
+                    renderGlobalScanStatus(await response.json());
+                } catch (error) {
+                    console.error(error);
+                } finally {
+                    pollTimer = window.setTimeout(refresh, 2000);
+                }
+            }
+
+            dismissButton.addEventListener("click", () => {
+                notification.hidden = true;
+            });
+
+            window.juniorScanMonitor = {
+                refresh,
+                watch: () => {
+                    sawRunningScan = true;
+                    sessionStorage.setItem("juniorSawRunningScan", "true");
+                    window.clearTimeout(pollTimer);
+                    refresh();
+                },
+            };
+
+            refresh();
+        })();
     </script>
 </body>
 
