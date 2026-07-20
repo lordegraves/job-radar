@@ -4,6 +4,7 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from job_radar.eligibility import EligibilityResult
 from job_radar.recommendations import (
     _format_hiring_risk_flags,
     _get_action_rationale,
@@ -26,7 +27,7 @@ from job_radar.report_view_model import build_report_view_model
 from job_radar.scored_posting import ScoredPosting
 
 
-REPORT_SNAPSHOT_SCHEMA_VERSION = 1
+REPORT_SNAPSHOT_SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,8 @@ class ReportSnapshotJob:
     history_context: str
     history_risk: str | None
     job_radar_id: str
+    eligibility_status: str | None = None
+    eligibility_reasons: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -197,7 +200,27 @@ def _build_snapshot_job(
         history_context=_format_history_context(scored_posting),
         history_risk=None if history_risk == "None" else history_risk,
         job_radar_id=posting.job_radar_id,
+        eligibility_status=_get_eligibility_status(scored_posting.eligibility),
+        eligibility_reasons=_get_eligibility_reasons(scored_posting.eligibility),
     )
+
+
+def _get_eligibility_status(
+    eligibility: EligibilityResult | None,
+) -> str | None:
+    if eligibility is None:
+        return None
+
+    return eligibility.status
+
+
+def _get_eligibility_reasons(
+    eligibility: EligibilityResult | None,
+) -> list[str] | None:
+    if eligibility is None:
+        return None
+
+    return [reason.message for reason in eligibility.reasons]
 
 
 def _format_resume_evidence(scored_posting: ScoredPosting) -> str:
@@ -227,7 +250,12 @@ def _clean_optional_value(value: str | None) -> str | None:
 def _load_snapshot_jobs(
     raw_jobs: list[dict],
 ) -> list[ReportSnapshotJob]:
-    return [
-        ReportSnapshotJob(**raw_job)
-        for raw_job in raw_jobs
-    ]
+    jobs: list[ReportSnapshotJob] = []
+
+    for raw_job in raw_jobs:
+        compatible_job = dict(raw_job)
+        compatible_job.setdefault("eligibility_status", None)
+        compatible_job.setdefault("eligibility_reasons", None)
+        jobs.append(ReportSnapshotJob(**compatible_job))
+
+    return jobs

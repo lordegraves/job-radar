@@ -1,8 +1,10 @@
 """Tests saving and reloading the structured scan results used by the GUI."""
 
+import json
 from pathlib import Path
 
 from job_radar.compensation import CompensationResult
+from job_radar.eligibility import EligibilityReason, EligibilityResult
 from job_radar.resume_match import ResumeMatchResult
 from job_radar.models import JobPosting
 from job_radar.report_snapshot import (
@@ -24,6 +26,7 @@ def make_scored_posting(
     score: int = 140,
     score_reasons: list[str] | None = None,
     location_status: str | None = None,
+    eligibility: EligibilityResult | None = None,
 ) -> ScoredPosting:
     posting = JobPosting(
         company_key="example",
@@ -62,6 +65,7 @@ def make_scored_posting(
         location_status=location_status,
         top_match_eligible=top_match_eligible,
         review_needed_eligible=review_needed_eligible,
+        eligibility=eligibility,
         application=application,
     )
 
@@ -112,7 +116,7 @@ def make_report() -> ScanReport:
 def test_build_report_snapshot_partitions_gui_sections() -> None:
     snapshot = build_report_snapshot(make_report())
 
-    assert snapshot.schema_version == 1
+    assert snapshot.schema_version == 2
     assert snapshot.summary.generated_at == "2026-07-15T12:00:00+00:00"
     assert snapshot.summary.top_matches == 1
     assert snapshot.summary.review_needed == 1
@@ -148,6 +152,87 @@ def test_write_and_load_report_snapshot_round_trip(tmp_path: Path) -> None:
     assert written_path == snapshot_path
     assert loaded_snapshot == build_report_snapshot(make_report())
     assert snapshot_path.read_text(encoding="utf-8").endswith("\n")
+
+
+def test_report_snapshot_persists_eligibility_details(tmp_path: Path) -> None:
+    scored_posting = make_scored_posting(
+        title="eligibility-review",
+        top_match_eligible=True,
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_unknown",
+                    message="The posting does not provide usable compensation.",
+                ),
+                EligibilityReason(
+                    code="on_call_schedule_needs_review",
+                    message="The posting includes an on-call requirement.",
+                ),
+            ),
+        ),
+    )
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[scored_posting.posting],
+        scored_postings=[scored_posting],
+    )
+    snapshot_path = tmp_path / "eligibility-snapshot.json"
+
+    write_report_snapshot(snapshot_path, report)
+    loaded_snapshot = load_report_snapshot(snapshot_path)
+    loaded_job = loaded_snapshot.top_matches[0]
+
+    assert loaded_snapshot.schema_version == 2
+    assert loaded_job.eligibility_status == "needs_review"
+    assert loaded_job.eligibility_reasons == [
+        "The posting does not provide usable compensation.",
+        "The posting includes an on-call requirement.",
+    ]
+
+
+def test_load_report_snapshot_supports_version_one_jobs(tmp_path: Path) -> None:
+    snapshot_path = tmp_path / "legacy-snapshot.json"
+    legacy_snapshot = build_report_snapshot(make_report())
+    raw_snapshot = {
+        "schema_version": 1,
+        "summary": {
+            "generated_at": legacy_snapshot.summary.generated_at,
+            "top_matches": legacy_snapshot.summary.top_matches,
+            "review_needed": legacy_snapshot.summary.review_needed,
+            "tracked_applications": legacy_snapshot.summary.tracked_applications,
+            "new_jobs": legacy_snapshot.summary.new_jobs,
+            "collector_errors": legacy_snapshot.summary.collector_errors,
+        },
+        "top_matches": [
+            {
+                key: value
+                for key, value in legacy_snapshot.top_matches[0].__dict__.items()
+                if key not in {"eligibility_status", "eligibility_reasons"}
+            }
+        ],
+        "review_needed": [],
+        "tracked_applications": [],
+        "new_jobs": [],
+        "passed_not_recommended": [],
+        "collector_errors": [],
+    }
+    snapshot_path.write_text(
+        json.dumps(raw_snapshot, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    loaded_snapshot = load_report_snapshot(snapshot_path)
+    loaded_job = loaded_snapshot.top_matches[0]
+
+    assert loaded_snapshot.schema_version == 1
+    assert loaded_job.eligibility_status is None
+    assert loaded_job.eligibility_reasons is None
 
 
 def test_build_report_snapshot_exposes_recommendation_quality_and_risks() -> None:
