@@ -9,7 +9,7 @@ from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import evaluate_compensation
 from job_radar.config import ApplicationSettings, load_companies, load_settings
 from job_radar.email_sender import send_email_report
-from job_radar.eligibility import evaluate_workplace_eligibility
+from job_radar.eligibility import evaluate_practical_eligibility
 from job_radar.email_summary import (
     build_email_body,
     build_email_html_body,
@@ -360,6 +360,15 @@ def _handle_scan_unlocked(
                 scoring_config=scoring_config,
             )
 
+            compensation = evaluate_compensation(
+                salary_text=posting.salary_text,
+                compensation_floor_usd=(
+                    candidate_profile.compensation_floor_usd
+                    if candidate_profile is not None
+                    else None
+                ),
+            )
+
             history_matches = find_history_matches(
                 posting=posting,
                 history_records=history_records,
@@ -388,17 +397,11 @@ def _handle_scan_unlocked(
                         candidate_profile=candidate_profile,
                         resume_text=resume_text,
                     ),
-                    compensation=evaluate_compensation(
-                        salary_text=posting.salary_text,
-                        compensation_floor_usd=(
-                            candidate_profile.compensation_floor_usd
-                            if candidate_profile is not None
-                            else None
-                        ),
-                    ),
-                    eligibility=evaluate_workplace_eligibility(
+                    compensation=compensation,
+                    eligibility=evaluate_practical_eligibility(
                         posting=posting,
                         preferences=job_preferences,
+                        compensation=compensation,
                     ),
                     profile_avoid_matches=_find_profile_avoid_matches(
                         candidate_profile=candidate_profile,

@@ -2,12 +2,14 @@
 
 import pytest
 
+from job_radar.compensation import evaluate_compensation
 from job_radar.eligibility import (
     ELIGIBILITY_ELIGIBLE,
     ELIGIBILITY_NEEDS_REVIEW,
     ELIGIBILITY_NOT_ELIGIBLE,
     EligibilityReason,
     EligibilityResult,
+    evaluate_practical_eligibility,
     evaluate_workplace_eligibility,
 )
 from job_radar.models import JobPosting
@@ -19,6 +21,7 @@ def make_posting(
     *,
     location: str | None = "Remote",
     remote_status: str | None = None,
+    salary_text: str | None = None,
 ) -> JobPosting:
     return JobPosting(
         company_key="example",
@@ -30,6 +33,7 @@ def make_posting(
         location=location,
         description="Build Linux infrastructure.",
         remote_status=remote_status,
+        salary_text=salary_text,
         canonical_key="example:senior-infrastructure-engineer:remote",
         content_hash="hash",
     )
@@ -284,3 +288,153 @@ def test_legacy_context_does_not_create_structured_eligibility() -> None:
     )
 
     assert result is None
+
+
+def test_practical_eligibility_combines_workplace_and_compensation() -> None:
+    posting = make_posting(
+        location="Remote",
+        salary_text="$180K - $220K",
+    )
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        compensation_floor_usd=160000,
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=evaluate_compensation(
+            posting.salary_text,
+            preferences.compensation_floor_usd,
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert [reason.code for reason in result.reasons] == [
+        "remote_arrangement_selected",
+        "compensation_meets_floor",
+    ]
+
+
+def test_below_floor_compensation_overrides_eligible_workplace() -> None:
+    posting = make_posting(
+        location="Remote",
+        salary_text="$100K - $140K",
+    )
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        compensation_floor_usd=160000,
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=evaluate_compensation(
+            posting.salary_text,
+            preferences.compensation_floor_usd,
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert [reason.code for reason in result.reasons] == [
+        "remote_arrangement_selected",
+        "compensation_below_floor",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("salary_text", "expected_code"),
+    [
+        (None, "compensation_unknown"),
+        ("$120K - $180K", "compensation_partially_meets_floor"),
+    ],
+)
+def test_uncertain_compensation_requires_review(
+    salary_text: str | None,
+    expected_code: str,
+) -> None:
+    posting = make_posting(
+        location="Remote",
+        salary_text=salary_text,
+    )
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        compensation_floor_usd=160000,
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=evaluate_compensation(
+            posting.salary_text,
+            preferences.compensation_floor_usd,
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NEEDS_REVIEW
+    assert result.reasons[-1].code == expected_code
+
+
+def test_remote_state_restriction_matches_selected_location() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Remote - Colorado",
+            remote_status="Remote",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[0].code == "remote_region_matches_selected_area"
+
+
+def test_remote_state_restriction_rejects_clear_state_mismatch() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Remote - California",
+            remote_status="Remote",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "remote_region_outside_selected_areas"
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "Remote (United States)",
+        "Remote - United States",
+        "Remote (United States); Cincinnati, OH",
+        "Remote | New York, NY",
+    ],
+)
+def test_remote_national_or_multi_location_job_remains_eligible(
+    location: str,
+) -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location=location,
+            remote_status="Remote",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[0].code == "remote_arrangement_selected"

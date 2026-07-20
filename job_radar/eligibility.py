@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import re
 
+from job_radar.compensation import CompensationResult
 from job_radar.models import JobPosting
 from job_radar.normalize import clean_text
 from job_radar.profile_models import ProfilePreferences
@@ -50,6 +51,51 @@ class EligibilityResult:
             raise ValueError(f"unsupported eligibility status: {self.status}")
 
 
+def evaluate_practical_eligibility(
+    posting: JobPosting,
+    preferences: ProfilePreferences | None,
+    compensation: CompensationResult | None,
+) -> EligibilityResult | None:
+    """Combine practical checks without changing recommendation behavior."""
+
+    if preferences is None:
+        return None
+
+    results = (
+        evaluate_workplace_eligibility(posting, preferences),
+        _evaluate_compensation_eligibility(
+            preferences=preferences,
+            compensation=compensation,
+        ),
+    )
+    evaluated_results = tuple(result for result in results if result is not None)
+
+    if not evaluated_results:
+        return EligibilityResult(status=ELIGIBILITY_ELIGIBLE)
+
+    if any(
+        result.status == ELIGIBILITY_NOT_ELIGIBLE
+        for result in evaluated_results
+    ):
+        status = ELIGIBILITY_NOT_ELIGIBLE
+    elif any(
+        result.status == ELIGIBILITY_NEEDS_REVIEW
+        for result in evaluated_results
+    ):
+        status = ELIGIBILITY_NEEDS_REVIEW
+    else:
+        status = ELIGIBILITY_ELIGIBLE
+
+    return EligibilityResult(
+        status=status,
+        reasons=tuple(
+            reason
+            for result in evaluated_results
+            for reason in result.reasons
+        ),
+    )
+
+
 def evaluate_workplace_eligibility(
     posting: JobPosting,
     preferences: ProfilePreferences | None,
@@ -90,6 +136,90 @@ def evaluate_workplace_eligibility(
         )
 
     if arrangement == ARRANGEMENT_REMOTE:
+        return _evaluate_remote_arrangement(
+            posting=posting,
+            preferences=preferences,
+        )
+
+    return _evaluate_location_based_arrangement(
+        posting=posting,
+        preferences=preferences,
+        arrangement=arrangement,
+    )
+
+
+def _evaluate_compensation_eligibility(
+    *,
+    preferences: ProfilePreferences,
+    compensation: CompensationResult | None,
+) -> EligibilityResult | None:
+    if preferences.compensation_floor_usd is None:
+        return None
+
+    if compensation is None or compensation.label == "Unknown":
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="compensation_unknown",
+                    message=(
+                        "The posting does not provide a usable annual compensation "
+                        "range to compare with this profile's minimum."
+                    ),
+                ),
+            ),
+        )
+
+    if compensation.label == "Below floor":
+        return EligibilityResult(
+            status=ELIGIBILITY_NOT_ELIGIBLE,
+            reasons=(
+                EligibilityReason(
+                    code="compensation_below_floor",
+                    message=(
+                        f"The advertised compensation {compensation.range_label} "
+                        "is below this profile's minimum."
+                    ),
+                ),
+            ),
+        )
+
+    if compensation.label == "Partial range meets floor":
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="compensation_partially_meets_floor",
+                    message=(
+                        f"The advertised compensation {compensation.range_label} "
+                        "only partially meets this profile's minimum."
+                    ),
+                ),
+            ),
+        )
+
+    return EligibilityResult(
+        status=ELIGIBILITY_ELIGIBLE,
+        reasons=(
+            EligibilityReason(
+                code="compensation_meets_floor",
+                message=(
+                    f"The advertised compensation {compensation.range_label} "
+                    "meets this profile's minimum."
+                ),
+            ),
+        ),
+    )
+
+
+def _evaluate_remote_arrangement(
+    *,
+    posting: JobPosting,
+    preferences: ProfilePreferences,
+) -> EligibilityResult:
+    posting_state = _extract_remote_restriction_state(posting.location)
+
+    if posting_state is None:
         return EligibilityResult(
             status=ELIGIBILITY_ELIGIBLE,
             reasons=(
@@ -100,10 +230,70 @@ def evaluate_workplace_eligibility(
             ),
         )
 
-    return _evaluate_location_based_arrangement(
-        posting=posting,
-        preferences=preferences,
-        arrangement=arrangement,
+    selected_locations = tuple(
+        location.label for location in preferences.location_selections
+    ) or preferences.preferred_locations
+
+    if not selected_locations:
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="remote_region_needs_confirmation",
+                    message=(
+                        "The job is remote but appears restricted to a specific "
+                        "state, and this profile has no selected locations to "
+                        "confirm residency eligibility."
+                    ),
+                ),
+            ),
+        )
+
+    selected_states = {
+        state
+        for location in selected_locations
+        if (state := _extract_state_abbreviation(location)) is not None
+    }
+
+    if posting_state in selected_states:
+        return EligibilityResult(
+            status=ELIGIBILITY_ELIGIBLE,
+            reasons=(
+                EligibilityReason(
+                    code="remote_region_matches_selected_area",
+                    message=(
+                        "The job is remote and its state restriction matches "
+                        "one of this profile's selected locations."
+                    ),
+                ),
+            ),
+        )
+
+    if selected_states:
+        return EligibilityResult(
+            status=ELIGIBILITY_NOT_ELIGIBLE,
+            reasons=(
+                EligibilityReason(
+                    code="remote_region_outside_selected_areas",
+                    message=(
+                        "The job is remote but appears restricted to a state "
+                        "outside this profile's selected locations."
+                    ),
+                ),
+            ),
+        )
+
+    return EligibilityResult(
+        status=ELIGIBILITY_NEEDS_REVIEW,
+        reasons=(
+            EligibilityReason(
+                code="remote_region_needs_confirmation",
+                message=(
+                    "The job is remote but its state restriction could not be "
+                    "compared reliably with this profile's selected locations."
+                ),
+            ),
+        ),
     )
 
 
@@ -277,6 +467,100 @@ def _normalize_location_label(value: str | None) -> str:
         )
 
     return clean_text(normalized)
+
+
+def _extract_remote_restriction_state(value: str | None) -> str | None:
+    normalized = clean_text(value).lower()
+
+    if not normalized:
+        return None
+
+    multi_location_markers = (
+        ";",
+        "|",
+        "multiple locations",
+        "various locations",
+    )
+
+    if any(marker in normalized for marker in multi_location_markers):
+        return None
+
+    broad_remote_markers = (
+        "united states",
+        "usa",
+        "nationwide",
+        "us only",
+        "u.s. only",
+    )
+
+    if any(marker in normalized for marker in broad_remote_markers):
+        return None
+
+    return _extract_state_abbreviation(value)
+
+
+def _extract_state_abbreviation(value: str | None) -> str | None:
+    normalized = _normalize_location_label(value)
+    tokens = normalized.split()
+
+    state_abbreviations = {
+        "al",
+        "ak",
+        "az",
+        "ar",
+        "ca",
+        "co",
+        "ct",
+        "de",
+        "fl",
+        "ga",
+        "hi",
+        "id",
+        "il",
+        "in",
+        "ia",
+        "ks",
+        "ky",
+        "la",
+        "me",
+        "md",
+        "ma",
+        "mi",
+        "mn",
+        "ms",
+        "mo",
+        "mt",
+        "ne",
+        "nv",
+        "nh",
+        "nj",
+        "nm",
+        "ny",
+        "nc",
+        "nd",
+        "oh",
+        "ok",
+        "or",
+        "pa",
+        "ri",
+        "sc",
+        "sd",
+        "tn",
+        "tx",
+        "ut",
+        "vt",
+        "va",
+        "wa",
+        "wv",
+        "wi",
+        "wy",
+    }
+
+    for token in reversed(tokens):
+        if token in state_abbreviations:
+            return token
+
+    return None
 
 
 def _location_labels_match(
