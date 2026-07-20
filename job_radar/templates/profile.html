@@ -34,32 +34,6 @@
         color: #f2cc60;
     }
 
-    .profile-grid {
-        display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-    }
-
-    .profile-category-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 18px;
-    }
-
-    .profile-category-card h3 {
-        margin: 0 0 12px 0;
-    }
-
-    .profile-category-card ul {
-        margin-bottom: 0;
-        padding-left: 22px;
-    }
-
-    .profile-category-card li {
-        margin-bottom: 6px;
-    }
-
     .resume-preview-shell {
         background: var(--surface-muted);
         border: 1px solid var(--border);
@@ -131,69 +105,9 @@
         display: none;
     }
 
-    .resume-upload-panel {
-        background: var(--surface-muted);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 18px;
-    }
-
-    .current-resume-summary {
-        display: grid;
-        gap: 12px;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-        margin-bottom: 18px;
-    }
-
-    .current-resume-item {
-        background: rgba(43, 43, 49, 0.62);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 12px 14px;
-    }
-
-    .current-resume-item strong {
-        display: block;
-        margin-bottom: 4px;
-        overflow-wrap: anywhere;
-    }
-
-    .native-file-input {
-        height: 1px;
-        opacity: 0;
-        overflow: hidden;
-        position: absolute;
-        width: 1px;
-    }
-
-    .file-picker-row {
-        align-items: center;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 8px;
-    }
-
-    .selected-file-name {
-        color: var(--muted);
-        overflow-wrap: anywhere;
-    }
-
-    .replace-confirmation {
-        background: rgba(96, 205, 255, 0.08);
-        border: 1px solid rgba(96, 205, 255, 0.35);
-        border-radius: 10px;
-        display: none;
-        margin-top: 16px;
-        padding: 14px 16px;
-    }
-
-    .replace-confirmation.is-visible {
-        display: block;
-    }
-
-    .replace-confirmation p {
-        margin-top: 0;
+    #managed-profile-select {
+        max-width: 420px;
+        width: 100%;
     }
 
     .success {
@@ -242,7 +156,27 @@
 {% block content %}
 <div class="page-card">
     <h1 class="page-title">Profile / Resume</h1>
+    {% if not has_profile %}
+    {% if not profile_management.profiles %}
+    <h2>Create your first profile</h2>
+    <p>A profile tells junior what kind of work you want and keeps your résumé and job preferences together.</p>
+    <p class="muted">Start by creating a profile. You will choose the work you want, where and how you want to work, and then add your résumé.</p>
+    <div class="actions">
+        <a class="button-link" href="{{ url_for('new_profile_page') }}">Create profile</a>
+    </div>
+    {% else %}
+    <h2>Choose a profile</h2>
+    <p>No profile is currently active. Select or restore one below, or create a new profile.</p>
+    <div class="actions"><a class="button-link" href="{{ url_for('new_profile_page') }}">Create profile</a></div>
+    {% endif %}
+    {% else %}
+    <h2>Active profile</h2>
     <p class="muted">Confirm the candidate profile and resume junior currently uses for scans and fit scoring.</p>
+    {% if not active_managed_profile %}
+    <div class="actions">
+        <a class="button-link" href="{{ url_for('edit_legacy_profile_page') }}">Edit résumé</a>
+    </div>
+    {% endif %}
 
     {% if upload_result == "success" %}
     <div class="success">
@@ -256,9 +190,21 @@
     </div>
     {% endif %}
 
-    {% if profile_result == "created_from_preferences" %}
+    {% if profile_result == "created" %}
     <div class="success">
-        <strong>Profile created.</strong> Upload a résumé to complete this profile.
+        <strong>Profile created.</strong> Choose Edit profile to add a résumé or make changes.
+    </div>
+    {% elif profile_result == "deleted" %}
+    <div class="success">
+        <strong>Profile deleted.</strong> Its saved preferences and Junior-managed résumé were permanently removed.
+    </div>
+    {% elif profile_result == "selected" %}
+    <div class="success">
+        <strong>Active profile changed.</strong> junior will now use the selected profile.
+    </div>
+    {% elif profile_result == "updated" or profile_result == "preferences_saved" %}
+    <div class="success">
+        <strong>Profile saved.</strong> Your changes are available to junior.
     </div>
     {% elif profile_result and profile_result != "error" %}
     <div class="success">
@@ -321,137 +267,57 @@
             {% endif %}
         </div>
     </div>
-</div>
-
-<div class="section">
-    <h2>Manage profiles</h2>
-    <p class="muted">Profiles keep each job search and résumé together inside junior. Archiving is reversible; profiles cannot be permanently deleted here.</p>
-
-    <div class="actions">
-        <a class="button-link" href="{{ url_for('preferences', mode='create') }}">Create a new profile</a>
+    {% if active_managed_profile %}
+    <h3>What junior will scan for</h3>
+    <p class="muted">A plain-English summary of the active profile. Scans still use the existing MVP scoring rules until the separate scoring review is approved.</p>
+    <div class="profile-overview-grid">
+        <div class="profile-status-card"><strong>Target work</strong><span>{{ active_managed_profile.preferences.target_roles | join(', ') or 'No target roles selected' }}</span></div>
+        <div class="profile-status-card"><strong>Job levels</strong><span>{{ active_managed_profile.preferences.seniority_levels | join(', ') or 'No job levels selected' }}</span></div>
+        <div class="profile-status-card"><strong>Employment</strong><span>{{ active_managed_profile.preferences.employment_types | join(', ') or 'No employment types selected' }}</span></div>
+        <div class="profile-status-card"><strong>Workplace</strong><span>{{ active_managed_profile.preferences.work_arrangements | join(', ') or 'No workplace arrangements selected' }}</span></div>
+        <div class="profile-status-card"><strong>Locations</strong><span>{{ active_managed_profile.preferences.preferred_locations | join(', ') or 'No locations selected' }}</span></div>
+        <div class="profile-status-card"><strong>Schedule</strong><span>{{ active_managed_profile.preferences.schedule_preference or 'Any schedule' }}</span></div>
+        <div class="profile-status-card"><strong>Travel</strong><span>Jobs may require up to {{ active_managed_profile.preferences.travel_tolerance or '0' }}% travel</span></div>
     </div>
-
-    {% if profile_management.profiles %}
-        {% for managed in profile_management.profiles %}
-        <details class="technical-details" {% if managed.profile_id == profile_management.active_profile_id %}open{% endif %}>
-            <summary>
-                {{ managed.display_name }}
-                {% if managed.profile_id == profile_management.active_profile_id %} — Active{% endif %}
-                {% if managed.archived %} — Archived{% endif %}
-            </summary>
-            <div class="technical-details-content">
-                {% if not managed.archived and managed.profile_id != profile_management.active_profile_id %}
-                <form method="post" action="{{ url_for('select_profile_route') }}">
-                    <input name="profile_id" type="hidden" value="{{ managed.profile_id }}">
-                    <button type="submit">Use this profile</button>
-                </form>
-                {% endif %}
-
-                <form method="post" action="{{ url_for('edit_profile_route', profile_id=managed.profile_id) }}">
-                    <label>Profile name</label>
-                    <input name="display_name" type="text" value="{{ managed.display_name }}" required>
-                    <label>Target roles — one per line</label>
-                    <textarea name="target_roles" rows="3">{{ managed.preferences.target_roles | join('\n') }}</textarea>
-                    <label>Seniority levels — one per line</label>
-                    <textarea name="seniority_levels" rows="2">{{ managed.preferences.seniority_levels | join('\n') }}</textarea>
-                    <label>Core strengths — one per line</label>
-                    <textarea name="core_strengths" rows="4">{{ managed.preferences.core_strengths | join('\n') }}</textarea>
-                    <label>Credible adjacent areas — one per line</label>
-                    <textarea name="credible_adjacent" rows="3">{{ managed.preferences.credible_adjacent | join('\n') }}</textarea>
-                    <label>Learning or gap areas — one per line</label>
-                    <textarea name="learning_or_gap" rows="3">{{ managed.preferences.learning_or_gap | join('\n') }}</textarea>
-                    <label>Roles or signals to avoid — one per line</label>
-                    <textarea name="exclusions" rows="3">{{ managed.preferences.exclusions | join('\n') }}</textarea>
-                    <label>Preferred locations — one per line</label>
-                    <textarea name="preferred_locations" rows="3">{{ managed.preferences.preferred_locations | join('\n') }}</textarea>
-                    <label>Work arrangements — one per line</label>
-                    <textarea name="work_arrangements" rows="2">{{ managed.preferences.work_arrangements | join('\n') }}</textarea>
-                    <label>Employment types — one per line</label>
-                    <textarea name="employment_types" rows="2">{{ managed.preferences.employment_types | join('\n') }}</textarea>
-                    <label>Compensation floor</label>
-                    <input name="compensation_floor_usd" type="number" min="0" value="{{ managed.preferences.compensation_floor_usd or '' }}">
-                    <label>Compensation target</label>
-                    <input name="compensation_target_usd" type="number" min="0" value="{{ managed.preferences.compensation_target_usd or '' }}">
-                    <label>Travel tolerance</label>
-                    <input name="travel_tolerance" type="text" value="{{ managed.preferences.travel_tolerance or '' }}">
-                    <div class="actions">
-                        <button type="submit">Save profile</button>
-                    </div>
-                </form>
-
-                {% if managed.archived %}
-                <form method="post" action="{{ url_for('restore_profile_route', profile_id=managed.profile_id) }}">
-                    <button class="button-secondary" type="submit">Restore profile</button>
-                </form>
-                {% else %}
-                <form method="post" action="{{ url_for('archive_profile_route', profile_id=managed.profile_id) }}">
-                    <button class="button-secondary" type="submit">Archive profile</button>
-                </form>
-                {% endif %}
-            </div>
-        </details>
-        {% endfor %}
-    {% else %}
-    <p>No managed profiles exist yet. The existing YAML profile remains active until you create one.</p>
+    {% endif %}
     {% endif %}
 </div>
 
+{% if profile_management.profiles %}
 <div class="section">
-    <h2>Candidate fit profile</h2>
-    <p class="muted">These profile signals help junior distinguish strong fits, adjacent roles, experience gaps, and roles to avoid.</p>
+    <h2>Manage profiles</h2>
+    <p class="muted">Choose one of your saved profiles to use, edit, or permanently delete. junior supports up to five profiles.</p>
+    <label for="managed-profile-select">Saved profiles</label>
+    <select id="managed-profile-select">
+        {% for managed in profile_management.profiles %}
+        <option value="{{ managed.profile_id }}" data-name="{{ managed.display_name }}" {% if managed.profile_id == profile_management.active_profile_id %}selected{% endif %}>{{ managed.display_name }}{% if managed.profile_id == profile_management.active_profile_id %} — Active{% endif %}</option>
+        {% endfor %}
+    </select>
+    <div class="actions">
+        <form method="post" action="{{ url_for('select_profile_route') }}">
+            <input id="selected-profile-for-use" name="profile_id" type="hidden" value="{{ profile_management.active_profile_id or profile_management.profiles[0].profile_id }}">
+            <button type="submit">Use this profile</button>
+        </form>
+        <a id="edit-selected-profile" class="button-link button-secondary" href="{{ url_for('edit_profile_page', profile_id=profile_management.active_profile_id or profile_management.profiles[0].profile_id) }}">Edit</a>
+        {% if not profile_limit_reached %}<a class="button-link button-secondary" href="{{ url_for('new_profile_page') }}">Create profile</a>{% endif %}
+        <form id="delete-profile-form" method="post" action="{{ url_for('delete_profile_route') }}">
+            <input id="selected-profile-for-delete" name="profile_id" type="hidden" value="{{ profile_management.active_profile_id or profile_management.profiles[0].profile_id }}">
+            <button class="button-danger" type="submit">Delete</button>
+        </form>
+    </div>
+    <p class="muted">Deleting a profile permanently removes its saved preferences and Junior-managed résumé. This cannot be undone.</p>
+    {% if profile_limit_reached %}<p class="muted">You have reached the five-profile limit. Delete a profile before creating another one.</p>{% endif %}
+</div>
+{% endif %}
 
-    <div class="profile-grid">
-        <div class="profile-category-card">
-            <h3>Core strengths</h3>
-            {% if profile.core_strengths %}
-            <ul>
-                {% for item in profile.core_strengths %}
-                <li>{{ item }}</li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p class="muted">No core strengths configured.</p>
-            {% endif %}
-        </div>
-
-        <div class="profile-category-card">
-            <h3>Credible adjacent areas</h3>
-            {% if profile.credible_adjacent %}
-            <ul>
-                {% for item in profile.credible_adjacent %}
-                <li>{{ item }}</li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p class="muted">No credible adjacent areas configured.</p>
-            {% endif %}
-        </div>
-
-        <div class="profile-category-card">
-            <h3>Learning / gap areas</h3>
-            {% if profile.learning_or_gap %}
-            <ul>
-                {% for item in profile.learning_or_gap %}
-                <li>{{ item }}</li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p class="muted">No learning or gap areas configured.</p>
-            {% endif %}
-        </div>
-
-        <div class="profile-category-card">
-            <h3>Avoid signals</h3>
-            {% if profile.avoid %}
-            <ul>
-                {% for item in profile.avoid %}
-                <li>{{ item }}</li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p class="muted">No avoid signals configured.</p>
-            {% endif %}
-        </div>
+{% if has_profile %}
+<div class="section">
+    <h2>Strengths and gaps</h2>
+    <div class="profile-overview-grid">
+        <div class="profile-status-card"><strong>Strengths</strong><span>{{ profile.core_strengths | join(', ') or 'No strengths available yet' }}</span></div>
+        <div class="profile-status-card"><strong>Adjacent capabilities</strong><span>{{ profile.credible_adjacent | join(', ') or 'No adjacent capabilities available yet' }}</span></div>
+        <div class="profile-status-card"><strong>Experience gaps</strong><span>{{ profile.learning_or_gap | join(', ') or 'No experience gaps recorded' }}</span></div>
+        <div class="profile-status-card"><strong>Roles or responsibilities to avoid</strong><span>{{ profile.avoid | join(', ') or 'No avoid signals recorded' }}</span></div>
     </div>
 </div>
 
@@ -468,55 +334,9 @@
     <p>No resume preview is currently available.</p>
     {% endif %}
 </div>
+{% endif %}
 
-<div class="section" id="resume-upload">
-    <h2>Replace resume</h2>
-    <p class="muted">Supported formats: .md, .txt, .pdf, and .docx. junior validates and extracts the new file before replacing the active resume.</p>
-
-    <div class="resume-upload-panel">
-        <div class="current-resume-summary">
-            <div class="current-resume-item">
-                <strong>{{ profile.resume_source_file_name or "Not configured" }}</strong>
-                <span class="muted">Current file</span>
-            </div>
-
-            <div class="current-resume-item">
-                <strong>{% if profile.resume_source_exists %}Available{% else %}Missing{% endif %}</strong>
-                <span class="muted">Resume source</span>
-            </div>
-
-            <div class="current-resume-item">
-                <strong>{% if profile.normalized_text_exists %}Available{% else %}Missing{% endif %}</strong>
-                <span class="muted">Normalized resume</span>
-            </div>
-        </div>
-
-        <form id="resume-upload-form" method="post" action="{{ url_for('upload_resume') }}" enctype="multipart/form-data" data-resume-exists="{{ 'true' if profile.resume_source_exists or profile.normalized_text_exists else 'false' }}">
-            <label for="resume_file">Select replacement file</label>
-
-            <div class="file-picker-row">
-                <input class="native-file-input" id="resume_file" name="resume_file" type="file" accept=".md,.txt,.pdf,.docx" required>
-                <label class="button-link button-secondary" for="resume_file">Choose resume file</label>
-                <span class="selected-file-name" id="selected-file-name">No file selected</span>
-            </div>
-
-            <div class="replace-confirmation" id="replace-confirmation">
-                <p><strong>A resume is already active:</strong> {{ profile.resume_source_file_name or "configured resume" }}</p>
-                <p>Replace it with the selected file?</p>
-
-                <div class="actions">
-                    <button type="button" id="confirm-upload-button">Yes, replace resume</button>
-                    <button class="button-secondary" type="button" id="cancel-upload-button">No, keep current resume</button>
-                </div>
-            </div>
-
-            <div class="actions">
-                <button id="upload-button" type="submit">Upload and normalize resume</button>
-            </div>
-        </form>
-    </div>
-</div>
-
+{% if has_profile %}
 <div class="section">
     <h2>Technical details</h2>
     <p class="muted">Runtime paths and file state for troubleshooting.</p>
@@ -571,8 +391,36 @@
         </div>
     </details>
 </div>
+{% endif %}
 
 <script>
+    const profileSelect = document.getElementById("managed-profile-select");
+    const selectedProfileForUse = document.getElementById("selected-profile-for-use");
+    const selectedProfileForDelete = document.getElementById("selected-profile-for-delete");
+    const editSelectedProfile = document.getElementById("edit-selected-profile");
+    const deleteProfileForm = document.getElementById("delete-profile-form");
+
+    function updateManagedProfileActions() {
+        if (!profileSelect) return;
+        const profileId = profileSelect.value;
+        if (selectedProfileForUse) selectedProfileForUse.value = profileId;
+        if (selectedProfileForDelete) selectedProfileForDelete.value = profileId;
+        if (editSelectedProfile) {
+            editSelectedProfile.href = `/profile/${encodeURIComponent(profileId)}/edit`;
+        }
+    }
+
+    profileSelect?.addEventListener("change", updateManagedProfileActions);
+    deleteProfileForm?.addEventListener("submit", (event) => {
+        const selectedOption = profileSelect?.selectedOptions[0];
+        const profileName = selectedOption?.dataset.name || "this profile";
+        if (!confirmDestructiveAction(
+            `Delete ${profileName} and its Junior-managed résumé? This cannot be undone.`
+        )) {
+            event.preventDefault();
+        }
+    });
+
     const resumePreviewSource = document.getElementById("resume-preview-source");
     const resumePreviewContent = document.getElementById("resume-preview-content");
 
@@ -628,56 +476,5 @@
         });
     }
 
-    const uploadForm = document.getElementById("resume-upload-form");
-    const fileInput = document.getElementById("resume_file");
-    const selectedFileName = document.getElementById("selected-file-name");
-    const replaceConfirmation = document.getElementById("replace-confirmation");
-    const confirmUploadButton = document.getElementById("confirm-upload-button");
-    const cancelUploadButton = document.getElementById("cancel-upload-button");
-
-    if (
-        uploadForm &&
-        fileInput &&
-        selectedFileName &&
-        replaceConfirmation &&
-        confirmUploadButton &&
-        cancelUploadButton
-    ) {
-        const resumeExists = uploadForm.dataset.resumeExists === "true";
-        let replacementConfirmed = false;
-
-        fileInput.addEventListener("change", function () {
-            replacementConfirmed = false;
-
-            if (fileInput.files.length > 0) {
-                selectedFileName.textContent = fileInput.files[0].name;
-            } else {
-                selectedFileName.textContent = "No file selected";
-            }
-
-            replaceConfirmation.classList.remove("is-visible");
-        });
-
-        uploadForm.addEventListener("submit", function (event) {
-            if (!resumeExists || replacementConfirmed) {
-                return;
-            }
-
-            event.preventDefault();
-            replaceConfirmation.classList.add("is-visible");
-        });
-
-        confirmUploadButton.addEventListener("click", function () {
-            replacementConfirmed = true;
-            uploadForm.requestSubmit();
-        });
-
-        cancelUploadButton.addEventListener("click", function () {
-            replacementConfirmed = false;
-            fileInput.value = "";
-            selectedFileName.textContent = "No file selected";
-            replaceConfirmation.classList.remove("is-visible");
-        });
-    }
 </script>
 {% endblock %}

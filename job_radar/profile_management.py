@@ -1,8 +1,8 @@
 """Provide GUI-safe managed-profile operations over temporary or user data.
 
 Routes use this service instead of writing SQLite rows or resume paths directly.
-There is deliberately no delete operation: archival is reversible and protects
-profile-owned data until a future backup-aware deletion workflow exists.
+Profile deletion is guarded by the GUI and removes only the selected profile's
+database records and app-owned résumé directory.
 """
 
 import json
@@ -24,6 +24,7 @@ from job_radar.profile_models import (
 from job_radar.profile_storage import (
     create_and_select_profile,
     create_profile,
+    delete_profile,
     get_active_profile,
     get_profile,
     list_profiles,
@@ -60,6 +61,7 @@ SCHEDULE_PREFERENCES = {
     "Weekends accepted",
     "Flexible schedule",
 }
+MAX_MANAGED_PROFILES = 5
 
 
 def build_profile_management_view(
@@ -86,6 +88,7 @@ def create_managed_profile(
         raise ConfigError("Enter a profile name.")
 
     runtime_paths = _runtime_paths(settings_path, base_directory)
+    _enforce_profile_limit(runtime_paths.database_path)
     profile = ManagedProfile(
         profile_id=f"profile_{secrets.token_hex(8)}",
         display_name=normalized_name,
@@ -150,7 +153,7 @@ def update_managed_search_preferences(
     travel_percentage: str,
     base_directory: str | Path | None = None,
 ) -> ManagedProfile:
-    """Validate and save only the fields owned by Search Preferences."""
+    """Validate and save only the preference fields owned by Profile / Resume."""
 
     runtime_paths = _runtime_paths(settings_path, base_directory)
     current = get_active_profile(runtime_paths.database_path)
@@ -199,6 +202,7 @@ def save_managed_search_profile(
     *,
     display_name: str,
     create_new: bool,
+    profile_id: str | None = None,
     occupation_selections_json: str,
     location_selections_json: str,
     seniority_levels: list[str],
@@ -216,7 +220,17 @@ def save_managed_search_profile(
         raise ConfigError("Enter a profile name.")
 
     runtime_paths = _runtime_paths(settings_path, base_directory)
-    current = None if create_new else get_active_profile(runtime_paths.database_path)
+    current = (
+        None
+        if create_new
+        else (
+            get_profile(runtime_paths.database_path, profile_id)
+            if profile_id
+            else get_active_profile(runtime_paths.database_path)
+        )
+    )
+    if not create_new and current is None:
+        raise ConfigError("The selected profile no longer exists.")
     _reject_duplicate_display_name(
         runtime_paths.database_path,
         normalized_name,
@@ -235,6 +249,7 @@ def save_managed_search_profile(
     )
 
     if current is None:
+        _enforce_profile_limit(runtime_paths.database_path)
         profile = ManagedProfile(
             profile_id=f"profile_{secrets.token_hex(8)}",
             display_name=normalized_name,
@@ -324,7 +339,59 @@ def select_managed_profile(
     base_directory: str | Path | None = None,
 ) -> None:
     runtime_paths = _runtime_paths(settings_path, base_directory)
+    profile = (
+        get_profile(runtime_paths.database_path, profile_id) if profile_id else None
+    )
+    if profile is not None and profile.archived:
+        set_profile_archived(runtime_paths.database_path, profile_id, archived=False)
     set_active_profile(runtime_paths.database_path, profile_id)
+
+
+def delete_managed_profile(
+    settings_path: str | None,
+    profile_id: str,
+    *,
+    base_directory: str | Path | None = None,
+) -> None:
+    """Delete one profile and its app-owned résumé, preserving unrelated profiles."""
+
+    runtime_paths = _runtime_paths(settings_path, base_directory)
+    profile = get_profile(runtime_paths.database_path, profile_id)
+    if profile is None:
+        raise ConfigError("The selected profile no longer exists.")
+
+    resume_directory = (
+        runtime_paths.base_directory / get_managed_resume_directory(profile_id)
+    )
+    quarantine = (
+        resume_directory.parent / f".delete-{profile_id}-{secrets.token_hex(4)}"
+    )
+    moved_resume = False
+    try:
+        if resume_directory.exists():
+            os.replace(resume_directory, quarantine)
+            moved_resume = True
+        if not delete_profile(runtime_paths.database_path, profile_id):
+            raise ConfigError("The selected profile no longer exists.")
+    except BaseException:
+        if moved_resume and quarantine.exists() and not resume_directory.exists():
+            os.replace(quarantine, resume_directory)
+        raise
+
+    if moved_resume:
+        shutil.rmtree(quarantine)
+
+    remaining = list_profiles(runtime_paths.database_path)
+    if get_active_profile(runtime_paths.database_path) is None and remaining:
+        set_active_profile(runtime_paths.database_path, remaining[0].profile_id)
+
+
+def _enforce_profile_limit(database_path: Path) -> None:
+    if len(list_profiles(database_path, include_archived=True)) >= MAX_MANAGED_PROFILES:
+        raise ConfigError(
+            f"junior supports up to {MAX_MANAGED_PROFILES} profiles. "
+            "Delete a profile before creating another one."
+        )
 
 
 def archive_managed_profile(
@@ -346,6 +413,7 @@ def save_managed_profile_resume(
     uploaded_filename: str,
     uploaded_content: bytes,
     *,
+    profile_id: str | None = None,
     base_directory: str | Path | None = None,
 ) -> None:
     extension = Path(uploaded_filename).suffix.lower()
@@ -359,7 +427,11 @@ def save_managed_profile_resume(
         raise ConfigError("Uploaded resume file is empty.")
 
     runtime_paths = _runtime_paths(settings_path, base_directory)
-    profile = get_active_profile(runtime_paths.database_path)
+    profile = (
+        get_profile(runtime_paths.database_path, profile_id)
+        if profile_id
+        else get_active_profile(runtime_paths.database_path)
+    )
     if profile is None:
         raise ConfigError("Create or select a managed profile before uploading a resume.")
 

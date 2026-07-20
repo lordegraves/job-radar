@@ -24,15 +24,17 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - A common user-owned `resumes` directory that prevents managed profiles from depending on files in Documents, Downloads, or other external locations.
 - SQLite migration version 4 for empty managed-profile tables, protected by the existing pre-migration backup and atomic rollback behavior.
 - Database-backed active-profile selection with an unchanged YAML fallback when no managed profile is selected.
-- GUI workflows for managed profile creation, editing, switching, reversible archival, restoration, and managed resume upload.
+- GUI workflows for managed profile creation, editing, switching, guarded permanent deletion, and managed resume upload.
 - SQLite migration version 5 for the optional active-profile selection record; the migration does not select or change existing profile data.
 - A controlled legacy-profile migration service with read-only planning, private recovery bundles, destination-collision checks, atomic profile selection, and managed-file rollback on failure.
-- GUI-managed Search Preferences that save normalized occupations, structured locations and commute radii, job levels, employment types, schedules, workplace arrangements, compensation minimums, and travel percentages to the active managed profile without changing existing scoring behavior.
+- GUI-managed profile preferences that save normalized occupations, structured locations and commute radii, job levels, employment types, schedules, workplace arrangements, compensation minimums, and travel percentages to the active managed profile without changing existing scoring behavior.
 - SQLite migration version 6 for structured occupation, location, and schedule preferences, protected by backup-before-migration and atomic rollback behavior.
-- Profile creation through Search Preferences, including duplicate-name protection, atomic creation and selection, safe cancellation, and a guided résumé-upload handoff.
+- Dedicated profile creation and editing pages with duplicate-name protection, atomic creation and selection, safe cancellation, explicit save actions, and managed résumé replacement.
 
 ### Changed
 
+- Integrated profile preferences into Profile / Resume, removed the separate navigation page and informational banner, added dedicated create and edit pages with explicit save controls and first-profile guidance, and combined résumé insights with the plain-English search summary.
+- Replaced profile archiving controls with a compact five-profile manager supporting selection, editing, creation, and guarded permanent deletion of a profile and its Junior-managed résumé.
 - Renamed the user-facing application from Job Radar to junior and added the official logo to the shared interface and packaged application assets while preserving established package, command, environment-variable, and user-data compatibility names.
 - Split Flask routes into dedicated route modules.
 - Split report models and HTML rendering into dedicated modules.

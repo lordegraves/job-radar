@@ -32,6 +32,26 @@ class ProfileSelectionError(ProfileStorageError):
     """Raised when an unavailable profile is selected for normal use."""
 
 
+def delete_profile(database_path: str | Path, profile_id: str) -> bool:
+    """Permanently delete one profile and its database-owned child records."""
+
+    db_path = initialize_database(database_path)
+    with connect_database(db_path) as connection:
+        existing = connection.execute(
+            "SELECT 1 FROM profiles WHERE profile_id = ?", (profile_id,)
+        ).fetchone()
+        if existing is None:
+            return False
+
+        # This table predates cascade deletion, so clear the active pointer first.
+        connection.execute(
+            "DELETE FROM active_profile_selection WHERE profile_id = ?",
+            (profile_id,),
+        )
+        connection.execute("DELETE FROM profiles WHERE profile_id = ?", (profile_id,))
+    return True
+
+
 def create_profile(
     database_path: str | Path,
     profile: ManagedProfile,

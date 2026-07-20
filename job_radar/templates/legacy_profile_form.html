@@ -1,0 +1,32 @@
+{# Backward-compatible résumé editor for an existing YAML profile. #}
+{% extends "base.html" %}
+
+{% block title %}Edit Legacy Profile - junior{% endblock %}
+
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">Edit résumé</h1>
+    <p class="muted">This existing profile uses the earlier file-based format. Selecting a file does not change anything until you press Save résumé.</p>
+    <div class="actions"><a class="button-link button-secondary" href="{{ url_for('profile') }}">Back to profile summary</a></div>
+</div>
+
+<div class="section">
+    <h2>Replace résumé</h2>
+    <p>Current résumé: <strong>{{ profile.resume_source_file_name or "Not configured" }}</strong></p>
+    <form id="legacy-resume-form" method="post" action="{{ url_for('upload_resume') }}" enctype="multipart/form-data">
+        <label for="resume_file">Choose résumé file</label>
+        <input id="resume_file" name="resume_file" type="file" accept=".md,.txt,.pdf,.docx" required>
+        <p class="muted">Supported formats: .md, .txt, .pdf, and .docx.</p>
+        <div class="actions">
+            <button type="submit">Save résumé</button>
+            <a class="button-link button-secondary" href="{{ url_for('profile') }}">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.getElementById("legacy-resume-form")?.addEventListener("submit", (event) => {
+    if (!window.confirm("Replace the current résumé with the selected file?")) event.preventDefault();
+});
+</script>
+{% endblock %}

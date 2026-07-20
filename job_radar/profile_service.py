@@ -9,7 +9,7 @@ import yaml
 from job_radar.candidate_profile import load_candidate_profile
 from job_radar.config import ConfigError
 from job_radar.profile_context import managed_profile_to_candidate_profile
-from job_radar.profile_storage import get_active_profile
+from job_radar.profile_storage import get_active_profile, get_profile
 from job_radar.resume_loader import (
     SUPPORTED_RESUME_EXTENSIONS,
     load_resume_display_text,
@@ -55,6 +55,7 @@ def build_candidate_profile_view(
     settings_path: str | None,
     *,
     base_directory: str | Path | None = None,
+    profile_id: str | None = None,
 ) -> CandidateProfileView:
     runtime_paths = (
         RuntimePaths.from_settings(
@@ -66,7 +67,11 @@ def build_candidate_profile_view(
     )
     resolved_settings_path = str(runtime_paths.settings_path)
     profile_path = runtime_paths.candidate_profile_path
-    managed_profile = get_active_profile(runtime_paths.database_path)
+    managed_profile = (
+        get_profile(runtime_paths.database_path, profile_id)
+        if profile_id
+        else get_active_profile(runtime_paths.database_path)
+    )
 
     if managed_profile is not None:
         candidate_profile = managed_profile_to_candidate_profile(

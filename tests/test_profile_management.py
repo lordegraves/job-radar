@@ -6,9 +6,11 @@ import pytest
 
 from job_radar.config import ConfigError
 from job_radar.profile_management import (
+    MAX_MANAGED_PROFILES,
     archive_managed_profile,
     build_profile_management_view,
     create_managed_profile,
+    delete_managed_profile,
     save_managed_profile_resume,
     select_managed_profile,
     update_managed_profile_from_form,
@@ -217,3 +219,52 @@ def test_database_failure_rolls_back_managed_resume_files(
     assert resume_path.read_bytes() == b"Working resume"
     assert normalized_path.read_bytes() == original_normalized
     assert not list(resume_directory.glob(".*-backup*"))
+
+
+def test_delete_profile_removes_only_its_database_data_and_resume(
+    tmp_path: Path,
+) -> None:
+    settings_path = write_settings(tmp_path)
+    first = create_managed_profile(
+        str(settings_path), "First Search", base_directory=tmp_path
+    )
+    save_managed_profile_resume(
+        str(settings_path),
+        "first.md",
+        b"First resume",
+        base_directory=tmp_path,
+    )
+    second = create_managed_profile(
+        str(settings_path), "Second Search", base_directory=tmp_path
+    )
+    save_managed_profile_resume(
+        str(settings_path),
+        "second.md",
+        b"Second resume",
+        base_directory=tmp_path,
+    )
+
+    delete_managed_profile(
+        str(settings_path), second.profile_id, base_directory=tmp_path
+    )
+
+    view = build_profile_management_view(str(settings_path), base_directory=tmp_path)
+    assert [profile.profile_id for profile in view.profiles] == [first.profile_id]
+    assert view.active_profile_id == first.profile_id
+    assert not (tmp_path / "resumes" / second.profile_id).exists()
+    assert (tmp_path / "resumes" / first.profile_id / "resume.md").exists()
+
+
+def test_profile_limit_requires_deleting_before_creating_another(
+    tmp_path: Path,
+) -> None:
+    settings_path = write_settings(tmp_path)
+    for number in range(MAX_MANAGED_PROFILES):
+        create_managed_profile(
+            str(settings_path), f"Profile {number}", base_directory=tmp_path
+        )
+
+    with pytest.raises(ConfigError, match="up to 5 profiles"):
+        create_managed_profile(
+            str(settings_path), "One Too Many", base_directory=tmp_path
+        )

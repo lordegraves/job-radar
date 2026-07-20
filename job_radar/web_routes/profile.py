@@ -4,9 +4,10 @@ from flask import Flask, jsonify, redirect, render_template, request, url_for
 
 from job_radar.config import ConfigError
 from job_radar.profile_management import (
-    archive_managed_profile,
+    MAX_MANAGED_PROFILES,
     build_profile_management_view,
     create_managed_profile,
+    delete_managed_profile,
     save_managed_profile_resume,
     save_managed_search_profile,
     select_managed_profile,
@@ -34,54 +35,39 @@ def register_profile_routes(
 ) -> None:
     """Register profile viewing and resume replacement routes."""
 
-    @app.get("/profile")
-    def profile() -> str:
+    def _profile_page_context(
+        *,
+        create_new: bool = False,
+        profile_id: str | None = None,
+    ) -> dict[str, object]:
         profile_view = build_candidate_profile_view(
             settings_path,
             base_directory=base_directory,
+            profile_id=profile_id,
         )
         management_view = build_profile_management_view(
             settings_path,
             base_directory=base_directory,
         )
-        return render_template(
-            "profile.html",
-            profile=profile_view,
-            profile_management=management_view,
-            profile_result=request.args.get("profile_result", "").strip(),
-            profile_error=request.args.get("profile_error", "").strip(),
-            upload_result=request.args.get("upload_result", "").strip(),
-            upload_error=request.args.get("upload_error", "").strip(),
-        )
-
-    @app.get("/preferences")
-    def preferences() -> str:
-        profile_view = build_candidate_profile_view(
-            settings_path,
-            base_directory=base_directory,
-        )
-        management_view = build_profile_management_view(
-            settings_path,
-            base_directory=base_directory,
-        )
-        create_new = request.args.get("mode", "").strip() == "create"
         active_managed_profile = next(
             (
                 managed
                 for managed in management_view.profiles
-                if managed.profile_id == management_view.active_profile_id
+                if managed.profile_id
+                == (profile_id or management_view.active_profile_id)
             ),
             None,
         )
         if create_new:
             active_managed_profile = None
+
         saved_preferences = (
             active_managed_profile.preferences
             if active_managed_profile is not None
             else None
         )
-        occupation_selections = []
-        location_selections = []
+        occupation_selections: list[dict[str, object]] = []
+        location_selections: list[dict[str, object]] = []
         if saved_preferences is not None:
             occupation_selections = [
                 {"value": item.value, "label": item.label}
@@ -110,17 +96,87 @@ def register_profile_routes(
                 for location in saved_preferences.preferred_locations
             ]
 
+        return {
+            "profile": profile_view,
+            "profile_management": management_view,
+            "active_managed_profile": active_managed_profile,
+            "has_profile": (
+                active_managed_profile is not None
+                or profile_view.candidate_profile_exists
+            ),
+            "scoring_preferences": build_scoring_preferences_view(scoring_path),
+            "preference_error": request.args.get(
+                "preference_error", ""
+            ).strip(),
+            "saved_preferences": saved_preferences,
+            "occupation_selections": occupation_selections,
+            "location_selections": location_selections,
+            "create_new": create_new,
+            "profile_limit_reached": (
+                len(management_view.profiles) >= MAX_MANAGED_PROFILES
+            ),
+        }
+
+    @app.get("/profile")
+    def profile() -> str:
+        context = _profile_page_context()
         return render_template(
-            "preferences.html",
-            profile=profile_view,
-            active_managed_profile=active_managed_profile,
-            scoring_preferences=build_scoring_preferences_view(scoring_path),
-            preference_result=request.args.get("preference_result", "").strip(),
-            preference_error=request.args.get("preference_error", "").strip(),
-            saved_preferences=saved_preferences,
-            occupation_selections=occupation_selections,
-            location_selections=location_selections,
-            create_new=create_new,
+            "profile.html",
+            **context,
+            profile_result=request.args.get("profile_result", "").strip(),
+            profile_error=request.args.get("profile_error", "").strip(),
+            upload_result=request.args.get("upload_result", "").strip(),
+            upload_error=request.args.get("upload_error", "").strip(),
+        )
+
+    @app.get("/profile/new")
+    def new_profile_page() -> str:
+        management_view = build_profile_management_view(
+            settings_path,
+            base_directory=base_directory,
+        )
+        if len(management_view.profiles) >= MAX_MANAGED_PROFILES:
+            return _profile_redirect(
+                "error",
+                "junior supports up to five profiles. Delete a profile before creating another one.",
+            )
+        return render_template(
+            "profile_form.html",
+            **_profile_page_context(create_new=True),
+        )
+
+    @app.get("/profile/<profile_id>/edit")
+    def edit_profile_page(profile_id: str):
+        context = _profile_page_context(profile_id=profile_id)
+        selected = context["active_managed_profile"]
+        if selected is None or selected.archived:
+            return _profile_redirect(
+                "error", "The selected profile is not available for editing."
+            )
+        return render_template("profile_form.html", **context)
+
+    @app.get("/profile/legacy/edit")
+    def edit_legacy_profile_page():
+        context = _profile_page_context()
+        if (
+            context["active_managed_profile"] is not None
+            or not context["profile"].candidate_profile_exists
+        ):
+            return _profile_redirect(
+                "error", "The earlier file-based profile is not active."
+            )
+        return render_template("legacy_profile_form.html", **context)
+
+    @app.get("/preferences")
+    def preferences():
+        """Keep older bookmarks working after preferences moved into Profile."""
+
+        return redirect(
+            url_for(
+                "profile",
+                profile_result=request.args.get("profile_result") or None,
+                preference_error=request.args.get("preference_error") or None,
+            )
         )
 
     @app.post("/preferences")
@@ -130,6 +186,7 @@ def register_profile_routes(
                 settings_path,
                 display_name=request.form.get("display_name", ""),
                 create_new=request.form.get("profile_mode", "") == "create",
+                profile_id=request.form.get("profile_id", "").strip() or None,
                 occupation_selections_json=request.form.get(
                     "occupation_selections_json", "[]"
                 ),
@@ -148,23 +205,28 @@ def register_profile_routes(
             )
         except (ConfigError, ProfileStorageError, ValueError) as error:
             create_mode = request.form.get("profile_mode", "") == "create"
-            return redirect(
-                url_for(
-                    "preferences",
-                    preference_result="error",
-                    preference_error=str(error),
-                    mode="create" if create_mode else None,
+            if create_mode:
+                return redirect(
+                    url_for("new_profile_page", preference_error=str(error))
                 )
-            )
-        if created:
+            requested_profile_id = request.form.get("profile_id", "").strip()
+            if requested_profile_id:
+                return redirect(
+                    url_for(
+                        "edit_profile_page",
+                        profile_id=requested_profile_id,
+                        preference_error=str(error),
+                    )
+                )
             return redirect(
                 url_for(
                     "profile",
-                    profile_result="created_from_preferences",
-                    _anchor="resume-upload",
+                    preference_error=str(error),
                 )
             )
-        return redirect(url_for("preferences", preference_result="saved"))
+        if created:
+            return redirect(url_for("profile", profile_result="created"))
+        return redirect(url_for("profile", profile_result="preferences_saved"))
 
     @app.get("/preferences/occupation-suggestions")
     def occupation_suggestions():
@@ -224,34 +286,28 @@ def register_profile_routes(
             return _profile_redirect("error", str(error))
         return _profile_redirect("updated")
 
-    @app.post("/profile/<profile_id>/archive")
-    def archive_profile_route(profile_id: str):
+    @app.post("/profile/delete")
+    def delete_profile_route():
+        profile_id = request.form.get("profile_id", "").strip()
         try:
-            archive_managed_profile(
+            delete_managed_profile(
                 settings_path,
                 profile_id,
-                archived=True,
                 base_directory=base_directory,
             )
         except (ConfigError, ProfileStorageError, ValueError) as error:
             return _profile_redirect("error", str(error))
-        return _profile_redirect("archived")
+        return _profile_redirect("deleted")
 
-    @app.post("/profile/<profile_id>/restore")
-    def restore_profile_route(profile_id: str):
-        try:
-            archive_managed_profile(
-                settings_path,
-                profile_id,
-                archived=False,
-                base_directory=base_directory,
-            )
-        except (ConfigError, ProfileStorageError, ValueError) as error:
-            return _profile_redirect("error", str(error))
-        return _profile_redirect("restored")
+    @app.post("/profile/<profile_id>/resume")
+    def upload_managed_resume(profile_id: str):
+        return _save_resume_upload(profile_id=profile_id)
 
     @app.post("/profile/resume")
     def upload_resume():
+        return _save_resume_upload()
+
+    def _save_resume_upload(*, profile_id: str | None = None):
         uploaded_file = request.files.get("resume_file")
 
         if uploaded_file is None or not uploaded_file.filename:
@@ -268,11 +324,12 @@ def register_profile_routes(
                 settings_path,
                 base_directory=base_directory,
             )
-            if management_view.active_profile_id is not None:
+            if profile_id is not None or management_view.active_profile_id is not None:
                 save_managed_profile_resume(
                     settings_path,
                     uploaded_file.filename,
                     uploaded_file.read(),
+                    profile_id=profile_id,
                     base_directory=base_directory,
                 )
             else:

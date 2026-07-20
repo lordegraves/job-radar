@@ -336,8 +336,7 @@
                 <a class="{% if request.endpoint == 'index' %}active-nav{% endif %}" href="{{ url_for('index') }}">Home</a>
                 <a class="{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application'] %}active-nav{% endif %}" href="{{ url_for('tracker') }}">Active Applications</a>
                 <a class="{% if request.endpoint in ['history', 'edit_history_record'] %}active-nav{% endif %}" href="{{ url_for('history') }}">Application History</a>
-                <a class="{% if request.endpoint in ['profile', 'upload_resume'] %}active-nav{% endif %}" href="{{ url_for('profile') }}">Profile / Resume</a>
-                <a class="{% if request.endpoint == 'preferences' %}active-nav{% endif %}" href="{{ url_for('preferences') }}">Search Preferences</a>
+                <a class="{% if request.endpoint in ['profile', 'new_profile_page', 'edit_profile_page', 'edit_legacy_profile_page', 'preferences', 'upload_resume', 'upload_managed_resume'] %}active-nav{% endif %}" href="{{ url_for('profile') }}">Profile / Resume</a>
                 <a class="{% if request.endpoint in ['reports', 'report_view'] %}active-nav{% endif %}" href="{{ url_for('reports') }}">Reports</a>
                 <a class="{% if request.endpoint == 'companies' %}active-nav{% endif %}" href="{{ url_for('companies') }}">Companies</a>
                 <a class="{% if request.endpoint in ['scan', 'run_scan'] %}active-nav{% endif %}" href="{{ url_for('scan') }}">Scan</a>

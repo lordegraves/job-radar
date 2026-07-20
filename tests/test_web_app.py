@@ -28,7 +28,7 @@ from job_radar.tracker.tracker_storage import (
 from job_radar.web_app import create_app
 
 
-def test_profile_gui_creates_edits_and_archives_managed_profile(
+def test_profile_gui_creates_edits_and_deletes_managed_profile(
     tmp_path: Path,
 ) -> None:
     settings_file = tmp_path / "config" / "settings.yaml"
@@ -64,10 +64,21 @@ def test_profile_gui_creates_edits_and_archives_managed_profile(
     assert "Manage profiles" in page
     assert "Platform Search" in page
     assert "— Active" in page
+    assert 'id="managed-profile-select"' in page
+    assert "Use this profile" in page
+    assert ">Edit</a>" in page
+    assert "Create profile" in page
+    assert ">Delete</button>" in page
+    assert "Type DELETE to confirm" in page
+    assert "Archive profile" not in page
+    assert "Restore profile" not in page
 
-    response = client.post(f"/profile/{profile.profile_id}/archive")
+    response = client.post(
+        "/profile/delete", data={"profile_id": profile.profile_id}
+    )
     assert response.status_code == 302
     assert get_active_profile(database_file) is None
+    assert list_profiles(database_file, include_archived=True) == []
 
 
 def test_profile_gui_uploads_resume_to_managed_directory(tmp_path: Path) -> None:
@@ -1396,24 +1407,20 @@ candidate:
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    response = client.get("/profile")
+    response = client.get("/profile/legacy/edit")
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Replace resume" in html
-    assert "Current file" in html
+    assert "Replace résumé" in html
+    assert "Current résumé" in html
     assert "resume.md" in html
-    assert "Choose resume file" in html
-    assert "No file selected" in html
-    assert "replace-confirmation" in html
-    assert "Yes, replace resume" in html
-    assert "No, keep current resume" in " ".join(html.split())
-    assert "Replace it with the selected file?" in html
+    assert "Back to profile summary" in html
+    assert "Cancel" in html
     assert 'enctype="multipart/form-data"' in html
     assert 'accept=".md,.txt,.pdf,.docx"' in html
-    assert "Upload and normalize resume" in html
+    assert "Save résumé" in html
     assert "Supported formats: .md, .txt, .pdf, and .docx." in html
-    assert "validates and extracts the new file before replacing" in html
+    assert "Selecting a file does not change anything until you press Save résumé" in html
 
 
 def test_profile_resume_upload_updates_resume_and_normalized_text(tmp_path: Path) -> None:
@@ -3839,11 +3846,11 @@ candidate:
     assert "Preferred base" in html
     assert "Active resume" in html
     assert "Profile and resume available" in html
-    assert "Candidate fit profile" in html
-    assert "Core strengths" in html
-    assert "Credible adjacent areas" in html
-    assert "Learning / gap areas" in html
-    assert "Avoid signals" in html
+    assert "Strengths and gaps" in html
+    assert "Strengths" in html
+    assert "Adjacent capabilities" in html
+    assert "Experience gaps" in html
+    assert "Roles or responsibilities to avoid" in html
     assert "Resume preview" in html
     assert "Technical details" in html
     assert "Show configured profile and resume paths" in html
@@ -3905,12 +3912,16 @@ review_needed:
         settings_path=str(settings_file),
         base_directory=str(tmp_path),
     )
-    response = app.test_client().get("/preferences")
-    html = response.get_data(as_text=True)
+    client = app.test_client()
+    response = client.get("/preferences")
 
-    assert response.status_code == 200
-    assert "Search Preferences" in html
-    assert "Create a new profile" in html
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/profile"
+
+    html = client.get("/profile/new").get_data(as_text=True)
+    assert "Create profile" in html
+    assert "Back to profile summary" in html
+    assert "Cancel" in html
     assert 'name="display_name"' in html
     assert "Create profile" in html
     assert "You are not running a job-board search from this page" in html
@@ -3923,7 +3934,8 @@ review_needed:
     assert "enter your own wording" in html
     assert "Workplace arrangements" in html
     assert "City, state, or ZIP" in html
-    assert "What junior will look for" in html
+    assert "Your profile at a glance" in html
+    assert "Strengths" in html
     assert "Jobs must pay at least" in html
     assert "junior will place it in Needs Review" in html
     assert "How recommendations should be explained" not in html
@@ -3950,6 +3962,55 @@ review_needed:
     assert "workplace-arrangement" in html
     assert "additional_cities" in html
     assert "more major communities" in html
+
+
+def test_profile_page_guides_first_time_user_without_creating_data(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file), base_directory=str(tmp_path))
+    client = app.test_client()
+
+    summary = client.get("/profile")
+    create_page = client.get("/profile/new")
+
+    assert summary.status_code == 200
+    assert "Create your first profile" in summary.get_data(as_text=True)
+    assert 'href="/profile/new"' in summary.get_data(as_text=True)
+    assert "Unknown candidate" not in summary.get_data(as_text=True)
+    assert create_page.status_code == 200
+    assert "Back to profile summary" in create_page.get_data(as_text=True)
+    assert "Cancel" in create_page.get_data(as_text=True)
+    assert list_profiles(database_file, include_archived=True) == []
+
+
+def test_profile_summary_and_edit_page_have_separate_jobs(tmp_path: Path) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file), base_directory=str(tmp_path))
+    client = app.test_client()
+    client.post("/profile/create", data={"display_name": "Kitchen Work"})
+    profile = get_active_profile(database_file)
+
+    assert profile is not None
+    summary_html = client.get("/profile").get_data(as_text=True)
+    edit_html = client.get(f"/profile/{profile.profile_id}/edit").get_data(
+        as_text=True
+    )
+
+    assert "What junior will scan for" in summary_html
+    assert f'href="/profile/{profile.profile_id}/edit"' in summary_html
+    assert 'name="occupation_selections_json"' not in summary_html
+    assert "Edit profile" in edit_html
+    assert "Back to profile summary" in edit_html
+    assert "Cancel" in edit_html
+    assert 'name="occupation_selections_json"' in edit_html
+    assert "Save changes" in edit_html
 
 
 def test_search_preferences_creates_profile_and_guides_resume_upload(
@@ -3981,8 +4042,7 @@ def test_search_preferences_creates_profile_and_guides_resume_upload(
     )
 
     assert response.status_code == 302
-    assert "profile_result=created_from_preferences" in response.headers["Location"]
-    assert response.headers["Location"].endswith("#resume-upload")
+    assert "profile_result=created" in response.headers["Location"]
     profile = get_active_profile(database_file)
     assert profile is not None
     assert profile.display_name == "Colorado Kitchen Work"
@@ -3990,7 +4050,7 @@ def test_search_preferences_creates_profile_and_guides_resume_upload(
 
     handoff_page = client.get(response.headers["Location"]).get_data(as_text=True)
     assert "Profile created." in handoff_page
-    assert "Upload a résumé to complete this profile." in handoff_page
+    assert "Choose Edit profile to add a résumé or make changes." in handoff_page
 
 
 def test_search_preferences_rejects_duplicate_profile_name_without_partial_create(
@@ -4017,7 +4077,7 @@ def test_search_preferences_rejects_duplicate_profile_name_without_partial_creat
     )
 
     assert response.status_code == 302
-    assert "mode=create" in response.headers["Location"]
+    assert response.headers["Location"].startswith("/profile/new?")
     assert len(list_profiles(database_file, include_archived=True)) == 1
     error_page = client.get(response.headers["Location"]).get_data(as_text=True)
     assert "A profile with that name already exists" in error_page
@@ -4061,7 +4121,7 @@ def test_search_preferences_save_normalized_profile_data(tmp_path: Path) -> None
     )
 
     assert response.status_code == 302
-    assert "preference_result=saved" in response.headers["Location"]
+    assert "profile_result=preferences_saved" in response.headers["Location"]
     profile = get_active_profile(database_file)
     assert profile is not None
     assert profile.preferences.target_roles == ("Bakers",)
@@ -4075,7 +4135,7 @@ def test_search_preferences_save_normalized_profile_data(tmp_path: Path) -> None
     assert profile.preferences.location_selections[0].radius_miles == 25
 
     saved_page = client.get(response.headers["Location"]).get_data(as_text=True)
-    assert "Your search preferences were saved" in saved_page
+    assert "Profile saved" in saved_page
     assert "Fort Collins, Colorado" in saved_page
 
 
@@ -4105,7 +4165,7 @@ def test_search_preferences_reject_invalid_values_without_changing_profile(
     )
 
     assert response.status_code == 302
-    assert "preference_result=error" in response.headers["Location"]
+    assert "preference_error=" in response.headers["Location"]
     assert get_active_profile(database_file) == original
 
 
@@ -4298,7 +4358,6 @@ candidate:
         "/tracker",
         "/history",
         "/profile",
-        "/preferences",
         "/reports",
         "/scan",
     ]:
@@ -4312,7 +4371,7 @@ candidate:
         assert 'href="/tracker">Active Applications</a>' in normalized_html
         assert 'href="/history">Application History</a>' in normalized_html
         assert 'href="/profile">Profile / Resume</a>' in normalized_html
-        assert 'href="/preferences">Search Preferences</a>' in normalized_html
+        assert ">Search Preferences</a>" not in normalized_html
         assert 'href="/reports">Reports</a>' in normalized_html
         assert 'href="/scan">Scan</a>' in normalized_html
         assert "active-nav" in normalized_html
@@ -4356,7 +4415,6 @@ candidate:
         "/tracker": '<a class="active-nav" href="/tracker">Active Applications</a>',
         "/history": '<a class="active-nav" href="/history">Application History</a>',
         "/profile": '<a class="active-nav" href="/profile">Profile / Resume</a>',
-        "/preferences": '<a class="active-nav" href="/preferences">Search Preferences</a>',
         "/reports": '<a class="active-nav" href="/reports">Reports</a>',
         "/scan": '<a class="active-nav" href="/scan">Scan</a>',
     }
@@ -4367,3 +4425,7 @@ candidate:
 
         assert response.status_code == 200
         assert expected_link in normalized_html
+
+    compatibility_response = client.get("/preferences")
+    assert compatibility_response.status_code == 302
+    assert compatibility_response.headers["Location"] == "/profile"

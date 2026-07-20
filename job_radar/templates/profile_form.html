@@ -1,0 +1,144 @@
+{# Dedicated create/edit workspace; nothing is stored until a save button is used. #}
+{% extends "base.html" %}
+
+{% block title %}{{ "Create Profile" if create_new else "Edit Profile" }} - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .resume-upload-panel {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 18px;
+    }
+    .current-resume-summary {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        margin-bottom: 18px;
+    }
+    .current-resume-item {
+        background: rgba(43, 43, 49, 0.62);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 14px;
+    }
+    .current-resume-item strong { display: block; margin-bottom: 4px; overflow-wrap: anywhere; }
+    .native-file-input { height: 1px; opacity: 0; overflow: hidden; position: absolute; width: 1px; }
+    .file-picker-row { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+    .selected-file-name { color: var(--muted); overflow-wrap: anywhere; }
+    .replace-confirmation {
+        background: rgba(96, 205, 255, 0.08);
+        border: 1px solid rgba(96, 205, 255, 0.35);
+        border-radius: 10px;
+        display: none;
+        margin-top: 16px;
+        padding: 14px 16px;
+    }
+    .replace-confirmation.is-visible { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">{{ "Create profile" if create_new else "Edit profile" }}</h1>
+    <p class="muted">{{ "Build a new profile without changing an existing one." if create_new else "Update the selected profile. Changes are not written until you save." }}</p>
+    <div class="actions">
+        <a id="back-to-profile" class="button-link button-secondary" href="{{ url_for('profile') }}">Back to profile summary</a>
+    </div>
+</div>
+
+{% include "preferences.html" %}
+
+{% if not create_new %}
+<div class="section" id="resume-upload">
+    <h2>Résumé</h2>
+    <p class="muted">Replace the résumé stored with this profile. Selecting a file does not change anything until you press Save résumé.</p>
+    <div class="resume-upload-panel">
+        <div class="current-resume-summary">
+            <div class="current-resume-item">
+                <strong>{{ profile.resume_source_file_name or "Not configured" }}</strong>
+                <span class="muted">Current file</span>
+            </div>
+            <div class="current-resume-item">
+                <strong>{% if profile.resume_source_exists %}Available{% else %}Missing{% endif %}</strong>
+                <span class="muted">Résumé source</span>
+            </div>
+            <div class="current-resume-item">
+                <strong>{% if profile.normalized_text_exists %}Available{% else %}Missing{% endif %}</strong>
+                <span class="muted">Normalized résumé</span>
+            </div>
+        </div>
+        <form id="resume-upload-form" method="post" action="{{ url_for('upload_managed_resume', profile_id=active_managed_profile.profile_id) }}" enctype="multipart/form-data" data-resume-exists="{{ 'true' if profile.resume_source_exists or profile.normalized_text_exists else 'false' }}">
+            <label for="resume_file">Select replacement file</label>
+            <div class="file-picker-row">
+                <input class="native-file-input" id="resume_file" name="resume_file" type="file" accept=".md,.txt,.pdf,.docx" required>
+                <label class="button-link button-secondary" for="resume_file">Choose résumé file</label>
+                <span class="selected-file-name" id="selected-file-name">No file selected</span>
+            </div>
+            <div class="replace-confirmation" id="replace-confirmation">
+                <p><strong>A résumé is already active:</strong> {{ profile.resume_source_file_name or "configured résumé" }}</p>
+                <p>Replace it with the selected file?</p>
+                <div class="actions">
+                    <button type="button" id="confirm-upload-button">Yes, replace résumé</button>
+                    <button class="button-secondary" type="button" id="cancel-upload-button">No, keep current résumé</button>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="upload-button" type="submit">Save résumé</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<script>
+(() => {
+    const profileForm = document.getElementById("preferences-form");
+    const backLink = document.getElementById("back-to-profile");
+    const cancelLink = document.getElementById("cancel-profile-edit");
+    let hasUnsavedChanges = false;
+
+    profileForm?.addEventListener("input", () => { hasUnsavedChanges = true; });
+    profileForm?.addEventListener("change", () => { hasUnsavedChanges = true; });
+    profileForm?.addEventListener("submit", () => { hasUnsavedChanges = false; });
+    [backLink, cancelLink].forEach((link) => link?.addEventListener("click", () => { hasUnsavedChanges = false; }));
+    window.addEventListener("beforeunload", (event) => {
+        if (!hasUnsavedChanges) return;
+        event.preventDefault();
+        event.returnValue = "";
+    });
+
+    const uploadForm = document.getElementById("resume-upload-form");
+    const fileInput = document.getElementById("resume_file");
+    const selectedFileName = document.getElementById("selected-file-name");
+    const replaceConfirmation = document.getElementById("replace-confirmation");
+    const confirmButton = document.getElementById("confirm-upload-button");
+    const cancelButton = document.getElementById("cancel-upload-button");
+    if (!uploadForm || !fileInput || !selectedFileName || !replaceConfirmation || !confirmButton || !cancelButton) return;
+
+    const resumeExists = uploadForm.dataset.resumeExists === "true";
+    let replacementConfirmed = false;
+    fileInput.addEventListener("change", () => {
+        replacementConfirmed = false;
+        selectedFileName.textContent = fileInput.files.length ? fileInput.files[0].name : "No file selected";
+        replaceConfirmation.classList.remove("is-visible");
+    });
+    uploadForm.addEventListener("submit", (event) => {
+        if (!resumeExists || replacementConfirmed) return;
+        event.preventDefault();
+        replaceConfirmation.classList.add("is-visible");
+    });
+    confirmButton.addEventListener("click", () => {
+        replacementConfirmed = true;
+        uploadForm.requestSubmit();
+    });
+    cancelButton.addEventListener("click", () => {
+        replacementConfirmed = false;
+        fileInput.value = "";
+        selectedFileName.textContent = "No file selected";
+        replaceConfirmation.classList.remove("is-visible");
+    });
+})();
+</script>
+{% endblock %}
