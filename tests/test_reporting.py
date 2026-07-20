@@ -63,7 +63,7 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     html = render_html_report(report)
 
     assert "<h1>junior Report</h1>" in html
-    assert 'class="table-of-contents"' in html
+    assert 'id="report-contents" class="table-of-contents"' in html
     assert '<h2 id="summary">Summary</h2>' in html
     assert '<a href="#summary">Summary</a>' in html
     assert '<a href="#top-matches">Top Matches</a>' in html
@@ -93,6 +93,9 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
         '<h2 id="passed-not-recommended">Passed / Not Recommended</h2>'
         in html
     )
+    assert html.count(
+        '<a href="#report-contents">Back to report contents</a>'
+    ) == 6
     assert "<strong>Generated at:</strong> 2026-06-24 12:34 UTC" in html
     assert "<strong>Actionable jobs stored:</strong> 1" in html
     assert "<strong>Jobs not actionable:</strong> 0" in html
@@ -490,6 +493,9 @@ def test_render_html_report_links_to_collector_errors_when_present() -> None:
     assert '<h2 id="collector-errors">Collector Errors</h2>' in html
     assert '<a href="#jobs">Jobs</a>' in html
     assert '<h2 id="jobs">Jobs</h2>' in html
+    assert html.count(
+        '<a href="#report-contents">Back to report contents</a>'
+    ) == 2
 
 
 def test_write_html_report_writes_file(tmp_path: Path) -> None:

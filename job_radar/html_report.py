@@ -212,6 +212,7 @@ def render_html_report(report: ScanReport) -> str:
 
     if report.collector_errors:
         _append_html_collector_errors(lines, report.collector_errors)
+        _append_html_back_to_contents(lines)
 
     if report.scored_postings is not None:
         _append_html_scored_sections(
@@ -222,6 +223,7 @@ def render_html_report(report: ScanReport) -> str:
         )
     else:
         _append_html_unscored_jobs_section(lines, report.postings)
+        _append_html_back_to_contents(lines)
 
     lines.extend(
         [
@@ -265,7 +267,8 @@ def _append_html_table_of_contents(
 
     lines.extend(
         [
-            '<nav class="table-of-contents" aria-label="Report contents">',
+            '<nav id="report-contents" class="table-of-contents" '
+            'aria-label="Report contents">',
             "<h2>Report contents</h2>",
             "<ul>",
         ]
@@ -281,6 +284,12 @@ def _append_html_table_of_contents(
             "</ul>",
             "</nav>",
         ]
+    )
+
+
+def _append_html_back_to_contents(lines: list[str]) -> None:
+    lines.append(
+        '<p><a href="#report-contents">Back to report contents</a></p>'
     )
 
 
@@ -966,13 +975,23 @@ def _append_html_scored_sections(
         report_scored_postings.extend(omitted_scored_postings)
 
     _append_html_top_matches_section(lines, report_scored_postings)
+    _append_html_back_to_contents(lines)
+
     _append_html_northern_colorado_highlights_section(lines, report_scored_postings)
+    _append_html_back_to_contents(lines)
+
     _append_html_review_needed_section(lines, report_scored_postings)
+    _append_html_back_to_contents(lines)
+
     _append_html_tracked_applications_section(lines, report_scored_postings)
+    _append_html_back_to_contents(lines)
+
     _append_html_new_jobs_section(
         lines,
         new_scored_postings or [],
     )
+    _append_html_back_to_contents(lines)
+
     _append_html_omitted_jobs_section(
         lines,
         scored_postings=(
@@ -981,6 +1000,7 @@ def _append_html_scored_sections(
             else report_scored_postings
         ),
     )
+    _append_html_back_to_contents(lines)
 
 
 def _append_html_top_matches_section(
