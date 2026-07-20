@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from job_radar.eligibility import EligibilityReason, EligibilityResult
 from job_radar.models import JobPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.html_report import render_html_report, write_html_report
@@ -86,6 +87,53 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     )
     assert "<strong>Job Radar ID:</strong>" in html
     assert "<strong>URL:</strong>" not in html
+
+
+def test_render_html_report_displays_not_eligible_job_and_reasons() -> None:
+    posting = make_posting(title="Senior Infrastructure Engineer")
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=140,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        eligibility=EligibilityResult(
+            status="not_eligible",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_below_floor",
+                    message="The advertised compensation is below the profile minimum.",
+                ),
+                EligibilityReason(
+                    code="travel_exceeds_profile_limit",
+                    message="Required travel exceeds the profile limit.",
+                ),
+            ),
+        ),
+    )
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[scored_posting],
+    )
+
+    html = render_html_report(report)
+
+    assert "<strong>Eligibility:</strong> Not Eligible" in html
+    assert (
+        "<strong>Eligibility reasons:</strong> "
+        "The advertised compensation is below the profile minimum.; "
+        "Required travel exceeds the profile limit."
+        in html
+    )
 
 
 def test_render_html_report_includes_passed_job_details() -> None:

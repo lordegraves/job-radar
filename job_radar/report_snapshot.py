@@ -4,7 +4,6 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from job_radar.eligibility import EligibilityResult
 from job_radar.html_report import (
     PASSED_JOBS_REPORT_LIMIT,
     _get_omitted_postings,
@@ -189,27 +188,13 @@ def _build_snapshot_job(
         history_context=job.history_context,
         history_risk=None if job.history_risk == "None" else job.history_risk,
         job_radar_id=posting.job_radar_id,
-        eligibility_status=_get_eligibility_status(scored_posting.eligibility),
-        eligibility_reasons=_get_eligibility_reasons(scored_posting.eligibility),
+        eligibility_status=job.eligibility_status,
+        eligibility_reasons=(
+            list(job.eligibility_reasons)
+            if job.eligibility_status is not None
+            else None
+        ),
     )
-
-
-def _get_eligibility_status(
-    eligibility: EligibilityResult | None,
-) -> str | None:
-    if eligibility is None:
-        return None
-
-    return eligibility.status
-
-
-def _get_eligibility_reasons(
-    eligibility: EligibilityResult | None,
-) -> list[str] | None:
-    if eligibility is None:
-        return None
-
-    return [reason.message for reason in eligibility.reasons]
 
 
 def _clean_optional_value(value: str | None) -> str | None:

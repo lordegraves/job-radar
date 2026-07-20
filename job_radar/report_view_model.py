@@ -51,6 +51,10 @@ class JobOutputViewModel:
     why_matched: str
     history_context: str
     history_risk: str
+    eligibility_status: str | None
+    eligibility_label: str
+    eligibility_reasons: tuple[str, ...]
+    eligibility_reason_text: str
 
 
 def build_job_output_view_model(
@@ -64,6 +68,29 @@ def build_job_output_view_model(
         history_risk = (
             f"{scored_posting.history_risk_level}: "
             f"{', '.join(scored_posting.history_risk_reasons)}"
+        )
+
+    eligibility_status = None
+    eligibility_label = "Not evaluated"
+    eligibility_reasons: tuple[str, ...] = ()
+    eligibility_reason_text = "Not evaluated"
+
+    if scored_posting.eligibility is not None:
+        eligibility_status = scored_posting.eligibility.status
+        eligibility_label = {
+            "eligible": "Eligible",
+            "needs_review": "Needs Review",
+            "not_eligible": "Not Eligible",
+        }.get(eligibility_status, eligibility_status)
+        eligibility_reasons = tuple(
+            reason.message
+            for reason in scored_posting.eligibility.reasons
+            if reason.message.strip()
+        )
+        eligibility_reason_text = (
+            "; ".join(eligibility_reasons)
+            if eligibility_reasons
+            else "None recorded"
         )
 
     return JobOutputViewModel(
@@ -90,6 +117,10 @@ def build_job_output_view_model(
         why_matched=_format_match_summary(scored_posting.score_reasons),
         history_context=history_context,
         history_risk=history_risk,
+        eligibility_status=eligibility_status,
+        eligibility_label=eligibility_label,
+        eligibility_reasons=eligibility_reasons,
+        eligibility_reason_text=eligibility_reason_text,
     )
 
 

@@ -7,6 +7,7 @@ from job_radar.email_summary import (
     build_email_subject,
     write_email_preview,
 )
+from job_radar.eligibility import EligibilityReason, EligibilityResult
 from job_radar.models import JobPosting
 from job_radar.report_models import ScanReport
 from job_radar.scored_posting import ScoredPosting
@@ -176,6 +177,65 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "   Signals: data center, linux" in body
     assert "Full report:" in body
     assert "reports/live-test.md" in body
+
+
+def test_email_displays_eligibility_and_reasons() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        company_name="Example AI",
+    )
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=140,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_unknown",
+                    message="The posting does not provide usable compensation.",
+                ),
+                EligibilityReason(
+                    code="on_call_schedule_needs_review",
+                    message="The posting includes an on-call requirement.",
+                ),
+            ),
+        ),
+    )
+    report = ScanReport(
+        generated_at="2026-07-20T12:00:00+00:00",
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[posting],
+        scored_postings=[scored_posting],
+    )
+
+    body = build_email_body(report, "reports/latest.html")
+    html_body = build_email_html_body(report, "reports/latest.html")
+
+    assert "   Eligibility: Needs Review" in body
+    assert (
+        "   Eligibility reasons: "
+        "The posting does not provide usable compensation.; "
+        "The posting includes an on-call requirement."
+        in body
+    )
+    assert "<strong>Eligibility:</strong> Needs Review" in html_body
+    assert (
+        "<strong>Eligibility reasons:</strong> "
+        "The posting does not provide usable compensation.; "
+        "The posting includes an on-call requirement."
+        in html_body
+    )
 
 
 def test_build_email_body_keeps_medium_kubernetes_risk_out_of_top_matches() -> None:

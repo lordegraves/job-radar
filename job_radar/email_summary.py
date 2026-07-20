@@ -328,6 +328,8 @@ def _append_email_posting_detail(
             f"   Company: {job.company}",
             f"   Job Radar ID: {job.job_radar_id}",
             f"   Score: {job.score}",
+            f"   Eligibility: {job.eligibility_label}",
+            f"   Eligibility reasons: {job.eligibility_reason_text}",
             f"   Location: {job.location}",
             f"   Technical match: {job.technical_match}",
             f"   Resume match: {job.resume_match}",
@@ -561,6 +563,10 @@ def _append_html_posting_detail(
             f"<li><strong>Job Radar ID:</strong> "
             f"<code>{escape(job.job_radar_id)}</code></li>",
             f"<li><strong>Score:</strong> {job.score}</li>",
+            f"<li><strong>Eligibility:</strong> "
+            f"{escape(job.eligibility_label)}</li>",
+            f"<li><strong>Eligibility reasons:</strong> "
+            f"{escape(job.eligibility_reason_text)}</li>",
             f"<li><strong>Location:</strong> "
             f"{escape(job.location)}</li>",
             f"<li><strong>Technical match:</strong> "

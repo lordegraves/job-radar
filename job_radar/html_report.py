@@ -1086,6 +1086,10 @@ def _append_html_passed_posting(
             "<ul>",
             f"<li><strong>Company:</strong> {escape(job.company)}</li>",
             f"<li><strong>Score:</strong> {job.score}</li>",
+            f"<li><strong>Eligibility:</strong> "
+            f"{escape(job.eligibility_label)}</li>",
+            f"<li><strong>Eligibility reasons:</strong> "
+            f"{escape(job.eligibility_reason_text)}</li>",
             f"<li><strong>Location:</strong> "
             f"{escape(job.location)}</li>",
             f"<li><strong>Recommended action:</strong> "
@@ -1193,7 +1197,11 @@ def _append_html_scored_posting(
             'target="_blank" rel="noopener noreferrer">'
             f"{escape(posting.title)}</a></h3>",
             "<ul>",
-            f"<li><strong>Score:</strong> {scored_posting.score}</li>",
+            f"<li><strong>Score:</strong> {job.score}</li>",
+            f"<li><strong>Eligibility:</strong> "
+            f"{escape(job.eligibility_label)}</li>",
+            f"<li><strong>Eligibility reasons:</strong> "
+            f"{escape(job.eligibility_reason_text)}</li>",
         ]
     )
 

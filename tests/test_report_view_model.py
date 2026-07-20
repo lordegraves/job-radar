@@ -1,5 +1,6 @@
 """Tests how scored jobs are divided among report and email sections."""
 
+from job_radar.eligibility import EligibilityReason, EligibilityResult
 from job_radar.models import JobPosting
 from job_radar.report_view_model import (
     build_job_output_view_model,
@@ -16,6 +17,7 @@ def make_scored_posting(
     review_needed_eligible: bool = False,
     tracked: bool = False,
     score_reasons: list[str] | None = None,
+    eligibility: EligibilityResult | None = None,
 ) -> ScoredPosting:
     posting = JobPosting(
         company_key="example",
@@ -53,6 +55,7 @@ def make_scored_posting(
         ],
         top_match_eligible=top_match_eligible,
         review_needed_eligible=review_needed_eligible,
+        eligibility=eligibility,
         application=application,
     )
 
@@ -97,6 +100,19 @@ def test_build_job_output_view_model_prepares_shared_display_values() -> None:
     scored_posting = make_scored_posting(
         title="Infrastructure Engineer",
         top_match_eligible=True,
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_unknown",
+                    message="The posting does not provide usable compensation.",
+                ),
+                EligibilityReason(
+                    code="on_call_schedule_needs_review",
+                    message="The posting includes an on-call requirement.",
+                ),
+            ),
+        ),
     )
 
     job = build_job_output_view_model(scored_posting)
@@ -114,6 +130,16 @@ def test_build_job_output_view_model_prepares_shared_display_values() -> None:
     assert job.action_rationale
     assert job.hiring_risks
     assert job.why_matched == "infrastructure, linux, remote"
+    assert job.eligibility_status == "needs_review"
+    assert job.eligibility_label == "Needs Review"
+    assert job.eligibility_reasons == (
+        "The posting does not provide usable compensation.",
+        "The posting includes an on-call requirement.",
+    )
+    assert job.eligibility_reason_text == (
+        "The posting does not provide usable compensation.; "
+        "The posting includes an on-call requirement."
+    )
 
 
 def test_build_report_view_model_applies_email_limit() -> None:
