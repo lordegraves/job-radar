@@ -51,8 +51,20 @@
 <h1 class="page-title">{{ company.name }}</h1>
 
 <div class="page-card">
-    <p>This page is read-only for now. It shows the full configured company record junior is using.</p>
-    <p class="muted">Config file: <code>{{ company_config_path }}</code></p>
+    {% if active_profile %}
+    <p>
+        This employer is assigned to the active profile
+        <strong>{{ active_profile.display_name }}</strong>.
+    </p>
+    <p class="muted">
+        The full app-owned source record shown below is used when this profile runs a scan.
+    </p>
+    {% else %}
+    <p>
+        No managed profile is active. This record comes from the legacy company configuration.
+    </p>
+    <p class="muted">Legacy config file: <code>{{ company_config_path }}</code></p>
+    {% endif %}
 </div>
 
 <section class="company-detail-grid" aria-label="Company detail summary">

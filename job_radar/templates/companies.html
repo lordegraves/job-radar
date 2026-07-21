@@ -105,8 +105,21 @@
 <h1 class="page-title">Companies</h1>
 
 <div class="page-card">
-    <p>This page is read-only for now. It shows the target companies currently configured for scans.</p>
-    <p class="muted">Config file: <code>{{ company_config_path }}</code></p>
+    {% if active_profile %}
+    <p>
+        Showing the employers assigned to the active profile
+        <strong>{{ active_profile.display_name }}</strong>.
+    </p>
+    <p class="muted">
+        These app-owned employer sources determine which organizations this profile can scan.
+        Adding and editing employers will be enabled in the next step.
+    </p>
+    {% else %}
+    <p>
+        No managed profile is active. This page is showing the legacy company configuration used for scans.
+    </p>
+    <p class="muted">Legacy config file: <code>{{ company_config_path }}</code></p>
+    {% endif %}
 </div>
 
 <section class="company-summary-grid" aria-label="Company configuration summary">
@@ -196,10 +209,22 @@
         </tbody>
     </table>
     {% else %}
+    {% if active_profile and total_companies == 0 %}
+    <div class="page-card">
+        <p>
+            {{ active_profile.display_name }} does not have any employers yet.
+        </p>
+        <p class="muted">
+            Add employers before running a scan. junior will not silently use employers from another profile.
+        </p>
+    </div>
+    {% else %}
     <p class="muted">No companies match the current filters.</p>
+    {% endif %}
     {% endif %}
 </section>
 
+{% if source_summaries %}
 <section class="page-card source-summary-section" id="source-type-summary">
     <h2>Source type summary</h2>
 
@@ -228,4 +253,5 @@
         </tbody>
     </table>
 </section>
+{% endif %}
 {% endblock %}

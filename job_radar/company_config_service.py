@@ -1,6 +1,7 @@
 """Prepare company-source settings for safe display and future GUI editing."""
 
 import importlib.util
+from collections.abc import Mapping
 
 from dataclasses import dataclass
 
@@ -72,21 +73,33 @@ def build_company_config_views(config_path: str) -> list[CompanyConfigView]:
     data = load_yaml_file(config_path)
     companies = data.get("companies", [])
 
+    if not isinstance(companies, list):
+        return []
+
+    return build_company_config_views_from_mappings(companies)
+
+
+def build_company_config_views_from_mappings(
+    companies: list[object],
+) -> list[CompanyConfigView]:
+    """Build display views from YAML or app-owned employer mappings."""
+
     company_views: list[CompanyConfigView] = []
 
     for company in companies:
-        if not isinstance(company, dict):
+        if not isinstance(company, Mapping):
             continue
 
+        company_mapping = dict(company)
         company_views.append(
             CompanyConfigView(
-                company_key=str(company.get("company_key", "")),
-                name=str(company.get("name", "")),
-                source_type=str(company.get("source_type", "")),
-                enabled=bool(company.get("enabled", True)),
-                source_detail=get_company_source_detail(company),
-                notes=company.get("notes"),
-                config_items=get_company_config_items(company),
+                company_key=str(company_mapping.get("company_key", "")),
+                name=str(company_mapping.get("name", "")),
+                source_type=str(company_mapping.get("source_type", "")),
+                enabled=bool(company_mapping.get("enabled", True)),
+                source_detail=get_company_source_detail(company_mapping),
+                notes=company_mapping.get("notes"),
+                config_items=get_company_config_items(company_mapping),
             )
         )
 

@@ -165,7 +165,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     backup_directory = tmp_path / "backups"
     backup_paths = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v9-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v10-*.bak"
         )
     )
 
@@ -191,7 +191,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
 
     backup_paths_after_second_initialization = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v9-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v10-*.bak"
         )
     )
 
@@ -256,6 +256,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
         (7,),
         (8,),
         (9,),
+        (10,),
     ]
     profile_columns = {
         row[1]
@@ -267,6 +268,8 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
     assert "scoring_config_json" in profile_columns
     assert "legacy_scoring_import_pending" in profile_columns
     assert "fit_signals_json" in profile_columns
+    assert "legacy_company_import_pending" in profile_columns
+    assert table_exists(database_path, "employer_sources")
 
     assert {
         "requested_at",
@@ -279,7 +282,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v9-*.bak"
+            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v10-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -322,7 +325,7 @@ def test_initialize_database_rolls_back_failed_migration(
         "_schema_migrations",
         lambda: (
             *existing_migrations,
-            (10, "synthetic failing migration", fail_after_temporary_change),
+            (11, "synthetic failing migration", fail_after_temporary_change),
         ),
     )
 
@@ -339,7 +342,7 @@ def test_initialize_database_rolls_back_failed_migration(
             """
         ).fetchone()
         migration_version = connection.execute(
-            "SELECT version FROM schema_migrations WHERE version = 10"
+            "SELECT version FROM schema_migrations WHERE version = 11"
         ).fetchone()
         foreign_key_errors = connection.execute(
             "PRAGMA foreign_key_check"
@@ -351,7 +354,7 @@ def test_initialize_database_rolls_back_failed_migration(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-current.sqlite3.pre-migration-v10-v10-*.bak"
+            "synthetic-current.sqlite3.pre-migration-v11-v11-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -371,6 +374,7 @@ def test_initialize_database_rolls_back_failed_migration(
         (7,),
         (8,),
         (9,),
+        (10,),
     ]
 
 
@@ -392,6 +396,7 @@ def test_initialize_database_creates_expected_tables(tmp_path: Path) -> None:
         "profile_preferences",
         "profile_company_associations",
         "active_profile_selection",
+        "employer_sources",
         "schema_migrations",
     ]
 
@@ -427,6 +432,7 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
         (7, "add on-call profile preference"),
         (8, "add profile-owned scoring config"),
         (9, "add profile job-fit signals"),
+        (10, "add app-owned employer sources"),
     ]
 
 

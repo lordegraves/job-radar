@@ -1644,8 +1644,9 @@ companies:
 
     assert response.status_code == 200
     assert "Companies" in html
-    assert "This page is read-only for now." in html
-    assert f"Config file: <code>{companies_file}</code>" in html
+    assert "No managed profile is active." in html
+    assert "This page is showing the legacy company configuration" in html
+    assert f"Legacy config file: <code>{companies_file}</code>" in html
     assert "<strong>3</strong> <span class=\"muted\">Total companies</span>" in normalized_html
     assert "<strong>2</strong> <span class=\"muted\">Enabled</span>" in normalized_html
     assert "<strong>1</strong> <span class=\"muted\">Disabled</span>" in normalized_html
@@ -1795,8 +1796,9 @@ companies:
 
     assert response.status_code == 200
     assert "Enabled AI" in html
-    assert "This page is read-only for now." in html
-    assert f"Config file: <code>{companies_file}</code>" in html
+    assert "No managed profile is active." in html
+    assert "This record comes from the legacy company configuration." in html
+    assert f"Legacy config file: <code>{companies_file}</code>" in html
     assert '<a href="/companies">&larr; Back to Companies</a>' in html
     assert "<code>enabled_ai</code>" in html
     assert "<code>greenhouse</code>" in html

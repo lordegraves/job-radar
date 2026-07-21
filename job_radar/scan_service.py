@@ -7,9 +7,10 @@ from job_radar.candidate_profile import CandidateProfile
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import evaluate_compensation
-from job_radar.config import ApplicationSettings, load_companies, load_settings
+from job_radar.config import ApplicationSettings, load_settings
 from job_radar.email_sender import send_email_report
 from job_radar.eligibility import evaluate_practical_eligibility
+from job_radar.employer_resolution import resolve_scan_companies
 from job_radar.email_summary import (
     build_email_body,
     build_email_html_body,
@@ -228,9 +229,12 @@ def _handle_scan_unlocked(
     base_directory: Path,
     candidate_profile_path: Path | None,
 ) -> None:
-    companies = load_companies(config_path)
-
     initialize_database(database_path)
+
+    companies = resolve_scan_companies(
+        database_path,
+        config_path,
+    )
 
     requested_at = datetime.now(UTC).isoformat()
     scan_run_id = start_scan_run(

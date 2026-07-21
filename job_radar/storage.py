@@ -232,6 +232,11 @@ def _schema_migrations() -> tuple:
             "add profile job-fit signals",
             _migrate_profile_fit_signals,
         ),
+        (
+            10,
+            "add app-owned employer sources",
+            _migrate_employer_sources,
+        ),
     )
 
 
@@ -435,6 +440,56 @@ def _migrate_profile_fit_signals(connection: sqlite3.Connection) -> None:
         connection.execute(
             "ALTER TABLE profiles "
             "ADD COLUMN fit_signals_json TEXT NOT NULL DEFAULT '[]'"
+        )
+
+
+def _migrate_employer_sources(connection: sqlite3.Connection) -> None:
+    """Add complete app-owned employer sources and legacy import state."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS employer_sources (
+            employer_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            source_type TEXT NOT NULL,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            source_config_json TEXT NOT NULL DEFAULT '{}',
+            notes TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_employer_sources_enabled_name
+        ON employer_sources(enabled, name)
+        """
+    )
+
+    existing_profile_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(profiles)"
+        ).fetchall()
+    }
+
+    if "legacy_company_import_pending" not in existing_profile_columns:
+        connection.execute(
+            "ALTER TABLE profiles "
+            "ADD COLUMN legacy_company_import_pending INTEGER NOT NULL "
+            "DEFAULT 0"
+        )
+        connection.execute(
+            """
+            UPDATE profiles
+            SET legacy_company_import_pending = 1
+            WHERE profile_id = (
+                SELECT profile_id
+                FROM active_profile_selection
+                WHERE singleton_id = 1
+            )
+            """
         )
 
 

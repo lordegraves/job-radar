@@ -81,6 +81,7 @@ def create_app(
         get_company_config_path=lambda: str(
             _get_runtime_paths(app).company_config_path
         ),
+        get_database_path=lambda: _get_database_path(app),
     )
 
     register_profile_routes(
