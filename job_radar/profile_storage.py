@@ -11,6 +11,7 @@ from pathlib import Path
 
 from job_radar.database import connect_database
 from job_radar.profile_models import (
+    FitSignal,
     LocationPreference,
     ManagedProfile,
     ManagedResume,
@@ -293,9 +294,11 @@ def _insert_profile(
             resume_source_file_name,
             resume_normalized_text_file_name,
             scoring_config_file_name,
+            scoring_config_json,
+            fit_signals_json,
             report_settings_json
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             profile.profile_id,
@@ -305,6 +308,12 @@ def _insert_profile(
             resume_source_file_name,
             resume_normalized_text_file_name,
             profile.scoring_config_file_name,
+            (
+                _dump_json(profile.scoring_config)
+                if profile.scoring_config is not None
+                else None
+            ),
+            _dump_fit_signals(profile.fit_signals),
             _dump_json(profile.report_settings),
         ),
     )
@@ -335,6 +344,8 @@ def _update_profile_row(
             resume_source_file_name = ?,
             resume_normalized_text_file_name = ?,
             scoring_config_file_name = ?,
+            scoring_config_json = ?,
+            fit_signals_json = ?,
             report_settings_json = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE profile_id = ?
@@ -346,6 +357,12 @@ def _update_profile_row(
             resume_source_file_name,
             resume_normalized_text_file_name,
             profile.scoring_config_file_name,
+            (
+                _dump_json(profile.scoring_config)
+                if profile.scoring_config is not None
+                else None
+            ),
+            _dump_fit_signals(profile.fit_signals),
             _dump_json(profile.report_settings),
             profile.profile_id,
         ),
@@ -513,6 +530,8 @@ def _row_to_profile(
             resume=resume,
             company_ids=tuple(company_row["company_id"] for company_row in company_rows),
             scoring_config_file_name=row["scoring_config_file_name"],
+            scoring_config=_load_optional_json_object(row["scoring_config_json"]),
+            fit_signals=_load_fit_signals(row["fit_signals_json"]),
             report_settings=report_settings,
             archived=bool(row["archived"]),
             schema_version=row["schema_version"],
@@ -587,6 +606,56 @@ def _load_location_preferences(
         for item in value
         if isinstance(item, dict)
     )
+
+
+def _dump_fit_signals(signals: tuple[FitSignal, ...]) -> str:
+    return _dump_json(
+        [
+            {
+                "term": signal.term,
+                "category": signal.category,
+                "explanation": signal.explanation,
+                "evidence_source": signal.evidence_source,
+                "user_overridden": signal.user_overridden,
+            }
+            for signal in signals
+        ]
+    )
+
+
+def _load_fit_signals(raw_value: str) -> tuple[FitSignal, ...]:
+    value = json.loads(raw_value)
+    if not isinstance(value, list):
+        raise ValueError("stored fit signals must be a list")
+
+    signals = []
+    for item in value:
+        if not isinstance(item, dict):
+            raise ValueError("stored fit signal must be a mapping")
+        signals.append(
+            FitSignal(
+                term=item["term"],
+                category=item["category"],
+                explanation=item.get("explanation", ""),
+                evidence_source=item.get("evidence_source", "profile"),
+                user_overridden=item.get("user_overridden", False),
+            )
+        )
+    return tuple(signals)
+
+
+def _load_optional_json_object(
+    raw_value: str | None,
+) -> dict[str, object] | None:
+    if raw_value is None:
+        return None
+
+    value = json.loads(raw_value)
+
+    if not isinstance(value, dict):
+        raise ValueError("stored profile scoring config must be a mapping")
+
+    return value
 
 
 def _load_json_object(raw_value: str) -> dict[str, object]:

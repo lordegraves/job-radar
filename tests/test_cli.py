@@ -533,11 +533,11 @@ logs_path: {tmp_path}
         encoding="utf-8",
     )
 
-    def fail_configuration(scoring_path):
+    def fail_configuration(database_path, scoring_path):
         raise RuntimeError("invalid scoring configuration")
 
     monkeypatch.setattr(
-        "job_radar.scan_service.load_scoring_config",
+        "job_radar.scan_service.resolve_effective_scoring_config",
         fail_configuration,
     )
 

@@ -222,6 +222,16 @@ def _schema_migrations() -> tuple:
             "add on-call profile preference",
             _migrate_on_call_profile_preference,
         ),
+        (
+            8,
+            "add profile-owned scoring config",
+            _migrate_profile_scoring_config,
+        ),
+        (
+            9,
+            "add profile job-fit signals",
+            _migrate_profile_fit_signals,
+        ),
     )
 
 
@@ -415,6 +425,19 @@ def _migrate_job_history_table(connection: sqlite3.Connection) -> None:
         )
 
 
+def _migrate_profile_fit_signals(connection: sqlite3.Connection) -> None:
+    """Add ordered user-visible fit signals without changing existing scoring."""
+
+    existing_columns = {
+        row[1] for row in connection.execute("PRAGMA table_info(profiles)").fetchall()
+    }
+    if "fit_signals_json" not in existing_columns:
+        connection.execute(
+            "ALTER TABLE profiles "
+            "ADD COLUMN fit_signals_json TEXT NOT NULL DEFAULT '[]'"
+        )
+
+
 def _migrate_managed_profile_tables(connection: sqlite3.Connection) -> None:
     """Create profile records without assigning existing user data yet."""
 
@@ -534,6 +557,39 @@ def _migrate_on_call_profile_preference(
             "ALTER TABLE profile_preferences "
             "ADD COLUMN on_call_preference TEXT NOT NULL "
             "DEFAULT 'Review each job'"
+        )
+
+
+def _migrate_profile_scoring_config(
+    connection: sqlite3.Connection,
+) -> None:
+    """Mark existing profiles for one-time legacy scoring import."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(profiles)").fetchall()
+    }
+
+    if "scoring_config_json" not in existing_columns:
+        connection.execute(
+            "ALTER TABLE profiles ADD COLUMN scoring_config_json TEXT"
+        )
+
+    if "legacy_scoring_import_pending" not in existing_columns:
+        connection.execute(
+            "ALTER TABLE profiles "
+            "ADD COLUMN legacy_scoring_import_pending INTEGER NOT NULL "
+            "DEFAULT 0"
+        )
+        connection.execute(
+            "UPDATE profiles "
+            "SET legacy_scoring_import_pending = 1 "
+            "WHERE scoring_config_json IS NULL "
+            "AND profile_id = ("
+            "SELECT profile_id "
+            "FROM active_profile_selection "
+            "WHERE singleton_id = 1"
+            ")"
         )
 
 

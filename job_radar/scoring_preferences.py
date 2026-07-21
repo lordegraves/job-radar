@@ -2,7 +2,9 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+from job_radar.profile_scoring import resolve_effective_scoring_config
 from job_radar.scoring import ScoringConfigError, load_scoring_config
 
 
@@ -35,13 +37,36 @@ class ScoringPreferencesView:
 def build_scoring_preferences_view(
     scoring_path: str | Path,
 ) -> ScoringPreferencesView:
-    """Load the active rules without changing or reinterpreting scoring behavior."""
+    """Load file-based rules for legacy users and direct configuration views."""
 
     try:
         config = load_scoring_config(scoring_path)
     except (OSError, ScoringConfigError) as error:
         return ScoringPreferencesView(load_error=str(error))
 
+    return _build_scoring_preferences_view(config)
+
+
+def build_effective_scoring_preferences_view(
+    database_path: str | Path,
+    scoring_path: str | Path,
+) -> ScoringPreferencesView:
+    """Show the same effective rules that the next scan will use."""
+
+    try:
+        config = resolve_effective_scoring_config(
+            database_path,
+            scoring_path,
+        )
+    except (OSError, ScoringConfigError) as error:
+        return ScoringPreferencesView(load_error=str(error))
+
+    return _build_scoring_preferences_view(config)
+
+
+def _build_scoring_preferences_view(
+    config: dict[str, Any],
+) -> ScoringPreferencesView:
     locations = config["location_preferences"]
     top_matches = config["top_matches"]
     review_needed = config["review_needed"]

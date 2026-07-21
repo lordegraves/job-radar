@@ -25,6 +25,7 @@ from job_radar.history_match import (
 from job_radar.history_summary import build_history_summary
 from job_radar.normalize import clean_text
 from job_radar.profile_context import load_active_candidate_context
+from job_radar.profile_scoring import resolve_effective_scoring_config
 from job_radar.html_report import write_html_report
 from job_radar.report_models import ScanError, ScanReport
 from job_radar.report_snapshot import write_report_snapshot
@@ -42,7 +43,6 @@ from job_radar.recommendation_policy import (
 )
 from job_radar.scoring import (
     classify_location,
-    load_scoring_config,
     score_posting_with_evidence,
 )
 from job_radar.storage import (
@@ -249,7 +249,10 @@ def _handle_scan_unlocked(
     email_status = "not_requested"
 
     try:
-        scoring_config = load_scoring_config(scoring_path)
+        scoring_config = resolve_effective_scoring_config(
+            database_path,
+            scoring_path,
+        )
         candidate_context = load_active_candidate_context(
             database_path,
             candidate_profile_path,

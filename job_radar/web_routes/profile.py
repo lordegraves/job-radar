@@ -13,6 +13,11 @@ from job_radar.profile_management import (
     select_managed_profile,
     update_managed_profile_from_form,
 )
+from job_radar.profile_fit import build_initial_fit_signals
+from job_radar.profile_fit_service import (
+    build_profile_fit_board,
+    save_profile_fit_board,
+)
 from job_radar.profile_storage import ProfileStorageError
 from job_radar.preference_reference import (
     cities_within_radius,
@@ -23,7 +28,9 @@ from job_radar.profile_service import (
     build_candidate_profile_view,
     save_uploaded_resume,
 )
-from job_radar.scoring_preferences import build_scoring_preferences_view
+from job_radar.scoring_preferences import (
+    build_effective_scoring_preferences_view,
+)
 
 
 def register_profile_routes(
@@ -31,6 +38,7 @@ def register_profile_routes(
     *,
     settings_path: str,
     base_directory: str,
+    database_path: str,
     scoring_path: str,
 ) -> None:
     """Register profile viewing and resume replacement routes."""
@@ -60,6 +68,18 @@ def register_profile_routes(
         )
         if create_new:
             active_managed_profile = None
+
+        fit_signals = (
+            build_initial_fit_signals(active_managed_profile)
+            if active_managed_profile is not None
+            else ()
+        )
+        fit_summary = {
+            category: tuple(
+                signal for signal in fit_signals if signal.category == category
+            )
+            for category in ("strong", "review", "avoid", "ignored")
+        }
 
         saved_preferences = (
             active_managed_profile.preferences
@@ -100,11 +120,15 @@ def register_profile_routes(
             "profile": profile_view,
             "profile_management": management_view,
             "active_managed_profile": active_managed_profile,
+            "fit_summary": fit_summary,
             "has_profile": (
                 active_managed_profile is not None
                 or profile_view.candidate_profile_exists
             ),
-            "scoring_preferences": build_scoring_preferences_view(scoring_path),
+            "scoring_preferences": build_effective_scoring_preferences_view(
+                database_path,
+                scoring_path,
+            ),
             "preference_error": request.args.get(
                 "preference_error", ""
             ).strip(),
@@ -154,6 +178,23 @@ def register_profile_routes(
                 "error", "The selected profile is not available for editing."
             )
         return render_template("profile_form.html", **context)
+
+    @app.get("/profile/<profile_id>/fit")
+    def profile_fit_board_page(profile_id: str):
+        try:
+            managed_profile, fit_signals = build_profile_fit_board(
+                database_path,
+                profile_id,
+            )
+        except (ConfigError, ProfileStorageError, ValueError) as error:
+            return _profile_redirect("error", str(error))
+
+        return render_template(
+            "profile_fit_board.html",
+            managed_profile=managed_profile,
+            fit_signals=fit_signals,
+            fit_error=request.args.get("fit_error", "").strip(),
+        )
 
     @app.get("/profile/legacy/edit")
     def edit_legacy_profile_page():
@@ -288,6 +329,26 @@ def register_profile_routes(
         except (ConfigError, ProfileStorageError, ValueError) as error:
             return _profile_redirect("error", str(error))
         return _profile_redirect("updated")
+
+    @app.post("/profile/<profile_id>/fit")
+    def save_profile_fit_board_route(profile_id: str):
+        try:
+            save_profile_fit_board(
+                database_path,
+                scoring_path,
+                profile_id,
+                request.form.get("fit_signals_json", "[]"),
+            )
+        except (ConfigError, ProfileStorageError, ValueError) as error:
+            return redirect(
+                url_for(
+                    "profile_fit_board_page",
+                    profile_id=profile_id,
+                    fit_error=str(error),
+                )
+            )
+
+        return redirect(url_for("profile", profile_result="fit_preferences_saved"))
 
     @app.post("/profile/delete")
     def delete_profile_route():

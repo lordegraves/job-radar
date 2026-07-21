@@ -87,6 +87,7 @@ def create_app(
         app,
         settings_path=app.config["JOB_RADAR_SETTINGS_PATH"],
         base_directory=str(_get_runtime_paths(app).base_directory),
+        database_path=str(_get_runtime_paths(app).database_path),
         scoring_path=str(_get_runtime_paths(app).scoring_config_path),
     )
 

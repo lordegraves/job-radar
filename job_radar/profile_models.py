@@ -15,6 +15,30 @@ PROFILE_ID_PATTERN = re.compile(r"^profile_[a-z0-9]{8,32}$")
 SUPPORTED_MANAGED_RESUME_EXTENSIONS = {".docx", ".md", ".pdf", ".txt"}
 MANAGED_RESUME_BASENAME = "resume"
 NORMALIZED_RESUME_FILENAME = "resume.normalized.txt"
+FIT_SIGNAL_CATEGORIES = {"strong", "review", "avoid", "ignored"}
+
+
+@dataclass(frozen=True)
+class FitSignal:
+    """Describe one user-visible signal on the job-fit preference board."""
+
+    term: str
+    category: str
+    explanation: str = ""
+    evidence_source: str = "profile"
+    user_overridden: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.term.strip():
+            raise ValueError("fit signal term cannot be empty")
+        if self.category not in FIT_SIGNAL_CATEGORIES:
+            raise ValueError(f"unsupported fit signal category: {self.category}")
+        if not isinstance(self.explanation, str):
+            raise ValueError("fit signal explanation must be a string")
+        if not self.evidence_source.strip():
+            raise ValueError("fit signal evidence source cannot be empty")
+        if not isinstance(self.user_overridden, bool):
+            raise ValueError("fit signal user override must be a boolean")
 
 
 @dataclass(frozen=True)
@@ -163,6 +187,8 @@ class ManagedProfile:
     resume: ManagedResume | None = None
     company_ids: tuple[str, ...] = ()
     scoring_config_file_name: str = "scoring.yaml"
+    scoring_config: dict[str, object] | None = None
+    fit_signals: tuple[FitSignal, ...] = ()
     report_settings: dict[str, object] = field(default_factory=dict)
     archived: bool = False
     schema_version: int = PROFILE_SCHEMA_VERSION
@@ -184,6 +210,17 @@ class ManagedProfile:
 
         if self.scoring_config_file_name != "scoring.yaml":
             raise ValueError("scoring config must use the app-owned name 'scoring.yaml'")
+
+        if self.scoring_config is not None and not isinstance(
+            self.scoring_config, dict
+        ):
+            raise ValueError("profile scoring config must be a mapping")
+
+        normalized_signal_terms = [
+            signal.term.strip().casefold() for signal in self.fit_signals
+        ]
+        if len(set(normalized_signal_terms)) != len(normalized_signal_terms):
+            raise ValueError("fit signals cannot contain duplicate terms")
 
         if len(set(self.company_ids)) != len(self.company_ids):
             raise ValueError("company_ids cannot contain duplicates")

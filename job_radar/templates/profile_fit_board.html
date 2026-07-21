@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block title %}Job Fit Preferences - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .fit-board {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(4, minmax(230px, 1fr));
+        margin-top: 20px;
+    }
+
+    .fit-column {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        display: flex;
+        flex-direction: column;
+        min-height: 330px;
+        min-width: 0;
+        padding: 16px;
+    }
+
+    .fit-column.is-drag-target {
+        border-color: var(--link);
+        box-shadow: 0 0 0 2px rgba(96, 205, 255, 0.16);
+    }
+
+    .fit-column h2 {
+        margin: 0 0 6px;
+    }
+
+    .fit-column-description {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 0 0 14px;
+        min-height: 44px;
+    }
+
+    .fit-card-list {
+        display: grid;
+        gap: 10px;
+        min-height: 180px;
+    }
+
+    .fit-card {
+        background: var(--surface-muted);
+        border: 1px solid var(--border-strong);
+        border-radius: 10px;
+        cursor: grab;
+        padding: 12px;
+    }
+
+    .fit-card:active {
+        cursor: grabbing;
+    }
+
+    .fit-card.is-dragging {
+        opacity: 0.45;
+    }
+
+    .fit-card strong {
+        display: block;
+        overflow-wrap: anywhere;
+    }
+
+    .fit-card-explanation {
+        color: var(--muted);
+        font-size: 0.86rem;
+        margin: 6px 0 10px;
+        overflow-wrap: anywhere;
+    }
+
+    .fit-card-controls {
+        align-items: end;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .fit-card-controls label {
+        font-size: 0.8rem;
+        margin: 0;
+    }
+
+    .fit-card-controls select {
+        margin-top: 4px;
+        width: 100%;
+    }
+
+    .fit-card-remove {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        padding: 7px 10px;
+    }
+
+    .fit-add-panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        margin-top: 18px;
+        padding: 18px;
+    }
+
+    .fit-add-row {
+        align-items: end;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.35fr) auto;
+    }
+
+    .fit-empty {
+        color: var(--muted);
+        font-style: italic;
+        padding: 14px 4px;
+    }
+
+    @media (max-width: 1150px) {
+        .fit-board {
+            grid-template-columns: repeat(2, minmax(230px, 1fr));
+        }
+    }
+
+    @media (max-width: 650px) {
+        .fit-board,
+        .fit-add-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">Job fit preferences</h1>
+    <p class="muted">
+        junior built this starting point from your profile and current scoring rules.
+        Move anything that does not look right. Your changes will be preserved.
+    </p>
+    <div class="actions">
+        <a class="button-link button-secondary" href="{{ url_for('profile') }}">Back to profile summary</a>
+    </div>
+</div>
+
+{% if fit_error %}
+<div class="error">
+    <strong>Job-fit preferences were not saved.</strong>
+    {{ fit_error }}
+</div>
+{% endif %}
+
+<form id="fit-board-form" method="post" action="{{ url_for('save_profile_fit_board_route', profile_id=managed_profile.profile_id) }}">
+    <input id="fit-signals-json" name="fit_signals_json" type="hidden">
+
+    <div class="fit-board">
+        {% for category, heading, description in [
+            ("strong", "Strong Match", "Skills and work that make a job more likely to be a strong fit."),
+            ("review", "Needs Review", "Related, unclear, or limited experience that should receive a closer look."),
+            ("avoid", "Avoid", "Work or responsibilities that usually make a job a poor fit."),
+            ("ignored", "Ignored", "Terms junior should not use when judging job fit.")
+        ] %}
+        <section class="fit-column" data-category="{{ category }}">
+            <h2>{{ heading }}</h2>
+            <p class="fit-column-description">{{ description }}</p>
+            <div class="fit-card-list" data-card-list="{{ category }}">
+                {% for signal in fit_signals if signal.category == category %}
+                <article
+                    class="fit-card"
+                    draggable="true"
+                    data-term="{{ signal.term }}"
+                    data-explanation="{{ signal.explanation }}"
+                >
+                    <strong>{{ signal.term }}</strong>
+                    <p class="fit-card-explanation">
+                        {{ signal.explanation or "No explanation is available yet." }}
+                    </p>
+                    <div class="fit-card-controls">
+                        <label>
+                            Move to
+                            <select class="fit-card-category">
+                                <option value="strong"{% if category == "strong" %} selected{% endif %}>Strong Match</option>
+                                <option value="review"{% if category == "review" %} selected{% endif %}>Needs Review</option>
+                                <option value="avoid"{% if category == "avoid" %} selected{% endif %}>Avoid</option>
+                                <option value="ignored"{% if category == "ignored" %} selected{% endif %}>Ignored</option>
+                            </select>
+                        </label>
+                        <button class="fit-card-remove" type="button">Remove</button>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+
+    <div class="fit-add-panel">
+        <h2>Add a skill or responsibility</h2>
+        <p class="muted">Add something junior missed, then place it in the appropriate group.</p>
+        <div class="fit-add-row">
+            <div>
+                <label for="new-fit-term">Skill or responsibility</label>
+                <input id="new-fit-term" type="text" autocomplete="off" placeholder="Example: Kubernetes">
+            </div>
+            <div>
+                <label for="new-fit-category">Add to</label>
+                <select id="new-fit-category">
+                    <option value="strong">Strong Match</option>
+                    <option value="review">Needs Review</option>
+                    <option value="avoid">Avoid</option>
+                    <option value="ignored">Ignored</option>
+                </select>
+            </div>
+            <button id="add-fit-signal" type="button">Add</button>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button type="submit">Save job-fit preferences</button>
+        <a class="button-link button-secondary" href="{{ url_for('profile') }}">Cancel</a>
+    </div>
+</form>
+
+<script>
+(() => {
+    const form = document.getElementById("fit-board-form");
+    const hiddenInput = document.getElementById("fit-signals-json");
+    const addButton = document.getElementById("add-fit-signal");
+    const termInput = document.getElementById("new-fit-term");
+    const categoryInput = document.getElementById("new-fit-category");
+    let draggedCard = null;
+    let hasUnsavedChanges = false;
+
+    const categoryLabels = {
+        strong: "Strong Match",
+        review: "Needs Review",
+        avoid: "Avoid",
+        ignored: "Ignored",
+    };
+
+    function cardList(category) {
+        return document.querySelector(`[data-card-list="${category}"]`);
+    }
+
+    function markChanged() {
+        hasUnsavedChanges = true;
+    }
+
+    function moveCard(card, category) {
+        const target = cardList(category);
+        if (!target) return;
+        target.appendChild(card);
+        card.querySelector(".fit-card-category").value = category;
+        markChanged();
+    }
+
+    function createCard(term, category, explanation) {
+        const card = document.createElement("article");
+        card.className = "fit-card";
+        card.draggable = true;
+        card.dataset.term = term;
+        card.dataset.explanation = explanation;
+        card.innerHTML = `
+            <strong></strong>
+            <p class="fit-card-explanation"></p>
+            <div class="fit-card-controls">
+                <label>
+                    Move to
+                    <select class="fit-card-category">
+                        <option value="strong">Strong Match</option>
+                        <option value="review">Needs Review</option>
+                        <option value="avoid">Avoid</option>
+                        <option value="ignored">Ignored</option>
+                    </select>
+                </label>
+                <button class="fit-card-remove" type="button">Remove</button>
+            </div>
+        `;
+        card.querySelector("strong").textContent = term;
+        card.querySelector(".fit-card-explanation").textContent = explanation;
+        card.querySelector(".fit-card-category").value = category;
+        return card;
+    }
+
+    function serializeBoard() {
+        const signals = [];
+        document.querySelectorAll(".fit-column").forEach((column) => {
+            const category = column.dataset.category;
+            column.querySelectorAll(".fit-card").forEach((card) => {
+                signals.push({
+                    term: card.dataset.term,
+                    category,
+                    explanation: card.dataset.explanation || "",
+                });
+            });
+        });
+        hiddenInput.value = JSON.stringify(signals);
+    }
+
+    document.addEventListener("dragstart", (event) => {
+        const card = event.target.closest(".fit-card");
+        if (!card) return;
+        draggedCard = card;
+        card.classList.add("is-dragging");
+        event.dataTransfer.effectAllowed = "move";
+    });
+
+    document.addEventListener("dragend", () => {
+        draggedCard?.classList.remove("is-dragging");
+        document.querySelectorAll(".fit-column").forEach((column) => {
+            column.classList.remove("is-drag-target");
+        });
+        draggedCard = null;
+    });
+
+    document.querySelectorAll(".fit-column").forEach((column) => {
+        column.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            column.classList.add("is-drag-target");
+        });
+
+        column.addEventListener("dragleave", () => {
+            column.classList.remove("is-drag-target");
+        });
+
+        column.addEventListener("drop", (event) => {
+            event.preventDefault();
+            column.classList.remove("is-drag-target");
+            if (draggedCard) moveCard(draggedCard, column.dataset.category);
+        });
+    });
+
+    document.addEventListener("change", (event) => {
+        const select = event.target.closest(".fit-card-category");
+        if (!select) return;
+        const card = select.closest(".fit-card");
+        moveCard(card, select.value);
+    });
+
+    document.addEventListener("click", (event) => {
+        const removeButton = event.target.closest(".fit-card-remove");
+        if (!removeButton) return;
+        removeButton.closest(".fit-card").remove();
+        markChanged();
+    });
+
+    addButton.addEventListener("click", () => {
+        const term = termInput.value.trim().replace(/\s+/g, " ");
+        const category = categoryInput.value;
+        if (!term) {
+            termInput.focus();
+            return;
+        }
+
+        const duplicate = [...document.querySelectorAll(".fit-card")].some(
+            (card) => card.dataset.term.toLowerCase() === term.toLowerCase()
+        );
+        if (duplicate) {
+            termInput.setCustomValidity("This item is already on the board.");
+            termInput.reportValidity();
+            return;
+        }
+
+        termInput.setCustomValidity("");
+        const explanation = "Added by the user.";
+        const card = createCard(term, category, explanation);
+        cardList(category).appendChild(card);
+        termInput.value = "";
+        termInput.focus();
+        markChanged();
+    });
+
+    termInput.addEventListener("input", () => {
+        termInput.setCustomValidity("");
+    });
+
+    form.addEventListener("submit", () => {
+        serializeBoard();
+        hasUnsavedChanges = false;
+    });
+
+    window.addEventListener("beforeunload", (event) => {
+        if (!hasUnsavedChanges) return;
+        event.preventDefault();
+        event.returnValue = "";
+    });
+})();
+</script>
+{% endblock %}

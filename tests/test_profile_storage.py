@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from job_radar.profile_models import (
+    FitSignal,
     LocationPreference,
     ManagedProfile,
     OccupationPreference,
@@ -67,6 +68,25 @@ def make_profile(
         ),
         resume=build_managed_resume(".pdf"),
         company_ids=("example_company", "second_company"),
+        scoring_config={
+            "positive_keywords": {"linux": 10, "hpc": 10},
+            "top_matches": {"min_score": 120},
+        },
+        fit_signals=(
+            FitSignal(
+                term="Documentation systems",
+                category="strong",
+                explanation="Repeated résumé evidence.",
+                evidence_source="resume_and_profile",
+            ),
+            FitSignal(
+                term="Product marketing",
+                category="review",
+                explanation="Listed as an experience gap.",
+                evidence_source="profile",
+                user_overridden=True,
+            ),
+        ),
         report_settings={"retention": "latest_only"},
         archived=archived,
     )
@@ -127,6 +147,15 @@ def test_update_profile_replaces_editable_owned_data(tmp_path: Path) -> None:
         ),
         resume=build_managed_resume(".docx"),
         company_ids=("updated_company",),
+        fit_signals=(
+            FitSignal(
+                term="Research",
+                category="strong",
+                explanation="User-selected target capability.",
+                evidence_source="user",
+                user_overridden=True,
+            ),
+        ),
         report_settings={"retention": "latest_plus_previous"},
     )
     create_profile(database_path, original)

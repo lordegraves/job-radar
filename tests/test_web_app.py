@@ -3895,12 +3895,12 @@ candidate:
     assert "Preferred base" in html
     assert "Active resume" in html
     assert "Profile and resume available" in html
-    assert "Strengths and gaps" in html
+    assert "Job fit" in html
     assert "Strengths" in html
     assert "Adjacent capabilities" in html
     assert "Experience gaps" in html
-    assert "Roles or responsibilities to avoid" in html
-    assert "Resume preview" in html
+    assert "Roles to avoid" in html
+    assert "<h2>Résumé</h2>" in html
     assert "Technical details" in html
     assert "Show configured profile and resume paths" in html
     assert str(settings_file) in html

@@ -145,6 +145,78 @@
         margin-bottom: 0;
     }
 
+    .profile-section-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 18px;
+    }
+
+    .profile-section-nav a {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--text);
+        font-size: 0.9rem;
+        padding: 7px 12px;
+        text-decoration: none;
+    }
+
+    .profile-section-nav a:hover,
+    .profile-section-nav a:focus {
+        border-color: var(--link);
+        color: var(--link);
+    }
+
+    .profile-collapsible {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+    }
+
+    .profile-collapsible > summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 18px 20px;
+    }
+
+    .profile-collapsible > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .profile-collapsible > summary::after {
+        color: var(--muted);
+        content: "Show";
+        float: right;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .profile-collapsible[open] > summary::after {
+        content: "Hide";
+    }
+
+    .profile-collapsible > summary h2 {
+        display: inline;
+        margin: 0;
+    }
+
+    .profile-collapsible-summary {
+        color: var(--muted);
+        display: block;
+        margin-top: 6px;
+        padding-right: 50px;
+    }
+
+    .profile-collapsible-content {
+        border-top: 1px solid var(--border);
+        padding: 18px 20px;
+    }
+
+    .fit-summary-count {
+        font-size: 1.45rem;
+    }
+
     @media (max-width: 700px) {
         .resume-preview-shell {
             padding: 18px;
@@ -156,6 +228,15 @@
 {% block content %}
 <div class="page-card">
     <h1 class="page-title">Profile / Resume</h1>
+    {% if has_profile %}
+    <nav class="profile-section-nav" aria-label="Profile sections">
+        <a href="#profile-overview">Overview</a>
+        <a href="#resume">Résumé</a>
+        <a href="#job-fit">Job fit</a>
+        {% if profile_management.profiles %}<a href="#manage-profiles">Manage profiles</a>{% endif %}
+        <a href="#technical-details">Troubleshooting</a>
+    </nav>
+    {% endif %}
     {% if not has_profile %}
     {% if not profile_management.profiles %}
     <h2>Create your first profile</h2>
@@ -206,6 +287,10 @@
     <div class="success">
         <strong>Profile saved.</strong> Your changes are available to junior.
     </div>
+    {% elif profile_result == "fit_preferences_saved" %}
+    <div class="success">
+        <strong>Job-fit preferences saved.</strong> junior will use your updated choices during future scans.
+    </div>
     {% elif profile_result and profile_result != "error" %}
     <div class="success">
         <strong>Profile saved.</strong> The managed-profile change is ready for future scans.
@@ -224,7 +309,7 @@
     </div>
     {% endif %}
 
-    <div class="profile-overview-grid">
+    <div id="profile-overview" class="profile-overview-grid">
         <div class="profile-status-card">
             <strong>{{ profile.candidate_name or "Unknown candidate" }}</strong>
             <span class="muted">Active candidate</span>
@@ -269,7 +354,7 @@
     </div>
     {% if active_managed_profile %}
     <h3>What junior will scan for</h3>
-    <p class="muted">A plain-English summary of the active profile. Scans still use the existing MVP scoring rules until the separate scoring review is approved.</p>
+    <p class="muted">A plain-English summary of the active profile junior uses for practical eligibility and fit scoring.</p>
     <div class="profile-overview-grid">
         <div class="profile-status-card"><strong>Target work</strong><span>{{ active_managed_profile.preferences.target_roles | join(', ') or 'No target roles selected' }}</span></div>
         <div class="profile-status-card"><strong>Job levels</strong><span>{{ active_managed_profile.preferences.seniority_levels | join(', ') or 'No job levels selected' }}</span></div>
@@ -285,8 +370,16 @@
 </div>
 
 {% if profile_management.profiles %}
-<div class="section">
-    <h2>Manage profiles</h2>
+<div id="manage-profiles" class="section">
+    <details class="profile-collapsible">
+        <summary>
+            <h2>Manage profiles</h2>
+            <span class="profile-collapsible-summary">
+                {{ profile_management.profiles | length }} saved profile{% if profile_management.profiles | length != 1 %}s{% endif %}.
+                {{ active_managed_profile.display_name if active_managed_profile else "No active profile" }} is currently selected.
+            </span>
+        </summary>
+        <div class="profile-collapsible-content">
     <p class="muted">Choose one of your saved profiles to use, edit, or permanently delete. junior supports up to five profiles.</p>
     <label for="managed-profile-select">Saved profiles</label>
     <select id="managed-profile-select">
@@ -308,23 +401,66 @@
     </div>
     <p class="muted">Deleting a profile permanently removes its saved preferences and Junior-managed résumé. This cannot be undone.</p>
     {% if profile_limit_reached %}<p class="muted">You have reached the five-profile limit. Delete a profile before creating another one.</p>{% endif %}
+        </div>
+    </details>
 </div>
 {% endif %}
 
 {% if has_profile %}
-<div class="section">
-    <h2>Strengths and gaps</h2>
+<div id="job-fit" class="section">
+    <h2>Job fit</h2>
+    <p class="muted">
+        junior built these groups from your résumé, profile, and saved adjustments.
+        You only need to change something when it does not look right.
+    </p>
+
+    {% if active_managed_profile %}
+    <div class="profile-overview-grid">
+        <div class="profile-status-card">
+            <strong class="fit-summary-count">{{ fit_summary.strong | length }}</strong>
+            <span class="muted">Strong Match signals</span>
+            <p>{{ fit_summary.strong[:4] | map(attribute='term') | join(', ') or 'None yet' }}{% if fit_summary.strong | length > 4 %}, and more{% endif %}</p>
+        </div>
+        <div class="profile-status-card">
+            <strong class="fit-summary-count">{{ fit_summary.review | length }}</strong>
+            <span class="muted">Needs Review signals</span>
+            <p>{{ fit_summary.review[:4] | map(attribute='term') | join(', ') or 'None yet' }}{% if fit_summary.review | length > 4 %}, and more{% endif %}</p>
+        </div>
+        <div class="profile-status-card">
+            <strong class="fit-summary-count">{{ fit_summary.avoid | length }}</strong>
+            <span class="muted">Avoid signals</span>
+            <p>{{ fit_summary.avoid[:4] | map(attribute='term') | join(', ') or 'None yet' }}{% if fit_summary.avoid | length > 4 %}, and more{% endif %}</p>
+        </div>
+        <div class="profile-status-card">
+            <strong class="fit-summary-count">{{ fit_summary.ignored | length }}</strong>
+            <span class="muted">Ignored signals</span>
+            <p>{{ fit_summary.ignored[:4] | map(attribute='term') | join(', ') or 'None yet' }}{% if fit_summary.ignored | length > 4 %}, and more{% endif %}</p>
+        </div>
+    </div>
+    <div class="actions">
+        <a class="button-link" href="{{ url_for('profile_fit_board_page', profile_id=active_managed_profile.profile_id) }}">Adjust job-fit preferences</a>
+    </div>
+    {% else %}
     <div class="profile-overview-grid">
         <div class="profile-status-card"><strong>Strengths</strong><span>{{ profile.core_strengths | join(', ') or 'No strengths available yet' }}</span></div>
         <div class="profile-status-card"><strong>Adjacent capabilities</strong><span>{{ profile.credible_adjacent | join(', ') or 'No adjacent capabilities available yet' }}</span></div>
         <div class="profile-status-card"><strong>Experience gaps</strong><span>{{ profile.learning_or_gap | join(', ') or 'No experience gaps recorded' }}</span></div>
-        <div class="profile-status-card"><strong>Roles or responsibilities to avoid</strong><span>{{ profile.avoid | join(', ') or 'No avoid signals recorded' }}</span></div>
+        <div class="profile-status-card"><strong>Roles to avoid</strong><span>{{ profile.avoid | join(', ') or 'No avoid signals recorded' }}</span></div>
     </div>
+    {% endif %}
 </div>
 
-<div class="section">
-    <h2>Resume preview</h2>
-    <p class="muted">Readable preview of the resume content currently available to junior.</p>
+<div id="resume" class="section">
+    <details class="profile-collapsible">
+        <summary>
+            <h2>Résumé</h2>
+            <span class="profile-collapsible-summary">
+                {{ profile.resume_source_file_name or "No résumé configured" }}
+                {% if profile.resume_character_count %} · {{ "{:,}".format(profile.resume_character_count) }} characters available to junior{% endif %}
+            </span>
+        </summary>
+        <div class="profile-collapsible-content">
+    <p class="muted">Readable preview of the résumé content currently available to junior.</p>
 
     {% if profile.resume_preview %}
     <div class="resume-preview-shell">
@@ -332,13 +468,15 @@
         <div class="resume-preview-source" id="resume-preview-source">{{ profile.resume_preview }}</div>
     </div>
     {% else %}
-    <p>No resume preview is currently available.</p>
+    <p>No résumé preview is currently available.</p>
     {% endif %}
+        </div>
+    </details>
 </div>
 {% endif %}
 
 {% if has_profile %}
-<div class="section">
+<div id="technical-details" class="section">
     <h2>Technical details</h2>
     <p class="muted">Runtime paths and file state for troubleshooting.</p>
 
