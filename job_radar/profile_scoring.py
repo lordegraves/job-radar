@@ -27,6 +27,7 @@ def build_neutral_scoring_config() -> dict[str, Any]:
             "min_score": 120,
             "excluded_title_keywords": [],
             "strong_signals": [],
+            "review_signals": [],
         },
         "review_needed": {
             "min_score": 100,

@@ -72,6 +72,7 @@ def _apply_fit_signals_to_scoring_config(
     review_needed = _mapping_section(scoring, "review_needed")
 
     top_signals = _string_list(top_matches, "strong_signals")
+    top_review_signals = _string_list(top_matches, "review_signals")
     review_signals = _string_list(review_needed, "strong_signals")
     excluded_titles = _string_list(top_matches, "excluded_title_keywords")
 
@@ -83,6 +84,7 @@ def _apply_fit_signals_to_scoring_config(
         _remove_mapping_term(positive_keywords, term)
         _remove_mapping_term(negative_keywords, term)
         _remove_signal_term(top_signals, term)
+        _remove_signal_term(top_review_signals, term)
         _remove_signal_term(review_signals, term)
         _remove_signal_term(excluded_titles, term)
 
@@ -90,6 +92,7 @@ def _apply_fit_signals_to_scoring_config(
             positive_keywords[term] = 10
             top_signals.append(f"title:{term}")
         elif signal.category == "review":
+            top_review_signals.append(term)
             review_signals.append(f"body:{term}")
         elif signal.category == "avoid":
             negative_keywords[term] = -15

@@ -133,6 +133,7 @@ def _validate_top_matches(raw_top_matches: Any) -> dict[str, Any]:
     min_score = raw_top_matches.get("min_score", 1)
     excluded_title_keywords = raw_top_matches.get("excluded_title_keywords", [])
     strong_signals = raw_top_matches.get("strong_signals", [])
+    review_signals = raw_top_matches.get("review_signals", [])
 
     if not isinstance(min_score, int) or isinstance(min_score, bool):
         raise ScoringConfigError("top_matches.min_score must be an integer")
@@ -146,6 +147,10 @@ def _validate_top_matches(raw_top_matches: Any) -> dict[str, Any]:
         "strong_signals": _validate_keyword_list(
             strong_signals,
             "top_matches.strong_signals",
+        ),
+        "review_signals": _validate_keyword_list(
+            review_signals,
+            "top_matches.review_signals",
         ),
     }
 

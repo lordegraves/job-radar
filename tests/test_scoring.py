@@ -193,6 +193,8 @@ top_matches:
   strong_signals:
     - title:linux
     - body:hpc
+  review_signals:
+    - production kubernetes ownership
 """,
         encoding="utf-8",
     )
@@ -228,6 +230,9 @@ top_matches:
             "title:linux",
             "body:hpc",
         ],
+        "review_signals": [
+            "production kubernetes ownership",
+        ],
     }
 
 
@@ -256,6 +261,7 @@ location_preferences:
         "min_score": 1,
         "excluded_title_keywords": [],
         "strong_signals": [],
+        "review_signals": [],
     }
 
 
@@ -764,7 +770,7 @@ def test_evaluate_top_match_eligibility_allows_limited_travel() -> None:
     ]
 
 
-def test_evaluate_top_match_eligibility_demotes_production_kubernetes_primary_role() -> None:
+def test_evaluate_top_match_eligibility_demotes_major_review_responsibility() -> None:
     posting = make_posting(
         title="Senior Site Reliability Engineer",
         description=(
@@ -775,6 +781,7 @@ def test_evaluate_top_match_eligibility_demotes_production_kubernetes_primary_ro
     )
 
     config = make_scoring_config()
+    config["top_matches"]["review_signals"] = ["kubernetes"]
 
     eligible, reasons = evaluate_top_match_eligibility(
         posting=posting,
@@ -788,10 +795,10 @@ def test_evaluate_top_match_eligibility_demotes_production_kubernetes_primary_ro
     )
 
     assert eligible is False
-    assert reasons == ["production_kubernetes_primary_risk"]
+    assert reasons == ["needs_review_signal:kubernetes"]
 
 
-def test_evaluate_top_match_eligibility_allows_kubernetes_as_adjacent_tooling() -> None:
+def test_evaluate_top_match_eligibility_allows_adjacent_review_signal() -> None:
     posting = make_posting(
         title="Senior Infrastructure Engineer",
         description=(
@@ -802,6 +809,7 @@ def test_evaluate_top_match_eligibility_allows_kubernetes_as_adjacent_tooling() 
     )
 
     config = make_scoring_config()
+    config["top_matches"]["review_signals"] = ["kubernetes"]
 
     eligible, reasons = evaluate_top_match_eligibility(
         posting=posting,
@@ -824,7 +832,73 @@ def test_evaluate_top_match_eligibility_allows_kubernetes_as_adjacent_tooling() 
     ]
 
 
-def test_evaluate_review_needed_eligibility_keeps_demoted_kubernetes_role_reviewable() -> None:
+def test_evaluate_top_match_eligibility_ignores_partial_word_matches() -> None:
+    posting = make_posting(
+        title="Senior Maintenance Engineer",
+        description=(
+            "Kubernetes is a well-known adjacent tool used by another team. "
+            "Build and support Linux infrastructure."
+        ),
+        location="Remote",
+    )
+
+    config = make_scoring_config()
+    config["top_matches"]["review_signals"] = ["ai", "kubernetes"]
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=140,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "+8 body:kubernetes",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        scoring_config=config,
+    )
+
+    assert eligible is True
+    assert reasons == [
+        "score 140 meets top-match threshold 100",
+        "location fit is acceptable: allowed",
+        "strong signal matched: title:infrastructure",
+    ]
+
+
+def test_evaluate_top_match_eligibility_has_no_unconfigured_kubernetes_assumption() -> None:
+    posting = make_posting(
+        title="Senior Site Reliability Engineer",
+        description=(
+            "Own production Kubernetes clusters, operate the Kubernetes platform, "
+            "and manage Kubernetes control plane reliability for customer workloads."
+        ),
+        location="Remote",
+    )
+
+    config = make_scoring_config()
+    config["top_matches"]["review_signals"] = []
+
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=140,
+        score_reasons=[
+            "+8 body:kubernetes",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        scoring_config=config,
+    )
+
+    assert eligible is True
+    assert reasons == [
+        "score 140 meets top-match threshold 100",
+        "location fit is acceptable: allowed",
+        "strong signal matched: body:kubernetes",
+    ]
+
+
+def test_evaluate_review_needed_eligibility_keeps_review_signal_job_reviewable() -> None:
     posting = make_posting(
         title="Senior Site Reliability Engineer",
         description=(
@@ -835,6 +909,7 @@ def test_evaluate_review_needed_eligibility_keeps_demoted_kubernetes_role_review
     )
 
     config = make_scoring_config()
+    config["top_matches"]["review_signals"] = ["kubernetes"]
     config["review_needed"] = {
         "min_score": 100,
         "excluded_location_statuses": [
@@ -872,7 +947,7 @@ def test_evaluate_review_needed_eligibility_keeps_demoted_kubernetes_role_review
     )
 
     assert top_match_eligible is False
-    assert top_match_reasons == ["production_kubernetes_primary_risk"]
+    assert top_match_reasons == ["needs_review_signal:kubernetes"]
     assert review_needed_eligible is True
 
 

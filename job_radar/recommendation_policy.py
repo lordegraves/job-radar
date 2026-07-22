@@ -1,5 +1,6 @@
 """Apply the eligibility rules that decide where scored jobs may be displayed."""
 
+import re
 from typing import Any
 
 from job_radar.models import JobPosting
@@ -40,8 +41,12 @@ def evaluate_top_match_eligibility(
     if strong_signal is None:
         return False, ["missing_strong_signal"]
 
-    if _has_production_kubernetes_primary_risk(posting):
-        return False, ["production_kubernetes_primary_risk"]
+    review_signal = _find_major_review_signal(
+        posting,
+        scoring_config["top_matches"].get("review_signals", []),
+    )
+    if review_signal is not None:
+        return False, [f"needs_review_signal:{review_signal}"]
 
     return True, [
         f"score {score} meets top-match threshold {min_score}",
@@ -96,67 +101,58 @@ def _find_excluded_title_keyword(
     return None
 
 
-def _has_production_kubernetes_primary_risk(posting: JobPosting) -> bool:
+def _find_major_review_signal(
+    posting: JobPosting,
+    configured_signals: list[str],
+) -> str | None:
     title_text = clean_text(posting.title).lower()
     body_text = _build_body_text(posting)
-    combined_text = f"{title_text} {body_text}"
 
-    # Kubernetes is useful adjacent experience, but roles centered on owning
-    # production Kubernetes platforms have been a weak direct-apply fit.
-    # Do not treat a casual Kubernetes mention as enough to demote Top Match.
-    kubernetes_primary_markers = [
-        "production kubernetes",
-        "production k8s",
-        "kubernetes platform",
-        "k8s platform",
-        "kubernetes clusters",
-        "k8s clusters",
-        "kubernetes control plane",
-        "own kubernetes",
-        "operate kubernetes",
-        "manage kubernetes",
-        "administer kubernetes",
-    ]
-
-    title_primary_markers = [
-        "kubernetes",
-        "k8s",
-    ]
-
-    has_title_primary_marker = any(
-        marker in title_text for marker in title_primary_markers
-    )
-    has_body_primary_marker = any(
-        marker in combined_text for marker in kubernetes_primary_markers
+    responsibility_markers = (
+        "own",
+        "owns",
+        "owning",
+        "operate",
+        "operates",
+        "operating",
+        "manage",
+        "manages",
+        "managing",
+        "administer",
+        "administers",
+        "administering",
+        "lead",
+        "leading",
+        "responsible for",
+        "accountable for",
     )
 
-    if not has_title_primary_marker and not has_body_primary_marker:
-        return False
+    body_sections = re.split(r"[.!?;\n]+", body_text)
 
-    return not _has_strong_infrastructure_counterevidence(combined_text)
+    for raw_signal in configured_signals:
+        signal = clean_text(raw_signal).lower()
+        if not signal:
+            continue
+
+        if _contains_phrase(title_text, signal):
+            return signal
+
+        for section in body_sections:
+            if not _contains_phrase(section, signal):
+                continue
+
+            if any(
+                _contains_phrase(section, marker)
+                for marker in responsibility_markers
+            ):
+                return signal
+
+    return None
 
 
-def _has_strong_infrastructure_counterevidence(text: str) -> bool:
-    counterevidence_markers = [
-        "hpc",
-        "slurm",
-        "gpu",
-        "datacenter",
-        "data center",
-        "bare metal",
-        "hardware",
-        "cluster systems",
-        "linux systems",
-        "research computing",
-        "scientific computing",
-        "storage",
-    ]
-
-    matched_markers = [
-        marker for marker in counterevidence_markers if marker in text
-    ]
-
-    return len(matched_markers) >= 2
+def _contains_phrase(text: str, phrase: str) -> bool:
+    pattern = rf"(?<!\w){re.escape(phrase)}(?!\w)"
+    return re.search(pattern, text) is not None
 
 
 def _has_strong_technical_signal(

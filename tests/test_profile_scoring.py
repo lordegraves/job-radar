@@ -33,6 +33,7 @@ def test_build_neutral_scoring_config_has_no_occupation_assumptions() -> None:
             "min_score": 120,
             "excluded_title_keywords": [],
             "strong_signals": [],
+            "review_signals": [],
         },
         "review_needed": {
             "min_score": 100,
@@ -69,6 +70,7 @@ top_matches:
     - sales
   strong_signals:
     - title:linux
+  review_signals: []
 review_needed:
   min_score: 100
   excluded_location_statuses:
@@ -103,6 +105,7 @@ review_needed:
             "strong_signals": [
                 "title:linux",
             ],
+            "review_signals": [],
         },
         "review_needed": {
             "min_score": 100,
