@@ -814,28 +814,28 @@ def test_upsert_job_posting_treats_same_title_location_with_different_source_ids
     initialize_database(database_path)
 
     first_posting = JobPosting(
-        company_key="anthropic",
-        company_name="Anthropic",
+        company_key="example-research",
+        company_name="Example Research",
         source_type="greenhouse",
         source_job_id="111",
-        source_url="https://job-boards.greenhouse.io/anthropic/jobs/111",
+        source_url="https://job-boards.greenhouse.io/example-research/jobs/111",
         title="Account Executive",
         location="Remote",
         description="First posting.",
-        canonical_key="anthropic:account-executive:remote",
+        canonical_key="example-research:account-executive:remote",
         content_hash="hash-111",
     )
 
     second_posting = JobPosting(
-        company_key="anthropic",
-        company_name="Anthropic",
+        company_key="example-research",
+        company_name="Example Research",
         source_type="greenhouse",
         source_job_id="222",
-        source_url="https://job-boards.greenhouse.io/anthropic/jobs/222",
+        source_url="https://job-boards.greenhouse.io/example-research/jobs/222",
         title="Account Executive",
         location="Remote",
         description="Second posting.",
-        canonical_key="anthropic:account-executive:remote",
+        canonical_key="example-research:account-executive:remote",
         content_hash="hash-222",
     )
 

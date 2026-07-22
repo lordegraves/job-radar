@@ -344,10 +344,10 @@ def test_list_applications_returns_application_records(tmp_path: Path) -> None:
     upsert_application(
         database_path,
         ApplicationRecord(
-            job_radar_id="jr-stack-av-22222222",
-            company_name="Stack AV",
+            job_radar_id="jr-example-mobility-22222222",
+            company_name="Example Mobility",
             role_title="Senior Site Reliability Engineer",
-            source_url="https://example.com/jobs/stack-av-sre",
+            source_url="https://example.com/jobs/example-mobility-sre",
             status="review_needed",
         ),
     )
@@ -357,7 +357,7 @@ def test_list_applications_returns_application_records(tmp_path: Path) -> None:
     assert len(applications) == 2
     assert {application.job_radar_id for application in applications} == {
         "jr-example-ai-11111111",
-        "jr-stack-av-22222222",
+        "jr-example-mobility-22222222",
     }
     assert all(
         isinstance(application, ApplicationRecord)

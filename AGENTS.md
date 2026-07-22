@@ -179,7 +179,7 @@ User-owned data includes:
 - runtime files
 - credentials and credential references
 
-Do not hard-code Clayton-specific paths, identity, companies, role preferences, scoring, or personal configuration into reusable product code.
+Do not hard-code user-specific paths, identity, companies, role preferences, scoring, or personal configuration into reusable product code.
 
 Do not overwrite user-owned files during bootstrap, upgrades, migration, repair, or installation.
 
@@ -385,7 +385,7 @@ Add concise comments where they explain:
 - source-specific quirks
 - consequences of changing the code
 
-Comments must help both an experienced developer and future Clayton understand why the code exists.
+Comments must help both an experienced developer and a future maintainer or operator understand why the code exists.
 
 Use plain operational language where possible.
 
@@ -728,7 +728,7 @@ Follow both this file and the active user prompt.
 
 ## CHAT
 
-The CHAT section applies when junior development is performed through regular ChatGPT and ChatGPT cannot inspect or edit the repository directly. In this mode, Clayton runs commands and applies explicitly reviewed edits. The CODEX section remains the repository policy for Codex and must not be treated as Chat instructions.
+The CHAT section applies when junior development is performed through regular ChatGPT and ChatGPT cannot inspect or edit the repository directly. In this mode, the user runs commands and applies explicitly reviewed edits. The CODEX section remains the repository policy for Codex and must not be treated as Chat instructions.
 
 ### New Session
 
@@ -853,13 +853,13 @@ This subsection is static. Do not rewrite, shorten, weaken, or silently reinterp
 #### Chat operating model
 
 - ChatGPT cannot assume it can inspect or edit local files.
-- Clayton runs PowerShell commands and pastes bounded output into Chat.
+- The user runs PowerShell commands and pastes bounded output into Chat.
 - ChatGPT must not claim it inspected, changed, tested, staged, committed, or pushed anything unless the pasted output proves it.
 - Ask for related inspection material in one bounded bundle whenever practical.
 - Do not request enormous unbounded exports or the entire repository in one paste.
-- Do not ask Clayton to paste a file that has already been supplied in the current Chat session.
+- Do not ask the user to paste a file that has already been supplied in the current Chat session.
 - Explain commands and design decisions in plain operational language.
-- Do not treat Clayton as a professional software developer or require him to infer missing edit steps.
+- Do not treat the user as a professional software developer or require them to infer missing edit steps.
 
 #### Authority and continuity
 
@@ -868,10 +868,10 @@ This subsection is static. Do not rewrite, shorten, weaken, or silently reinterp
 - Session handoffs contain only current-session facts, scope, approvals, and stopping points.
 - Do not duplicate or independently maintain the roadmap in a Chat prompt or daily log.
 - Read the current roadmap when setting priorities or status.
-- Preserve priority numbers and task descriptions unless Clayton explicitly approves a wording or priority change.
+- Preserve priority numbers and task descriptions unless the user explicitly approves a wording or priority change.
 - Update roadmap statuses only from verified results.
 - Do not mark a broad task complete because one portion is complete.
-- At the end of every Chat development session, verify `docs/ROADMAP.md` against the work actually completed. Either provide an approved exact update for Clayton to apply or explicitly record that the roadmap was reviewed and remains current. The session is not complete until this roadmap check has been performed.
+- At the end of every Chat development session, verify `docs/ROADMAP.md` against the work actually completed. Either provide an approved exact update for the user to apply or explicitly record that the roadmap was reviewed and remains current. The session is not complete until this roadmap check has been performed.
 - Do not carry an approval from an older session into materially different work.
 
 #### Repository and environment
@@ -947,7 +947,7 @@ Replace it with exactly this block:
 - Establish the current file contents before giving a replacement.
 - Provide coherent edits for the approved slice rather than discovering one dependent edit at a time.
 - Do not use ellipses inside replacement code.
-- Do not ask Clayton to manually resolve merge conflicts or guess indentation.
+- Do not ask the user to manually resolve merge conflicts or guess indentation.
 - Keep patches focused and avoid unrelated formatting or cleanup.
 
 #### Product and data safety
@@ -960,14 +960,14 @@ Replace it with exactly this block:
 - Never silently discard, replace, corrupt, or require deletion of user data as an upgrade path.
 - Persisted-data changes require transactional behavior where supported, idempotent migrations, backup/recovery consideration, clear failure behavior, and a documented recovery path.
 - Use isolated temporary data and synthetic fixtures unless a live-data operation is separately and explicitly approved.
-- Never use Clayton's live database, profile, resume, applications, reports, or company data as automated test data.
+- Never use the user's live database, profile, resume, applications, reports, or company data as automated test data.
 - Preserve profile ownership across profiles, resumes, employer selections, Tracker, History, scans, reports, and CLI operations.
 
 #### Secrets and diagnostics
 
-- Never ask Clayton to paste a secret.
+- Never ask the user to paste a secret.
 - Never store passwords, API keys, tokens, SMTP passwords, or other credentials in source, YAML, SQLite, logs, reports, diagnostics, fixtures, documentation, changelog entries, or Git history.
-- Never display, modify, stage, or commit `config/local-gmail-settings.yaml` unless Clayton explicitly requests a local-only operation.
+- Never display, modify, stage, or commit `config/local-gmail-settings.yaml` unless the user explicitly requests a local-only operation.
 - Store only non-secret credential references where necessary.
 - Unexpected-error diagnostics must use an explicit safe-field allowlist.
 - Never record raw exception text, local variables, environment contents, request headers, credentials, resume/profile contents, or user documents.
@@ -1005,7 +1005,7 @@ Documentation-only or repository-instruction-only changes may record focused tes
 
 #### Git workflow
 
-- Use normal `git status`, not `git status --short`, unless Clayton requests it.
+- Use normal `git status`, not `git status --short`, unless the user requests it.
 - Never use `git add .`.
 - Stage only explicitly named files.
 - Never use a bare `git push`; push explicitly to the verified current branch.
@@ -1047,7 +1047,7 @@ At the end of a development session, record what actually happened:
 
 Use short OneNote-friendly tables. Keep cells single-line and place long details beneath tables as plain text. Do not paste multiline command output into table cells.
 
-Complete the daily log before generating a next-session handoff. Do not generate a next-session handoff unless Clayton asks for one.
+Complete the daily log before generating a next-session handoff. Do not generate a next-session handoff unless the user asks for one.
 
 #### Response style
 
@@ -1058,4 +1058,4 @@ Complete the daily log before generating a next-session handoff. Do not generate
 - Do not broaden scope or drift into future features unless asked.
 - When design is unclear, stop and discuss it.
 - When implementation is clear and approved, proceed in small reviewable steps.
-- When Clayton is frustrated, reduce scope and identify the next concrete action.
+- When the user is frustrated, reduce scope and identify the next concrete action.

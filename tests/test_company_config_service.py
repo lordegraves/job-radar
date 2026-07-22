@@ -28,7 +28,7 @@ companies:
     source_base_url: https://example.com/workday
     enabled: false
   - company_key: nasa_usajobs
-    name: NASA
+    name: Example Federal Agency
     source_type: usajobs
     enabled: true
     query_params:
@@ -67,7 +67,7 @@ def test_get_company_config_view_returns_matching_company(tmp_path: Path) -> Non
     missing_company = get_company_config_view(str(companies_file), "missing")
 
     assert company is not None
-    assert company.name == "NASA"
+    assert company.name == "Example Federal Agency"
     assert company.source_type == "usajobs"
     assert missing_company is None
 

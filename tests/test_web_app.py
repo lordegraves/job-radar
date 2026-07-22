@@ -305,10 +305,10 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     upsert_application(
         database_file,
         ApplicationRecord(
-            job_radar_id="jr-stack-av-12345678",
-            company_name="Stack AV",
+            job_radar_id="jr-example-mobility-12345678",
+            company_name="Example Mobility",
             role_title="Senior Site Reliability Engineer",
-            source_url="https://example.com/jobs/stack-av-sre",
+            source_url="https://example.com/jobs/example-mobility-sre",
             status="applied",
             follow_up_on="2099-07-10",
             applied_on="2026-07-03",
@@ -339,7 +339,7 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "filter=needs_review" in html
     assert "filter=active" in html
     assert "filter=closed" in html
-    assert "Stack AV" in html
+    assert "Example Mobility" in html
     assert "Senior Site Reliability Engineer" in html
     assert "Applied" in html
     assert "Waiting" in html
@@ -349,8 +349,8 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "2099-07-10" in html
     assert "Interview Scheduled" in html
     assert "outcome-cell" in html
-    assert "jr-stack-av-12345678" in html
-    assert 'href="/tracker/jr-stack-av-12345678/edit?filter=all"' in normalized_html
+    assert "jr-example-mobility-12345678" in html
+    assert 'href="/tracker/jr-example-mobility-12345678/edit?filter=all"' in normalized_html
     assert ">Open</a>" in normalized_html
 
 
@@ -717,7 +717,7 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
             make_report_snapshot_job(
                 title="Site Reliability Engineer",
                 url="https://example.com/top",
-                company="RunPod",
+                company="ExampleCompute",
                 location="Remote - USA",
                 hiring_probability="High",
                 recommended_action="Apply",
@@ -732,11 +732,11 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
                     "Linux infrastructure; reliability engineering"
                 ),
                 history_context=(
-                    "Prior similar role at Runpod; outcome: "
+                    "Prior similar role at ExampleCompute; outcome: "
                     "Rejected - No Interview"
                 ),
                 history_risk="neutral: prior_similar_role",
-                job_radar_id="jr-runpod-655a542b",
+                job_radar_id="jr-examplecompute-655a542b",
                 eligibility_status="needs_review",
                 eligibility_reasons=[
                     "The posting does not provide usable compensation.",
@@ -748,7 +748,7 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
             make_report_snapshot_job(
                 title="Hardware Operations Engineer",
                 url="https://example.com/review",
-                company="OpenAI",
+                company="Example Labs",
                 location="Remote - US",
                 recommended_action="Network First",
             )
@@ -757,7 +757,7 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
             make_report_snapshot_job(
                 title="Tracked SRE",
                 url="https://example.com/tracked",
-                company="Nebius",
+                company="ExampleCloud",
             )
         ],
     )
@@ -771,7 +771,7 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert response.status_code == 200
     assert "Top Matches" in html
     assert "Cleanest roles from the latest scan" in html
-    assert "RunPod" in html
+    assert "ExampleCompute" in html
     assert "Site Reliability Engineer" in html
     assert "Remote - USA" in html
     assert "Hiring probability: High" in html
@@ -792,18 +792,18 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "Resume evidence" in html
     assert "Linux infrastructure; reliability engineering" in html
     assert "History context" in html
-    assert "Prior similar role at Runpod" in html
+    assert "Prior similar role at ExampleCompute" in html
     assert "Job Radar ID" in html
     assert 'target="_blank" rel="noopener noreferrer"' in html
     assert "Track this application" in html
     assert "/tracker/add?" in html
-    assert "job_radar_id=jr-runpod-655a542b" in html
-    assert "company_name=RunPod" in html
+    assert "job_radar_id=jr-examplecompute-655a542b" in html
+    assert "company_name=ExampleCompute" in html
     assert "role_title=Site+Reliability+Engineer" in html
     assert "source_url=https://example.com/top" in html
     assert "status=Applied" in html
     assert "outcome=Pending+%2F+In+Progress" in html or "outcome=Pending+/+In+Progress" in html
-    assert "jr-runpod-655a542b" in html
+    assert "jr-examplecompute-655a542b" in html
     assert "Score: 122" not in html
     assert "score 122 meets top-match threshold 120" not in html
     assert "Work location fit" not in html
@@ -964,8 +964,8 @@ def test_tracker_add_prefills_from_report_card_query_params(tmp_path: Path) -> N
     response = client.get(
         "/tracker/add",
         query_string={
-            "job_radar_id": "jr-runpod-655a542b",
-            "company_name": "RunPod",
+            "job_radar_id": "jr-examplecompute-655a542b",
+            "company_name": "ExampleCompute",
             "role_title": "Site Reliability Engineer",
             "source_url": "https://example.com/top",
             "status": "Applied",
@@ -976,8 +976,8 @@ def test_tracker_add_prefills_from_report_card_query_params(tmp_path: Path) -> N
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert 'id="job_radar_id" name="job_radar_id" value="jr-runpod-655a542b" readonly' in html
-    assert 'id="company_name" name="company_name" value="RunPod" required' in html
+    assert 'id="job_radar_id" name="job_radar_id" value="jr-examplecompute-655a542b" readonly' in html
+    assert 'id="company_name" name="company_name" value="ExampleCompute" required' in html
     assert 'id="role_title" name="role_title" value="Site Reliability Engineer" required' in html
     assert 'id="source_url" name="source_url" value="https://example.com/top"' in html
     assert '<option value="Applied" selected>' in html
@@ -999,8 +999,8 @@ def test_tracker_add_saves_prefilled_scan_job_radar_id(tmp_path: Path) -> None:
     response = client.post(
         "/tracker/add",
         data={
-            "job_radar_id": "jr-runpod-655a542b",
-            "company_name": "RunPod",
+            "job_radar_id": "jr-examplecompute-655a542b",
+            "company_name": "ExampleCompute",
             "role_title": "Site Reliability Engineer",
             "source_url": "https://example.com/top",
             "status": "Applied",
@@ -1014,10 +1014,10 @@ def test_tracker_add_saves_prefilled_scan_job_radar_id(tmp_path: Path) -> None:
 
     assert response.status_code == 302
 
-    application = get_application(database_file, "jr-runpod-655a542b")
+    application = get_application(database_file, "jr-examplecompute-655a542b")
 
     assert application is not None
-    assert application.company_name == "RunPod"
+    assert application.company_name == "ExampleCompute"
     assert application.role_title == "Site Reliability Engineer"
     assert application.source_url == "https://example.com/top"
     assert application.status == "Applied"
@@ -1205,7 +1205,7 @@ def test_history_page_searches_and_filters_records(tmp_path: Path) -> None:
         database_file,
         JobHistoryRecord(
             history_type="Pipeline",
-            company="Hydra Host",
+            company="Example Hosting",
             role="HPC Solutions Engineer",
             source="Recruiter",
             ats_platform=None,
@@ -1223,7 +1223,7 @@ def test_history_page_searches_and_filters_records(tmp_path: Path) -> None:
             secondary_blocker=None,
             revisit=None,
             include_in_job_radar=True,
-            import_key="manual:hydra-host:hpc-solutions-engineer",
+            import_key="manual:example-hosting:hpc-solutions-engineer",
             notes="Strong InfiniBand and Slurm fit.",
         ),
     )
@@ -1262,7 +1262,7 @@ def test_history_page_searches_and_filters_records(tmp_path: Path) -> None:
 
     assert search_response.status_code == 200
     assert "History records shown:</strong> 1" in search_html
-    assert "Hydra Host" in search_html
+    assert "Example Hosting" in search_html
     assert "SkipCo" not in search_html
     assert 'value="infiniband"' in search_html
 
@@ -1279,7 +1279,7 @@ def test_history_page_searches_and_filters_records(tmp_path: Path) -> None:
     assert filter_response.status_code == 200
     assert "History records shown:</strong> 1" in filter_html
     assert "SkipCo" in filter_html
-    assert "Hydra Host" not in filter_html
+    assert "Example Hosting" not in filter_html
     assert '<option value="Applied"' in filter_html
     assert '<option value="Passed" selected>' in filter_html
     assert '<option value="Withdrawn"' in filter_html
@@ -1701,7 +1701,7 @@ companies:
     source_base_url: https://example.com/workday
     enabled: false
   - company_key: nasa_usajobs
-    name: NASA
+    name: Example Federal Agency
     source_type: usajobs
     enabled: true
     query_params:
@@ -1741,7 +1741,7 @@ companies:
     assert "disabled_lab" in html
     assert "source_url: https://example.com/workday/jobs" in html
     assert "source_base_url: https://example.com/workday" in html
-    assert "NASA" in html
+    assert "Example Federal Agency" in html
     assert "query_params: Organization=NN" in html
     assert 'href="/companies?status=enabled&amp;q="' in html
     assert 'href="/companies?status=disabled&amp;q="' in html
@@ -1773,7 +1773,7 @@ companies:
     source_url: https://example.com/workday/jobs
     enabled: false
   - company_key: nasa_usajobs
-    name: NASA
+    name: Example Federal Agency
     source_type: usajobs
     enabled: true
     query_params:
@@ -1791,7 +1791,7 @@ companies:
     assert enabled_response.status_code == 200
     assert "Showing 2 of 3 configured companies." in enabled_html
     assert "Enabled AI" in enabled_html
-    assert "NASA" in enabled_html
+    assert "Example Federal Agency" in enabled_html
     assert "Disabled Lab" not in enabled_html
     assert "Clear filters" in enabled_html
 
@@ -1802,7 +1802,7 @@ companies:
     assert "Showing 1 of 3 configured companies." in disabled_html
     assert "Disabled Lab" in disabled_html
     assert "Enabled AI" not in disabled_html
-    assert "NASA" not in disabled_html
+    assert "Example Federal Agency" not in disabled_html
 
     source_response = client.get("/companies?source_type=greenhouse")
     source_html = source_response.get_data(as_text=True)
@@ -1811,14 +1811,14 @@ companies:
     assert "Showing 1 of 3 configured companies." in source_html
     assert "Enabled AI" in source_html
     assert "Disabled Lab" not in source_html
-    assert "NASA" not in source_html
+    assert "Example Federal Agency" not in source_html
 
     search_response = client.get("/companies?q=organization")
     search_html = search_response.get_data(as_text=True)
 
     assert search_response.status_code == 200
     assert "Showing 1 of 3 configured companies." in search_html
-    assert "NASA" in search_html
+    assert "Example Federal Agency" in search_html
     assert "Enabled AI" not in search_html
     assert "Disabled Lab" not in search_html
     assert 'value="organization"' in search_html
@@ -1829,7 +1829,7 @@ companies:
 
     assert combined_response.status_code == 200
     assert "Showing 1 of 3 configured companies." in combined_html
-    assert "NASA" in combined_html
+    assert "Example Federal Agency" in combined_html
     assert "Enabled AI" not in combined_html
     assert "Disabled Lab" not in combined_html
     assert 'href="/companies?status=enabled&amp;q=nn"' in combined_html
@@ -1854,7 +1854,7 @@ companies:
     enabled: true
     notes: Strong target.
   - company_key: nasa_usajobs
-    name: NASA
+    name: Example Federal Agency
     source_type: usajobs
     enabled: true
     query_params:
@@ -1980,12 +1980,12 @@ def test_settings_page_shows_email_enabled_without_credential(
         + """
 email:
   enabled: true
-  sender: clayton@example.com
+  sender: user@example.com
   recipients:
-    - clayton@example.com
+    - user@example.com
   smtp_host: smtp.example.com
   smtp_port: 587
-  smtp_username: clayton@example.com
+  smtp_username: user@example.com
   smtp_password_env: JOB_RADAR_SMTP_PASSWORD
   smtp_tls_mode: starttls
 """,
@@ -2019,12 +2019,12 @@ def test_settings_page_shows_email_ready(
         + """
 email:
   enabled: true
-  sender: clayton@example.com
+  sender: user@example.com
   recipients:
-    - clayton@example.com
+    - user@example.com
   smtp_host: smtp.example.com
   smtp_port: 587
-  smtp_username: clayton@example.com
+  smtp_username: user@example.com
   smtp_password_env: JOB_RADAR_SMTP_PASSWORD
   smtp_tls_mode: starttls
 """,
@@ -2853,7 +2853,7 @@ def test_tracker_page_searches_tracker_text(tmp_path: Path) -> None:
         database_file,
         ApplicationRecord(
             job_radar_id="jr-hpc-12345678",
-            company_name="Hydra Host",
+            company_name="Example Hosting",
             role_title="HPC Solutions Engineer",
             status="applied",
             notes="GPU, InfiniBand, Slurm, and distributed machine learning.",
@@ -2878,7 +2878,7 @@ def test_tracker_page_searches_tracker_text(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Applications shown:</strong> 1" in html
-    assert "Hydra Host" in html
+    assert "Example Hosting" in html
     assert "PlatformCo" not in html
 
 
@@ -2892,7 +2892,7 @@ def test_tracker_filter_links_preserve_search_sort_and_field_filters(tmp_path: P
         database_file,
         ApplicationRecord(
             job_radar_id="jr-hpc-12345678",
-            company_name="Hydra Host",
+            company_name="Example Hosting",
             role_title="HPC Solutions Engineer",
             status="applied",
             outcome="Pending / In Progress",
@@ -3094,10 +3094,10 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     upsert_application(
         database_file,
         ApplicationRecord(
-            job_radar_id="jr-stack-av-12345678",
-            company_name="Stack AV",
+            job_radar_id="jr-example-mobility-12345678",
+            company_name="Example Mobility",
             role_title="Senior Site Reliability Engineer",
-            source_url="https://example.com/jobs/stack-av-sre",
+            source_url="https://example.com/jobs/example-mobility-sre",
             status="Applied",
             follow_up_on="2099-07-10",
             applied_on="2026-07-03",
@@ -3110,15 +3110,15 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    response = client.get("/tracker/jr-stack-av-12345678/edit?filter=needs_action")
+    response = client.get("/tracker/jr-example-mobility-12345678/edit?filter=needs_action")
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
     assert "Application details" in html
-    assert "Stack AV" in html
+    assert "Example Mobility" in html
     assert "Senior Site Reliability Engineer" in html
     assert "Job Radar ID" in html
-    assert "jr-stack-av-12345678" in html
+    assert "jr-example-mobility-12345678" in html
     assert "application-header" in html
     assert "quick-action-grid" in html
     assert "date-grid" in html
@@ -3304,10 +3304,10 @@ def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
     upsert_application(
         database_file,
         ApplicationRecord(
-            job_radar_id="jr-stack-av-12345678",
-            company_name="Stack AV",
+            job_radar_id="jr-example-mobility-12345678",
+            company_name="Example Mobility",
             role_title="Senior Site Reliability Engineer",
-            source_url="https://example.com/jobs/stack-av-sre",
+            source_url="https://example.com/jobs/example-mobility-sre",
             status="Applied",
             follow_up_on="2099-07-10",
             applied_on="2026-07-03",
@@ -3321,7 +3321,7 @@ def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
     client = app.test_client()
 
     response = client.post(
-        "/tracker/jr-stack-av-12345678/edit",
+        "/tracker/jr-example-mobility-12345678/edit",
         data={
             "return_filter": "needs_action",
             "status": "Applied",
@@ -3333,7 +3333,7 @@ def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
         },
     )
 
-    application = get_application(database_file, "jr-stack-av-12345678")
+    application = get_application(database_file, "jr-example-mobility-12345678")
     history_records = fetch_included_job_history_records(database_file)
 
     assert response.status_code == 302
@@ -3343,13 +3343,13 @@ def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
 
     history_record = history_records[0]
 
-    assert history_record.company == "Stack AV"
+    assert history_record.company == "Example Mobility"
     assert history_record.role == "Senior Site Reliability Engineer"
     assert history_record.source == "Job Radar Tracker"
     assert history_record.event_date == "2026-07-12"
     assert history_record.status == "Applied"
     assert history_record.outcome_category == "Rejected - No Interview"
-    assert history_record.import_key == "job-radar-id:jr-stack-av-12345678"
+    assert history_record.import_key == "job-radar-id:jr-example-mobility-12345678"
     assert history_record.notes == "Rejected by email."
     assert history_record.applied_on == "2026-07-03"
     assert history_record.last_activity_on == "2026-07-12"
@@ -3367,8 +3367,8 @@ def test_tracker_edit_quick_action_marks_application_dormant(
     upsert_application(
         database_file,
         ApplicationRecord(
-            job_radar_id="jr-stack-av-12345678",
-            company_name="Stack AV",
+            job_radar_id="jr-example-mobility-12345678",
+            company_name="Example Mobility",
             role_title="Senior Site Reliability Engineer",
             status="Applied",
             outcome="Pending / In Progress",
@@ -3380,7 +3380,7 @@ def test_tracker_edit_quick_action_marks_application_dormant(
     client = app.test_client()
 
     response = client.post(
-        "/tracker/jr-stack-av-12345678/edit",
+        "/tracker/jr-example-mobility-12345678/edit",
         data={
             "return_filter": "needs_review",
             "status": "Applied",
@@ -3393,7 +3393,7 @@ def test_tracker_edit_quick_action_marks_application_dormant(
         },
     )
 
-    application = get_application(database_file, "jr-stack-av-12345678")
+    application = get_application(database_file, "jr-example-mobility-12345678")
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/tracker?filter=needs_review")
@@ -3671,7 +3671,7 @@ def test_tracker_edit_page_repairs_path_style_job_radar_ids(
         database_file,
         ApplicationRecord(
             job_radar_id="posting-url:https://example.com/jobs/hydra",
-            company_name="Hydra Host",
+            company_name="Example Hosting",
             role_title="HPC Solutions Engineer",
             source_url="https://example.com/jobs/hydra",
             status="Applied",
@@ -3691,12 +3691,12 @@ def test_tracker_edit_page_repairs_path_style_job_radar_ids(
     repaired_html = repaired_id_response.get_data(as_text=True)
 
     assert repaired_application.job_radar_id.startswith(
-        "jr_manual_hydra_host_hpc_solutions_engineer_"
+        "jr_manual_example_hosting_hpc_solutions_engineer_"
     )
     assert not repaired_application.job_radar_id.startswith("posting-url:")
     assert old_id_response.status_code == 404
     assert repaired_id_response.status_code == 200
-    assert "Hydra Host" in repaired_html
+    assert "Example Hosting" in repaired_html
     assert "posting-url:https://example.com/jobs/hydra" not in repaired_html
 
 

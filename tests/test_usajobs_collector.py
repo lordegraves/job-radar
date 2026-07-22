@@ -14,7 +14,7 @@ from job_radar.collectors.usajobs import (
 def make_company(**extra):
     company = {
         "company_key": "nasa_usajobs",
-        "name": "NASA",
+        "name": "Example Federal Agency",
         "source_type": "usajobs",
         "enabled": True,
     }
@@ -69,7 +69,7 @@ def test_parse_search_items_returns_job_postings():
     assert len(postings) == 1
     posting = postings[0]
     assert posting.company_key == "nasa_usajobs"
-    assert posting.company_name == "NASA"
+    assert posting.company_name == "Example Federal Agency"
     assert posting.source_type == "usajobs"
     assert posting.source_job_id == "12345"
     assert posting.source_url == "https://www.usajobs.gov/job/12345"

@@ -378,7 +378,7 @@ def test_installed_wheel_runs_outside_source_checkout(
     assert "smtp_password:" not in settings_text
     assert "companies: []" in company_config_text
     assert "example_ai" not in company_config_text
-    assert "nebius" not in company_config_text
+    assert "examplecloud" not in company_config_text
 
 
 def test_installed_wheel_renders_home_page_with_user_owned_data(

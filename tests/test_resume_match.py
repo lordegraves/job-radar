@@ -7,7 +7,7 @@ from job_radar.resume_match import match_resume_to_posting
 
 def make_profile() -> CandidateProfile:
     return CandidateProfile(
-        name="Clayton Graves",
+        name="Test User",
         compensation_floor_usd=160000,
         preferred_base_usd=185000,
         resume=CandidateResumeConfig(source_path="resume.md"),

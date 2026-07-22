@@ -37,11 +37,11 @@ def make_posting(
 def test_build_email_subject_summarizes_report() -> None:
     top_match = make_posting(
         title="Data Center Design Execution Lead",
-        company_name="Anthropic",
+        company_name="Example Research",
     )
     review_needed = make_posting(
         title="Senior Data Center Infrastructure Engineer",
-        company_name="Anthropic",
+        company_name="Example Research",
     )
 
     report = ScanReport(
@@ -90,8 +90,8 @@ def test_build_email_subject_summarizes_report() -> None:
 def test_build_email_body_includes_rich_top_match_details() -> None:
     top_match = make_posting(
         title="Data Center Design Execution Lead",
-        company_name="Anthropic",
-        source_url="https://boards.greenhouse.io/anthropic/jobs/123",
+        company_name="Example Research",
+        source_url="https://boards.greenhouse.io/example-research/jobs/123",
     )
 
     report = ScanReport(
@@ -147,7 +147,7 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "  - Pass: 0" in body
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:" in body
     assert "1. Data Center Design Execution Lead" in body
-    assert "   Company: Anthropic" in body
+    assert "   Company: Example Research" in body
     assert "   Job Radar ID: jr-" in body
     assert "   Score: 158" in body
     assert "   Location: Remote" in body
@@ -156,7 +156,7 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "   Recommended action: Apply" in body
     assert "   Hiring risks: None" in body
     assert "   URL:" not in body
-    assert "https://boards.greenhouse.io/anthropic/jobs/123" not in body
+    assert "https://boards.greenhouse.io/example-research/jobs/123" not in body
     assert "   Why it is a top match:" in body
     assert "      - score meets top match threshold" in body
     assert "      - location is acceptable" in body
@@ -229,7 +229,7 @@ def test_email_displays_eligibility_and_reasons() -> None:
 def test_build_email_body_does_not_invent_kubernetes_risk() -> None:
     posting = make_posting(
         title="Senior Site Reliability Engineer",
-        company_name="Stack AV",
+        company_name="Example Mobility",
         source_url="https://example.com/jobs/kubernetes-sre",
         description=(
             "Own production Kubernetes clusters, support Linux infrastructure, "
@@ -282,8 +282,8 @@ def test_build_email_body_does_not_invent_kubernetes_risk() -> None:
 def test_build_email_body_includes_rich_review_needed_details() -> None:
     review_needed = make_posting(
         title="Senior Data Center Infrastructure Engineer",
-        company_name="Anthropic",
-        source_url="https://boards.greenhouse.io/anthropic/jobs/456",
+        company_name="Example Research",
+        source_url="https://boards.greenhouse.io/example-research/jobs/456",
     )
 
     report = ScanReport(
@@ -314,7 +314,7 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
 
     assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:" in body
     assert "1. Senior Data Center Infrastructure Engineer" in body
-    assert "   Company: Anthropic" in body
+    assert "   Company: Example Research" in body
     assert "   Job Radar ID: jr-" in body
     assert "   Score: 151" in body
     assert "   Location: Remote" in body
@@ -324,7 +324,7 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert "   Action rationale: Needs review before deciding whether to apply." in body
     assert "   Hiring risks: None" in body
     assert "   URL:" not in body
-    assert "https://boards.greenhouse.io/anthropic/jobs/456" not in body
+    assert "https://boards.greenhouse.io/example-research/jobs/456" not in body
     assert "   Why it needs review:" in body
     assert "      - Strong technical signals, but review before applying." in body
     assert "      - Remote role fits your preferences." in body
@@ -336,9 +336,9 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
 def test_build_email_body_does_not_invent_title_or_region_risks() -> None:
     top_match = make_posting(
         title="Forward Deployed Engineer APAC",
-        company_name="RunPod",
+        company_name="ExampleCompute",
         location="Remote - APAC",
-        source_url="https://jobs.ashbyhq.com/runpod/jobs/123",
+        source_url="https://jobs.ashbyhq.com/examplecompute/jobs/123",
     )
 
     report = ScanReport(
@@ -557,7 +557,7 @@ def test_build_email_body_handles_missing_location_and_empty_signals() -> None:
 def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
     top_match = make_posting(
         title="Data Center Design Execution Lead",
-        company_name="Anthropic",
+        company_name="Example Research",
     )
 
     report = ScanReport(
@@ -601,7 +601,7 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
     assert "Generated at: 2026-06-24 17:08 UTC" in preview_text
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:" in preview_text
     assert "1. Data Center Design Execution Lead" in preview_text
-    assert "   Company: Anthropic" in preview_text
+    assert "   Company: Example Research" in preview_text
     assert "   Job Radar ID: jr-" in preview_text
     assert "   Score: 158" in preview_text
     assert "Full report:" in preview_text
@@ -612,7 +612,7 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
 def test_build_email_body_can_reference_attached_report_instead_of_path() -> None:
     top_match = make_posting(
         title="Data Center Design Execution Lead",
-        company_name="Anthropic",
+        company_name="Example Research",
     )
 
     report = ScanReport(
@@ -667,13 +667,13 @@ def test_build_email_body_keeps_unparseable_generated_at_value() -> None:
 def test_build_email_body_does_not_include_raw_posting_urls() -> None:
     top_match = make_posting(
         title="Data Center Design Execution Lead",
-        company_name="Anthropic",
-        source_url="https://job-boards.greenhouse.io/anthropic/jobs/123",
+        company_name="Example Research",
+        source_url="https://job-boards.greenhouse.io/example-research/jobs/123",
     )
     review_needed = make_posting(
         title="Senior Data Center Infrastructure Engineer",
-        company_name="Anthropic",
-        source_url="https://job-boards.greenhouse.io/anthropic/jobs/456",
+        company_name="Example Research",
+        source_url="https://job-boards.greenhouse.io/example-research/jobs/456",
     )
 
     report = ScanReport(
@@ -710,20 +710,20 @@ def test_build_email_body_does_not_include_raw_posting_urls() -> None:
     body = build_email_body(report, "reports/live-test.md")
 
     assert "   URL:" not in body
-    assert "https://job-boards.greenhouse.io/anthropic/jobs/123" not in body
-    assert "https://job-boards.greenhouse.io/anthropic/jobs/456" not in body
+    assert "https://job-boards.greenhouse.io/example-research/jobs/123" not in body
+    assert "https://job-boards.greenhouse.io/example-research/jobs/456" not in body
 
 
 def test_build_email_html_body_includes_clickable_posting_links() -> None:
     top_match = make_posting(
         title="Data Center Design Execution Lead",
-        company_name="Anthropic",
-        source_url="https://job-boards.greenhouse.io/anthropic/jobs/123",
+        company_name="Example Research",
+        source_url="https://job-boards.greenhouse.io/example-research/jobs/123",
     )
     review_needed = make_posting(
         title="Senior Data Center Infrastructure Engineer",
-        company_name="Anthropic",
-        source_url="https://job-boards.greenhouse.io/anthropic/jobs/456",
+        company_name="Example Research",
+        source_url="https://job-boards.greenhouse.io/example-research/jobs/456",
     )
 
     report = ScanReport(
@@ -778,12 +778,12 @@ def test_build_email_html_body_includes_clickable_posting_links() -> None:
     assert "Data Center Design Execution Lead" in html_body
     assert "Senior Data Center Infrastructure Engineer" in html_body
     assert (
-        '<a href="https://job-boards.greenhouse.io/anthropic/jobs/123">'
+        '<a href="https://job-boards.greenhouse.io/example-research/jobs/123">'
         "View posting</a>"
         in html_body
     )
     assert (
-        '<a href="https://job-boards.greenhouse.io/anthropic/jobs/456">'
+        '<a href="https://job-boards.greenhouse.io/example-research/jobs/456">'
         "View posting</a>"
         in html_body
     )

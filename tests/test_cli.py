@@ -1091,10 +1091,10 @@ def test_handle_scan_matches_tracked_application_by_source_url_when_ids_differ(
     config_file.write_text(
         """
 companies:
-  - company_key: runpod
-    name: RunPod
+  - company_key: examplecompute
+    name: ExampleCompute
     source_type: ashby
-    source_slug: runpod
+    source_slug: examplecompute
     enabled: true
 """,
         encoding="utf-8",
@@ -1133,26 +1133,26 @@ top_matches:
     )
 
     fake_posting = JobPosting(
-        company_key="runpod",
-        company_name="RunPod",
+        company_key="examplecompute",
+        company_name="ExampleCompute",
         source_type="ashby",
         source_job_id="1d14340c-c9bd-4754-80f4-5c83980cd413",
-        source_url="https://jobs.ashbyhq.com/RunPod/1d14340c-c9bd-4754-80f4-5c83980cd413",
+        source_url="https://jobs.ashbyhq.com/ExampleCompute/1d14340c-c9bd-4754-80f4-5c83980cd413",
         title="Site Reliability Engineer",
         location="Remote",
         description="Build Linux infrastructure.",
-        canonical_key="runpod:site-reliability-engineer:remote",
-        content_hash="hash-runpod-sre",
+        canonical_key="examplecompute:site-reliability-engineer:remote",
+        content_hash="hash-examplecompute-sre",
     )
 
     initialize_database(database_file)
     upsert_application(
         database_file,
         ApplicationRecord(
-            job_radar_id="jr_manual_runpod_site_reliability_engineer_a614aac51c",
-            company_name="RunPod",
+            job_radar_id="jr_manual_examplecompute_site_reliability_engineer_a614aac51c",
+            company_name="ExampleCompute",
             role_title="Site Reliability Engineer",
-            source_url="https://jobs.ashbyhq.com/RunPod/1d14340c-c9bd-4754-80f4-5c83980cd413",
+            source_url="https://jobs.ashbyhq.com/ExampleCompute/1d14340c-c9bd-4754-80f4-5c83980cd413",
             status="Applied",
             follow_up_on="2026-07-25",
             applied_on="2026-07-11",
@@ -1186,7 +1186,7 @@ top_matches:
     assert len(tracked_jobs) == 1
     assert tracked_jobs[0]["title"] == "Site Reliability Engineer"
     assert tracked_jobs[0]["url"] == (
-        "https://jobs.ashbyhq.com/RunPod/"
+        "https://jobs.ashbyhq.com/ExampleCompute/"
         "1d14340c-c9bd-4754-80f4-5c83980cd413"
     )
     assert tracked_jobs[0]["recommended_action"] == "Track Status"
@@ -1457,7 +1457,7 @@ top_matches:
 
 def test_find_profile_avoid_matches_detects_plain_avoid_terms() -> None:
     profile = CandidateProfile(
-        name="Clayton Graves",
+        name="Test User",
         compensation_floor_usd=160000,
         preferred_base_usd=185000,
         resume=None,
@@ -1485,7 +1485,7 @@ def test_find_profile_avoid_matches_detects_plain_avoid_terms() -> None:
 
 def test_find_profile_avoid_matches_detects_cleared_only_roles() -> None:
     profile = CandidateProfile(
-        name="Clayton Graves",
+        name="Test User",
         compensation_floor_usd=160000,
         preferred_base_usd=185000,
         resume=None,
@@ -1510,7 +1510,7 @@ def test_find_profile_avoid_matches_detects_cleared_only_roles() -> None:
 
 def test_find_profile_avoid_matches_ignores_non_matching_terms() -> None:
     profile = CandidateProfile(
-        name="Clayton Graves",
+        name="Test User",
         compensation_floor_usd=160000,
         preferred_base_usd=185000,
         resume=None,
@@ -1585,8 +1585,8 @@ def test_handle_bootstrap_user_data_copies_configuration(
     source_settings = source_root / "config" / "settings.yaml"
     source_company_config = source_root / "config" / "target-companies.yaml"
     source_scoring_config = source_root / "config" / "scoring.yaml"
-    source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
-    source_resume = source_root / "profiles" / "clayton" / "resume.md"
+    source_profile = source_root / "profiles" / "example-user" / "profile.yaml"
+    source_resume = source_root / "profiles" / "example-user" / "resume.md"
     source_database = source_root / "data" / "job_radar.sqlite3"
     destination = tmp_path / "user-data"
     source_settings.parent.mkdir(parents=True)
@@ -1605,7 +1605,7 @@ def test_handle_bootstrap_user_data_copies_configuration(
         encoding="utf-8",
     )
     source_profile.write_text(
-        "candidate:\n  name: Clayton\n",
+        "candidate:\n  name: Test User\n",
         encoding="utf-8",
     )
     source_resume.write_text("# Resume\n", encoding="utf-8")
@@ -1637,8 +1637,8 @@ def test_handle_bootstrap_user_data_copies_configuration(
     assert (destination / "config" / "settings.yaml").is_file()
     assert (destination / "config" / "target-companies.yaml").is_file()
     assert (destination / "config" / "scoring.yaml").is_file()
-    assert (destination / "profiles" / "clayton" / "profile.yaml").is_file()
-    assert (destination / "profiles" / "clayton" / "resume.md").is_file()
+    assert (destination / "profiles" / "example-user" / "profile.yaml").is_file()
+    assert (destination / "profiles" / "example-user" / "resume.md").is_file()
 
     with sqlite3.connect(
         destination / "data" / "job_radar.sqlite3"
@@ -1658,7 +1658,7 @@ def test_handle_bootstrap_user_data_preserves_existing_files(
     source_settings = source_root / "config" / "settings.yaml"
     source_company_config = source_root / "config" / "target-companies.yaml"
     source_scoring_config = source_root / "config" / "scoring.yaml"
-    source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
+    source_profile = source_root / "profiles" / "example-user" / "profile.yaml"
     destination = tmp_path / "user-data"
     destination_settings = destination / "config" / "settings.yaml"
     destination_company_config = (
@@ -1666,7 +1666,7 @@ def test_handle_bootstrap_user_data_preserves_existing_files(
     )
     destination_scoring_config = destination / "config" / "scoring.yaml"
     destination_profile = (
-        destination / "profiles" / "clayton" / "profile.yaml"
+        destination / "profiles" / "example-user" / "profile.yaml"
     )
     source_settings.parent.mkdir(parents=True)
     source_profile.parent.mkdir(parents=True)
@@ -2030,10 +2030,10 @@ logs_path: {tmp_path}
     upsert_application(
         database_file,
         ApplicationRecord(
-            job_radar_id="jr-stack-av-12345678",
-            company_name="Stack AV",
+            job_radar_id="jr-example-mobility-12345678",
+            company_name="Example Mobility",
             role_title="Senior Site Reliability Engineer",
-            source_url="https://example.com/jobs/stack-av-sre",
+            source_url="https://example.com/jobs/example-mobility-sre",
             status="applied",
             follow_up_on="2099-07-10",
             outcome=None,
@@ -2048,12 +2048,12 @@ logs_path: {tmp_path}
     assert "Application tracker" in output
     assert f"Database: {database_file}" in output
     assert "Applications tracked: 1" in output
-    assert "- Stack AV — Senior Site Reliability Engineer" in output
-    assert "Job Radar ID: jr-stack-av-12345678" in output
+    assert "- Example Mobility — Senior Site Reliability Engineer" in output
+    assert "Job Radar ID: jr-example-mobility-12345678" in output
     assert "Status: applied" in output
     assert "Workflow: follow_up_scheduled" in output
     assert "Follow up on: 2099-07-10" in output
-    assert "URL: https://example.com/jobs/stack-av-sre" in output
+    assert "URL: https://example.com/jobs/example-mobility-sre" in output
     assert "Notes: Applied through company site." in output
 
 
@@ -2065,7 +2065,7 @@ def test_parser_accepts_tracker_update_command() -> None:
             "tracker",
             "update",
             "--job-radar-id",
-            "jr-stack-av-12345678",
+            "jr-example-mobility-12345678",
             "--status",
             "applied",
             "--follow-up-on",
@@ -2085,7 +2085,7 @@ def test_parser_accepts_tracker_update_command() -> None:
 
     assert args.command == "tracker"
     assert args.tracker_command == "update"
-    assert args.job_radar_id == "jr-stack-av-12345678"
+    assert args.job_radar_id == "jr-example-mobility-12345678"
     assert args.status == "applied"
     assert args.follow_up_on == "2099-07-10"
     assert args.applied_on == "2026-07-03"
@@ -2292,10 +2292,10 @@ logs_path: {tmp_path}
     upsert_application(
         database_file,
         ApplicationRecord(
-            job_radar_id="jr-stack-av-12345678",
-            company_name="Stack AV",
+            job_radar_id="jr-example-mobility-12345678",
+            company_name="Example Mobility",
             role_title="Senior Site Reliability Engineer",
-            source_url="https://example.com/jobs/stack-av-sre",
+            source_url="https://example.com/jobs/example-mobility-sre",
             status="review_needed",
             notes="Initial review.",
         ),
@@ -2303,7 +2303,7 @@ logs_path: {tmp_path}
 
     handle_tracker_update(
         settings_path=str(settings_file),
-        job_radar_id="jr-stack-av-12345678",
+        job_radar_id="jr-example-mobility-12345678",
         status="applied",
         follow_up_on="2099-07-10",
         applied_on="2026-07-03",
@@ -2316,7 +2316,7 @@ logs_path: {tmp_path}
 
     assert "Application tracker updated" in output
     assert f"Database: {database_file}" in output
-    assert "Job Radar ID: jr-stack-av-12345678" in output
+    assert "Job Radar ID: jr-example-mobility-12345678" in output
     assert "Status: applied" in output
     assert "Follow up on: 2099-07-10" in output
     assert "Applied on: 2026-07-03" in output

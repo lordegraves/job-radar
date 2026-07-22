@@ -46,8 +46,8 @@ def test_bootstrap_user_configuration_copies_settings_and_profiles(
     source_settings = source_root / "config" / "settings.yaml"
     source_company_config = source_root / "config" / "target-companies.yaml"
     source_scoring_config = source_root / "config" / "scoring.yaml"
-    source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
-    source_resume = source_root / "profiles" / "clayton" / "resume.md"
+    source_profile = source_root / "profiles" / "example-user" / "profile.yaml"
+    source_resume = source_root / "profiles" / "example-user" / "resume.md"
     source_settings.parent.mkdir(parents=True)
     source_profile.parent.mkdir(parents=True)
     source_settings.write_text(
@@ -63,7 +63,7 @@ def test_bootstrap_user_configuration_copies_settings_and_profiles(
         encoding="utf-8",
     )
     source_profile.write_text(
-        "candidate:\n  name: Clayton\n",
+        "candidate:\n  name: Test User\n",
         encoding="utf-8",
     )
     source_resume.write_text("# Resume\n", encoding="utf-8")
@@ -98,10 +98,10 @@ def test_bootstrap_user_configuration_copies_settings_and_profiles(
         user_data_paths.config / "scoring.yaml"
     ).read_text(encoding="utf-8") == "positive_keywords: {}\n"
     assert (
-        user_data_paths.profiles / "clayton" / "profile.yaml"
-    ).read_text(encoding="utf-8") == "candidate:\n  name: Clayton\n"
+        user_data_paths.profiles / "example-user" / "profile.yaml"
+    ).read_text(encoding="utf-8") == "candidate:\n  name: Test User\n"
     assert (
-        user_data_paths.profiles / "clayton" / "resume.md"
+        user_data_paths.profiles / "example-user" / "resume.md"
     ).read_text(encoding="utf-8") == "# Resume\n"
 
 
@@ -112,7 +112,7 @@ def test_bootstrap_user_configuration_preserves_existing_user_files(
     source_settings = source_root / "config" / "settings.yaml"
     source_company_config = source_root / "config" / "target-companies.yaml"
     source_scoring_config = source_root / "config" / "scoring.yaml"
-    source_profile = source_root / "profiles" / "clayton" / "profile.yaml"
+    source_profile = source_root / "profiles" / "example-user" / "profile.yaml"
     source_settings.parent.mkdir(parents=True)
     source_profile.parent.mkdir(parents=True)
     source_settings.write_text(
@@ -128,7 +128,7 @@ def test_bootstrap_user_configuration_preserves_existing_user_files(
         user_data_paths.config / "target-companies.yaml"
     )
     existing_scoring_config = user_data_paths.config / "scoring.yaml"
-    existing_profile = user_data_paths.profiles / "clayton" / "profile.yaml"
+    existing_profile = user_data_paths.profiles / "example-user" / "profile.yaml"
     existing_settings.parent.mkdir(parents=True)
     existing_profile.parent.mkdir(parents=True)
     existing_settings.write_text("existing settings\n", encoding="utf-8")
@@ -174,7 +174,7 @@ def test_bootstrap_user_configuration_copies_optional_database(
     source_company_config = source_root / "config" / "target-companies.yaml"
     source_scoring_config = source_root / "config" / "scoring.yaml"
     source_profiles = source_root / "profiles"
-    source_profile = source_profiles / "clayton" / "profile.yaml"
+    source_profile = source_profiles / "example-user" / "profile.yaml"
     source_database = source_root / "data" / "job_radar.sqlite3"
     source_settings.parent.mkdir(parents=True)
     source_profile.parent.mkdir(parents=True)
@@ -189,7 +189,7 @@ def test_bootstrap_user_configuration_copies_optional_database(
         encoding="utf-8",
     )
     source_profile.write_text(
-        "candidate:\n  name: Clayton\n",
+        "candidate:\n  name: Test User\n",
         encoding="utf-8",
     )
 
@@ -237,7 +237,7 @@ def test_bootstrap_user_configuration_preserves_existing_database(
     source_company_config = source_root / "config" / "target-companies.yaml"
     source_scoring_config = source_root / "config" / "scoring.yaml"
     source_profiles = source_root / "profiles"
-    source_profile = source_profiles / "clayton" / "profile.yaml"
+    source_profile = source_profiles / "example-user" / "profile.yaml"
     source_database = source_root / "data" / "job_radar.sqlite3"
     source_settings.parent.mkdir(parents=True)
     source_profile.parent.mkdir(parents=True)
@@ -451,10 +451,10 @@ def test_copy_bootstrap_tree_preserves_relative_file_layout(
 ) -> None:
     source_root = tmp_path / "source-profiles"
     destination_root = tmp_path / "destination-profiles"
-    profile_directory = source_root / "clayton"
+    profile_directory = source_root / "example-user"
     profile_directory.mkdir(parents=True)
     (profile_directory / "profile.yaml").write_text(
-        "candidate:\n  name: Clayton\n",
+        "candidate:\n  name: Test User\n",
         encoding="utf-8",
     )
     (profile_directory / "resume.md").write_text(
@@ -467,10 +467,10 @@ def test_copy_bootstrap_tree_preserves_relative_file_layout(
     assert len(results) == 2
     assert all(result.copied for result in results)
     assert (
-        destination_root / "clayton" / "profile.yaml"
-    ).read_text(encoding="utf-8") == "candidate:\n  name: Clayton\n"
+        destination_root / "example-user" / "profile.yaml"
+    ).read_text(encoding="utf-8") == "candidate:\n  name: Test User\n"
     assert (
-        destination_root / "clayton" / "resume.md"
+        destination_root / "example-user" / "resume.md"
     ).read_text(encoding="utf-8") == "# Resume\n"
 
 
@@ -479,8 +479,8 @@ def test_copy_bootstrap_tree_preserves_existing_destination_files(
 ) -> None:
     source_root = tmp_path / "source-profiles"
     destination_root = tmp_path / "destination-profiles"
-    source_profile = source_root / "clayton" / "profile.yaml"
-    destination_profile = destination_root / "clayton" / "profile.yaml"
+    source_profile = source_root / "example-user" / "profile.yaml"
+    destination_profile = destination_root / "example-user" / "profile.yaml"
     source_profile.parent.mkdir(parents=True)
     destination_profile.parent.mkdir(parents=True)
     source_profile.write_text("source profile\n", encoding="utf-8")
@@ -618,7 +618,7 @@ def test_packaged_bootstrap_creates_safe_empty_user_workspace(
     assert 'smtp_password_env: ""' in settings_text
     assert "companies: []" in company_config_text
     assert "example_ai" not in company_config_text
-    assert "nebius" not in company_config_text
+    assert "examplecloud" not in company_config_text
 
 
 def test_copy_bootstrap_settings_file_rejects_literal_password(

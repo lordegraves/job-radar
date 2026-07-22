@@ -11,12 +11,12 @@ def test_load_candidate_profile_reads_candidate_fields(tmp_path) -> None:
     profile_path.write_text(
         """
 candidate:
-  name: Clayton Graves
+  name: Test User
   compensation_floor_usd: 160000
   preferred_base_usd: 185000
   resume:
-    source_path: profiles/clayton/resume.md
-    normalized_text_path: profiles/clayton/resume.normalized.txt
+    source_path: profiles/example-user/resume.md
+    normalized_text_path: profiles/example-user/resume.normalized.txt
   core_strengths:
     - Linux infrastructure
     - HPC operations
@@ -35,18 +35,18 @@ candidate:
         base_directory=tmp_path,
     )
 
-    assert profile.name == "Clayton Graves"
+    assert profile.name == "Test User"
     assert profile.compensation_floor_usd == 160000
     assert profile.preferred_base_usd == 185000
     assert profile.resume is not None
     assert profile.resume.source_path == str(
-        (tmp_path / "profiles" / "clayton" / "resume.md").resolve()
+        (tmp_path / "profiles" / "example-user" / "resume.md").resolve()
     )
     assert profile.resume.normalized_text_path == str(
         (
             tmp_path
             / "profiles"
-            / "clayton"
+            / "example-user"
             / "resume.normalized.txt"
         ).resolve()
     )
@@ -58,7 +58,7 @@ candidate:
 
 def test_load_candidate_profile_rejects_missing_candidate_mapping(tmp_path) -> None:
     profile_path = tmp_path / "profile.yaml"
-    profile_path.write_text("name: Clayton Graves\n", encoding="utf-8")
+    profile_path.write_text("name: Test User\n", encoding="utf-8")
 
     with pytest.raises(ConfigError, match="top-level candidate mapping"):
         load_candidate_profile(profile_path)

@@ -34,6 +34,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Changed
 
+- Replaced personal identities and nonessential real-company names in repository policy, roadmap history, and general-purpose test fixtures with neutral examples while preserving the approved support contact and source-specific collector coverage.
 - Removed the remaining global infrastructure, SRE, Kubernetes, employer, title-family, and Northern Colorado recommendation assumptions. Recommendation actions, risks, report grouping, resume gaps, and history-title matching now use profile-owned evidence and occupation-neutral rules, with explicit food-service coverage.
 - Renamed user-facing "technical match" wording to "role fit" while preserving the existing stored history field for backward compatibility.
 - Replaced the repository scoring fallback with the same neutral structure used for new profiles; existing managed-profile scoring data remains unchanged.

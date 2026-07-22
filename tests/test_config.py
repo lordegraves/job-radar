@@ -219,10 +219,10 @@ logs_path: logs
 
 email:
   enabled: false
-  sender: clayton@example.com
+  sender: user@example.com
   sender_name: Job Radar
   recipients:
-    - clayton@example.com
+    - user@example.com
   smtp_host: smtp.example.com
   smtp_port: 587
 """,
@@ -232,9 +232,9 @@ email:
     settings = load_settings(settings_file)
 
     assert settings.email.enabled is False
-    assert settings.email.sender == "clayton@example.com"
+    assert settings.email.sender == "user@example.com"
     assert settings.email.sender_name == "Job Radar"
-    assert settings.email.recipients == ("clayton@example.com",)
+    assert settings.email.recipients == ("user@example.com",)
     assert settings.email.smtp_host == "smtp.example.com"
     assert settings.email.smtp_port == 587
     assert settings.email.smtp_username == ""
@@ -272,7 +272,7 @@ logs_path: logs
 
 email:
   enabled: false
-  recipients: clayton@example.com
+  recipients: user@example.com
 """,
         encoding="utf-8",
     )
@@ -296,12 +296,12 @@ logs_path: logs
 
 email:
   enabled: true
-  sender: clayton@example.com
+  sender: user@example.com
   recipients:
-    - clayton@example.com
+    - user@example.com
   smtp_host: smtp.example.com
   smtp_port: 587
-  smtp_username: clayton@example.com
+  smtp_username: user@example.com
   smtp_password_env: JOB_RADAR_SMTP_PASSWORD
   smtp_tls_mode: starttls
 """,
@@ -328,12 +328,12 @@ logs_path: logs
 
 email:
   enabled: true
-  sender: clayton@example.com
+  sender: user@example.com
   recipients:
-    - clayton@example.com
+    - user@example.com
   smtp_host: smtp.example.com
   smtp_port: 587
-  smtp_username: clayton@example.com
+  smtp_username: user@example.com
   smtp_password_env: JOB_RADAR_SMTP_PASSWORD
   smtp_tls_mode: starttls
 """,
@@ -364,7 +364,7 @@ email:
   enabled: true
   sender: ""
   recipients:
-    - clayton@example.com
+    - user@example.com
   smtp_host: smtp.example.com
   smtp_port: 587
   smtp_password_env: JOB_RADAR_SMTP_PASSWORD
@@ -411,9 +411,9 @@ logs_path: logs
 
 email:
   enabled: true
-  sender: clayton@example.com
+  sender: user@example.com
   recipients:
-    - clayton@example.com
+    - user@example.com
   smtp_host: smtp.example.com
   smtp_port: 587
   smtp_username: ""

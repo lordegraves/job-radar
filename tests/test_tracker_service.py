@@ -25,16 +25,16 @@ from job_radar.tracker.tracker_storage import get_application, initialize_tracke
 
 def make_posting() -> JobPosting:
     return JobPosting(
-        company_key="stack_av",
-        company_name="Stack AV",
+        company_key="example_mobility",
+        company_name="Example Mobility",
         source_type="greenhouse",
         source_job_id="123",
         source_url="https://example.com/jobs/senior-sre",
         title="Senior Site Reliability Engineer",
         location="Remote",
         description="Own Linux infrastructure and production reliability.",
-        canonical_key="stack-av:senior-site-reliability-engineer:remote",
-        content_hash="hash-stack-av-sre",
+        canonical_key="example-mobility:senior-site-reliability-engineer:remote",
+        content_hash="hash-example-mobility-sre",
     )
 
 
@@ -87,7 +87,7 @@ def test_build_application_record_from_posting_uses_job_identity() -> None:
     )
 
     assert record.job_radar_id == posting.job_radar_id
-    assert record.company_name == "Stack AV"
+    assert record.company_name == "Example Mobility"
     assert record.role_title == "Senior Site Reliability Engineer"
     assert record.source_url == "https://example.com/jobs/senior-sre"
     assert record.status == "applied"
@@ -114,7 +114,7 @@ def test_track_application_from_posting_inserts_application(
     assert result == "new"
     assert application is not None
     assert application.job_radar_id == posting.job_radar_id
-    assert application.company_name == "Stack AV"
+    assert application.company_name == "Example Mobility"
     assert application.role_title == "Senior Site Reliability Engineer"
     assert application.status == "review_needed"
     assert application.notes == "Review before applying."

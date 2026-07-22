@@ -102,12 +102,12 @@ def test_send_email_report_refuses_when_password_env_missing(monkeypatch) -> Non
     result = send_email_report(
         email_settings={
             "enabled": True,
-            "sender": "clayton@example.com",
+            "sender": "user@example.com",
             "sender_name": "",
-            "recipients": ["clayton@example.com"],
+            "recipients": ["user@example.com"],
             "smtp_host": "smtp.example.com",
             "smtp_port": 587,
-            "smtp_username": "clayton@example.com",
+            "smtp_username": "user@example.com",
             "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
             "smtp_tls_mode": "starttls",
         },
@@ -130,12 +130,12 @@ def test_send_email_report_sends_with_starttls(monkeypatch) -> None:
     result = send_email_report(
         email_settings={
             "enabled": True,
-            "sender": "clayton@example.com",
+            "sender": "user@example.com",
             "sender_name": "",
-            "recipients": ["clayton@example.com"],
+            "recipients": ["user@example.com"],
             "smtp_host": "smtp.example.com",
             "smtp_port": 587,
-            "smtp_username": "clayton@example.com",
+            "smtp_username": "user@example.com",
             "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
             "smtp_tls_mode": "starttls",
         },
@@ -150,11 +150,11 @@ def test_send_email_report_sends_with_starttls(monkeypatch) -> None:
     assert smtp.host == "smtp.example.com"
     assert smtp.port == 587
     assert smtp.started_tls is True
-    assert smtp.login_username == "clayton@example.com"
+    assert smtp.login_username == "user@example.com"
     assert smtp.login_password == "not-a-real-password"
     assert smtp.sent_message["Subject"] == "Job Radar Report"
-    assert smtp.sent_message["From"] == "clayton@example.com"
-    assert smtp.sent_message["To"] == "clayton@example.com"
+    assert smtp.sent_message["From"] == "user@example.com"
+    assert smtp.sent_message["To"] == "user@example.com"
     assert "Report body" in smtp.sent_message.get_content()
 
 
@@ -166,12 +166,12 @@ def test_send_email_report_sends_with_ssl(monkeypatch) -> None:
     result = send_email_report(
         email_settings={
             "enabled": True,
-            "sender": "clayton@example.com",
+            "sender": "user@example.com",
             "sender_name": "",
-            "recipients": ["clayton@example.com"],
+            "recipients": ["user@example.com"],
             "smtp_host": "smtp.example.com",
             "smtp_port": 465,
-            "smtp_username": "clayton@example.com",
+            "smtp_username": "user@example.com",
             "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
             "smtp_tls_mode": "ssl",
         },
@@ -186,7 +186,7 @@ def test_send_email_report_sends_with_ssl(monkeypatch) -> None:
     assert smtp.host == "smtp.example.com"
     assert smtp.port == 465
     assert smtp.started_tls is False
-    assert smtp.login_username == "clayton@example.com"
+    assert smtp.login_username == "user@example.com"
     assert smtp.login_password == "not-a-real-password"
     assert smtp.sent_message["Subject"] == "Job Radar Report"
 
@@ -199,12 +199,12 @@ def test_send_email_report_sends_without_tls_for_local_relay(monkeypatch) -> Non
     result = send_email_report(
         email_settings={
             "enabled": True,
-            "sender": "clayton@example.com",
+            "sender": "user@example.com",
             "sender_name": "",
-            "recipients": ["clayton@example.com"],
+            "recipients": ["user@example.com"],
             "smtp_host": "localhost",
             "smtp_port": 1025,
-            "smtp_username": "clayton@example.com",
+            "smtp_username": "user@example.com",
             "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
             "smtp_tls_mode": "none",
         },
@@ -228,12 +228,12 @@ def test_send_email_report_uses_sender_display_name(monkeypatch) -> None:
     result = send_email_report(
         email_settings={
             "enabled": True,
-            "sender": "clayton@example.com",
+            "sender": "user@example.com",
             "sender_name": "Job Radar",
-            "recipients": ["clayton@example.com"],
+            "recipients": ["user@example.com"],
             "smtp_host": "smtp.example.com",
             "smtp_port": 587,
-            "smtp_username": "clayton@example.com",
+            "smtp_username": "user@example.com",
             "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
             "smtp_tls_mode": "starttls",
         },
@@ -245,7 +245,7 @@ def test_send_email_report_uses_sender_display_name(monkeypatch) -> None:
 
     assert result.sent is True
     assert result.message == "Email sent"
-    assert smtp.sent_message["From"] == "Job Radar <clayton@example.com>"
+    assert smtp.sent_message["From"] == "Job Radar <user@example.com>"
 
 
 def test_send_email_report_attaches_markdown_report(monkeypatch, tmp_path) -> None:
@@ -259,12 +259,12 @@ def test_send_email_report_attaches_markdown_report(monkeypatch, tmp_path) -> No
     result = send_email_report(
         email_settings={
             "enabled": True,
-            "sender": "clayton@example.com",
+            "sender": "user@example.com",
             "sender_name": "Job Radar",
-            "recipients": ["clayton@example.com"],
+            "recipients": ["user@example.com"],
             "smtp_host": "smtp.example.com",
             "smtp_port": 587,
-            "smtp_username": "clayton@example.com",
+            "smtp_username": "user@example.com",
             "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
             "smtp_tls_mode": "starttls",
         },
@@ -292,12 +292,12 @@ def test_send_email_report_sends_html_alternative(monkeypatch) -> None:
     result = send_email_report(
         email_settings={
             "enabled": True,
-            "sender": "clayton@example.com",
+            "sender": "user@example.com",
             "sender_name": "Job Radar",
-            "recipients": ["clayton@example.com"],
+            "recipients": ["user@example.com"],
             "smtp_host": "smtp.example.com",
             "smtp_port": 587,
-            "smtp_username": "clayton@example.com",
+            "smtp_username": "user@example.com",
             "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
             "smtp_tls_mode": "starttls",
         },
@@ -329,12 +329,12 @@ def test_send_email_report_attaches_html_report(monkeypatch, tmp_path) -> None:
     result = send_email_report(
         email_settings={
             "enabled": True,
-            "sender": "clayton@example.com",
+            "sender": "user@example.com",
             "sender_name": "Job Radar",
-            "recipients": ["clayton@example.com"],
+            "recipients": ["user@example.com"],
             "smtp_host": "smtp.example.com",
             "smtp_port": 587,
-            "smtp_username": "clayton@example.com",
+            "smtp_username": "user@example.com",
             "smtp_password_env": "JOB_RADAR_SMTP_PASSWORD",
             "smtp_tls_mode": "starttls",
         },

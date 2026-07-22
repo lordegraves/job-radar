@@ -98,7 +98,7 @@ def test_managed_resume_rejects_external_paths_and_user_owned_names(
 def test_managed_profile_rejects_invalid_profile_id() -> None:
     with pytest.raises(ValueError, match="profile_id"):
         ManagedProfile(
-            profile_id="Clayton Graves",
+            profile_id="Test User",
             display_name="Example Candidate",
         )
 

@@ -4,7 +4,7 @@ This file is the authoritative product roadmap for junior. Session prompts, dail
 
 ## Roadmap rules
 
-- Priority numbers and task descriptions are static unless Clayton explicitly authorizes a change.
+- Priority numbers and task descriptions are static unless the user explicitly authorizes a change.
 - Do not shorten, rewrite, merge, split, reorder, reinterpret, add, or delete tasks without approval.
 - Normal roadmap maintenance changes only the status column using verified results.
 - Allowed statuses are `Planned`, `In Progress`, `Completed`, `Parked`, and `Blocked`.
@@ -29,14 +29,14 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 5 | In Progress | Create and maintain `CHANGELOG.md`, semantic versioning rules, immutable release tags, and release notes for each stable product milestone. |
 | 6 | In Progress | Document the post-MVP application architecture, including entry points, service boundaries, configuration ownership, data ownership, startup flow, shutdown flow, desktop mode, server mode, and developer CLI mode. |
 | 7 | Completed | Separate user-owned data from application code by storing profiles, resumes, settings, company records, SQLite databases, reports, logs, backups, and runtime files in OS-appropriate user-data directories. |
-| 8 | Completed | Preserve backward compatibility for existing repo-relative configuration and Clayton's current Job Radar data while transitioning to external user-data paths. |
+| 8 | Completed | Preserve backward compatibility for existing repo-relative configuration and current user data while transitioning to external user-data paths. |
 | 9 | In Progress | Add safe, versioned migrations for SQLite schema, settings, profiles, company records, and other persisted user data so upgrades never silently lose or corrupt data. |
 | 10 | In Progress | Create a reusable application configuration service so GUI, CLI, desktop launcher, server mode, and packaged builds all load and save settings through the same tested interface. |
 | 11 | Completed | Create a generic profile domain model with stable profile IDs, display names, resume ownership, preferences, company associations, scoring configuration, report settings, and active-profile selection. |
 | 12 | In Progress | Add profile creation, editing, duplication, switching, archival, deletion, and validation through the GUI without requiring user accounts or authentication. |
-| 13 | Completed | Preserve and migrate the existing Clayton profile as a working default profile without changing its current scoring or search behavior. |
+| 13 | Completed | Preserve and migrate the existing MVP profile as a working managed profile without changing its current scoring or search behavior. |
 | 14 | In Progress | Build user-friendly profile and preference configuration for target roles, seniority, skills, compensation floor and target, locations, remote/hybrid rules, exclusions, travel tolerance, employment type, clearance rules, and recommendation behavior. |
-| 15 | Completed | Generalize scoring configuration so profiles unrelated to infrastructure, HPC, SRE, or Clayton's search do not inherit Clayton-specific role, skill, location, or blocker assumptions. |
+| 15 | Completed | Generalize scoring configuration so profiles unrelated to infrastructure, HPC, or SRE do not inherit another user's role, skill, location, or blocker assumptions. |
 | 16 | Planned | Add optional profile templates that provide editable starting points for common job-search types without locking users into fixed scoring behavior. |
 | 17 | Completed | Decide and document the final role of the spreadsheet bridge: one-time migration, optional bulk import, export-only compatibility path, or full retirement from normal use. |
 | 18 | In Progress | Add safe import tools for bringing existing applications, history, resumes, profiles, and company lists into the app without duplicating or overwriting existing records. |
