@@ -461,18 +461,45 @@ def _replace_company_associations(
     connection: sqlite3.Connection,
     profile: ManagedProfile,
 ) -> None:
-    connection.execute(
-        "DELETE FROM profile_company_associations WHERE profile_id = ?",
-        (profile.profile_id,),
-    )
+    existing_company_ids = {
+        row[0]
+        for row in connection.execute(
+            """
+            SELECT company_id
+            FROM profile_company_associations
+            WHERE profile_id = ?
+            """,
+            (profile.profile_id,),
+        ).fetchall()
+    }
+    requested_company_ids = set(profile.company_ids)
+
+    removed_company_ids = existing_company_ids - requested_company_ids
+    added_company_ids = requested_company_ids - existing_company_ids
+
     connection.executemany(
         """
-        INSERT INTO profile_company_associations (profile_id, company_id)
-        VALUES (?, ?)
+        DELETE FROM profile_company_associations
+        WHERE profile_id = ?
+          AND company_id = ?
         """,
         [
             (profile.profile_id, company_id)
-            for company_id in profile.company_ids
+            for company_id in sorted(removed_company_ids)
+        ],
+    )
+    connection.executemany(
+        """
+        INSERT INTO profile_company_associations (
+            profile_id,
+            company_id,
+            enabled
+        )
+        VALUES (?, ?, 1)
+        """,
+        [
+            (profile.profile_id, company_id)
+            for company_id in sorted(added_company_ids)
         ],
     )
 

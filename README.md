@@ -32,7 +32,7 @@ junior currently provides:
 - tracker workflow states, follow-up dates, quick actions, archive/restore workflows, and guarded deletion
 - scan lifecycle records, progress state, cross-process locking, stage-specific failures, and bounded pagination
 - non-blocking GUI scans with app-wide progress and completion notifications
-- an installation-wide employer/source catalog with independent profile selections
+- an installation-wide employer/source catalog with independent profile assignments and per-profile enable/disable control
 - user-owned runtime paths and non-destructive configuration/database bootstrap
 - versioned SQLite migrations, foreign-key enforcement, atomic tracker/history moves, and backup-before-migration protection
 - clean wheel installation and installed-package rendering tests

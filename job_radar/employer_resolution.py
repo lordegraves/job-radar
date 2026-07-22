@@ -5,7 +5,10 @@ from typing import Any
 
 from job_radar.config import ConfigError, load_companies
 from job_radar.employer_import import import_pending_legacy_employers
-from job_radar.employer_storage import get_employer_source
+from job_radar.employer_storage import (
+    get_employer_source,
+    is_profile_employer_enabled,
+)
 from job_radar.profile_storage import get_active_profile
 from job_radar.storage import initialize_database
 
@@ -39,7 +42,14 @@ def resolve_scan_companies(
                 f"longer exists: {employer_id}"
             )
 
-        if employer.enabled:
+        if (
+            is_profile_employer_enabled(
+                db_path,
+                active_profile.profile_id,
+                employer_id,
+            )
+            and employer.enabled
+        ):
             companies.append(employer.to_company_config())
 
     if not companies:

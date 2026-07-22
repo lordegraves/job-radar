@@ -242,6 +242,11 @@ def _schema_migrations() -> tuple:
             "add profile-owned tracker and history",
             _migrate_profile_owned_activity,
         ),
+        (
+            12,
+            "add profile employer assignment state",
+            _migrate_profile_employer_assignment_state,
+        ),
     )
 
 
@@ -355,6 +360,27 @@ def _migrate_baseline_schema(connection: sqlite3.Connection) -> None:
     _migrate_scan_runs_table(connection)
     _migrate_job_history_table(connection)
     migrate_tracker_schema(connection)
+
+
+def _migrate_profile_employer_assignment_state(
+    connection: sqlite3.Connection,
+) -> None:
+    """Add profile-specific enabled state to employer assignments."""
+
+    columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(profile_company_associations)"
+        ).fetchall()
+    }
+
+    if "enabled" not in columns:
+        connection.execute(
+            """
+            ALTER TABLE profile_company_associations
+            ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1
+            """
+        )
 
 
 def _migrate_profile_owned_activity(connection: sqlite3.Connection) -> None:
@@ -691,6 +717,7 @@ def _migrate_managed_profile_tables(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS profile_company_associations (
             profile_id TEXT NOT NULL,
             company_id TEXT NOT NULL,
+            enabled INTEGER NOT NULL DEFAULT 1,
             PRIMARY KEY (profile_id, company_id),
             FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
                 ON DELETE CASCADE

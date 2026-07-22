@@ -8,6 +8,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- Profile-specific employer assignment state, allowing each managed profile to independently assign and enable or disable employers from the shared installation-wide employer catalog.
 - Versioned SQLite schema migrations.
 - SQLite foreign-key enforcement.
 - Database backup-before-migration protection.

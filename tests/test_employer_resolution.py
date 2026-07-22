@@ -8,7 +8,10 @@ from job_radar.config import ConfigError
 from job_radar.database import connect_database
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_resolution import resolve_scan_companies
-from job_radar.employer_storage import upsert_employer_source
+from job_radar.employer_storage import (
+    set_profile_employer_enabled,
+    upsert_employer_source,
+)
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_storage import (
     create_profile,
@@ -118,6 +121,72 @@ def test_resolve_scan_companies_uses_only_active_profile_enabled_employers(
                 "source_slug": "disabled-grocery",
             },
         ),
+    )
+
+    companies = resolve_scan_companies(
+        database_path,
+        company_config_path,
+    )
+
+    assert companies == [
+        {
+            "company_key": "local_bakery",
+            "name": "Local Bakery",
+            "source_type": "html",
+            "enabled": True,
+            "source_url": "https://bakery.invalid/jobs",
+        }
+    ]
+
+
+def test_resolve_scan_companies_skips_profile_disabled_employer(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "data" / "job_radar.sqlite3"
+    company_config_path = tmp_path / "config" / "target-companies.yaml"
+    write_company_file(company_config_path)
+
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Baker Profile",
+        company_ids=(
+            "local_bakery",
+            "disabled_market",
+        ),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="local_bakery",
+            name="Local Bakery",
+            source_type="html",
+            enabled=True,
+            source_config={
+                "source_url": "https://bakery.invalid/jobs",
+            },
+        ),
+    )
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="disabled_market",
+            name="Disabled Market",
+            source_type="greenhouse",
+            enabled=True,
+            source_config={
+                "source_slug": "disabled-market",
+            },
+        ),
+    )
+
+    set_profile_employer_enabled(
+        database_path,
+        profile.profile_id,
+        "disabled_market",
+        enabled=False,
     )
 
     companies = resolve_scan_companies(

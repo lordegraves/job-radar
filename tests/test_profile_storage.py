@@ -164,6 +164,65 @@ def test_update_profile_replaces_editable_owned_data(tmp_path: Path) -> None:
     assert get_profile(database_path, updated.profile_id) == updated
 
 
+def test_update_profile_preserves_existing_assignment_enabled_state(
+    tmp_path: Path,
+) -> None:
+    from job_radar.employer_models import EmployerSource
+    from job_radar.employer_storage import (
+        assign_employer_to_profile,
+        is_profile_employer_enabled,
+        set_profile_employer_enabled,
+        upsert_employer_source,
+    )
+
+    database_path = tmp_path / "job_radar.sqlite3"
+
+    profile = make_profile()
+
+    employer = EmployerSource(
+        employer_id="example_company",
+        name="Example Company",
+        source_type="greenhouse",
+        source_config={"source_slug": "example_company"},
+    )
+
+    create_profile(database_path, profile)
+    upsert_employer_source(database_path, employer)
+    assign_employer_to_profile(
+        database_path,
+        profile.profile_id,
+        employer.employer_id,
+    )
+
+    assert (
+        set_profile_employer_enabled(
+            database_path,
+            profile.profile_id,
+            employer.employer_id,
+            enabled=False,
+        )
+        is True
+    )
+
+    updated = ManagedProfile(
+        **{
+            **profile.__dict__,
+            "display_name": "Updated Name",
+        }
+    )
+
+    assert update_profile(database_path, updated) is True
+
+    assert (
+        is_profile_employer_enabled(
+            database_path,
+            profile.profile_id,
+            employer.employer_id,
+        )
+        is False
+    )
+
+
 def test_update_profile_returns_false_for_missing_profile(tmp_path: Path) -> None:
     database_path = tmp_path / "job_radar.sqlite3"
 

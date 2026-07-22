@@ -7,6 +7,25 @@ from job_radar.config import SUPPORTED_SOURCE_TYPES
 
 
 @dataclass(frozen=True)
+class ProfileEmployerAssignment:
+    """Represent one profile's scanning state for a global employer source."""
+
+    profile_id: str
+    employer_id: str
+    enabled: bool = True
+
+    def __post_init__(self) -> None:
+        if not self.profile_id.strip():
+            raise ValueError("profile_id cannot be empty")
+
+        if not self.employer_id.strip():
+            raise ValueError("employer_id cannot be empty")
+
+        if not isinstance(self.enabled, bool):
+            raise ValueError("profile employer enabled state must be a boolean")
+
+
+@dataclass(frozen=True)
 class EmployerSource:
     """Represent one employer and the source junior can scan for its jobs."""
 
