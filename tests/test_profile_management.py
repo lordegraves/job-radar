@@ -12,6 +12,7 @@ from job_radar.profile_management import (
     create_managed_profile,
     delete_managed_profile,
     save_managed_profile_resume,
+    save_managed_search_profile,
     select_managed_profile,
     update_managed_profile_from_form,
     update_managed_search_preferences,
@@ -32,6 +33,66 @@ logs_path: logs
         encoding="utf-8",
     )
     return settings_path
+
+
+def test_new_managed_profile_owns_neutral_scoring(tmp_path: Path) -> None:
+    settings_path = write_settings(tmp_path)
+
+    profile = create_managed_profile(
+        str(settings_path),
+        "Baker Search",
+        base_directory=tmp_path,
+    )
+
+    assert profile.scoring_config is not None
+    assert profile.scoring_config["positive_keywords"] == {}
+    assert profile.scoring_config["negative_keywords"] == {}
+    assert profile.scoring_config["top_matches"]["strong_signals"] == []
+    assert profile.scoring_config["review_needed"]["strong_signals"] == []
+
+    serialized = str(profile.scoring_config).casefold()
+    for term in (
+        "infrastructure",
+        "sre",
+        "kubernetes",
+        "k8s",
+        "hpc",
+        "slurm",
+        "gpu",
+        "northern colorado",
+    ):
+        assert term not in serialized
+
+
+def test_complete_profile_creation_owns_neutral_scoring(tmp_path: Path) -> None:
+    settings_path = write_settings(tmp_path)
+
+    profile, created = save_managed_search_profile(
+        str(settings_path),
+        display_name="Baker Search",
+        create_new=True,
+        occupation_selections_json=(
+            '[{"value":"51-3011.00","label":"Bakers"}]'
+        ),
+        location_selections_json="[]",
+        seniority_levels=["Mid-level"],
+        employment_types=["Full-time"],
+        work_arrangements=["On-site"],
+        schedule_preference="Day shift",
+        on_call_preference="Not willing to participate",
+        compensation_floor_usd="50000",
+        travel_percentage="0",
+        base_directory=tmp_path,
+    )
+
+    assert created is True
+    assert profile.preferences.target_roles == ("Bakers",)
+    assert profile.scoring_config is not None
+    assert profile.scoring_config["positive_keywords"] == {}
+    assert profile.scoring_config["negative_keywords"] == {}
+    assert profile.scoring_config["top_matches"]["excluded_title_keywords"] == []
+    assert profile.scoring_config["top_matches"]["strong_signals"] == []
+    assert profile.scoring_config["review_needed"]["strong_signals"] == []
 
 
 def test_create_edit_select_archive_and_restore_profile(tmp_path: Path) -> None:

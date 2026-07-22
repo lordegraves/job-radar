@@ -12,6 +12,33 @@ from job_radar.scoring import load_scoring_config
 from job_radar.storage import initialize_database
 
 
+def build_neutral_scoring_config() -> dict[str, Any]:
+    """Return occupation-neutral scoring structure for a new managed profile."""
+
+    return {
+        "positive_keywords": {},
+        "negative_keywords": {},
+        "location_preferences": {
+            "allowed": {},
+            "conditional": {},
+            "skipped": {},
+        },
+        "top_matches": {
+            "min_score": 120,
+            "excluded_title_keywords": [],
+            "strong_signals": [],
+        },
+        "review_needed": {
+            "min_score": 100,
+            "excluded_location_statuses": [
+                "skipped",
+                "unknown",
+            ],
+            "strong_signals": [],
+        },
+    }
+
+
 def import_pending_legacy_scoring(
     database_path: str | Path,
     scoring_path: str | Path,

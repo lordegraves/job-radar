@@ -5,6 +5,7 @@ from pathlib import Path
 from job_radar.database import connect_database
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_scoring import (
+    build_neutral_scoring_config,
     import_pending_legacy_scoring,
     resolve_effective_scoring_config,
 )
@@ -14,6 +15,38 @@ from job_radar.profile_storage import (
     set_active_profile,
 )
 from job_radar.storage import initialize_database
+
+
+def test_build_neutral_scoring_config_has_no_occupation_assumptions() -> None:
+    first = build_neutral_scoring_config()
+    second = build_neutral_scoring_config()
+
+    assert first == {
+        "positive_keywords": {},
+        "negative_keywords": {},
+        "location_preferences": {
+            "allowed": {},
+            "conditional": {},
+            "skipped": {},
+        },
+        "top_matches": {
+            "min_score": 120,
+            "excluded_title_keywords": [],
+            "strong_signals": [],
+        },
+        "review_needed": {
+            "min_score": 100,
+            "excluded_location_statuses": [
+                "skipped",
+                "unknown",
+            ],
+            "strong_signals": [],
+        },
+    }
+    assert second == first
+    assert second is not first
+    assert second["positive_keywords"] is not first["positive_keywords"]
+    assert second["top_matches"] is not first["top_matches"]
 
 
 def write_scoring_file(path: Path) -> dict[str, object]:
@@ -206,6 +239,29 @@ def test_resolve_effective_scoring_uses_profile_owned_config(
     )
 
     assert resolved == profile_scoring
+
+
+def test_existing_profile_owned_scoring_is_not_replaced_by_neutral_defaults(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "data" / "job_radar.sqlite3"
+    scoring_path = tmp_path / "config" / "scoring.yaml"
+    legacy_scoring = write_scoring_file(scoring_path)
+
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Existing Infrastructure Profile",
+        scoring_config=legacy_scoring,
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+
+    resolved = resolve_effective_scoring_config(database_path, scoring_path)
+    stored = get_profile(database_path, profile.profile_id)
+
+    assert resolved == legacy_scoring
+    assert stored is not None
+    assert stored.scoring_config == legacy_scoring
 
 
 def test_resolve_effective_scoring_preserves_yaml_fallback(

@@ -21,6 +21,7 @@ from job_radar.profile_models import (
     build_managed_resume,
     get_managed_resume_directory,
 )
+from job_radar.profile_scoring import build_neutral_scoring_config
 from job_radar.profile_storage import (
     create_and_select_profile,
     create_profile,
@@ -98,6 +99,7 @@ def create_managed_profile(
     profile = ManagedProfile(
         profile_id=f"profile_{secrets.token_hex(8)}",
         display_name=normalized_name,
+        scoring_config=build_neutral_scoring_config(),
     )
     create_profile(runtime_paths.database_path, profile)
     set_active_profile(runtime_paths.database_path, profile.profile_id)
@@ -263,6 +265,7 @@ def save_managed_search_profile(
             profile_id=f"profile_{secrets.token_hex(8)}",
             display_name=normalized_name,
             preferences=preferences,
+            scoring_config=build_neutral_scoring_config(),
         )
         # Creation and active selection share one transaction, so a failed save
         # cannot leave behind a partial or unexpectedly inactive profile.
