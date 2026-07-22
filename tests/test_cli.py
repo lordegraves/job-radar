@@ -938,7 +938,7 @@ top_matches:
     assert report_file.with_suffix(".json").exists()
     assert snapshot_job["history_context"] == (
         "Prior similar application at Example AI ended "
-        "No Interview despite Strong technical match"
+        "No Interview despite Strong role fit"
     )
     assert snapshot_job["history_risk"] == (
         "caution: prior_no_interview_despite_strong_match"

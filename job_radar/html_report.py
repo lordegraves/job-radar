@@ -21,16 +21,9 @@ from job_radar.recommendation_constants import (
     ACTION_PREVIOUSLY_REVIEWED,
     ACTION_TRACK_STATUS,
     RISK_BELOW_COMPENSATION_FLOOR,
-    RISK_GENERIC_REMOTE_COMPETITION,
     RISK_HARD_LOCATION_MISMATCH,
-    RISK_HIGH_COMPETITION_EMPLOYER,
     RISK_LOCATION_NEEDS_CONFIRMATION,
     RISK_NOT_LOCATION_ELIGIBLE,
-    RISK_PRODUCTION_KUBERNETES_TRANSLATION,
-    RISK_ROLE_FAMILY_MISMATCH,
-    RISK_SECURITY_DOMAIN_TRANSLATION,
-    RISK_SOFTWARE_HEAVY_TRANSLATION,
-    RISK_SUPPORT_ROLE,
     TRACK_STATUS_ALREADY_APPLIED_MESSAGE,
 )
 from job_radar.recommendations import (
@@ -43,18 +36,7 @@ from job_radar.recommendations import (
 
 
 TOP_MATCHES_QUICK_VIEW_LIMIT = 10
-NORTHERN_COLORADO_HIGHLIGHTS_LIMIT = 10
 PASSED_JOBS_REPORT_LIMIT = 25
-NORTHERN_COLORADO_LOCATION_KEYWORDS = (
-    "fort collins",
-    "loveland",
-    "greeley",
-    "windsor",
-    "berthoud",
-    "longmont",
-    "northern colorado",
-    "cheyenne",
-)
 
 TRACKER_WORKFLOW_SUMMARY_ORDER = (
     "follow_up_due",
@@ -255,7 +237,6 @@ def _append_html_table_of_contents(
         sections.extend(
             [
                 ("top-matches", "Top Matches"),
-                ("northern-colorado-highlights", "Northern Colorado Highlights"),
                 ("review-needed", "Review Needed"),
                 ("tracked-applications", "Tracked Applications"),
                 ("new-jobs", "New Jobs"),
@@ -388,7 +369,6 @@ def _get_surfaced_recommendation_postings(report: ScanReport) -> list[ScoredPost
     surfaced_postings: list[ScoredPosting] = []
 
     surfaced_postings.extend(_get_top_matches(scored_postings))
-    surfaced_postings.extend(_get_northern_colorado_highlights(scored_postings))
     surfaced_postings.extend(_get_review_needed(report_scored_postings))
     surfaced_postings.extend(_get_tracked_applications(report_scored_postings))
 
@@ -513,20 +493,8 @@ def _get_omitted_posting_review_score(scored_posting: ScoredPosting) -> int:
     if RISK_LOCATION_NEEDS_CONFIRMATION in risks:
         review_score += 5
 
-    if RISK_ROLE_FAMILY_MISMATCH in risks:
-        review_score -= 100
-
-    if RISK_SUPPORT_ROLE in risks:
-        review_score -= 80
-
     if any(risk.startswith("profile avoid match:") for risk in risks):
         review_score -= 80
-
-    if RISK_SOFTWARE_HEAVY_TRANSLATION in risks:
-        review_score -= 20
-
-    if RISK_SECURITY_DOMAIN_TRANSLATION in risks:
-        review_score -= 20
 
     return review_score
 
@@ -542,17 +510,11 @@ def _format_pass_reason(scored_posting: ScoredPosting) -> str:
         if RISK_BELOW_COMPENSATION_FLOOR in risks:
             return "Compensation appears below your current floor."
 
-        if RISK_ROLE_FAMILY_MISMATCH in risks:
-            return "Role family does not match your target infrastructure/SRE profile."
-
         if RISK_NOT_LOCATION_ELIGIBLE in risks:
-            return "Location does not fit your remote/Northern Colorado preferences."
+            return "Location does not fit this profile's selected locations."
 
-        if RISK_SOFTWARE_HEAVY_TRANSLATION in risks:
-            return "Role appears too software-heavy for the current target profile."
-
-        if RISK_SECURITY_DOMAIN_TRANSLATION in risks:
-            return "Role leans too far into security-domain work."
+        if any(risk.startswith("profile avoid match:") for risk in risks):
+            return "The role matches an exclusion saved in this profile."
 
         if risks:
             return "Risk flags make this a poor apply target."
@@ -578,26 +540,14 @@ def _format_pass_summary_reason(risk: str) -> str:
     if risk == RISK_BELOW_COMPENSATION_FLOOR:
         return "Below compensation floor"
 
-    if risk == RISK_ROLE_FAMILY_MISMATCH:
-        return "Role family mismatch"
-
     if risk == RISK_NOT_LOCATION_ELIGIBLE:
         return "Not location eligible"
 
-    if risk == RISK_SOFTWARE_HEAVY_TRANSLATION:
-        return "Software-heavy mismatch"
+    if risk.startswith("profile avoid match:"):
+        return "Profile exclusion"
 
-    if risk == RISK_SECURITY_DOMAIN_TRANSLATION:
-        return "Security-domain mismatch"
-
-    if risk == RISK_PRODUCTION_KUBERNETES_TRANSLATION:
-        return "Kubernetes translation risk"
-
-    if risk == RISK_HIGH_COMPETITION_EMPLOYER:
-        return "High-competition employer"
-
-    if risk == RISK_GENERIC_REMOTE_COMPETITION:
-        return "Generic remote competition"
+    if risk.startswith("profile gap:"):
+        return "Profile gap"
 
     return risk
 
@@ -790,36 +740,6 @@ def _get_top_matches(scored_postings: list[ScoredPosting]) -> list[ScoredPosting
     ).top_matches
 
 
-def _get_northern_colorado_highlights(
-    scored_postings: list[ScoredPosting],
-) -> list[ScoredPosting]:
-    top_match_urls = {
-        scored_posting.posting.source_url
-        for scored_posting in _get_top_matches(scored_postings)
-    }
-
-    highlights = [
-        scored_posting
-        for scored_posting in scored_postings
-        if scored_posting.posting.source_url not in top_match_urls
-        and _is_northern_colorado_highlight(scored_posting)
-    ]
-
-    return highlights[:NORTHERN_COLORADO_HIGHLIGHTS_LIMIT]
-
-
-def _is_northern_colorado_highlight(scored_posting: ScoredPosting) -> bool:
-    if not scored_posting.top_match_eligible and not scored_posting.review_needed_eligible:
-        return False
-
-    location = (scored_posting.posting.location or "").lower()
-
-    return any(
-        keyword in location
-        for keyword in NORTHERN_COLORADO_LOCATION_KEYWORDS
-    )
-
-
 def _append_html_count_summary(
     lines: list[str],
     heading: str,
@@ -977,9 +897,6 @@ def _append_html_scored_sections(
     _append_html_top_matches_section(lines, report_scored_postings)
     _append_html_back_to_contents(lines)
 
-    _append_html_northern_colorado_highlights_section(lines, report_scored_postings)
-    _append_html_back_to_contents(lines)
-
     _append_html_review_needed_section(lines, report_scored_postings)
     _append_html_back_to_contents(lines)
 
@@ -1042,24 +959,6 @@ def _append_html_top_matches_section(
     lines.append("</ul>")
 
     for scored_posting in top_matches:
-        _append_html_scored_posting(lines, scored_posting)
-
-
-def _append_html_northern_colorado_highlights_section(
-    lines: list[str],
-    scored_postings: list[ScoredPosting],
-) -> None:
-    lines.append(
-        '<h2 id="northern-colorado-highlights">Northern Colorado Highlights</h2>'
-    )
-
-    highlights = _get_northern_colorado_highlights(scored_postings)
-
-    if not highlights:
-        lines.append("<p>No Northern Colorado highlights found.</p>")
-        return
-
-    for scored_posting in highlights:
         _append_html_scored_posting(lines, scored_posting)
 
 
@@ -1310,7 +1209,7 @@ def _append_html_scored_posting(
         [
             f"<li><strong>Why this matched:</strong> "
             f"{escape(job.why_matched)}</li>",
-            f"<li><strong>Technical match:</strong> "
+            f"<li><strong>Role fit:</strong> "
             f"{escape(job.technical_match)}</li>",
             f"<li><strong>Hiring probability:</strong> "
             f"{escape(job.hiring_probability)}</li>",

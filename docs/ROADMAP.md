@@ -36,7 +36,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 12 | In Progress | Add profile creation, editing, duplication, switching, archival, deletion, and validation through the GUI without requiring user accounts or authentication. |
 | 13 | Completed | Preserve and migrate the existing Clayton profile as a working default profile without changing its current scoring or search behavior. |
 | 14 | In Progress | Build user-friendly profile and preference configuration for target roles, seniority, skills, compensation floor and target, locations, remote/hybrid rules, exclusions, travel tolerance, employment type, clearance rules, and recommendation behavior. |
-| 15 | In Progress | Generalize scoring configuration so profiles unrelated to infrastructure, HPC, SRE, or Clayton's search do not inherit Clayton-specific role, skill, location, or blocker assumptions. |
+| 15 | Completed | Generalize scoring configuration so profiles unrelated to infrastructure, HPC, SRE, or Clayton's search do not inherit Clayton-specific role, skill, location, or blocker assumptions. |
 | 16 | Planned | Add optional profile templates that provide editable starting points for common job-search types without locking users into fixed scoring behavior. |
 | 17 | Completed | Decide and document the final role of the spreadsheet bridge: one-time migration, optional bulk import, export-only compatibility path, or full retirement from normal use. |
 | 18 | In Progress | Add safe import tools for bringing existing applications, history, resumes, profiles, and company lists into the app without duplicating or overwriting existing records. |
@@ -102,6 +102,6 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 
 Completed foundations include durable SQLite migrations and backups, shared scan lifecycle services, structured reporting, user-owned runtime paths, distribution-readiness validation, managed profiles and resumes, profile-owned employer selections, profile-owned Tracker and History records, background GUI scans, and the retirement of normal spreadsheet tracking.
 
-The next major product areas are completing generic profile/scoring behavior, editable company management, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
+The next major product areas are editable company management, completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
 
 The projected full-product target remains September 30, 2026. Milestone quality, user-data safety, and dependency order take precedence over the date.

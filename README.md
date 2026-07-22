@@ -23,7 +23,7 @@ junior currently provides:
 
 - configured-company scanning across multiple ATS and career-site formats
 - Profile-owned active applications and application history stored safely in SQLite
-- rules-based scoring, recommendation policy, compensation checks, and resume/profile matching
+- profile-owned scoring, occupation-neutral recommendation policy, compensation checks, and resume/profile matching
 - structured scan snapshots and HTML reports
 - plain-text and HTML email previews with guarded SMTP delivery
 - a local Flask GUI with Home, Scan, Reports, Active Applications, Application History, Profile / Resume, Companies, and Settings pages

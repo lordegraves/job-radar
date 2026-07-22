@@ -32,7 +32,6 @@ def match_resume_to_posting(
     )
     gaps = _find_resume_gaps(
         candidate_profile=candidate_profile,
-        posting_title=clean_text(posting.title or "").lower(),
         posting_text=posting_text,
     )
 
@@ -67,7 +66,6 @@ def _find_resume_evidence(
 
 def _find_resume_gaps(
     candidate_profile: CandidateProfile,
-    posting_title: str,
     posting_text: str,
 ) -> list[str]:
     gaps: list[str] = []
@@ -80,7 +78,6 @@ def _find_resume_gaps(
 
         if _should_report_resume_gap(
             normalized_gap=normalized_gap,
-            posting_title=posting_title,
             posting_text=posting_text,
         ):
             gaps.append(gap)
@@ -90,24 +87,9 @@ def _find_resume_gaps(
 
 def _should_report_resume_gap(
     normalized_gap: str,
-    posting_title: str,
     posting_text: str,
 ) -> bool:
-    if normalized_gap == "security engineering":
-        return _has_security_focused_title(posting_title)
-
     return _term_matches(normalized_gap, posting_text)
-
-
-def _has_security_focused_title(posting_title: str) -> bool:
-    security_title_markers = [
-        "security engineer",
-        "infrastructure security",
-        "cloud security",
-        "platform security",
-    ]
-
-    return any(marker in posting_title for marker in security_title_markers)
 
 
 def _classify_resume_match(evidence: list[str], gaps: list[str]) -> str:

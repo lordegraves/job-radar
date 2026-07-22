@@ -275,15 +275,10 @@ def test_build_report_snapshot_exposes_recommendation_quality_and_risks() -> Non
     snapshot = build_report_snapshot(report)
     job = snapshot.top_matches[0]
 
-    assert job.technical_match == "Strong"
+    assert job.technical_match == "Very Strong"
     assert job.hiring_probability == "Medium"
-    assert job.recommended_action == "Network First"
-    assert job.hiring_risks == (
-        "security-domain translation risk; "
-        "software-heavy translation risk; "
-        "production Kubernetes translation risk; "
-        "generic remote competition"
-    )
+    assert job.recommended_action == "Apply"
+    assert job.hiring_risks == "None"
 
 
 def test_build_report_snapshot_exposes_resume_and_compensation_fields() -> None:

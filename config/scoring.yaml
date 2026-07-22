@@ -1,111 +1,26 @@
-positive_keywords:
-  linux: 10
-  infrastructure: 10
-  sre: 10
-  site reliability: 10
-  reliability: 8
-  kubernetes: 8
-  k8s: 8
-  cluster: 8
-  hpc: 10
-  slurm: 10
-  gpu: 8
-  datacenter: 8
-  data center: 8
-  hardware: 7
-  systems: 6
-  observability: 6
-  incident: 5
-  automation: 5
-  python: 4
-  networking: 4
-  storage: 4
+# Occupation-neutral development and legacy fallback scoring.
+#
+# Managed profiles own their actual scoring rules. Keep this file neutral so a
+# source checkout or an incomplete legacy setup cannot inherit one user's job
+# family, locations, exclusions, or recommendation assumptions.
+positive_keywords: {}
 
-negative_keywords:
-  account executive: -20
-  sourcing: -30
-  procurement: -30
-  supply chain: -30
-  vendor: -20
-  vendor management: -25
-  business operations: -20
-  sales: -15
-  marketing: -15
-  legal: -12
-  finance: -12
-  recruiter: -12
-  recruiting: -12
-  people operations: -12
-  hr: -12
-  customer success: -10
-  product marketing: -10
-  communications: -10
+negative_keywords: {}
 
 location_preferences:
-  allowed:
-    remote: 100
-
+  allowed: {}
   conditional: {}
-
   skipped: {}
 
 top_matches:
   min_score: 120
-
-  excluded_title_keywords:
-    - account executive
-    - business
-    - communications
-    - customer success
-    - finance
-    - fx
-    - gtm
-    - investments
-    - legal
-    - liquidity
-    - marketing
-    - people
-    - product manager
-    - recruiter
-    - recruiting
-    - sales
-    - sourcing
-    - design execution
-
-  strong_signals:
-    - title:infrastructure
-    - title:kubernetes
-    - title:linux
-    - title:cluster
-    - title:reliability
-    - title:sre
-    - title:hpc
-    - title:platform
-    - title:systems
-    - title:site reliability
+  excluded_title_keywords: []
+  strong_signals: []
+  review_signals: []
 
 review_needed:
   min_score: 100
-
   excluded_location_statuses:
     - skipped
     - unknown
-
-  strong_signals:
-    - title:infrastructure
-    - title:kubernetes
-    - title:linux
-    - title:cluster
-    - title:datacenter
-    - title:data center
-    - title:reliability
-    - title:sre
-    - body:hpc
-    - body:slurm
-    - body:gpu
-    - body:kubernetes
-    - body:linux
-    - body:infrastructure
-    - body:datacenter
-    - body:data center
-    - body:hardware
+  strong_signals: []

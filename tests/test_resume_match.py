@@ -78,7 +78,7 @@ def test_match_resume_to_posting_reports_gap() -> None:
     assert result.gaps == ["production Kubernetes ownership"]
 
 
-def test_match_resume_to_posting_does_not_report_security_gap_for_adjacent_role() -> None:
+def test_match_resume_to_posting_reports_configured_gap_without_title_guessing() -> None:
     posting = make_posting(
         title="Senior Platform Engineer",
         description=(
@@ -92,7 +92,7 @@ def test_match_resume_to_posting_does_not_report_security_gap_for_adjacent_role(
 
     assert result.label == "Medium"
     assert result.evidence == ["Linux infrastructure"]
-    assert result.gaps == []
+    assert result.gaps == ["security engineering"]
 
 
 def test_match_resume_to_posting_reports_security_gap_for_security_focused_role() -> None:

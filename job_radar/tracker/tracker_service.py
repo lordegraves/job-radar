@@ -453,6 +453,7 @@ def _clean_history_notes_for_tracker(notes: str | None) -> str | None:
         "- score:",
         "- why it is a top match:",
         "- why this matched:",
+        "- role fit:",
         "- technical match:",
         "- resume match:",
         "- resume evidence:",

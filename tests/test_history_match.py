@@ -90,6 +90,26 @@ def test_find_history_matches_ignores_different_company_for_first_pass() -> None
     assert find_history_matches(posting, [record]) == []
 
 
+def test_find_history_matches_supports_food_service_titles() -> None:
+    posting = make_posting(company_name="Neighborhood Bakery", title="Head Cook")
+    record = make_history_record(company="Neighborhood Bakery", role="Cook")
+
+    matches = find_history_matches(posting, [record])
+
+    assert len(matches) == 1
+    assert matches[0].matched_tokens == ("cook",)
+
+
+def test_find_history_matches_supports_exact_generic_titles() -> None:
+    posting = make_posting(company_name="Example Software", title="Software Developer")
+    record = make_history_record(company="Example Software", role="Software Developer")
+
+    matches = find_history_matches(posting, [record])
+
+    assert len(matches) == 1
+    assert matches[0].matched_tokens == ("exact_title",)
+
+
 def test_find_history_matches_ignores_excluded_history_records() -> None:
     posting = make_posting()
     record = make_history_record(include_in_job_radar=False)
@@ -109,7 +129,7 @@ def test_build_posting_history_context_formats_no_interview_context() -> None:
     assert context == [
         (
             "Prior similar application at Example AI ended "
-            "No Interview despite Strong technical match"
+            "No Interview despite Strong role fit"
         )
     ]
 

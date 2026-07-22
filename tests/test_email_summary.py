@@ -141,9 +141,7 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "Top match score threshold: 120" in body
     assert "Review-needed score threshold: 100" in body
     assert "Recommendation summary:" in body
-    assert "  - Apply: 0" in body
-    assert "  - Apply + Recruiter Message: 0" in body
-    assert "  - Network First: 1" in body
+    assert "  - Apply: 1" in body
     assert "  - Tailor Resume: 0" in body
     assert "  - Hold: 0" in body
     assert "  - Pass: 0" in body
@@ -153,20 +151,10 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "   Job Radar ID: jr-" in body
     assert "   Score: 158" in body
     assert "   Location: Remote" in body
-    assert "   Technical match: Strong" in body
+    assert "   Role fit: Strong" in body
     assert "   Hiring probability: Medium" in body
-    assert "   Recommended action: Network First" in body
-    assert (
-        "   Action rationale: Network first. Useful technical signal, but direct "
-        "apply is weaker because of the high-competition employer, the leadership "
-        "expectations, remote-role competition."
-        in body
-    )
-    assert (
-        "   Hiring risks: high competition employer; "
-        "leadership ambiguity risk; generic remote competition"
-        in body
-    )
+    assert "   Recommended action: Apply" in body
+    assert "   Hiring risks: None" in body
     assert "   URL:" not in body
     assert "https://boards.greenhouse.io/anthropic/jobs/123" not in body
     assert "   Why it is a top match:" in body
@@ -238,7 +226,7 @@ def test_email_displays_eligibility_and_reasons() -> None:
     )
 
 
-def test_build_email_body_keeps_medium_kubernetes_risk_out_of_top_matches() -> None:
+def test_build_email_body_does_not_invent_kubernetes_risk() -> None:
     posting = make_posting(
         title="Senior Site Reliability Engineer",
         company_name="Stack AV",
@@ -285,14 +273,10 @@ def test_build_email_body_keeps_medium_kubernetes_risk_out_of_top_matches() -> N
         f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:"
     )[1]
 
-    assert "1. Senior Site Reliability Engineer" not in top_matches_section
-    assert "1. Senior Site Reliability Engineer" in review_needed_section
-    assert "   Hiring probability: Medium" in review_needed_section
-    assert (
-        "   Hiring risks: production Kubernetes translation risk; "
-        "generic remote competition"
-        in review_needed_section
-    )
+    assert "1. Senior Site Reliability Engineer" in top_matches_section
+    assert "1. Senior Site Reliability Engineer" not in review_needed_section
+    assert "   Hiring probability: Medium" in top_matches_section
+    assert "   Hiring risks: None" in top_matches_section
 
 
 def test_build_email_body_includes_rich_review_needed_details() -> None:
@@ -334,19 +318,11 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert "   Job Radar ID: jr-" in body
     assert "   Score: 151" in body
     assert "   Location: Remote" in body
-    assert "   Technical match: Strong" in body
-    assert "   Hiring probability: Medium" in body
-    assert "   Recommended action: Tailor Resume" in body
-    assert (
-        "   Action rationale: Tailor resume: the role is worth reviewing, "
-        "but the current resume match is unknown and hiring probability is "
-        "medium."
-        in body
-    )
-    assert (
-        "   Hiring risks: high competition employer; generic remote competition"
-        in body
-    )
+    assert "   Role fit: Strong" in body
+    assert "   Hiring probability: Low" in body
+    assert "   Recommended action: Hold" in body
+    assert "   Action rationale: Needs review before deciding whether to apply." in body
+    assert "   Hiring risks: None" in body
     assert "   URL:" not in body
     assert "https://boards.greenhouse.io/anthropic/jobs/456" not in body
     assert "   Why it needs review:" in body
@@ -357,7 +333,7 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert "   Signals: data center, infrastructure" in body
 
 
-def test_build_email_body_includes_hiring_risk_action_for_false_positive() -> None:
+def test_build_email_body_does_not_invent_title_or_region_risks() -> None:
     top_match = make_posting(
         title="Forward Deployed Engineer APAC",
         company_name="RunPod",
@@ -393,9 +369,9 @@ def test_build_email_body_includes_hiring_risk_action_for_false_positive() -> No
 
     body = build_email_body(report, "reports/live-test.md")
 
-    assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
+    assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" not in body
     assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
-    assert "Forward Deployed Engineer APAC" not in body
+    assert "Forward Deployed Engineer APAC" in body
 
 
 def test_email_summary_excludes_tracked_applications() -> None:

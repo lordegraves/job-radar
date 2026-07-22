@@ -220,6 +220,9 @@ def is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
     if _get_recommended_action(scored_posting) == ACTION_TRACK_STATUS:
         return False
 
+    if _is_top_match_display_posting(scored_posting):
+        return False
+
     eligibility_needs_review = (
         scored_posting.eligibility is not None
         and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
@@ -251,7 +254,14 @@ def is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
     }:
         return False
 
-    if recommended_action == ACTION_HOLD and not eligibility_needs_review:
+    if _is_top_match_display_posting(scored_posting):
+        return False
+
+    if (
+        recommended_action == ACTION_HOLD
+        and not scored_posting.review_needed_eligible
+        and not eligibility_needs_review
+    ):
         return False
 
     return scored_posting.review_needed_eligible or (

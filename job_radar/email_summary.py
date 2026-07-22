@@ -331,7 +331,7 @@ def _append_email_posting_detail(
             f"   Eligibility: {job.eligibility_label}",
             f"   Eligibility reasons: {job.eligibility_reason_text}",
             f"   Location: {job.location}",
-            f"   Technical match: {job.technical_match}",
+            f"   Role fit: {job.technical_match}",
             f"   Resume match: {job.resume_match}",
             f"   Resume evidence: {job.resume_evidence}",
             f"   Resume gaps: {job.resume_gaps}",
@@ -569,7 +569,7 @@ def _append_html_posting_detail(
             f"{escape(job.eligibility_reason_text)}</li>",
             f"<li><strong>Location:</strong> "
             f"{escape(job.location)}</li>",
-            f"<li><strong>Technical match:</strong> "
+            f"<li><strong>Role fit:</strong> "
             f"{escape(job.technical_match)}</li>",
             f"<li><strong>Resume match:</strong> "
             f"{escape(job.resume_match)}</li>",

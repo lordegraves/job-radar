@@ -722,7 +722,7 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
                 hiring_probability="High",
                 recommended_action="Apply",
                 action_rationale=(
-                    "Clean apply: very strong technical match, very strong "
+                        "Clean apply: very strong role fit, very strong "
                     "resume match, high hiring probability, and no hiring risks."
                 ),
                 why_matched="linux, infrastructure, sre, gpu, observability",
@@ -784,10 +784,10 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "Recommended action" in html
     assert "Apply" in html
     assert "Why this is worth acting on" in html
-    assert "Clean apply: very strong technical match" in html
+    assert "Clean apply: very strong role fit" in html
     assert "Matched because" in html
     assert "linux, infrastructure, sre, gpu, observability" in html
-    assert "Technical match" in html
+    assert "Role fit" in html
     assert "Very Strong" in html
     assert "Resume evidence" in html
     assert "Linux infrastructure; reliability engineering" in html

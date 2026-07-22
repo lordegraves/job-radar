@@ -26,7 +26,7 @@ def build_history_context(summary: HistorySummary) -> list[str]:
 
     if no_interview_count > 0:
         context.append(
-            "Strong technical alignment has not always led to interviews "
+            "Strong role fit has not always led to interviews "
             f"in prior applications ({no_interview_count} no-interview outcomes)"
         )
 
@@ -68,7 +68,7 @@ def _build_technical_no_interview_context(
     if not no_interview_counts:
         return None
 
-    return "Strong technical matches with no interview: " + ", ".join(
+    return "Strong role fits with no interview: " + ", ".join(
         no_interview_counts
     )
 

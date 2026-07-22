@@ -67,11 +67,7 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     assert '<h2 id="summary">Summary</h2>' in html
     assert '<a href="#summary">Summary</a>' in html
     assert '<a href="#top-matches">Top Matches</a>' in html
-    assert (
-        '<a href="#northern-colorado-highlights">'
-        "Northern Colorado Highlights</a>"
-        in html
-    )
+    assert "Northern Colorado Highlights" not in html
     assert '<a href="#review-needed">Review Needed</a>' in html
     assert '<a href="#tracked-applications">Tracked Applications</a>' in html
     assert '<a href="#new-jobs">New Jobs</a>' in html
@@ -81,11 +77,6 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     )
     assert '<a href="#collector-errors">Collector Errors</a>' not in html
     assert '<h2 id="top-matches">Top Matches</h2>' in html
-    assert (
-        '<h2 id="northern-colorado-highlights">'
-        "Northern Colorado Highlights</h2>"
-        in html
-    )
     assert '<h2 id="review-needed">Review Needed</h2>' in html
     assert '<h2 id="tracked-applications">Tracked Applications</h2>' in html
     assert '<h2 id="new-jobs">New Jobs</h2>' in html
@@ -95,7 +86,7 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     )
     assert html.count(
         '<a href="#report-contents">Back to report contents</a>'
-    ) == 6
+    ) == 5
     assert "<strong>Generated at:</strong> 2026-06-24 12:34 UTC" in html
     assert "<strong>Actionable jobs stored:</strong> 1" in html
     assert "<strong>Jobs not actionable:</strong> 0" in html
@@ -218,7 +209,7 @@ def test_needs_review_eligibility_blocks_direct_apply_recommendation() -> None:
 
     assert _get_recommended_action(scored_posting) == "Hold"
     assert _get_action_rationale(scored_posting) == (
-        "Hold for eligibility review before applying. "
+        "Needs review before applying. "
         "The posting does not provide usable compensation."
     )
 
@@ -608,7 +599,7 @@ def test_below_floor_compensation_blocks_recommendation() -> None:
     assert _get_recommended_action(scored_posting) == "Pass"
 
 
-def test_clean_apply_requires_very_strong_resume_match() -> None:
+def test_clean_apply_allows_strong_resume_match() -> None:
     from job_radar.recommendations import _get_recommended_action
     from job_radar.resume_match import ResumeMatchResult
 
@@ -635,7 +626,7 @@ def test_clean_apply_requires_very_strong_resume_match() -> None:
         ),
     )
 
-    assert _get_recommended_action(scored_posting) == "Apply + Recruiter Message"
+    assert _get_recommended_action(scored_posting) == "Apply"
 
 
 def test_clean_apply_allows_very_strong_resume_match() -> None:
@@ -804,7 +795,6 @@ def test_profile_avoid_match_blocks_recommendation() -> None:
 
     hiring_risks = _format_hiring_risk_flags(scored_posting)
 
-    assert "role family mismatch" in hiring_risks
     assert "profile avoid match: frontend" in hiring_risks
     assert _get_recommended_action(scored_posting) == "Pass"
 
@@ -847,6 +837,37 @@ def test_profile_avoid_match_blocks_even_without_existing_role_family_mismatch()
         "profile avoid match: product management"
     )
     assert _get_recommended_action(scored_posting) == "Pass"
+
+
+def test_baker_role_has_no_unconfigured_industry_or_employer_risks() -> None:
+    from job_radar.recommendations import _format_hiring_risk_flags
+    from job_radar.recommendations import _get_recommended_action
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(
+        title="Baker",
+        company_name="Neighborhood Bakery",
+        description="Prepare breads and pastries for the morning shift.",
+    )
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=140,
+        score_reasons=[
+            "+30 title:baker",
+            "+10 body:pastries",
+            "+100 location_allowed:local",
+        ],
+        location_status="allowed",
+        top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Strong",
+            evidence=["baking", "food preparation"],
+            gaps=[],
+        ),
+    )
+
+    assert _format_hiring_risk_flags(scored_posting) == "None"
+    assert _get_recommended_action(scored_posting) == "Apply"
 
 
 def test_render_html_report_includes_track_status_for_tracked_application() -> None:

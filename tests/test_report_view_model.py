@@ -161,7 +161,7 @@ def test_build_report_view_model_applies_email_limit() -> None:
     assert len(view.email_top_matches) == 10
 
 
-def test_build_report_view_model_routes_kubernetes_risk_to_review_needed() -> None:
+def test_unconfigured_industry_terms_do_not_create_global_risk() -> None:
     posting = make_scored_posting(
         title="Senior Site Reliability Engineer",
         top_match_eligible=True,
@@ -176,8 +176,8 @@ def test_build_report_view_model_routes_kubernetes_risk_to_review_needed() -> No
 
     view = build_report_view_model(scored_postings=[posting])
 
-    assert view.top_matches == []
-    assert view.review_needed == [posting]
+    assert view.top_matches == [posting]
+    assert view.review_needed == []
     assert view.tracked_applications == []
 
 

@@ -31,26 +31,6 @@ _GENERIC_ROLE_TOKENS = {
     "role",
 }
 
-_MEANINGFUL_ROLE_TOKENS = {
-    "ai",
-    "cluster",
-    "compute",
-    "datacenter",
-    "gpu",
-    "hardware",
-    "hpc",
-    "infrastructure",
-    "kubernetes",
-    "linux",
-    "platform",
-    "reliability",
-    "security",
-    "site",
-    "sre",
-    "storage",
-}
-
-
 @dataclass(frozen=True)
 class HistoryMatch:
     record: JobHistoryRecord
@@ -121,7 +101,7 @@ def find_history_matches(
     posting_company = _normalize_text(posting.company_name)
     posting_tokens = _meaningful_role_tokens(posting.title)
 
-    if not posting_company or not posting_tokens:
+    if not posting_company:
         return []
 
     matches: list[HistoryMatch] = []
@@ -135,6 +115,15 @@ def find_history_matches(
 
         record_tokens = _meaningful_role_tokens(record.role)
         matched_tokens = tuple(sorted(posting_tokens & record_tokens))
+
+        # Titles made entirely from generic words can still be the same role.
+        # Exact normalized equality is safer than treating all generic titles
+        # as unrelated or matching them to every other role.
+        if (
+            not matched_tokens
+            and _normalize_text(posting.title) == _normalize_text(record.role)
+        ):
+            matched_tokens = ("exact_title",)
 
         if not matched_tokens:
             continue
@@ -244,7 +233,7 @@ def _format_history_match(match: HistoryMatch) -> str:
         if technical_match != "Unknown":
             return (
                 f"Prior similar application at {record.company} ended "
-                f"No Interview despite {technical_match} technical match"
+                f"No Interview despite {technical_match} role fit"
             )
 
         return f"Prior similar application at {record.company} ended No Interview"
@@ -326,15 +315,13 @@ def _is_strong_fuzzy_title_match(
 
 
 def _meaningful_role_tokens(value: str | None) -> set[str]:
-    tokens = {
+    # Derive identity from each title instead of favoring one occupation's
+    # vocabulary. This works equally for bakers, cooks, engineers, and others.
+    return {
         token
         for token in _tokenize(value)
         if token not in _GENERIC_ROLE_TOKENS
     }
-
-    meaningful_tokens = tokens & _MEANINGFUL_ROLE_TOKENS
-
-    return meaningful_tokens or tokens
 
 
 def _tokenize(value: str | None) -> set[str]:

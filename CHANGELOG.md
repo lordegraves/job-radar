@@ -34,8 +34,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Changed
 
+- Removed the remaining global infrastructure, SRE, Kubernetes, employer, title-family, and Northern Colorado recommendation assumptions. Recommendation actions, risks, report grouping, resume gaps, and history-title matching now use profile-owned evidence and occupation-neutral rules, with explicit food-service coverage.
+- Renamed user-facing "technical match" wording to "role fit" while preserving the existing stored history field for backward compatibility.
+- Replaced the repository scoring fallback with the same neutral structure used for new profiles; existing managed-profile scoring data remains unchanged.
 - Made `docs/ROADMAP.md` the single authoritative product roadmap, updated its verified task statuses, and synchronized repository documentation with profile-owned Tracker/History and current profile behavior.
-- Replaced the packaged starter scoring rules with an occupation-neutral structure while preserving existing managed-profile scoring and legacy YAML fallback behavior.
+- Replaced the packaged starter scoring rules with an occupation-neutral structure while preserving existing managed-profile scoring.
 - Active Applications and Application History are now owned by the active profile across the GUI, scans, reports, and CLI; existing records migrate to the active profile, and profiles with job-search activity cannot be deleted.
 
 - GUI-started scans now run without blocking the rest of junior and report progress, completion, source warnings, or failure throughout the interface.
