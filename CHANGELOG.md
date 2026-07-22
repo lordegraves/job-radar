@@ -33,6 +33,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Changed
 
+- Active Applications and Application History are now owned by the active profile across the GUI, scans, reports, and CLI; existing records migrate to the active profile, and profiles with job-search activity cannot be deleted.
+
 - GUI-started scans now run without blocking the rest of junior and report progress, completion, source warnings, or failure throughout the interface.
 
 - Integrated profile preferences into Profile / Resume, removed the separate navigation page and informational banner, added dedicated create and edit pages with explicit save controls and first-profile guidance, and combined résumé insights with the plain-English search summary.

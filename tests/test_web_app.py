@@ -10,7 +10,13 @@ from pathlib import Path
 import job_radar.web_app as web_app_module
 
 from job_radar.history_models import JobHistoryRecord
-from job_radar.profile_storage import get_active_profile, list_profiles
+from job_radar.profile_models import ManagedProfile
+from job_radar.profile_storage import (
+    create_profile,
+    get_active_profile,
+    list_profiles,
+    set_active_profile,
+)
 from job_radar.storage import (
     complete_scan_run,
     fetch_included_job_history_records,
@@ -26,6 +32,75 @@ from job_radar.tracker.tracker_storage import (
     upsert_application,
 )
 from job_radar.web_app import create_app
+
+
+def test_profile_switch_isolates_tracker_and_history_pages(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file))
+    first_profile = ManagedProfile(
+        profile_id="profile_11111111",
+        display_name="First synthetic profile",
+    )
+    second_profile = ManagedProfile(
+        profile_id="profile_22222222",
+        display_name="Second synthetic profile",
+    )
+    create_profile(database_file, first_profile)
+    create_profile(database_file, second_profile)
+    client = app.test_client()
+
+    set_active_profile(database_file, first_profile.profile_id)
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-first-12345678",
+            company_name="First Synthetic Company",
+            role_title="First Synthetic Role",
+        ),
+        profile_id=first_profile.profile_id,
+    )
+    upsert_job_history_record(
+        database_file,
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="First History Company",
+            role="First History Role",
+            source=None,
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date=None,
+            status="Passed",
+            outcome_category=None,
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="first-history-key",
+            notes=None,
+        ),
+        profile_id=first_profile.profile_id,
+    )
+
+    first_tracker_html = client.get("/tracker").get_data(as_text=True)
+    first_history_html = client.get("/history").get_data(as_text=True)
+    set_active_profile(database_file, second_profile.profile_id)
+    second_tracker_html = client.get("/tracker").get_data(as_text=True)
+    second_history_html = client.get("/history").get_data(as_text=True)
+
+    assert "First Synthetic Company" in first_tracker_html
+    assert "First History Company" in first_history_html
+    assert "First Synthetic Company" not in second_tracker_html
+    assert "First History Company" not in second_history_html
+    assert client.get("/tracker/jr-first-12345678/edit").status_code == 404
+    assert client.get("/history/first-history-key/edit").status_code == 404
 
 
 def test_profile_gui_creates_edits_and_deletes_managed_profile(

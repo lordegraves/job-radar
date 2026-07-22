@@ -84,6 +84,7 @@ def register_history_routes(
     app: Flask,
     *,
     get_database_path: Callable[[], str],
+    get_profile_id: Callable[[], str | None],
     decision_options: tuple[str, ...],
     tracker_edit_outcome_options: tuple[str, ...],
 ) -> None:
@@ -110,7 +111,11 @@ def register_history_routes(
             abort(404)
 
         database_path = get_database_path()
-        all_records = fetch_included_job_history_records(database_path)
+        profile_id = get_profile_id()
+        all_records = fetch_included_job_history_records(
+            database_path,
+            profile_id=profile_id,
+        )
         searched_records = _search_history_records(all_records, search_query)
         filtered_records = _filter_history_records(
             searched_records,
@@ -141,7 +146,11 @@ def register_history_routes(
     @app.get("/history/<path:import_key>/edit")
     def edit_history_record(import_key: str) -> str:
         database_path = get_database_path()
-        record = get_history_record(database_path, import_key)
+        record = get_history_record(
+            database_path,
+            import_key,
+            profile_id=get_profile_id(),
+        )
 
         if record is None:
             abort(404)
@@ -157,7 +166,12 @@ def register_history_routes(
     @app.post("/history/<path:import_key>/edit")
     def update_history_record(import_key: str):
         database_path = get_database_path()
-        record = get_history_record(database_path, import_key)
+        profile_id = get_profile_id()
+        record = get_history_record(
+            database_path,
+            import_key,
+            profile_id=profile_id,
+        )
 
         if record is None:
             abort(404)
@@ -165,7 +179,11 @@ def register_history_routes(
         action = request.form.get("action", "save").strip()
 
         if action == "delete":
-            deleted = delete_history_record(database_path, import_key)
+            deleted = delete_history_record(
+                database_path,
+                import_key,
+                profile_id=profile_id,
+            )
 
             if not deleted:
                 abort(404)
@@ -198,6 +216,7 @@ def register_history_routes(
                 "recruiter_contact"
             ),
             notes=normalize_optional_form_value("notes"),
+            profile_id=profile_id,
         )
 
         if result == "missing":

@@ -11,6 +11,7 @@ import argparse
 from job_radar import __version__
 from job_radar.config import ConfigError
 from job_radar.history_summary import build_history_summary, format_history_summary
+from job_radar.profile_storage import get_active_profile
 from job_radar.runtime_paths import (
     DEFAULT_SCORING_CONFIG_PATH,
     DEFAULT_SETTINGS_PATH,
@@ -386,7 +387,11 @@ def handle_history_summary(settings_path: str | None) -> None:
     database_path = runtime_paths.database_path
     initialize_database(database_path)
 
-    summary = build_history_summary(database_path)
+    active_profile = get_active_profile(database_path)
+    summary = build_history_summary(
+        database_path,
+        profile_id=(active_profile.profile_id if active_profile else None),
+    )
 
     print(format_history_summary(summary), end="")
 
@@ -401,7 +406,11 @@ def handle_tracker_list(
     database_path = runtime_paths.database_path
     initialize_database(database_path)
 
-    applications = list_applications(database_path)
+    active_profile = get_active_profile(database_path)
+    applications = list_applications(
+        database_path,
+        profile_id=(active_profile.profile_id if active_profile else None),
+    )
 
     if needs_action:
         applications = [
@@ -478,6 +487,7 @@ def handle_tracker_add(
     runtime_paths = RuntimePaths.from_settings_argument(settings_path)
     database_path = runtime_paths.database_path
     initialize_database(database_path)
+    active_profile = get_active_profile(database_path)
 
     result = upsert_application(
         database_path,
@@ -493,6 +503,7 @@ def handle_tracker_add(
             applied_on=applied_on,
             last_activity_on=last_activity_on,
         ),
+        profile_id=(active_profile.profile_id if active_profile else None),
     )
 
     print("Application tracker entry saved")
@@ -536,6 +547,7 @@ def handle_tracker_update(
     runtime_paths = RuntimePaths.from_settings_argument(settings_path)
     database_path = runtime_paths.database_path
     initialize_database(database_path)
+    active_profile = get_active_profile(database_path)
 
     updated = update_application_status(
         database_path,
@@ -546,6 +558,7 @@ def handle_tracker_update(
         notes=notes,
         applied_on=applied_on,
         last_activity_on=last_activity_on,
+        profile_id=(active_profile.profile_id if active_profile else None),
     )
 
     if not updated:

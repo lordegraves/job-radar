@@ -39,6 +39,7 @@ def initialize_tracker_schema(connection: sqlite3.Connection) -> None:
 def migrate_tracker_schema(connection: sqlite3.Connection) -> None:
     _ensure_tracker_column(connection, "applied_on", "TEXT")
     _ensure_tracker_column(connection, "last_activity_on", "TEXT")
+    _ensure_tracker_column(connection, "profile_id", "TEXT")
     _repair_url_backed_tracker_ids(connection)
 
 
@@ -74,13 +75,13 @@ def _ensure_tracker_column(
 def _repair_url_backed_tracker_ids(connection: sqlite3.Connection) -> None:
     rows = connection.execute(
         """
-        SELECT job_radar_id, company_name, role_title, source_url
+        SELECT profile_id, job_radar_id, company_name, role_title, source_url
         FROM application_tracker
         WHERE job_radar_id LIKE 'posting-url:%'
         """
     ).fetchall()
 
-    for old_job_radar_id, company_name, role_title, source_url in rows:
+    for profile_id, old_job_radar_id, company_name, role_title, source_url in rows:
         new_job_radar_id = build_manual_job_radar_id(
             company_name=company_name,
             role_title=role_title,
@@ -92,9 +93,9 @@ def _repair_url_backed_tracker_ids(connection: sqlite3.Connection) -> None:
             """
             SELECT job_radar_id
             FROM application_tracker
-            WHERE job_radar_id = ?
+            WHERE job_radar_id = ? AND profile_id IS ?
             """,
-            (new_job_radar_id,),
+            (new_job_radar_id, profile_id),
         ).fetchone()
 
         if existing is not None:
@@ -106,29 +107,32 @@ def _repair_url_backed_tracker_ids(connection: sqlite3.Connection) -> None:
             """
             UPDATE application_tracker
             SET job_radar_id = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE job_radar_id = ?
+            WHERE job_radar_id = ? AND profile_id IS ?
             """,
-            (new_job_radar_id, old_job_radar_id),
+            (new_job_radar_id, old_job_radar_id, profile_id),
         )
 
 
 def upsert_application_with_connection(
     connection: sqlite3.Connection,
     record: ApplicationRecord,
+    *,
+    profile_id: str | None = None,
 ) -> str:
     existing = connection.execute(
         """
         SELECT job_radar_id
         FROM application_tracker
-        WHERE job_radar_id = ?
+        WHERE job_radar_id = ? AND profile_id IS ?
         """,
-        (record.job_radar_id,),
+        (record.job_radar_id, profile_id),
     ).fetchone()
 
     if existing is None:
         connection.execute(
             """
             INSERT INTO application_tracker (
+                profile_id,
                 job_radar_id,
                 company_name,
                 role_title,
@@ -140,9 +144,10 @@ def upsert_application_with_connection(
                 applied_on,
                 last_activity_on
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                profile_id,
                 record.job_radar_id,
                 record.company_name,
                 record.role_title,
@@ -172,7 +177,7 @@ def upsert_application_with_connection(
             applied_on = COALESCE(?, applied_on),
             last_activity_on = COALESCE(?, last_activity_on),
             updated_at = CURRENT_TIMESTAMP
-        WHERE job_radar_id = ?
+        WHERE job_radar_id = ? AND profile_id IS ?
         """,
         (
             record.company_name,
@@ -185,6 +190,7 @@ def upsert_application_with_connection(
             record.applied_on,
             record.last_activity_on,
             record.job_radar_id,
+            profile_id,
         ),
     )
 
@@ -194,23 +200,31 @@ def upsert_application_with_connection(
 def upsert_application(
     database_path: str | Path,
     record: ApplicationRecord,
+    *,
+    profile_id: str | None = None,
 ) -> str:
     db_path = Path(database_path)
 
     with connect_database(db_path) as connection:
-        return upsert_application_with_connection(connection, record)
+        return upsert_application_with_connection(
+            connection,
+            record,
+            profile_id=profile_id,
+        )
 
 
 def delete_application_with_connection(
     connection: sqlite3.Connection,
     job_radar_id: str,
+    *,
+    profile_id: str | None = None,
 ) -> bool:
     cursor = connection.execute(
         """
         DELETE FROM application_tracker
-        WHERE job_radar_id = ?
+        WHERE job_radar_id = ? AND profile_id IS ?
         """,
-        (job_radar_id,),
+        (job_radar_id, profile_id),
     )
 
     return cursor.rowcount > 0
@@ -219,11 +233,17 @@ def delete_application_with_connection(
 def delete_application(
     database_path: str | Path,
     job_radar_id: str,
+    *,
+    profile_id: str | None = None,
 ) -> bool:
     db_path = Path(database_path)
 
     with connect_database(db_path) as connection:
-        return delete_application_with_connection(connection, job_radar_id)
+        return delete_application_with_connection(
+            connection,
+            job_radar_id,
+            profile_id=profile_id,
+        )
 
 
 def update_application_status(
@@ -236,6 +256,7 @@ def update_application_status(
     notes: str | None = None,
     applied_on: str | None = None,
     last_activity_on: str | None = None,
+    profile_id: str | None = None,
 ) -> bool:
     db_path = Path(database_path)
 
@@ -251,7 +272,7 @@ def update_application_status(
                 applied_on = COALESCE(?, applied_on),
                 last_activity_on = COALESCE(?, last_activity_on),
                 updated_at = CURRENT_TIMESTAMP
-            WHERE job_radar_id = ?
+            WHERE job_radar_id = ? AND profile_id IS ?
             """,
             (
                 status,
@@ -261,13 +282,18 @@ def update_application_status(
                 applied_on,
                 last_activity_on,
                 job_radar_id,
+                profile_id,
             ),
         )
 
         return cursor.rowcount > 0
 
 
-def list_applications(database_path: str | Path) -> list[ApplicationRecord]:
+def list_applications(
+    database_path: str | Path,
+    *,
+    profile_id: str | None = None,
+) -> list[ApplicationRecord]:
     db_path = Path(database_path)
 
     with connect_database(db_path) as connection:
@@ -290,8 +316,10 @@ def list_applications(database_path: str | Path) -> list[ApplicationRecord]:
                 created_at,
                 updated_at
             FROM application_tracker
+            WHERE profile_id IS ?
             ORDER BY updated_at DESC, company_name ASC, role_title ASC
-            """
+            """,
+            (profile_id,),
         ).fetchall()
 
     return [_row_to_application_record(row) for row in rows]
@@ -300,6 +328,8 @@ def list_applications(database_path: str | Path) -> list[ApplicationRecord]:
 def get_application(
     database_path: str | Path,
     job_radar_id: str,
+    *,
+    profile_id: str | None = None,
 ) -> ApplicationRecord | None:
     db_path = Path(database_path)
 
@@ -323,9 +353,9 @@ def get_application(
                 created_at,
                 updated_at
             FROM application_tracker
-            WHERE job_radar_id = ?
+            WHERE job_radar_id = ? AND profile_id IS ?
             """,
-            (job_radar_id,),
+            (job_radar_id, profile_id),
         ).fetchone()
 
     if row is None:

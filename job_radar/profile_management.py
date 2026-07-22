@@ -28,6 +28,7 @@ from job_radar.profile_storage import (
     get_active_profile,
     get_profile,
     list_profiles,
+    profile_has_job_search_activity,
     set_active_profile,
     set_profile_archived,
     update_profile,
@@ -371,6 +372,11 @@ def delete_managed_profile(
     """Delete one profile and its app-owned résumé, preserving unrelated profiles."""
 
     runtime_paths = _runtime_paths(settings_path, base_directory)
+    if profile_has_job_search_activity(runtime_paths.database_path, profile_id):
+        raise ConfigError(
+            "This profile cannot be deleted because it owns tracked applications "
+            "or application history. Those records must be preserved."
+        )
     profile = get_profile(runtime_paths.database_path, profile_id)
     if profile is None:
         raise ConfigError("The selected profile no longer exists.")

@@ -112,6 +112,8 @@ Each successful scan replaces the previous fixed-name outputs. The Reports page 
 
 Active Applications is the source of truth for live application tracking.
 
+Tracker records belong to the active managed profile. Switching profiles shows that profile's applications only. Two profiles may independently track the same job without changing each other's status, dates, or notes.
+
 Typical actions include:
 
 - add a manual application
@@ -128,6 +130,8 @@ junior assigns app-owned IDs to manual records. Posting URLs remain source evide
 
 Application History is a permanent SQLite-backed part of junior.
 
+History records also belong to the active managed profile and remain with that profile when moved to or restored from Active Applications. Scans use only the active profile's tracker and history context.
+
 History contains terminal, passed, withdrawn, rejected, closed, and archived records. It supports:
 
 - search, sorting, and filters
@@ -141,7 +145,7 @@ Tracker and History are mutually exclusive. A record should not exist in both at
 
 ## Profile / Resume
 
-The Profile / Resume page shows candidate readiness and resume-derived fit information. It also allows you to create, edit, select, archive, and restore managed profiles without editing YAML. Archiving is reversible; permanent profile deletion is not currently offered.
+The Profile / Resume page shows candidate readiness and resume-derived fit information. It also allows you to create, edit, select, and safely delete managed profiles without editing YAML. A profile that owns Active Applications or Application History cannot be deleted because those job-search records must be preserved.
 
 When a managed profile is selected, future scans use its candidate-fit signals, compensation values, and managed resume. If no managed profile is selected, the existing YAML profile remains in use. junior does not automatically convert, overwrite, or remove an existing YAML profile.
 

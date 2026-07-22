@@ -33,6 +33,24 @@ class ProfileSelectionError(ProfileStorageError):
     """Raised when an unavailable profile is selected for normal use."""
 
 
+def profile_has_job_search_activity(
+    database_path: str | Path,
+    profile_id: str,
+) -> bool:
+    """Protect tracker and history records from profile deletion."""
+    db_path = initialize_database(database_path)
+    with connect_database(db_path) as connection:
+        tracker_count = connection.execute(
+            "SELECT COUNT(*) FROM application_tracker WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchone()[0]
+        history_count = connection.execute(
+            "SELECT COUNT(*) FROM job_history WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchone()[0]
+    return bool(tracker_count or history_count)
+
+
 def delete_profile(database_path: str | Path, profile_id: str) -> bool:
     """Permanently delete one profile and its database-owned child records."""
 

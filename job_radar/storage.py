@@ -237,6 +237,11 @@ def _schema_migrations() -> tuple:
             "add app-owned employer sources",
             _migrate_employer_sources,
         ),
+        (
+            11,
+            "add profile-owned tracker and history",
+            _migrate_profile_owned_activity,
+        ),
     )
 
 
@@ -350,6 +355,155 @@ def _migrate_baseline_schema(connection: sqlite3.Connection) -> None:
     _migrate_scan_runs_table(connection)
     _migrate_job_history_table(connection)
     migrate_tracker_schema(connection)
+
+
+def _migrate_profile_owned_activity(connection: sqlite3.Connection) -> None:
+    active_profile_row = connection.execute(
+        """
+        SELECT profile_id
+        FROM active_profile_selection
+        WHERE singleton_id = 1
+        """
+    ).fetchone()
+    active_profile_id = active_profile_row[0] if active_profile_row else None
+
+    connection.execute("DROP INDEX IF EXISTS idx_application_tracker_status")
+    connection.execute("DROP INDEX IF EXISTS idx_application_tracker_follow_up_on")
+    connection.execute(
+        """
+        CREATE TABLE application_tracker_profile_owned (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            profile_id TEXT,
+            job_radar_id TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            role_title TEXT NOT NULL,
+            source_url TEXT,
+            status TEXT NOT NULL DEFAULT 'review_needed',
+            follow_up_on TEXT,
+            outcome TEXT,
+            notes TEXT,
+            applied_on TEXT,
+            last_activity_on TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+                ON DELETE RESTRICT
+        )
+        """
+    )
+    connection.execute(
+        """
+        INSERT INTO application_tracker_profile_owned (
+            profile_id, job_radar_id, company_name, role_title, source_url,
+            status, follow_up_on, outcome, notes, applied_on,
+            last_activity_on, created_at, updated_at
+        )
+        SELECT ?, job_radar_id, company_name, role_title, source_url,
+               status, follow_up_on, outcome, notes, applied_on,
+               last_activity_on, created_at, updated_at
+        FROM application_tracker
+        """,
+        (active_profile_id,),
+    )
+    connection.execute("DROP TABLE application_tracker")
+    connection.execute(
+        "ALTER TABLE application_tracker_profile_owned RENAME TO application_tracker"
+    )
+    connection.execute(
+        "CREATE INDEX idx_application_tracker_status ON application_tracker(status)"
+    )
+    connection.execute(
+        "CREATE INDEX idx_application_tracker_follow_up_on "
+        "ON application_tracker(follow_up_on)"
+    )
+    connection.execute(
+        "CREATE UNIQUE INDEX idx_application_tracker_profile_job "
+        "ON application_tracker(COALESCE(profile_id, ''), job_radar_id)"
+    )
+
+    for index_name in (
+        "idx_job_history_history_type",
+        "idx_job_history_company",
+        "idx_job_history_outcome_category",
+        "idx_job_history_primary_blocker",
+    ):
+        connection.execute(f"DROP INDEX IF EXISTS {index_name}")
+
+    history_columns = [
+        row[1]
+        for row in connection.execute("PRAGMA table_info(job_history)").fetchall()
+        if row[1] not in {"id", "profile_id"}
+    ]
+    history_column_sql = ", ".join(history_columns)
+    connection.execute(
+        """
+        CREATE TABLE job_history_profile_owned (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            profile_id TEXT,
+            history_type TEXT NOT NULL,
+            company TEXT NOT NULL,
+            role TEXT NOT NULL,
+            source TEXT,
+            ats_platform TEXT,
+            work_arrangement TEXT,
+            location TEXT,
+            comp_range TEXT,
+            event_date TEXT,
+            status TEXT,
+            outcome_category TEXT,
+            recruiter_contact TEXT,
+            technical_match TEXT,
+            hiring_probability TEXT,
+            skills_signals TEXT,
+            primary_blocker TEXT,
+            secondary_blocker TEXT,
+            revisit TEXT,
+            include_in_job_radar INTEGER NOT NULL DEFAULT 1,
+            import_key TEXT NOT NULL,
+            notes TEXT,
+            applied_on TEXT,
+            last_activity_on TEXT,
+            follow_up_on TEXT,
+            job_radar_id TEXT,
+            posting_url TEXT,
+            lead_source TEXT,
+            imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+                ON DELETE RESTRICT
+        )
+        """
+    )
+    connection.execute(
+        f"""
+        INSERT INTO job_history_profile_owned (profile_id, {history_column_sql})
+        SELECT ?, {history_column_sql}
+        FROM job_history
+        """,
+        (active_profile_id,),
+    )
+    connection.execute("DROP TABLE job_history")
+    connection.execute(
+        "ALTER TABLE job_history_profile_owned RENAME TO job_history"
+    )
+    connection.execute(
+        "CREATE INDEX idx_job_history_history_type ON job_history(history_type)"
+    )
+    connection.execute(
+        "CREATE INDEX idx_job_history_company ON job_history(company)"
+    )
+    connection.execute(
+        "CREATE INDEX idx_job_history_outcome_category "
+        "ON job_history(outcome_category)"
+    )
+    connection.execute(
+        "CREATE INDEX idx_job_history_primary_blocker "
+        "ON job_history(primary_blocker)"
+    )
+    connection.execute(
+        "CREATE UNIQUE INDEX idx_job_history_profile_import_key "
+        "ON job_history(COALESCE(profile_id, ''), import_key)"
+    )
 
 
 def _backfill_companies_for_stored_jobs(
@@ -1163,14 +1317,16 @@ def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
 def upsert_job_history_record_with_connection(
     connection: sqlite3.Connection,
     record: JobHistoryRecord,
+    *,
+    profile_id: str | None = None,
 ) -> str:
     existing = connection.execute(
         """
         SELECT id
         FROM job_history
-        WHERE import_key = ?
+        WHERE import_key = ? AND profile_id IS ?
         """,
-        (record.import_key,),
+        (record.import_key, profile_id),
     ).fetchone()
 
     values = (
@@ -1204,6 +1360,7 @@ def upsert_job_history_record_with_connection(
         connection.execute(
             """
             INSERT INTO job_history (
+                profile_id,
                 history_type,
                 company,
                 role,
@@ -1229,9 +1386,9 @@ def upsert_job_history_record_with_connection(
                 last_activity_on,
                 follow_up_on
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            values,
+            (profile_id,) + values,
         )
 
         return "new"
@@ -1264,9 +1421,9 @@ def upsert_job_history_record_with_connection(
             last_activity_on = ?,
             follow_up_on = ?,
             updated_at = CURRENT_TIMESTAMP
-        WHERE import_key = ?
+        WHERE import_key = ? AND profile_id IS ?
         """,
-        values[:19] + values[20:] + (record.import_key,),
+        values[:19] + values[20:] + (record.import_key, profile_id),
     )
 
     return "updated"
@@ -1275,23 +1432,31 @@ def upsert_job_history_record_with_connection(
 def upsert_job_history_record(
     database_path: str | Path,
     record: JobHistoryRecord,
+    *,
+    profile_id: str | None = None,
 ) -> str:
     db_path = Path(database_path)
 
     with connect_database(db_path) as connection:
-        return upsert_job_history_record_with_connection(connection, record)
+        return upsert_job_history_record_with_connection(
+            connection,
+            record,
+            profile_id=profile_id,
+        )
 
 
 def delete_job_history_record_with_connection(
     connection: sqlite3.Connection,
     import_key: str,
+    *,
+    profile_id: str | None = None,
 ) -> bool:
     cursor = connection.execute(
         """
         DELETE FROM job_history
-        WHERE import_key = ?
+        WHERE import_key = ? AND profile_id IS ?
         """,
-        (import_key,),
+        (import_key, profile_id),
     )
 
     return cursor.rowcount > 0
@@ -1300,15 +1465,23 @@ def delete_job_history_record_with_connection(
 def delete_job_history_record(
     database_path: str | Path,
     import_key: str,
+    *,
+    profile_id: str | None = None,
 ) -> bool:
     db_path = Path(database_path)
 
     with connect_database(db_path) as connection:
-        return delete_job_history_record_with_connection(connection, import_key)
+        return delete_job_history_record_with_connection(
+            connection,
+            import_key,
+            profile_id=profile_id,
+        )
 
 
 def fetch_included_job_history_records(
     database_path: str | Path,
+    *,
+    profile_id: str | None = None,
 ) -> list[JobHistoryRecord]:
     db_path = Path(database_path)
 
@@ -1343,9 +1516,10 @@ def fetch_included_job_history_records(
                 last_activity_on,
                 follow_up_on
             FROM job_history
-            WHERE include_in_job_radar = 1
+            WHERE include_in_job_radar = 1 AND profile_id IS ?
             ORDER BY event_date DESC, company ASC, role ASC
-            """
+            """,
+            (profile_id,),
         ).fetchall()
 
     return [

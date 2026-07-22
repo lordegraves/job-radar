@@ -121,10 +121,14 @@ def _dedupe_preserving_order(values: list[str]) -> list[str]:
     return deduped_values
 
 
-def _build_tracker_workflow_summary(database_path: str) -> dict[str, int]:
+def _build_tracker_workflow_summary(
+    database_path: str,
+    *,
+    profile_id: str | None = None,
+) -> dict[str, int]:
     workflow_summary: dict[str, int] = {}
 
-    for application in list_applications(database_path):
+    for application in list_applications(database_path, profile_id=profile_id):
         workflow_state = get_application_workflow_state(application)
         workflow_summary[workflow_state] = workflow_summary.get(workflow_state, 0) + 1
 
@@ -136,8 +140,13 @@ def _get_application_for_posting(
     database_path: str,
     tracked_applications: list[ApplicationRecord],
     posting,
+    profile_id: str | None = None,
 ) -> ApplicationRecord | None:
-    application = get_application(database_path, posting.job_radar_id)
+    application = get_application(
+        database_path,
+        posting.job_radar_id,
+        profile_id=profile_id,
+    )
 
     if application is not None:
         return application
@@ -265,6 +274,11 @@ def _handle_scan_unlocked(
         candidate_profile = candidate_context.candidate_profile
         resume_text = candidate_context.resume_text
         job_preferences = candidate_context.job_preferences
+        profile_id = (
+            candidate_context.managed_profile.profile_id
+            if candidate_context.managed_profile is not None
+            else None
+        )
 
         print("Scan requested")
         print(f"Config: {config_path}")
@@ -347,11 +361,23 @@ def _handle_scan_unlocked(
             collector_errors=len(collector_errors),
         )
 
-        history_summary = build_history_summary(database_path)
+        history_summary = build_history_summary(
+            database_path,
+            profile_id=profile_id,
+        )
         history_context = build_history_context(history_summary)
-        history_records = fetch_included_job_history_records(database_path)
-        tracker_workflow_summary = _build_tracker_workflow_summary(database_path)
-        tracked_applications = list_applications(database_path)
+        history_records = fetch_included_job_history_records(
+            database_path,
+            profile_id=profile_id,
+        )
+        tracker_workflow_summary = _build_tracker_workflow_summary(
+            database_path,
+            profile_id=profile_id,
+        )
+        tracked_applications = list_applications(
+            database_path,
+            profile_id=profile_id,
+        )
 
         scored_postings = []
 
@@ -401,6 +427,7 @@ def _handle_scan_unlocked(
                 database_path=database_path,
                 tracked_applications=tracked_applications,
                 posting=posting,
+                profile_id=profile_id,
             )
 
             scored_postings.append(

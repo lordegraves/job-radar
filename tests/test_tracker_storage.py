@@ -4,6 +4,8 @@ import sqlite3
 from pathlib import Path
 
 from job_radar.storage import initialize_database
+from job_radar.profile_models import ManagedProfile
+from job_radar.profile_storage import create_profile
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_storage import (
     get_application,
@@ -31,7 +33,47 @@ def table_exists(database_path: Path, table_name: str) -> bool:
 def count_rows(database_path: Path, table_name: str) -> int:
     with sqlite3.connect(database_path) as connection:
         cursor = connection.execute(f"SELECT COUNT(*) FROM {table_name}")
-        return int(cursor.fetchone()[0])
+    return int(cursor.fetchone()[0])
+
+
+def test_tracker_records_are_isolated_by_profile(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+    first_profile = ManagedProfile(
+        profile_id="profile_11111111",
+        display_name="First synthetic profile",
+    )
+    second_profile = ManagedProfile(
+        profile_id="profile_22222222",
+        display_name="Second synthetic profile",
+    )
+    create_profile(database_path, first_profile)
+    create_profile(database_path, second_profile)
+    shared_job_id = "jr-shared-role-12345678"
+
+    upsert_application(
+        database_path,
+        make_application_record(job_radar_id=shared_job_id, notes="First owner"),
+        profile_id=first_profile.profile_id,
+    )
+    upsert_application(
+        database_path,
+        make_application_record(job_radar_id=shared_job_id, notes="Second owner"),
+        profile_id=second_profile.profile_id,
+    )
+
+    first_records = list_applications(
+        database_path,
+        profile_id=first_profile.profile_id,
+    )
+    second_records = list_applications(
+        database_path,
+        profile_id=second_profile.profile_id,
+    )
+
+    assert [record.notes for record in first_records] == ["First owner"]
+    assert [record.notes for record in second_records] == ["Second owner"]
+    assert count_rows(database_path, "application_tracker") == 2
 
 
 def make_application_record(

@@ -11,6 +11,7 @@ from flask import Flask, render_template
 from job_radar import __version__
 from job_radar.config import ConfigError
 from job_radar.runtime_paths import RuntimePaths, get_default_user_data_directory
+from job_radar.profile_storage import get_active_profile
 from job_radar.scan_service import handle_scan
 from job_radar.storage import initialize_database
 from job_radar.web_routes.companies import register_company_routes
@@ -55,7 +56,11 @@ def create_app(
     @app.get("/")
     def index() -> str:
         database_path = _get_database_path(app)
-        applications = get_tracker_application_views(database_path)
+        profile_id = _get_active_profile_id(app)
+        applications = get_tracker_application_views(
+            database_path,
+            profile_id=profile_id,
+        )
         tracker_summary = build_tracker_summary(applications)
         attention_applications = get_dashboard_attention_applications(
             applications
@@ -95,6 +100,7 @@ def create_app(
     register_history_routes(
         app,
         get_database_path=lambda: _get_database_path(app),
+        get_profile_id=lambda: _get_active_profile_id(app),
         decision_options=CANONICAL_DECISION_FILTER_OPTIONS,
         tracker_edit_outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
     )
@@ -115,6 +121,7 @@ def create_app(
     register_tracker_routes(
         app,
         get_database_path=lambda: _get_database_path(app),
+        get_profile_id=lambda: _get_active_profile_id(app),
         today_provider=lambda: date.today(),
     )
 
@@ -129,6 +136,11 @@ def _get_database_path(app: Flask) -> str:
     database_path = _get_runtime_paths(app).database_path
     initialize_database(database_path)
     return str(database_path)
+
+
+def _get_active_profile_id(app: Flask) -> str | None:
+    profile = get_active_profile(_get_runtime_paths(app).database_path)
+    return profile.profile_id if profile is not None else None
 
 
 def build_parser() -> argparse.ArgumentParser:

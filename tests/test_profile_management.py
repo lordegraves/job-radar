@@ -16,6 +16,8 @@ from job_radar.profile_management import (
     update_managed_profile_from_form,
     update_managed_search_preferences,
 )
+from job_radar.tracker.tracker_models import ApplicationRecord
+from job_radar.tracker.tracker_storage import upsert_application
 
 
 def write_settings(root: Path) -> Path:
@@ -253,6 +255,31 @@ def test_delete_profile_removes_only_its_database_data_and_resume(
     assert view.active_profile_id == first.profile_id
     assert not (tmp_path / "resumes" / second.profile_id).exists()
     assert (tmp_path / "resumes" / first.profile_id / "resume.md").exists()
+
+
+def test_delete_profile_preserves_owned_tracker_activity(tmp_path: Path) -> None:
+    settings_path = write_settings(tmp_path)
+    profile = create_managed_profile(
+        str(settings_path), "Protected Search", base_directory=tmp_path
+    )
+    database_path = tmp_path / "data" / "job_radar.sqlite3"
+    upsert_application(
+        database_path,
+        ApplicationRecord(
+            job_radar_id="jr-protected-12345678",
+            company_name="Synthetic Company",
+            role_title="Synthetic Role",
+        ),
+        profile_id=profile.profile_id,
+    )
+
+    with pytest.raises(ConfigError, match="cannot be deleted"):
+        delete_managed_profile(
+            str(settings_path), profile.profile_id, base_directory=tmp_path
+        )
+
+    view = build_profile_management_view(str(settings_path), base_directory=tmp_path)
+    assert [item.profile_id for item in view.profiles] == [profile.profile_id]
 
 
 def test_profile_limit_requires_deleting_before_creating_another(

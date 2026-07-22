@@ -80,6 +80,7 @@ def track_application_from_posting(
     follow_up_on: str | None = None,
     outcome: str | None = None,
     notes: str | None = None,
+    profile_id: str | None = None,
 ) -> str:
     record = build_application_record_from_posting(
         posting,
@@ -89,7 +90,7 @@ def track_application_from_posting(
         notes=notes,
     )
 
-    return upsert_application(database_path, record)
+    return upsert_application(database_path, record, profile_id=profile_id)
 
 
 def track_application_from_posting_if_missing(
@@ -100,8 +101,13 @@ def track_application_from_posting_if_missing(
     follow_up_on: str | None = None,
     outcome: str | None = None,
     notes: str | None = None,
+    profile_id: str | None = None,
 ) -> str:
-    existing_application = get_application(database_path, posting.job_radar_id)
+    existing_application = get_application(
+        database_path,
+        posting.job_radar_id,
+        profile_id=profile_id,
+    )
 
     if existing_application is not None:
         return "existing"
@@ -113,6 +119,7 @@ def track_application_from_posting_if_missing(
         follow_up_on=follow_up_on,
         outcome=outcome,
         notes=notes,
+        profile_id=profile_id,
     )
 
 
@@ -240,9 +247,14 @@ def update_tracker_application_workflow(
     last_activity_on: str | None = None,
     outcome: str | None = None,
     notes: str | None = None,
+    profile_id: str | None = None,
 ) -> str:
     if is_terminal_tracker_outcome(outcome):
-        application = get_application(database_path, job_radar_id)
+        application = get_application(
+            database_path,
+            job_radar_id,
+            profile_id=profile_id,
+        )
 
         if application is None:
             return "missing"
@@ -262,10 +274,12 @@ def update_tracker_application_workflow(
             upsert_job_history_record_with_connection(
                 connection,
                 history_record,
+                profile_id=profile_id,
             )
             deleted = delete_application_with_connection(
                 connection,
                 job_radar_id,
+                profile_id=profile_id,
             )
 
             if not deleted:
@@ -284,6 +298,7 @@ def update_tracker_application_workflow(
         last_activity_on=last_activity_on,
         outcome=outcome,
         notes=notes,
+        profile_id=profile_id,
     )
 
     if not updated:
@@ -295,15 +310,26 @@ def update_tracker_application_workflow(
 def delete_tracker_application(
     database_path: str,
     job_radar_id: str,
+    *,
+    profile_id: str | None = None,
 ) -> bool:
-    return delete_application(database_path, job_radar_id)
+    return delete_application(
+        database_path,
+        job_radar_id,
+        profile_id=profile_id,
+    )
 
 
 def get_history_record(
     database_path: str,
     import_key: str,
+    *,
+    profile_id: str | None = None,
 ) -> JobHistoryRecord | None:
-    for record in fetch_included_job_history_records(database_path):
+    for record in fetch_included_job_history_records(
+        database_path,
+        profile_id=profile_id,
+    ):
         if record.import_key == import_key:
             return record
 
@@ -322,8 +348,13 @@ def update_history_record_workflow(
     outcome: str | None = None,
     recruiter_contact: str | None = None,
     notes: str | None = None,
+    profile_id: str | None = None,
 ) -> str:
-    record = get_history_record(database_path, import_key)
+    record = get_history_record(
+        database_path,
+        import_key,
+        profile_id=profile_id,
+    )
 
     if record is None:
         return "missing"
@@ -365,10 +396,12 @@ def update_history_record_workflow(
             upsert_application_with_connection(
                 connection,
                 application,
+                profile_id=profile_id,
             )
             deleted = delete_job_history_record_with_connection(
                 connection,
                 import_key,
+                profile_id=profile_id,
             )
 
             if not deleted:
@@ -378,7 +411,11 @@ def update_history_record_workflow(
 
         return "moved_to_tracker"
 
-    upsert_job_history_record(database_path, updated_record)
+    upsert_job_history_record(
+        database_path,
+        updated_record,
+        profile_id=profile_id,
+    )
 
     return "updated"
 
@@ -386,8 +423,14 @@ def update_history_record_workflow(
 def delete_history_record(
     database_path: str,
     import_key: str,
+    *,
+    profile_id: str | None = None,
 ) -> bool:
-    return delete_job_history_record(database_path, import_key)
+    return delete_job_history_record(
+        database_path,
+        import_key,
+        profile_id=profile_id,
+    )
 
 
 def _job_radar_id_from_history_import_key(import_key: str) -> str | None:

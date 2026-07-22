@@ -205,6 +205,7 @@ def register_tracker_routes(
     app: Flask,
     *,
     get_database_path: Callable[[], str],
+    get_profile_id: Callable[[], str | None],
     today_provider: Callable[[], date],
 ) -> None:
     """Register application-tracker viewing and editing routes."""
@@ -228,7 +229,11 @@ def register_tracker_routes(
             abort(404)
 
         database_path = get_database_path()
-        applications = get_tracker_application_views(database_path)
+        profile_id = get_profile_id()
+        applications = get_tracker_application_views(
+            database_path,
+            profile_id=profile_id,
+        )
         tracker_summary = build_tracker_summary(applications)
         workflow_filtered_applications = _filter_tracker_applications(
             applications,
@@ -320,6 +325,7 @@ def register_tracker_routes(
     @app.post("/tracker/add")
     def save_new_tracker_application():
         database_path = get_database_path()
+        profile_id = get_profile_id()
 
         company_name = request.form["company_name"].strip()
         role_title = request.form["role_title"].strip()
@@ -357,6 +363,7 @@ def register_tracker_routes(
                 outcome=normalize_optional_form_value("outcome"),
                 notes=normalize_optional_form_value("notes"),
             ),
+            profile_id=profile_id,
         )
 
         return redirect(
@@ -374,6 +381,7 @@ def register_tracker_routes(
         application = get_application(
             database_path,
             job_radar_id,
+            profile_id=get_profile_id(),
         )
 
         if application is None:
@@ -411,6 +419,7 @@ def register_tracker_routes(
     @app.post("/tracker/<path:job_radar_id>/edit")
     def update_tracker_application(job_radar_id: str):
         database_path = get_database_path()
+        profile_id = get_profile_id()
 
         action = request.form.get("action", "save").strip()
 
@@ -418,6 +427,7 @@ def register_tracker_routes(
             deleted = delete_tracker_application(
                 database_path,
                 job_radar_id,
+                profile_id=profile_id,
             )
 
             if not deleted:
@@ -471,6 +481,7 @@ def register_tracker_routes(
             last_activity_on=last_activity_on,
             outcome=outcome,
             notes=notes,
+            profile_id=profile_id,
         )
 
         if result == "missing":
@@ -494,10 +505,12 @@ def register_tracker_routes(
 
 def get_tracker_application_views(
     database_path: str,
+    *,
+    profile_id: str | None = None,
 ) -> list[TrackerApplicationView]:
     application_views: list[TrackerApplicationView] = []
 
-    for application in list_applications(database_path):
+    for application in list_applications(database_path, profile_id=profile_id):
         workflow_state = get_application_workflow_state(application)
         application_views.append(
             TrackerApplicationView(

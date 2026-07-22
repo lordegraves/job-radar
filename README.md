@@ -22,7 +22,7 @@ See [CHANGELOG.md](CHANGELOG.md) for released and unreleased changes.
 junior currently provides:
 
 - configured-company scanning across multiple ATS and career-site formats
-- SQLite-backed scan results, active applications, and application history
+- Profile-owned active applications and application history stored safely in SQLite
 - rules-based scoring, recommendation policy, compensation checks, and resume/profile matching
 - structured scan snapshots and HTML reports
 - plain-text and HTML email previews with guarded SMTP delivery
@@ -37,6 +37,8 @@ junior currently provides:
 - clean wheel installation and installed-package rendering tests
 
 Application History is a permanent app-native feature. It is stored in SQLite and remains available for review, filtering, scan-time matching, prior-decision context, reporting, and tracker/history restoration workflows.
+
+Managed profiles have separate Active Applications and Application History records. Switching profiles changes which records the GUI, scans, reports, and CLI use. Existing tracker and history records are assigned to the active managed profile during the protected database migration. A profile that owns tracker or history records cannot be deleted, preventing accidental loss of job-search data.
 
 ## Quick start for development
 

@@ -27,6 +27,8 @@ from job_radar.storage import (
     upsert_job_posting,
 )
 from job_radar.models import JobPosting
+from job_radar.profile_models import ManagedProfile
+from job_radar.profile_storage import create_profile, set_active_profile
 
 
 def table_exists(database_path: Path, table_name: str) -> bool:
@@ -41,6 +43,63 @@ def table_exists(database_path: Path, table_name: str) -> bool:
             (table_name,),
         )
         return cursor.fetchone() is not None
+
+
+def test_profile_activity_migration_assigns_legacy_rows_to_active_profile(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = tmp_path / "synthetic-v10.sqlite3"
+    all_migrations = storage._schema_migrations()
+    monkeypatch.setattr(
+        storage,
+        "_schema_migrations",
+        lambda: tuple(item for item in all_migrations if item[0] <= 10),
+    )
+    initialize_database(database_path)
+    profile = ManagedProfile(
+        profile_id="profile_11111111",
+        display_name="Synthetic migration owner",
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+
+    with connect_database(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO application_tracker (
+                job_radar_id, company_name, role_title, notes
+            ) VALUES ('jr-legacy-12345678', 'Synthetic Company',
+                      'Synthetic Role', 'Preserve tracker data')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO job_history (
+                history_type, company, role, import_key, notes
+            ) VALUES ('Pipeline', 'Synthetic Company', 'Synthetic Role',
+                      'synthetic-history-key', 'Preserve history data')
+            """
+        )
+
+    monkeypatch.setattr(storage, "_schema_migrations", lambda: all_migrations)
+    initialize_database(database_path)
+
+    with connect_database(database_path) as connection:
+        tracker_row = connection.execute(
+            "SELECT profile_id, notes FROM application_tracker"
+        ).fetchone()
+        history_row = connection.execute(
+            "SELECT profile_id, notes FROM job_history"
+        ).fetchone()
+        foreign_key_errors = connection.execute(
+            "PRAGMA foreign_key_check"
+        ).fetchall()
+
+    assert tracker_row == (profile.profile_id, "Preserve tracker data")
+    assert history_row == (profile.profile_id, "Preserve history data")
+    assert foreign_key_errors == []
+    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v11-*.bak"))) == 1
 
 
 def create_v010_database(database_path: Path) -> None:
@@ -165,7 +224,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     backup_directory = tmp_path / "backups"
     backup_paths = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v10-*.bak"
+                "job_radar.sqlite3.pre-migration-v1-v11-*.bak"
         )
     )
 
@@ -191,7 +250,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
 
     backup_paths_after_second_initialization = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v10-*.bak"
+                "job_radar.sqlite3.pre-migration-v1-v11-*.bak"
         )
     )
 
@@ -257,6 +316,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
         (8,),
         (9,),
         (10,),
+        (11,),
     ]
     profile_columns = {
         row[1]
@@ -282,7 +342,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v10-*.bak"
+                "synthetic-v0.1.0.sqlite3.pre-migration-v1-v11-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -325,7 +385,7 @@ def test_initialize_database_rolls_back_failed_migration(
         "_schema_migrations",
         lambda: (
             *existing_migrations,
-            (11, "synthetic failing migration", fail_after_temporary_change),
+            (12, "synthetic failing migration", fail_after_temporary_change),
         ),
     )
 
@@ -342,7 +402,7 @@ def test_initialize_database_rolls_back_failed_migration(
             """
         ).fetchone()
         migration_version = connection.execute(
-            "SELECT version FROM schema_migrations WHERE version = 11"
+                "SELECT version FROM schema_migrations WHERE version = 12"
         ).fetchone()
         foreign_key_errors = connection.execute(
             "PRAGMA foreign_key_check"
@@ -354,7 +414,7 @@ def test_initialize_database_rolls_back_failed_migration(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-current.sqlite3.pre-migration-v11-v11-*.bak"
+                "synthetic-current.sqlite3.pre-migration-v12-v12-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -375,6 +435,7 @@ def test_initialize_database_rolls_back_failed_migration(
         (8,),
         (9,),
         (10,),
+        (11,),
     ]
 
 
@@ -433,6 +494,7 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
         (8, "add profile-owned scoring config"),
         (9, "add profile job-fit signals"),
         (10, "add app-owned employer sources"),
+        (11, "add profile-owned tracker and history"),
     ]
 
 
