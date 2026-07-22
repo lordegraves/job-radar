@@ -52,6 +52,9 @@ python -m pytest -q tests\test_packaging.py
 - [ ] Backup-before-migration works.
 - [ ] Failed migrations do not leave a partially upgraded database.
 - [ ] Tracker/history moves remain atomic.
+- [ ] Tracker and History pages, counts, scans, reports, CLI operations, and direct record URLs remain isolated to the active profile.
+- [ ] Existing application records migrate to the active non-archived profile without changing row counts or durable identities.
+- [ ] Migration fails atomically when legacy application records exist without an eligible active profile.
 - [ ] User data remains intact after upgrade.
 
 ## Functional browser checks
@@ -64,7 +67,8 @@ python -m pytest -q tests\test_packaging.py
 - [ ] Tracker-to-History movement works.
 - [ ] Application History list, detail, edit, filters, and restore work.
 - [ ] Profile / Resume page loads and resume replacement works.
-- [ ] Companies and Settings pages load accurately.
+- [ ] Companies shows the installation-wide catalog and the active profile's selections accurately.
+- [ ] Settings loads accurately and remains read-only until its editable workflows are implemented.
 - [ ] Desktop-launcher startup and shutdown behavior matches the documented current limitations.
 - [ ] Destructive actions require explicit confirmation.
 - [ ] Error and empty states are readable.
@@ -98,7 +102,7 @@ Inspect the repository, build context, wheel, release archive, installer, and co
 - [ ] Development Guide matches commands and validation.
 - [ ] Architecture reflects actual module boundaries.
 - [ ] Security document reflects current behavior and future policy.
-- [ ] Roadmap separates completed, current, and future work.
+- [ ] `docs/ROADMAP.md` remains the authoritative roadmap and separates completed, current, and future work.
 - [ ] Recovery and known limitations are documented.
 
 ## Git and release

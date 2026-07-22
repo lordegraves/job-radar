@@ -89,6 +89,8 @@ Required protections:
 - foreign-key enforcement
 - backup before migration
 - transactional tracker/history moves
+- profile ownership for Tracker and History records
+- atomic failure instead of guessed ownership when legacy application data has no eligible active profile
 - safe failure without partial cross-table state
 
 ## Network and source behavior

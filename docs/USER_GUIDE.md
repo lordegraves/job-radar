@@ -158,15 +158,15 @@ Supported resume formats:
 
 Resume replacement is written to the active user-data area. For a managed profile, junior copies the upload under `resumes/<profile-id>/` using an app-owned filename such as `resume.pdf`; moving or renaming the original uploaded file cannot break the profile. To use a revised resume, upload it again through the Profile / Resume page. Private resumes and profiles must not be committed to the repository.
 
-Managed profiles can retain additional preferences for later product stages. Target roles, locations, work arrangements, employment types, and travel tolerance do not yet replace the existing scoring configuration, so saving those fields alone does not currently change all scan-scoring behavior.
+Managed profiles store target roles, locations, work arrangements, employment types, schedules, compensation minimums, travel tolerance, and related job-fit preferences. Current scans use the implemented workplace, location, employment, schedule, on-call, compensation, and practical-eligibility rules. Some broader scoring configuration still uses the established scoring boundary, so the application continues to explain recommendations in plain language rather than treating every saved field as an independent score boost.
 
 Existing YAML profiles are not migrated automatically. junior now has an internal backup-first migration service, but it is not yet a normal GUI action. Do not manually move, rename, delete, or rewrite your working profile, resume, or database in an attempt to migrate it. Migration of real data should occur only after a rehearsal on copies and an explicit backup confirmation.
 
 ## Companies
 
-The current Companies pages are read-only.
+The current Companies pages are read-only. Employer organizations and source definitions are shared once per local junior installation, while each managed profile has its own company selections.
 
-They show configured company names, source types, enabled state, source details, notes, filters, search, and per-company detail views.
+They show configured company names, source types, enabled state, source details, notes, filters, search, per-company detail views, and whether the active profile selects each company.
 
 Company add/edit/disable workflows are future productization work.
 

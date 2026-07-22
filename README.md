@@ -13,7 +13,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-The current release is a functional single-user local application. Python wheel and source-package validation are complete. A standalone executable, installer, guided setup, editable configuration, scheduling, backup/export, and broader release-readiness work are still in progress.
+The current release is a functional local application with up to five independent managed profiles. Python wheel and source-package validation are complete. A standalone executable, installer, guided setup, fully editable configuration, scheduling, backup/export, and broader release-readiness work are still in progress.
 
 See [CHANGELOG.md](CHANGELOG.md) for released and unreleased changes.
 
@@ -27,11 +27,12 @@ junior currently provides:
 - structured scan snapshots and HTML reports
 - plain-text and HTML email previews with guarded SMTP delivery
 - a local Flask GUI with Home, Scan, Reports, Active Applications, Application History, Profile / Resume, Companies, and Settings pages
-- GUI-managed profile creation, editing, selection, reversible archival, and app-owned resume storage
+- GUI-managed profile creation, editing, selection, guarded deletion, and app-owned resume storage
 - unified Profile / Resume workflow for profile creation, résumé management, and profile-owned role, location, workplace, schedule, compensation, and travel selections without changing the existing scoring rules
 - tracker workflow states, follow-up dates, quick actions, archive/restore workflows, and guarded deletion
 - scan lifecycle records, progress state, cross-process locking, stage-specific failures, and bounded pagination
 - non-blocking GUI scans with app-wide progress and completion notifications
+- an installation-wide employer/source catalog with independent profile selections
 - user-owned runtime paths and non-destructive configuration/database bootstrap
 - versioned SQLite migrations, foreign-key enforcement, atomic tracker/history moves, and backup-before-migration protection
 - clean wheel installation and installed-package rendering tests

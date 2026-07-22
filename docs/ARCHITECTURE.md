@@ -100,7 +100,8 @@ SQLite is the system of record for:
 - scan runs and errors
 - active applications
 - application history
-- managed profile identity, preferences, company associations, and app-owned resume metadata
+- the installation-wide employer/source catalog and profile-specific employer selections
+- managed profile identity, preferences, scoring/report settings, and app-owned resume metadata
 
 `database.py` owns connections and transaction behavior. `storage.py` owns general persistence. Tracker persistence lives under `job_radar/tracker/`.
 
@@ -112,7 +113,9 @@ Database protections include:
 - atomic tracker/history moves
 - compatibility migrations for older databases
 
-Managed profile storage is connected to GUI creation, editing, active-profile selection, reversible archival, resume upload, and scan-time candidate matching. A selected managed profile takes priority; when none is selected, the existing YAML profile path continues to work unchanged. Existing candidate data and operational records are not migrated or assigned automatically. Any migration of real user data must first be validated against temporary copies and separately approved.
+Managed profile storage is connected to GUI creation, editing, active-profile selection, guarded deletion, resume upload, and scan-time candidate matching. A selected managed profile takes priority; when none is selected, the existing YAML profile path continues to work unchanged.
+
+Active Applications and Application History are profile-owned. Schema migrations assign legacy application records to the active, non-archived managed profile. If legacy application records exist without an eligible active profile, migration fails atomically instead of guessing an owner or creating a fallback profile. A profile that owns Tracker or History records cannot be deleted. Real-data migrations must first be rehearsed against temporary copies and separately approved.
 
 The broader preference model can store target roles, locations, work arrangements, employment types, and travel tolerance, but those fields do not yet replace the existing scoring configuration. Current scan behavior consumes the managed profile's strengths, adjacent areas, gaps, exclusions, compensation values, and resume through the existing candidate-scoring boundary.
 
@@ -126,8 +129,11 @@ Rules:
 
 - active records belong in Tracker
 - terminal, passed, withdrawn, rejected, closed, or archived records belong in History
+- Tracker and History records belong to one managed profile
+- the same durable job identity may exist independently in different profiles
 - a record should not exist in both
 - movement between them must be transactional
+- movement between them must preserve profile ownership
 - application dates and record details must survive round trips
 - application history remains available for scan-time matching and context
 
