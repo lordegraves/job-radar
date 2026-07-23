@@ -4590,13 +4590,19 @@ candidate:
         normalized_html = " ".join(html.split())
 
         assert response.status_code == 200
-        assert 'href="/">Home</a>' in normalized_html
-        assert 'href="/tracker">Active Applications</a>' in normalized_html
-        assert 'href="/history">Application History</a>' in normalized_html
-        assert 'href="/profile">Profile / Resume</a>' in normalized_html
+        assert 'href="/"' in normalized_html
+        assert ">Home</a>" in normalized_html
+        assert 'href="/tracker"' in normalized_html
+        assert ">Active Applications</a>" in normalized_html
+        assert 'href="/history"' in normalized_html
+        assert ">Application History</a>" in normalized_html
+        assert 'href="/profile"' in normalized_html
+        assert ">Profile / Resume</a>" in normalized_html
         assert ">Search Preferences</a>" not in normalized_html
-        assert 'href="/reports">Reports</a>' in normalized_html
-        assert 'href="/scan">Scan</a>' in normalized_html
+        assert 'href="/reports"' in normalized_html
+        assert ">Reports</a>" in normalized_html
+        assert 'href="/scan"' in normalized_html
+        assert ">Scan</a>" in normalized_html
         assert "active-nav" in normalized_html
 
 
@@ -4634,22 +4640,46 @@ candidate:
     client = app.test_client()
 
     expected_active_links = {
-        "/": '<a class="active-nav" href="/">Home</a>',
-        "/tracker": '<a class="active-nav" href="/tracker">Active Applications</a>',
-        "/history": '<a class="active-nav" href="/history">Application History</a>',
-        "/profile": '<a class="active-nav" href="/profile">Profile / Resume</a>',
-        "/reports": '<a class="active-nav" href="/reports">Reports</a>',
-        "/scan": '<a class="active-nav" href="/scan">Scan</a>',
-        "/settings/about": '<a class="active-nav" href="/settings">Settings</a>',
-        "/settings/diagnostics": (
-            '<a class="active-nav" href="/settings">Settings</a>'
+        "/": '<a class="active-nav" href="/" aria-current="page">Home</a>',
+        "/tracker": (
+            '<a class="active-nav" href="/tracker" '
+            'aria-current="page">Active Applications</a>'
         ),
-        "/settings/email": '<a class="active-nav" href="/settings">Settings</a>',
+        "/history": (
+            '<a class="active-nav" href="/history" '
+            'aria-current="page">Application History</a>'
+        ),
+        "/profile": (
+            '<a class="active-nav" href="/profile" '
+            'aria-current="page">Profile / Resume</a>'
+        ),
+        "/reports": (
+            '<a class="active-nav" href="/reports" '
+            'aria-current="page">Reports</a>'
+        ),
+        "/scan": (
+            '<a class="active-nav" href="/scan" '
+            'aria-current="page">Scan</a>'
+        ),
+        "/settings/about": (
+            '<a class="active-nav" href="/settings" '
+            'aria-current="page">Settings</a>'
+        ),
+        "/settings/diagnostics": (
+            '<a class="active-nav" href="/settings" '
+            'aria-current="page">Settings</a>'
+        ),
+        "/settings/email": (
+            '<a class="active-nav" href="/settings" '
+            'aria-current="page">Settings</a>'
+        ),
         "/settings/retention": (
-            '<a class="active-nav" href="/settings">Settings</a>'
+            '<a class="active-nav" href="/settings" '
+            'aria-current="page">Settings</a>'
         ),
         "/settings/schedule": (
-            '<a class="active-nav" href="/settings">Settings</a>'
+            '<a class="active-nav" href="/settings" '
+            'aria-current="page">Settings</a>'
         ),
     }
 
@@ -4663,6 +4693,25 @@ candidate:
     compatibility_response = client.get("/preferences")
     assert compatibility_response.status_code == 302
     assert compatibility_response.headers["Location"] == "/profile"
+
+
+def test_shared_page_shell_supports_keyboard_and_scaled_views(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
+    app = create_app(settings_path=str(settings_file))
+
+    html = app.test_client().get("/").get_data(as_text=True)
+
+    assert 'name="viewport" content="width=device-width, initial-scale=1"' in html
+    assert 'class="skip-link" href="#main-content"' in html
+    assert '<main id="main-content" class="page" tabindex="-1">' in html
+    assert ":focus-visible" in html
+    assert "@media (max-width: 800px)" in html
+    assert "@media (forced-colors: active)" in html
 
 
 def test_web_startup_imports_pending_legacy_companies(

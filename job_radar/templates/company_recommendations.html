@@ -1,7 +1,7 @@
 {# Shows catalog-only company recommendations and profile-owned feedback. #}
 {% extends "base.html" %}
 
-{% block title %}Company Recommendations - junior{% endblock %}
+{% block title %}Employer Catalog Suggestions - junior{% endblock %}
 
 {% block page_styles %}
 <style>
@@ -30,10 +30,10 @@
 
 {% block content %}
 <p><a href="{{ url_for('companies') }}">&larr; Your Companies</a></p>
-<h1 class="page-title">Recommended companies for {{ profile.display_name }}</h1>
+<h1 class="page-title">Suggestions from Junior's Employer Catalog</h1>
 <div class="page-card">
-    <p>Junior recommends companies only when it has evidence connecting them to this profile's desired roles.</p>
-    <p class="muted">Catalog suggestions are ready to scan. Outside-catalog suggestions require review first. Junior does not broadly crawl the public web, and your responses apply only to this profile.</p>
+    <p>These optional starting points come only from employers Junior already knows how to scan and can connect to {{ profile.display_name }}'s selected work.</p>
+    <p class="muted">They do not represent the entire job market or every employer that may be relevant. Junior remains local, does not broadly search the public web, and never adds or scans a suggested company without your approval.</p>
 </div>
 
 {% if company_message %}
@@ -49,7 +49,7 @@
         <div>
             <h2>{{ recommendation.employer_name }}</h2>
             <p class="scan-ready">Ready for Junior to scan</p>
-            <h3>Why Junior recommends this company</h3>
+            <h3>Why this catalog employer may fit</h3>
             <ul>
                 {% for reason in recommendation.evidence %}
                 <li>{{ reason }}</li>
@@ -74,54 +74,16 @@
 </div>
 {% else %}
 <div class="page-card">
-    <h2>Start building your company list</h2>
-    <p>Junior does not have a new verified company to recommend yet, but your profile provides a practical place to begin.</p>
+    <h2>No verified catalog matches yet</h2>
+    <p>Junior does not currently have enough verified employers in its catalog to suggest companies for this profile. Add employers you are interested in by entering their name or careers-page URL, and Junior will try to identify and configure the source.</p>
+    <h3>Search-planning guidance</h3>
+    <p class="muted">These are categories and search directions to consider, not verified employer suggestions.</p>
     <ul>
         {% for item in starter_guidance %}
         <li>{{ item }}</li>
         {% endfor %}
     </ul>
-    <p class="muted">These are starting directions, not claims that an unverified employer is a good fit. Named recommendations appear only after Junior has grounded evidence.</p>
     <a class="button-link" href="{{ url_for('add_company_page') }}">Add company</a>
 </div>
 {% endif %}
-
-<section>
-    <h2>Companies Junior found outside your catalog</h2>
-    <p class="muted">
-        These employers appeared in recent job data owned by this profile.
-        Junior will not scan or globally add them until their identity and careers source are verified.
-    </p>
-    {% if external_candidates %}
-    <div class="recommendation-grid">
-        {% for candidate in external_candidates %}
-        <article class="page-card recommendation-card">
-            <div>
-                <h3>{{ candidate.proposed_name }}</h3>
-                <p><strong>Confidence:</strong> {{ candidate.confidence }}</p>
-                <h4>Why Junior suggests reviewing it</h4>
-                <ul>
-                    {% for reason in candidate.evidence %}
-                    <li>{{ reason }}</li>
-                    {% endfor %}
-                </ul>
-                <p class="muted">
-                    Source: {{ candidate.discovery_source }}.
-                    Status: {{ candidate.readiness_state|replace('_', ' ')|title }}.
-                </p>
-            </div>
-            <form method="post" action="{{ url_for('review_external_company_candidate', candidate_key=candidate.candidate_key) }}">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <button type="submit">Review company</button>
-            </form>
-        </article>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="page-card">
-        <p>No fresh outside-catalog company suggestions are available.</p>
-        <p class="muted">Junior does not perform uncontrolled broad web crawling to fill this section.</p>
-    </div>
-    {% endif %}
-</section>
 {% endblock %}
