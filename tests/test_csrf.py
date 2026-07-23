@@ -93,6 +93,8 @@ def test_every_current_post_form_renders_a_csrf_token() -> None:
     template_root = Path("job_radar/templates")
     templates_with_post_forms = (
         "administration/unlock.html",
+        "administration/employer_detail.html",
+        "administration/employer_form.html",
         "base.html",
         "companies.html",
         "company_add.html",
@@ -120,6 +122,12 @@ def test_mutation_routes_do_not_accept_get_requests(tmp_path: Path) -> None:
     mutation_endpoints = {
         "administration_unlock_submit",
         "administration_lock",
+        "administration_employer_new_submit",
+        "administration_employer_edit_submit",
+        "administration_employer_validate",
+        "administration_employer_disable",
+        "administration_employer_enable",
+        "administration_employer_retire",
         "run_scan",
         "save_new_tracker_application",
         "update_tracker_application",

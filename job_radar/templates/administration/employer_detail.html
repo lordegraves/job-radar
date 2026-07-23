@@ -1,0 +1,90 @@
+{# Shows global state separately from each profile's preserved assignment. #}
+{% extends "base.html" %}
+
+{% block title %}{{ record.employer.name }} - Employer Catalog - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .detail-grid { display: grid; gap: 18px; grid-template-columns: 2fr 1fr; }
+    .detail-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .detail-list dt { color: var(--muted); font-weight: 650; margin-top: 12px; }
+    .detail-list dd { margin: 3px 0 0; }
+    .issue-list { color: #ffb4b4; }
+    @media (max-width: 850px) { .detail-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('administration_employers') }}">&larr; Employer Catalog</a></p>
+<h1 class="page-title">{{ record.employer.name }}</h1>
+
+<div class="detail-grid">
+    <section class="page-card">
+        <h2>Employer definition</h2>
+        <dl class="detail-list">
+            <dt>Internal ID</dt><dd>{{ record.employer.employer_id }}</dd>
+            <dt>Job source</dt><dd>{{ record.employer.source_type }}</dd>
+            <dt>Configuration</dt><dd>{{ record.configuration_label }}</dd>
+            <dt>Global availability</dt><dd>{{ record.availability_label }}</dd>
+            <dt>Assigned profiles</dt><dd>{{ record.assigned_profile_count }}</dd>
+            <dt>Validation</dt><dd>{{ record.validation_label }}</dd>
+            <dt>Last validated</dt><dd>{{ record.last_validated_at or 'Not checked' }}</dd>
+            <dt>Created through</dt><dd>{{ record.creation_source }}</dd>
+            <dt>Created</dt><dd>{{ record.created_at }}</dd>
+            <dt>Last modified</dt><dd>{{ record.updated_at }}</dd>
+        </dl>
+        {% if record.validation_issues %}
+        <h3>Setup issues</h3>
+        <ul class="issue-list">
+            {% for issue in record.validation_issues %}<li>{{ issue }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% if record.employer.notes %}
+        <h3>Administrator notes</h3>
+        <p>{{ record.employer.notes }}</p>
+        {% endif %}
+        <div class="detail-actions">
+            <a class="button-link button-secondary" href="{{ url_for('administration_employer_edit', employer_id=record.employer.employer_id) }}">Edit</a>
+            <form method="post" action="{{ url_for('administration_employer_validate', employer_id=record.employer.employer_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Validate setup</button>
+            </form>
+            {% if record.employer.enabled %}
+            <form method="post" action="{{ url_for('administration_employer_disable', employer_id=record.employer.employer_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button class="button-secondary" type="submit">Disable globally</button>
+            </form>
+            {% elif not record.retired and record.validation_state == 'valid' %}
+            <form method="post" action="{{ url_for('administration_employer_enable', employer_id=record.employer.employer_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Enable globally</button>
+            </form>
+            <form method="post" action="{{ url_for('administration_employer_retire', employer_id=record.employer.employer_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button class="button-danger" type="submit">Retire employer</button>
+            </form>
+            {% elif not record.retired %}
+            <span class="muted">Validation must pass before this employer can be enabled.</span>
+            {% endif %}
+        </div>
+        {% if record.assigned_profile_count and (record.retired or not record.employer.enabled) %}
+        <p class="muted">
+            Profile assignments are preserved, but this employer is unavailable
+            to scans until an administrator enables it again.
+        </p>
+        {% endif %}
+    </section>
+
+    <aside class="page-card">
+        <h2>Recent changes</h2>
+        <ul>
+            {% for entry in audit %}
+            <li>{{ entry.created_at }} — {{ entry.operation }}</li>
+            {% else %}
+            <li>No administration changes recorded.</li>
+            {% endfor %}
+        </ul>
+        <p class="muted">The audit intentionally excludes source settings, notes, and credentials.</p>
+    </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,124 @@
+{# Lists global employer definitions without exposing them to normal profiles. #}
+{% extends "base.html" %}
+
+{% block title %}Employer Catalog - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .catalog-heading,
+    .catalog-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+    }
+    .catalog-filters {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        margin: 16px 0;
+    }
+    .catalog-filters label { margin-top: 0; }
+    .catalog-filters input,
+    .catalog-filters select { margin-top: 6px; width: 100%; }
+    .catalog-table-wrap { overflow-x: auto; }
+    .catalog-issues { color: #ffb4b4; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="catalog-heading">
+    <div>
+        <h1 class="page-title">Employer Catalog</h1>
+        <p class="muted">Global employer definitions used by every Junior profile.</p>
+    </div>
+    <a class="button-link" href="{{ url_for('administration_employer_new') }}">Add employer</a>
+</div>
+
+<form class="page-card" method="get">
+    <div class="catalog-filters">
+        <label>Search
+            <input name="search" value="{{ filters.search }}" placeholder="Name, ID, or careers URL">
+        </label>
+        <label>Job source
+            <select name="source_type">
+                <option value="">All sources</option>
+                {% for source in source_types %}
+                <option value="{{ source }}" {% if filters.source_type == source %}selected{% endif %}>{{ source }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Configuration
+            <select name="configuration">
+                <option value="">All</option>
+                <option value="configured" {% if filters.configuration == 'configured' %}selected{% endif %}>Configured</option>
+                <option value="incomplete" {% if filters.configuration == 'incomplete' %}selected{% endif %}>Needs setup</option>
+            </select>
+        </label>
+        <label>Global availability
+            <select name="availability">
+                <option value="">All</option>
+                {% for value in ['available', 'disabled', 'retired'] %}
+                <option value="{{ value }}" {% if filters.availability == value %}selected{% endif %}>{{ value|title }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Profile use
+            <select name="assignment">
+                <option value="">All</option>
+                <option value="assigned" {% if filters.assignment == 'assigned' %}selected{% endif %}>Assigned</option>
+                <option value="unassigned" {% if filters.assignment == 'unassigned' %}selected{% endif %}>Unassigned</option>
+            </select>
+        </label>
+        <label>Validation
+            <select name="validation">
+                <option value="">All</option>
+                <option value="not_checked" {% if filters.validation == 'not_checked' %}selected{% endif %}>Not checked</option>
+                <option value="valid" {% if filters.validation == 'valid' %}selected{% endif %}>Valid</option>
+                <option value="invalid" {% if filters.validation == 'invalid' %}selected{% endif %}>Has issues</option>
+            </select>
+        </label>
+    </div>
+    <div class="catalog-actions">
+        <button type="submit">Apply filters</button>
+        <a class="button-link button-secondary" href="{{ url_for('administration_employers') }}">Clear</a>
+    </div>
+</form>
+
+<div class="catalog-table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Employer</th>
+                <th>Job source</th>
+                <th>Configuration</th>
+                <th>Availability</th>
+                <th>Profiles</th>
+                <th>Validation</th>
+                <th>Last modified</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in employers %}
+            <tr>
+                <td><a href="{{ url_for('administration_employer_detail', employer_id=record.employer.employer_id) }}">{{ record.employer.name }}</a></td>
+                <td>{{ record.employer.source_type }}</td>
+                <td>{{ record.configuration_label }}</td>
+                <td>{{ record.availability_label }}</td>
+                <td>{{ record.assigned_profile_count }}</td>
+                <td>
+                    {{ record.validation_label }}
+                    {% if record.validation_issues %}
+                    <div class="catalog-issues">{{ record.validation_issues|length }} issue(s)</div>
+                    {% endif %}
+                </td>
+                <td>{{ record.updated_at }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7">No employers match these filters.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

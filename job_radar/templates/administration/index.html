@@ -39,14 +39,14 @@
         in later milestones may affect every Junior profile.
     </p>
     <p class="muted">
-        Foundation 7B establishes this safety boundary only. Global editing is
-        not available yet.
+        Global employer definitions are managed here. Disabling or retiring an
+        employer preserves profile assignments and collected history.
     </p>
 </div>
 
 <div class="administration-grid">
     {% for title, description in [
-        ("Employer Catalog", "Employer identity and technical source configuration."),
+        ("Employer Catalog", "Employer identity, availability, validation, and technical source configuration."),
         ("Employer review queue", "Company submissions that need technical review."),
         ("Recommendation administration", "Employer metadata and recommendation diagnostics."),
         ("Profiles and assignments", "Installation-wide visibility into profile-company assignments."),
@@ -56,7 +56,11 @@
     <section class="administration-card">
         <h2>{{ title }}</h2>
         <p>{{ description }}</p>
+        {% if title == "Employer Catalog" %}
+        <a class="button-link primary-action" href="{{ url_for('administration_employers') }}">Manage employers</a>
+        {% else %}
         <span class="planned-label">Planned</span>
+        {% endif %}
     </section>
     {% endfor %}
 </div>

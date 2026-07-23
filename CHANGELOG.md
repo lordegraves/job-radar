@@ -8,6 +8,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- A guarded Administration Employer Catalog for structured employer creation and editing, bounded local validation, global enable/disable/retire controls, assignment counts, filters, and a sanitized change audit.
+- SQLite migration version 13 for reversible employer lifecycle and validation metadata, protected by backup-before-migration and atomic rollback behavior.
 - A safe Add Company page where the active profile can search Junior's existing catalog and add only globally available, scan-ready employers, defaulting the new assignment to Scanning.
 - Guarded profile-company removal that stops future scans for only the active profile while preserving the shared employer, other profiles, collected jobs, applications, and history.
 - Profile-specific Pause and Resume controls in the Company Workspace, with assignment validation that leaves the shared employer catalog and other profiles unchanged.
@@ -42,6 +44,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Changed
 
+- Employer records referenced by a profile or collected job can no longer be permanently deleted; global disable and retirement preserve assignments and history.
 - Included nested Administration templates in wheel and source packages and extended installed-package rendering coverage.
 - Classified ordinary Settings separately from installation-wide Administration without moving or enabling technical configuration controls yet.
 - Replaced technical employer-source details on the managed-profile Companies page with a normal-user workspace while preserving the legacy YAML view when no managed profile is active.

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from job_radar.database import connect_database
+from job_radar.domain_errors import EmployerInUseError
 from job_radar.employer_models import EmployerSource, ProfileEmployerAssignment
 from job_radar.storage import initialize_database
 
@@ -254,11 +255,34 @@ def delete_employer_source(
     database_path: str | Path,
     employer_id: str,
 ) -> bool:
-    """Delete one employer source that is not referenced by collected jobs."""
+    """Delete only an unused employer with no profile or job references."""
 
     db_path = initialize_database(database_path)
 
     with connect_database(db_path) as connection:
+        assignment = connection.execute(
+            """
+            SELECT 1
+            FROM profile_company_associations
+            WHERE company_id = ?
+            LIMIT 1
+            """,
+            (employer_id,),
+        ).fetchone()
+        collected_job = connection.execute(
+            """
+            SELECT 1
+            FROM job_postings
+            WHERE company_key = ?
+            LIMIT 1
+            """,
+            (employer_id,),
+        ).fetchone()
+        if assignment is not None or collected_job is not None:
+            raise EmployerInUseError(
+                "Employer records with profile or job history references "
+                "cannot be permanently deleted."
+            )
         cursor = connection.execute(
             "DELETE FROM employer_sources WHERE employer_id = ?",
             (employer_id,),

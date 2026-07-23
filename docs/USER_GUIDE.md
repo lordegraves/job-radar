@@ -164,11 +164,11 @@ Existing YAML profiles are not migrated automatically. junior now has an interna
 
 ## Companies
 
-The current Companies pages are read-only. Employer organizations and source definitions are shared once per local junior installation, while each managed profile has its own company selections.
+Employer organizations and source definitions are shared once per local junior installation, while each managed profile has its own company list. The normal Companies workspace shows the active profile's employers and whether each one is Scanning or Paused. You can pause, resume, or remove a company for that profile without changing another profile. You can also search Junior's existing catalog and add a company that an administrator has made available and scan-ready.
 
-They show configured company names, source types, enabled state, source details, notes, filters, search, per-company detail views, and whether the active profile selects each company.
+Technical job-source settings do not appear in the normal Companies workspace. They are managed in the session-guarded Administration area after typing `ADMIN`. This confirmation is a safety boundary, not a password.
 
-Company add/edit/disable workflows are future productization work.
+Administration's Employer Catalog supports global employer creation and editing through labeled fields, local configuration validation, and global enable, disable, and retire controls. Validation does not run a scan or contact the employer. A new or edited employer must pass validation before it can be enabled. Disabling or retiring an employer keeps profile assignments and collected history, but prevents scans from using it. An employer with profile assignments or collected jobs cannot be permanently deleted.
 
 ## Settings
 

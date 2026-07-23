@@ -1,0 +1,58 @@
+{# Uses labeled fields instead of exposing raw collector JSON. #}
+{% extends "base.html" %}
+
+{% block title %}{% if employer_record %}Edit{% else %}Add{% endif %} employer - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .employer-form { max-width: 760px; }
+    .employer-form input,
+    .employer-form select,
+    .employer-form textarea { margin-top: 6px; width: 100%; }
+    .field-help { color: var(--muted); display: block; font-weight: normal; margin-top: 5px; }
+    .form-actions { display: flex; gap: 10px; margin-top: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">{% if employer_record %}Edit {{ employer_record.employer.name }}{% else %}Add employer{% endif %}</h1>
+<p class="muted">
+    New and edited employers must pass local validation before they can be globally available.
+    Validation does not run a scan or contact the employer.
+</p>
+
+<form class="page-card employer-form" method="post" action="{{ form_action }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <label>Employer name
+        <input name="name" required value="{{ employer_record.employer.name if employer_record else '' }}">
+    </label>
+    <label>Job source
+        <select name="source_type"
+                {% if employer_record %}disabled{% else %}onchange="window.location.href='{{ url_for('administration_employer_new') }}?source_type=' + encodeURIComponent(this.value)"{% endif %}>
+            {% for source in source_types %}
+            <option value="{{ source }}" {% if selected_source == source %}selected{% endif %}>{{ source }}</option>
+            {% endfor %}
+        </select>
+        {% if employer_record %}
+        <input type="hidden" name="source_type" value="{{ selected_source }}">
+        <span class="field-help">Create a separate employer record to use a different collector.</span>
+        {% else %}
+        <span class="field-help">Choose the source first, then use the matching setup page.</span>
+        {% endif %}
+    </label>
+    {% for field in fields %}
+    <label>{{ field.label }}{% if not field.required %} (optional){% endif %}
+        <input name="{{ field.key }}" value="{{ field_values.get(field.key, '') }}" {% if field.required %}required{% endif %}>
+        <span class="field-help">{{ field.help_text }}</span>
+    </label>
+    {% endfor %}
+    <label>Administrator notes (optional)
+        <textarea name="notes">{{ employer_record.employer.notes if employer_record and employer_record.employer.notes else '' }}</textarea>
+        <span class="field-help">Do not enter passwords, tokens, credentials, or private candidate data.</span>
+    </label>
+    <div class="form-actions">
+        <button type="submit">Save employer</button>
+        <a class="button-link button-secondary" href="{% if employer_record %}{{ url_for('administration_employer_detail', employer_id=employer_record.employer.employer_id) }}{% else %}{{ url_for('administration_employers') }}{% endif %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

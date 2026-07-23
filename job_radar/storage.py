@@ -247,6 +247,11 @@ def _schema_migrations() -> tuple:
             "add profile employer assignment state",
             _migrate_profile_employer_assignment_state,
         ),
+        (
+            13,
+            "add employer catalog administration state",
+            _migrate_employer_catalog_administration,
+        ),
     )
 
 
@@ -671,6 +676,52 @@ def _migrate_employer_sources(connection: sqlite3.Connection) -> None:
             )
             """
         )
+
+
+def _migrate_employer_catalog_administration(
+    connection: sqlite3.Connection,
+) -> None:
+    """Add reversible global lifecycle state and a sanitized change audit."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(employer_sources)"
+        ).fetchall()
+    }
+    required_columns = {
+        "retired": "INTEGER NOT NULL DEFAULT 0",
+        "validation_state": "TEXT NOT NULL DEFAULT 'not_checked'",
+        "validation_issues_json": "TEXT NOT NULL DEFAULT '[]'",
+        "last_validated_at": "TEXT",
+        "creation_source": "TEXT NOT NULL DEFAULT 'existing_catalog'",
+    }
+    for column_name, definition in required_columns.items():
+        if column_name not in existing_columns:
+            connection.execute(
+                f"ALTER TABLE employer_sources ADD COLUMN "
+                f"{column_name} {definition}"
+            )
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS employer_catalog_audit (
+            audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employer_id TEXT NOT NULL,
+            operation TEXT NOT NULL,
+            previous_state_json TEXT NOT NULL,
+            new_state_json TEXT NOT NULL,
+            change_source TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_employer_catalog_audit_employer
+        ON employer_catalog_audit(employer_id, audit_id DESC)
+        """
+    )
 
 
 def _migrate_managed_profile_tables(connection: sqlite3.Connection) -> None:

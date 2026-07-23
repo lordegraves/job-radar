@@ -63,7 +63,10 @@ def create_app(
     initialize_database(runtime_paths.database_path)
 
     register_csrf_protection(app)
-    register_administration_routes(app)
+    register_administration_routes(
+        app,
+        get_database_path=lambda: _get_database_path(app),
+    )
 
     @app.get("/")
     def index() -> str:

@@ -114,6 +114,8 @@ Foundation 7E is complete: a guarded `REMOVE` confirmation lets the active profi
 
 Foundation 7F is complete: the active profile can search a normal-user-safe view of the existing Employer Catalog and add an available, centrally validated scan-ready employer. New assignments default to Scanning, duplicates and cross-profile leakage are prevented, incomplete or globally unavailable employers are blocked with plain-language guidance, and technical collector details remain hidden.
 
-The next major product areas are editable company management, completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
+Foundation 7G is complete: the Administration-only Employer Catalog provides searchable global employer records, structured source forms, bounded local validation, reversible global enable/disable/retire controls, preserved profile assignments, protected hard deletion, assignment counts, and a sanitized change audit. Validation does not run a scan or contact an employer.
+
+The next major product areas are company submission and review, completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
 
 The projected full-product target remains September 30, 2026. Milestone quality, user-data safety, and dependency order take precedence over the date.
