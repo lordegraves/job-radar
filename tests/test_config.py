@@ -456,3 +456,32 @@ companies:
 
     assert len(companies) == 1
     assert companies[0]["company_key"] == "enabled_company"
+
+
+def test_load_settings_allows_keyring_reference_instead_of_environment(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text(
+        """
+database_path: data/junior.sqlite3
+reports_path: reports
+logs_path: logs
+email:
+  enabled: true
+  sender: user@example.com
+  recipients:
+    - user@example.com
+  smtp_host: smtp.example.com
+  smtp_username: user@example.com
+  smtp_password_env: ""
+  smtp_credential_key: smtp:user@example.com
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(settings_file)
+
+    assert settings.email.smtp_password_env == ""
+    assert settings.email.smtp_credential_key == "smtp:user@example.com"

@@ -8,6 +8,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- Operating-system credential-manager storage through `keyring`, with non-secret settings references and preserved environment-variable compatibility for server and container deployments.
 - A read-only About page showing the installed Junior version, release channel, user-data location, database and profile schema versions, and safe support guidance.
 - Administration controls for assigning or removing an employer from individual managed profiles, plus typed-confirmation deletion limited to employers with no profile assignments or collected jobs.
 - Explicit confirmation for confidently detected Greenhouse, Lever, and Ashby career sites before Junior creates the employer or adds it to a profile; uncertain sources continue to use administrator review.

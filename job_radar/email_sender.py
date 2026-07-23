@@ -9,6 +9,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from job_radar.credential_store import CredentialStoreError, get_credential
+
 
 @dataclass(frozen=True)
 class EmailSendResult:
@@ -33,12 +35,29 @@ def get_email_readiness(
             message="Disabled",
         )
 
-    password_env = email_settings.get("smtp_password_env", "")
+    credential_key = email_settings.get("smtp_credential_key", "")
+    if credential_key:
+        try:
+            credential = get_credential(credential_key)
+        except CredentialStoreError:
+            return EmailReadiness(
+                ready=False,
+                message="Enabled, but secure credential storage is unavailable",
+            )
+        return EmailReadiness(
+            ready=credential is not None,
+            message=(
+                "Ready to send"
+                if credential is not None
+                else "Enabled, but the saved credential is unavailable"
+            ),
+        )
 
+    password_env = email_settings.get("smtp_password_env", "")
     if not password_env:
         return EmailReadiness(
             ready=False,
-            message="Enabled, but no credential environment variable is configured",
+            message="Enabled, but no credential reference is configured",
         )
 
     if not os.environ.get(password_env):
@@ -66,13 +85,28 @@ def send_email_report(
             message="Email sending disabled by settings",
         )
 
-    password_env = email_settings["smtp_password_env"]
-    password = os.environ.get(password_env)
+    credential_key = email_settings.get("smtp_credential_key", "")
+    password_env = email_settings.get("smtp_password_env", "")
+    if credential_key:
+        try:
+            password = get_credential(credential_key)
+        except CredentialStoreError:
+            return EmailSendResult(
+                sent=False,
+                message="Secure credential storage is unavailable",
+            )
+    else:
+        password = os.environ.get(password_env)
 
     if not password:
         return EmailSendResult(
             sent=False,
-            message=f"Email password environment variable is not set: {password_env}",
+            message=(
+                "Saved email credential is unavailable"
+                if credential_key
+                else "Email password environment variable is not set: "
+                f"{password_env}"
+            ),
         )
 
     try:

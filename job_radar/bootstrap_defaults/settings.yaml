@@ -12,4 +12,5 @@ email:
   smtp_port: 587
   smtp_username: ""
   smtp_password_env: ""
+  smtp_credential_key: ""
   smtp_tls_mode: "starttls"

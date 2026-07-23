@@ -52,6 +52,7 @@ class EmailSettings(Mapping[str, Any]):
     smtp_port: int
     smtp_username: str
     smtp_password_env: str
+    smtp_credential_key: str
     smtp_tls_mode: str
     _data: dict[str, Any] = field(repr=False, compare=False)
 
@@ -261,6 +262,7 @@ def _validate_email_settings(raw_email_settings: Any) -> EmailSettings:
     smtp_port = raw_email_settings.get("smtp_port", 587)
     smtp_username = raw_email_settings.get("smtp_username", "")
     smtp_password_env = raw_email_settings.get("smtp_password_env", "")
+    smtp_credential_key = raw_email_settings.get("smtp_credential_key", "")
     smtp_tls_mode = raw_email_settings.get("smtp_tls_mode", "starttls")
 
     if not isinstance(enabled, bool):
@@ -292,6 +294,9 @@ def _validate_email_settings(raw_email_settings: Any) -> EmailSettings:
     
     if not isinstance(smtp_password_env, str):
         raise ConfigError("settings.yaml email.smtp_password_env must be a string")
+
+    if not isinstance(smtp_credential_key, str):
+        raise ConfigError("settings.yaml email.smtp_credential_key must be a string")
     
     if not isinstance(smtp_tls_mode, str):
         raise ConfigError("settings.yaml email.smtp_tls_mode must be a string")
@@ -308,6 +313,7 @@ def _validate_email_settings(raw_email_settings: Any) -> EmailSettings:
             smtp_host=smtp_host,
             smtp_username=smtp_username,
             smtp_password_env=smtp_password_env,
+            smtp_credential_key=smtp_credential_key,
         )
 
     normalized_data = {
@@ -319,6 +325,7 @@ def _validate_email_settings(raw_email_settings: Any) -> EmailSettings:
         "smtp_port": smtp_port,
         "smtp_username": smtp_username,
         "smtp_password_env": smtp_password_env,
+        "smtp_credential_key": smtp_credential_key,
         "smtp_tls_mode": smtp_tls_mode,
     }
 
@@ -331,6 +338,7 @@ def _validate_email_settings(raw_email_settings: Any) -> EmailSettings:
         smtp_port=smtp_port,
         smtp_username=smtp_username,
         smtp_password_env=smtp_password_env,
+        smtp_credential_key=smtp_credential_key,
         smtp_tls_mode=smtp_tls_mode,
         _data=normalized_data,
     )
@@ -341,6 +349,7 @@ def _validate_enabled_email_settings(
     smtp_host: str,
     smtp_username: str,
     smtp_password_env: str,
+    smtp_credential_key: str,
 ) -> None:
     if not sender:
         raise ConfigError("settings.yaml email.sender is required when email is enabled")
@@ -358,7 +367,8 @@ def _validate_enabled_email_settings(
             "settings.yaml email.smtp_username is required when email is enabled"
         )
 
-    if not smtp_password_env:
+    if not smtp_password_env and not smtp_credential_key:
         raise ConfigError(
-            "settings.yaml email.smtp_password_env is required when email is enabled"
+            "settings.yaml email requires smtp_password_env or "
+            "smtp_credential_key when email is enabled"
         )

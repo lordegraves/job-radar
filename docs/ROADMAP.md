@@ -52,7 +52,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 28 | Completed | Add a first-run validation scan that tests configuration, confirms at least one working company source, and explains any setup problems in plain language. |
 | 29 | Completed | Add resumable setup so an interrupted or incomplete first-run wizard can continue safely without starting over or leaving broken partial configuration. |
 | 30 | In Progress | Build editable Settings pages for application paths, report behavior, scan behavior, retention, profile defaults, company defaults, logs, backups, and application version information. |
-| 31 | Planned | Add safe credential storage using OS-appropriate secret handling so SMTP passwords, API keys, and tokens are never stored in committed files or plain-text application settings. |
+| 31 | Completed | Add safe credential storage using OS-appropriate secret handling so SMTP passwords, API keys, and tokens are never stored in committed files or plain-text application settings. |
 | 32 | Planned | Add an email setup flow for SMTP server, port, security mode, sender, recipients, credentials, and clear validation errors. |
 | 33 | Planned | Add a safe test-email workflow that does not accidentally trigger a full scan or send a normal production report. |
 | 34 | Planned | Add scan scheduling configuration for enabled/disabled state, time of day, selected weekdays, email delivery, next scheduled run, last run, and failed-run visibility. |
@@ -126,6 +126,8 @@ GUI company management is complete: the unlocked Employer Catalog can create, ed
 Shipped and user-owned company boundaries are complete: new installations receive an empty packaged company list, while an existing legacy list can be imported once for the active profile. Import conflicts preserve the database employer, so a packaged or legacy definition cannot overwrite a user's later catalog edits. Subsequent GUI changes stay in the user-owned database and do not rewrite shipped or legacy YAML.
 
 About and Version information is complete: Settings links to a read-only page showing the installed application version, stable or pre-release channel, resolved user-data location, current database migration version, profile schema version, and approved support contact. The page shows no profile content, résumé content, credential value, or raw diagnostic failure.
+
+Safe credential storage is complete: desktop secrets can be stored, retrieved, and removed through the operating system credential manager using the packaged `keyring` adapter. Ordinary settings contain only a non-secret stable reference. Existing environment-variable references remain supported for automation, servers, containers, and upgrades. Missing or unavailable secure backends fail with sanitized guidance and never fall back to YAML, SQLite, logs, reports, or a home-grown credential file.
 
 Foundation 7I is complete: the Administration-only Employer Review Queue can inspect safe unresolved submissions, match an existing employer, prefill new-employer setup, optionally assign an available employer to the requesting profile, or mark a request unsupported, rejected, or duplicate. Decisions are audited without raw collector failures or profile content, while normal users see only their own plain-language request state.
 
