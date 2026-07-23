@@ -7,6 +7,7 @@ a failure cannot leave only part of an upgrade applied.
 """
 
 import sqlite3
+import unicodedata
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -251,6 +252,11 @@ def _schema_migrations() -> tuple:
             13,
             "add employer catalog administration state",
             _migrate_employer_catalog_administration,
+        ),
+        (
+            14,
+            "add employer identity resolution and review requests",
+            _migrate_employer_resolution,
         ),
     )
 
@@ -720,6 +726,111 @@ def _migrate_employer_catalog_administration(
         """
         CREATE INDEX IF NOT EXISTS idx_employer_catalog_audit_employer
         ON employer_catalog_audit(employer_id, audit_id DESC)
+        """
+    )
+
+
+def _migrate_employer_resolution(connection: sqlite3.Connection) -> None:
+    """Add normalized identity and unresolved user-submission storage."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(employer_sources)"
+        ).fetchall()
+    }
+    required_columns = {
+        "normalized_name": "TEXT",
+        "normalized_careers_url": "TEXT",
+        "source_identifier": "TEXT",
+        "resolution_status": "TEXT NOT NULL DEFAULT 'existing'",
+        "submitted_name": "TEXT",
+        "submitted_url": "TEXT",
+    }
+    for column_name, definition in required_columns.items():
+        if column_name not in existing_columns:
+            connection.execute(
+                f"ALTER TABLE employer_sources ADD COLUMN "
+                f"{column_name} {definition}"
+            )
+
+    for employer_id, name in connection.execute(
+        """
+        SELECT employer_id, name
+        FROM employer_sources
+        WHERE normalized_name IS NULL
+        """
+    ).fetchall():
+        normalized_name = unicodedata.normalize(
+            "NFKC",
+            " ".join(str(name).strip().split()),
+        ).casefold()
+        connection.execute(
+            """
+            UPDATE employer_sources
+            SET normalized_name = ?
+            WHERE employer_id = ?
+            """,
+            (normalized_name, employer_id),
+        )
+    connection.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_employer_normalized_careers_url
+        ON employer_sources(normalized_careers_url)
+        WHERE normalized_careers_url IS NOT NULL
+        """
+    )
+    connection.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_employer_source_identifier
+        ON employer_sources(source_type, source_identifier)
+        WHERE source_identifier IS NOT NULL
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS employer_aliases (
+            employer_id TEXT NOT NULL,
+            alias TEXT NOT NULL,
+            normalized_alias TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (employer_id, normalized_alias),
+            FOREIGN KEY (employer_id) REFERENCES employer_sources(employer_id)
+                ON DELETE CASCADE
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS employer_review_requests (
+            request_id TEXT PRIMARY KEY,
+            submitted_company_name TEXT,
+            submitted_careers_url TEXT,
+            normalized_company_name TEXT NOT NULL DEFAULT '',
+            normalized_careers_url TEXT NOT NULL DEFAULT '',
+            requesting_profile_id TEXT NOT NULL,
+            detection_result TEXT NOT NULL,
+            possible_employer_ids_json TEXT NOT NULL DEFAULT '[]',
+            safe_summary TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at TEXT,
+            resolved_employer_id TEXT,
+            UNIQUE (
+                requesting_profile_id,
+                normalized_company_name,
+                normalized_careers_url,
+                status
+            ),
+            FOREIGN KEY (requesting_profile_id) REFERENCES profiles(profile_id)
+                ON DELETE CASCADE
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_employer_review_status_created
+        ON employer_review_requests(status, created_at)
         """
     )
 

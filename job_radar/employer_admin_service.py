@@ -10,6 +10,10 @@ from urllib.parse import parse_qs, urlparse
 from job_radar.config import SUPPORTED_SOURCE_TYPES
 from job_radar.database import connect_database
 from job_radar.employer_models import EmployerSource
+from job_radar.employer_resolution_service import (
+    normalize_careers_url,
+    normalize_company_name,
+)
 from job_radar.employer_storage import get_employer_source
 from job_radar.storage import initialize_database
 
@@ -240,8 +244,9 @@ def create_employer(
             """
             INSERT INTO employer_sources (
                 employer_id, name, source_type, enabled, source_config_json,
-                notes, creation_source
-            ) VALUES (?, ?, ?, 0, ?, ?, 'administration')
+                notes, creation_source, normalized_name,
+                normalized_careers_url, source_identifier
+            ) VALUES (?, ?, ?, 0, ?, ?, 'administration', ?, ?, ?)
             """,
             (
                 employer.employer_id,
@@ -249,6 +254,9 @@ def create_employer(
                 employer.source_type,
                 _dump_config(employer.source_config),
                 employer.notes,
+                normalize_company_name(employer.name),
+                _normalized_careers_url(employer.source_config),
+                _source_identifier(employer),
             ),
         )
         _record_audit(connection, employer_id, "create", {}, employer, False)
@@ -289,7 +297,9 @@ def update_employer(
             UPDATE employer_sources
             SET name = ?, source_type = ?, source_config_json = ?, notes = ?,
                 validation_state = ?, validation_issues_json = '[]',
-                last_validated_at = NULL, updated_at = CURRENT_TIMESTAMP
+                last_validated_at = NULL, normalized_name = ?,
+                normalized_careers_url = ?, source_identifier = ?,
+                updated_at = CURRENT_TIMESTAMP
             WHERE employer_id = ?
             """,
             (
@@ -298,6 +308,9 @@ def update_employer(
                 _dump_config(employer.source_config),
                 employer.notes,
                 NOT_CHECKED,
+                normalize_company_name(employer.name),
+                _normalized_careers_url(employer.source_config),
+                _source_identifier(employer),
                 employer_id,
             ),
         )
@@ -575,3 +588,21 @@ def _http_url(value: object) -> bool:
         return False
     parsed = urlparse(str(value).strip())
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _normalized_careers_url(config: dict[str, object]) -> str | None:
+    value = config.get("careers_url")
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return normalize_careers_url(value)
+    except ValueError:
+        return None
+
+
+def _source_identifier(employer: EmployerSource) -> str | None:
+    for key in ("source_slug", "domain_name", "cid"):
+        value = employer.source_config.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip().casefold()
+    return None

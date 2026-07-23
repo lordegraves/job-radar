@@ -1,4 +1,4 @@
-{# Lets a profile add a scan-ready employer without exposing collector details. #}
+{# Lets a profile add an employer by plain company name or public careers URL. #}
 {% extends "base.html" %}
 
 {% block title %}Add a Company - junior{% endblock %}
@@ -9,46 +9,24 @@
         align-items: end;
         display: grid;
         gap: 12px;
-        grid-template-columns: minmax(240px, 520px) auto;
+        grid-template-columns: minmax(240px, 620px) auto;
         margin: 18px 0;
-        max-width: 720px;
+        max-width: 820px;
     }
-
-    .catalog-search label {
-        display: grid;
-        gap: 6px;
-    }
-
-    .catalog-state {
-        font-weight: 700;
-    }
-
-    .catalog-state-available {
-        color: #8fdc8f;
-    }
-
+    .catalog-search label { display: grid; gap: 6px; }
+    .catalog-state { font-weight: 700; }
+    .catalog-state-available { color: #8fdc8f; }
     .catalog-state-needs_setup,
-    .catalog-state-unavailable {
-        color: #ffb86c;
-    }
-
-    .catalog-explanation {
-        max-width: 460px;
-    }
-
-    .catalog-action-form {
-        margin: 0;
-    }
-
+    .catalog-state-unavailable { color: #ffb86c; }
+    .catalog-explanation { max-width: 460px; }
+    .catalog-action-form { margin: 8px 0 0; }
     .company-feedback {
         border-left: 4px solid #ff7b72;
         margin-top: 16px;
     }
-
+    .resolution-card { border-left: 4px solid var(--accent); margin: 18px 0; }
     @media (max-width: 640px) {
-        .catalog-search {
-            grid-template-columns: 1fr;
-        }
+        .catalog-search { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
@@ -60,42 +38,67 @@
 
 <div class="page-card">
     <p>
-        Search companies junior already knows how to scan, then add one to
+        Enter a company name or careers URL. Junior will look for an existing
+        company first, then safely determine what happens next for
         <strong>{{ catalog.active_profile.display_name }}'s</strong> profile.
     </p>
     <p class="muted">
-        Adding a company affects only this profile. Adding a company Junior
-        does not know yet will be supported in a later step.
+        Adding a company affects only this profile. Technical setup remains
+        hidden and uncertain sites are sent for administrator review.
     </p>
 </div>
 
 {% if company_error %}
-<div class="page-card company-feedback company-feedback-error" role="alert">{{ company_error }}</div>
+<div class="page-card company-feedback" role="alert">{{ company_error }}</div>
 {% endif %}
 
-<form class="catalog-search" method="get" action="{{ url_for('add_company_page') }}">
+<form class="catalog-search" method="post" action="{{ url_for('resolve_company_submission') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <label for="company-search">
-        <span>Search known companies</span>
+        <span>Company name or careers URL</span>
         <input
             id="company-search"
-            name="q"
+            name="company"
             type="search"
-            value="{{ catalog.search_query }}"
-            placeholder="Enter a company name"
+            value="{{ submission }}"
+            placeholder="Example Company or https://careers.example.com"
             autofocus
         >
     </label>
-    <button type="submit">Search</button>
+    <button type="submit">Continue</button>
 </form>
 
-{% if catalog.search_query %}
-<p class="muted">
-    Showing results for “{{ catalog.search_query }}”.
-    <a href="{{ url_for('add_company_page') }}">Clear search</a>
-</p>
+{% if resolution %}
+<section class="page-card resolution-card" role="status">
+    <h2>What Junior found</h2>
+    <p>{{ resolution.message }}</p>
+    {% if resolution.status == 'MATCHED_EXISTING' and resolution.employer_id %}
+    <form method="post" action="{{ url_for('add_existing_company') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="employer_id" value="{{ resolution.employer_id }}">
+        <button type="submit">Add {{ resolution.employer_name }} to this profile</button>
+    </form>
+    {% elif resolution.status == 'CREATED_SCAN_READY' %}
+    <p><a href="{{ url_for('companies') }}">Return to Your Companies</a></p>
+    {% elif resolution.status in ['PENDING_REVIEW', 'UNSUPPORTED_SITE'] %}
+    <p class="muted">
+        Nothing will be scanned until an administrator completes and validates
+        the setup.
+    </p>
+    {% elif resolution.status == 'AMBIGUOUS_MATCH' %}
+        {% for employer_id, employer_name in resolution.possible_employers %}
+        <form class="catalog-action-form" method="post" action="{{ url_for('add_existing_company') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="employer_id" value="{{ employer_id }}">
+            <button type="submit">Choose {{ employer_name }}</button>
+        </form>
+        {% endfor %}
+    {% endif %}
+</section>
 {% endif %}
 
-{% if catalog.companies %}
+{% if submission and catalog.companies and not resolution %}
+<h2>Known company matches</h2>
 <table>
     <thead>
         <tr>
@@ -133,15 +136,9 @@
         {% endfor %}
     </tbody>
 </table>
-{% elif catalog.search_query %}
+{% elif not resolution %}
 <div class="page-card">
-    <p>No known companies match “{{ catalog.search_query }}”.</p>
-    <p class="muted">Adding a new company by name or careers link will be available in a later step.</p>
-</div>
-{% else %}
-<div class="page-card">
-    <p>No companies are available in Junior's catalog yet.</p>
-    <p class="muted">An administrator will need to set up companies before they can be added here.</p>
+    <p>Enter a company above to begin.</p>
 </div>
 {% endif %}
 {% endblock %}

@@ -21,6 +21,7 @@ from job_radar.domain_errors import (
     InvalidCompanyStateError,
     JuniorDomainError,
 )
+from job_radar.employer_resolution_service import resolve_employer_submission
 
 
 def register_company_routes(
@@ -257,6 +258,45 @@ def register_company_routes(
             "company_add.html",
             catalog=catalog,
             company_error=request.args.get("company_error", "").strip(),
+            resolution=None,
+            submission=request.args.get("q", "").strip(),
+        )
+
+    @app.post("/companies/add/resolve")
+    def resolve_company_submission():
+        workspace = build_company_workspace(get_database_path())
+        if workspace.active_profile is None:
+            return redirect(
+                url_for(
+                    "companies",
+                    company_result="error",
+                    company_error=(
+                        "Select a managed profile before adding a company."
+                    ),
+                )
+            )
+
+        submission = request.form.get("company", "").strip()
+        looks_like_url = (
+            "://" in submission
+            or ("." in submission and " " not in submission)
+        )
+        resolution = resolve_employer_submission(
+            get_database_path(),
+            profile_id=workspace.active_profile.profile_id,
+            company_name="" if looks_like_url else submission,
+            careers_url=submission if looks_like_url else "",
+        )
+        catalog = build_company_catalog_view(
+            get_database_path(),
+            search_query="" if looks_like_url else submission,
+        )
+        return render_template(
+            "company_add.html",
+            catalog=catalog,
+            company_error="",
+            resolution=resolution,
+            submission=submission,
         )
 
     @app.post("/companies/add")

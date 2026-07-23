@@ -464,10 +464,13 @@ def test_add_company_page_blocks_incomplete_and_duplicate_employers(
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
     client = app.test_client()
 
-    page_html = client.get("/companies/add").get_data(as_text=True)
-    assert "Already added" in page_html
-    assert "Needs setup" in page_html
-    assert "needs administrator setup" in page_html
+    assigned_page = client.get("/companies/add?q=assigned").get_data(as_text=True)
+    incomplete_page = client.get("/companies/add?q=incomplete").get_data(
+        as_text=True
+    )
+    assert "Already added" in assigned_page
+    assert "Needs setup" in incomplete_page
+    assert "needs administrator setup" in incomplete_page
 
     incomplete_response = client.post(
         "/companies/add",
@@ -486,4 +489,37 @@ def test_add_company_page_blocks_incomplete_and_duplicate_employers(
     assert "already included" in duplicate_response.get_data(as_text=True)
     assert get_profile(database_path, profile.profile_id).company_ids == (
         "assigned_cafe",
+    )
+
+
+def test_add_company_by_careers_url_resolves_and_assigns_without_ats_jargon(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    response = client.post(
+        "/companies/add/resolve",
+        data={
+            "company": "https://jobs.lever.co/example-kitchens",
+        },
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "What Junior found" in html
+    assert "was added and will be included in future scans" in html
+    assert "source_slug" not in html
+    assert "Platform:" not in html
+    assert get_profile(database_path, profile.profile_id).company_ids == (
+        "example-kitchens",
     )

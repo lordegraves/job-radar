@@ -8,6 +8,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- A normal-user Add Company workflow accepting a company name or careers URL, with exact catalog/alias matching, centralized career-site detection, conservative scan-ready creation, ambiguous-match confirmation, and safe pending-review requests.
+- Unicode-aware company-name and normalized public-URL identity, duplicate source constraints, employer aliases, and pending employer-review storage in SQLite migration version 14.
 - A guarded Administration Employer Catalog for structured employer creation and editing, bounded local validation, global enable/disable/retire controls, assignment counts, filters, and a sanitized change audit.
 - SQLite migration version 13 for reversible employer lifecycle and validation metadata, protected by backup-before-migration and atomic rollback behavior.
 - A safe Add Company page where the active profile can search Junior's existing catalog and add only globally available, scan-ready employers, defaulting the new assignment to Scanning.
