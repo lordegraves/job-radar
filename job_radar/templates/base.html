@@ -130,6 +130,10 @@
             margin-top: 0;
         }
 
+        .flash-message {
+            margin-bottom: 16px;
+        }
+
         .muted {
             color: var(--muted);
         }
@@ -416,13 +420,13 @@
                 <a class="{% if request.endpoint == 'index' %}active-nav{% endif %}" href="{{ url_for('index') }}">Home</a>
                 <a class="{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application'] %}active-nav{% endif %}" href="{{ url_for('tracker') }}">Active Applications</a>
                 <a class="{% if request.endpoint in ['history', 'edit_history_record'] %}active-nav{% endif %}" href="{{ url_for('history') }}">Application History</a>
-                <a class="{% if request.endpoint in ['profile', 'new_profile_page', 'edit_profile_page', 'edit_legacy_profile_page', 'preferences', 'upload_resume', 'upload_managed_resume'] %}active-nav{% endif %}" href="{{ url_for('profile') }}">Profile / Resume</a>
-                <a class="{% if request.endpoint in ['reports', 'report_view'] %}active-nav{% endif %}" href="{{ url_for('reports') }}">Reports</a>
-                <a class="{% if request.endpoint == 'companies' %}active-nav{% endif %}" href="{{ url_for('companies') }}">Companies</a>
+                <a class="{% if request.endpoint in ['profile', 'new_profile_page', 'edit_profile_page', 'profile_fit_board_page', 'role_discovery_page', 'edit_legacy_profile_page', 'preferences', 'upload_resume', 'upload_managed_resume'] %}active-nav{% endif %}" href="{{ url_for('profile') }}">Profile / Resume</a>
+                <a class="{% if request.endpoint and (request.endpoint == 'reports' or request.endpoint.startswith('report_')) %}active-nav{% endif %}" href="{{ url_for('reports') }}">Reports</a>
+                <a class="{% if request.endpoint in ['companies', 'company_detail', 'add_company_page', 'company_recommendations'] %}active-nav{% endif %}" href="{{ url_for('companies') }}">Companies</a>
                 <a class="{% if request.endpoint in ['scan', 'run_scan'] %}active-nav{% endif %}" href="{{ url_for('scan') }}">Scan</a>
-                <a class="{% if request.endpoint == 'settings' %}active-nav{% endif %}" href="{{ url_for('settings') }}">Settings</a>
+                <a class="{% if request.endpoint and (request.endpoint == 'settings' or request.endpoint.startswith('settings_')) %}active-nav{% endif %}" href="{{ url_for('settings') }}">Settings</a>
                 {% if admin_mode_active %}
-                <a class="{% if request.endpoint == 'administration' %}active-nav{% endif %}" href="{{ url_for('administration') }}">Administration</a>
+                <a class="{% if request.endpoint and request.endpoint.startswith('administration') %}active-nav{% endif %}" href="{{ url_for('administration') }}">Administration</a>
                 {% endif %}
             </nav>
             <div id="global-scan-status" class="global-scan-status" role="status" aria-live="polite" hidden>
@@ -453,7 +457,7 @@
     <main class="page">
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% for category, message in messages %}
-        <div class="page-card{% if category == 'error' %} validation-message{% endif %}" role="status">
+        <div class="page-card flash-message{% if category == 'error' %} validation-message{% endif %}" role="status">
             {{ message }}
         </div>
 {% endfor %}

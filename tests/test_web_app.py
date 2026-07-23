@@ -4639,6 +4639,17 @@ candidate:
         "/profile": '<a class="active-nav" href="/profile">Profile / Resume</a>',
         "/reports": '<a class="active-nav" href="/reports">Reports</a>',
         "/scan": '<a class="active-nav" href="/scan">Scan</a>',
+        "/settings/about": '<a class="active-nav" href="/settings">Settings</a>',
+        "/settings/diagnostics": (
+            '<a class="active-nav" href="/settings">Settings</a>'
+        ),
+        "/settings/email": '<a class="active-nav" href="/settings">Settings</a>',
+        "/settings/retention": (
+            '<a class="active-nav" href="/settings">Settings</a>'
+        ),
+        "/settings/schedule": (
+            '<a class="active-nav" href="/settings">Settings</a>'
+        ),
     }
 
     for route, expected_link in expected_active_links.items():
