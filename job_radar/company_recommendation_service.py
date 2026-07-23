@@ -8,6 +8,10 @@ from job_radar.company_catalog_query_service import (
     evaluate_employer_availability,
 )
 from job_radar.company_recommendation_models import CompanyRecommendation
+from job_radar.company_recommendation_evidence import (
+    aggregate_employer_job_evidence,
+    format_job_evidence,
+)
 from job_radar.company_recommendation_storage import (
     load_visible_rows,
     save_recommendation,
@@ -47,12 +51,19 @@ def build_company_recommendations(
         if availability.state != AVAILABLE:
             continue
         score, evidence = _rank_employer(employer, profile_terms)
+        evidence_score, job_evidence = format_job_evidence(
+            aggregate_employer_job_evidence(
+                database_path,
+                profile=profile,
+                employer_id=employer.employer_id,
+            )
+        )
         save_recommendation(
             database_path,
             profile_id=profile.profile_id,
             employer_id=employer.employer_id,
-            score=score,
-            evidence=evidence,
+            score=score + evidence_score,
+            evidence=job_evidence + evidence,
             availability_state=availability.state,
         )
 

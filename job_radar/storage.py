@@ -268,6 +268,11 @@ def _schema_migrations() -> tuple:
             "add profile company recommendations",
             _migrate_company_recommendations,
         ),
+        (
+            17,
+            "add profile ownership to scan runs",
+            _migrate_profile_owned_scan_runs,
+        ),
     )
 
 
@@ -900,6 +905,23 @@ def _migrate_company_recommendations(connection: sqlite3.Connection) -> None:
     )
 
 
+def _migrate_profile_owned_scan_runs(connection: sqlite3.Connection) -> None:
+    """Label future scan evidence without guessing ownership of old scans."""
+
+    columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(scan_runs)").fetchall()
+    }
+    if "profile_id" not in columns:
+        connection.execute("ALTER TABLE scan_runs ADD COLUMN profile_id TEXT")
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_scan_runs_profile_finished
+        ON scan_runs(profile_id, finished_at DESC)
+        """
+    )
+
+
 def _migrate_managed_profile_tables(connection: sqlite3.Connection) -> None:
     """Create profile records without assigning existing user data yet."""
 
@@ -1100,6 +1122,7 @@ def start_scan_run(
     companies_requested: int,
     companies_enabled: int,
     current_stage: str = "initialization",
+    profile_id: str | None = None,
 ) -> int:
     db_path = Path(database_path)
 
@@ -1113,9 +1136,10 @@ def start_scan_run(
                 status,
                 current_stage,
                 companies_requested,
-                companies_enabled
+                companies_enabled,
+                profile_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 requested_at,
@@ -1125,6 +1149,7 @@ def start_scan_run(
                 current_stage,
                 companies_requested,
                 companies_enabled,
+                profile_id,
             ),
         )
 
@@ -1456,7 +1481,12 @@ def _upsert_company_for_posting(
     )
 
 
-def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
+def upsert_job_posting(
+    database_path: str | Path,
+    posting: JobPosting,
+    *,
+    scan_run_id: int | None = None,
+) -> str:
     db_path = Path(database_path)
 
     with connect_database(db_path) as connection:
@@ -1511,9 +1541,8 @@ def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
                 (job_posting_id,),
             )
 
-            return "new"
-
-        if existing["content_hash"] != posting.content_hash:
+            result = "new"
+        elif existing["content_hash"] != posting.content_hash:
             connection.execute(
                 """
                 UPDATE job_postings
@@ -1550,22 +1579,33 @@ def upsert_job_posting(database_path: str | Path, posting: JobPosting) -> str:
                     existing["id"],
                 ),
             )
+            job_posting_id = existing["id"]
+            result = "changed"
+        else:
+            connection.execute(
+                """
+                UPDATE job_postings
+                SET
+                    last_seen_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP,
+                    is_active = 1
+                WHERE id = ?
+                """,
+                (existing["id"],),
+            )
+            job_posting_id = existing["id"]
+            result = "seen"
 
-            return "changed"
-
-        connection.execute(
-            """
-            UPDATE job_postings
-            SET
-                last_seen_at = CURRENT_TIMESTAMP,
-                updated_at = CURRENT_TIMESTAMP,
-                is_active = 1
-            WHERE id = ?
-            """,
-            (existing["id"],),
-        )
-
-        return "seen"
+        if scan_run_id is not None:
+            connection.execute(
+                """
+                INSERT INTO job_seen_events (
+                    job_posting_id, scan_run_id, event_type
+                ) VALUES (?, ?, ?)
+                """,
+                (job_posting_id, scan_run_id, result),
+            )
+        return result
 
 
 def upsert_job_history_record_with_connection(

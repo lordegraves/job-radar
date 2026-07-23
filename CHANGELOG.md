@@ -10,6 +10,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 - An Administration-only Employer Review Queue for matching unresolved submissions, prefilled new-employer setup, guarded profile assignment, unsupported/rejected/duplicate decisions, and a sanitized decision audit.
 - Profile-specific, catalog-only company recommendations with plain-language reasons, deterministic ordering, one-click assignment, and durable Maybe later, Dismiss, and Not relevant feedback.
+- Bounded recommendation evidence from recent profile-owned scans, including relevant-job counts, strong title matches, remote compatibility, and recency without reusing unowned legacy scans.
 - Plain-language Setup pending, Ready to add, and Unsupported company-submission states scoped to the requesting profile.
 - SQLite migration version 15 for employer review decision auditing without raw collector errors or profile contents.
 - A normal-user Add Company workflow accepting a company name or careers URL, with exact catalog/alias matching, centralized career-site detection, conservative scan-ready creation, ambiguous-match confirmation, and safe pending-review requests.

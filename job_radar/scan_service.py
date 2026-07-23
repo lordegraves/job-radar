@@ -26,6 +26,7 @@ from job_radar.history_match import (
 from job_radar.history_summary import build_history_summary
 from job_radar.normalize import clean_text
 from job_radar.profile_context import load_active_candidate_context
+from job_radar.profile_storage import get_active_profile
 from job_radar.profile_scoring import resolve_effective_scoring_config
 from job_radar.html_report import write_html_report
 from job_radar.report_models import ScanError, ScanReport
@@ -246,12 +247,16 @@ def _handle_scan_unlocked(
     )
 
     requested_at = datetime.now(UTC).isoformat()
+    active_profile = get_active_profile(database_path)
     scan_run_id = start_scan_run(
         database_path,
         requested_at=requested_at,
         companies_requested=len(companies),
         companies_enabled=len(companies),
         current_stage="configuration",
+        profile_id=(
+            active_profile.profile_id if active_profile is not None else None
+        ),
     )
 
     current_stage = "configuration"
@@ -498,7 +503,11 @@ def _handle_scan_unlocked(
         new_scored_postings: list[ScoredPosting] = []
 
         for scored_posting in relevant_scored_postings:
-            result = upsert_job_posting(database_path, scored_posting.posting)
+            result = upsert_job_posting(
+                database_path,
+                scored_posting.posting,
+                scan_run_id=scan_run_id,
+            )
             jobs_stored += 1
 
             if result == "new":
