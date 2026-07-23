@@ -183,7 +183,9 @@ Databases belong in `data`, logs belong in `logs`, and migration backups are saf
 
 ### Diagnostics
 
-`diagnostic_service.py` owns the shared safe vocabulary for configuration, collector, network, email, and unexpected application failures. Scan collection and terminal scan failures store only these bounded summaries and categories, never raw exception text. The read-only Settings diagnostics view combines the latest sanitized scan state, aggregated employer connection health, email readiness, and successful settings loading. Log contents and operating-system navigation remain outside this boundary for the next diagnostics milestone.
+`diagnostic_service.py` owns the shared safe vocabulary for configuration, collector, network, email, and unexpected application failures. Scan collection and terminal scan failures store only these bounded summaries and categories, never raw exception text. The read-only Settings diagnostics view combines the latest sanitized scan state, aggregated employer connection health, email readiness, and successful settings loading. Safe log access and operating-system navigation use the narrower service boundary below.
+
+`diagnostic_log_service.py` extends that boundary with an allowlist for the fixed startup log and strictly named dated Junior logs. Listing is capped at 20 files and viewing reads only the newest 200,000 bytes. Resolved-path checks reject traversal, symlinks escaping the logs directory, arbitrary filenames, and non-log files. The copyable support summary contains version, schema, resolved user-data location, and health-card state only. The CSRF-protected data-directory action uses the active settings location to identify the owning workspace and passes it to the operating system without invoking a shell.
 
 ### Web interface
 

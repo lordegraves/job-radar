@@ -9,6 +9,13 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 from job_radar.application_info_service import build_application_info
 from job_radar.config import load_settings
 from job_radar.diagnostic_service import build_diagnostics_view
+from job_radar.diagnostic_log_service import (
+    DiagnosticLogError,
+    build_support_summary,
+    list_diagnostic_logs,
+    open_data_directory,
+    read_diagnostic_log,
+)
 from job_radar.email_settings_service import (
     EmailSettingsError,
     load_email_settings_form,
@@ -83,20 +90,54 @@ def register_settings_routes(
             "settings_about.html",
             application_info=build_application_info(
                 database_path=runtime_paths.database_path,
-                user_data_location=runtime_paths.base_directory,
+                user_data_location=runtime_paths.user_data_directory,
             ),
         )
 
     @app.get("/settings/diagnostics")
     def settings_diagnostics() -> str:
         runtime_paths = get_runtime_paths()
+        diagnostics = build_diagnostics_view(
+            runtime_paths.database_path,
+            settings_path,
+        )
+        application_info = build_application_info(
+            database_path=runtime_paths.database_path,
+            user_data_location=runtime_paths.user_data_directory,
+        )
         return render_template(
             "settings_diagnostics.html",
-            diagnostics=build_diagnostics_view(
-                runtime_paths.database_path,
-                settings_path,
+            diagnostics=diagnostics,
+            diagnostic_logs=list_diagnostic_logs(runtime_paths.logs_path),
+            support_summary=build_support_summary(
+                application_info,
+                diagnostics,
             ),
         )
+
+    @app.get("/settings/diagnostics/logs/<log_name>")
+    def settings_diagnostic_log(log_name: str) -> str:
+        runtime_paths = get_runtime_paths()
+        try:
+            log_view = read_diagnostic_log(runtime_paths.logs_path, log_name)
+        except DiagnosticLogError as error:
+            flash(str(error), "error")
+            return redirect(url_for("settings_diagnostics"))
+        return render_template(
+            "settings_diagnostic_log.html",
+            log_view=log_view,
+        )
+
+    @app.post("/settings/diagnostics/open-data")
+    def settings_diagnostics_open_data():
+        runtime_paths = get_runtime_paths()
+        try:
+            open_data_directory(runtime_paths.user_data_directory)
+        except DiagnosticLogError as error:
+            flash(str(error), "error")
+        else:
+            flash("Junior opened the data directory.", "success")
+        return redirect(url_for("settings_diagnostics"))
 
     @app.get("/settings/email")
     def settings_email() -> str:

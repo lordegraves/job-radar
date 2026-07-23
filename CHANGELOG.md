@@ -6,6 +6,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Bounded in-app viewing for allowlisted sanitized Junior logs, a copyable privacy-safe troubleshooting summary, and a CSRF-protected Open Data Directory action using the resolved settings-owned workspace.
 - Read-only Settings diagnostics for application configuration, latest scan, company-source, and email health, with plain-language configuration, collector, network, email, and unexpected-application categories; scan diagnostics no longer persist raw exception text.
 - Configurable report and log retention with latest-only, latest-plus-previous, or a chosen 1-to-50-run limit; verified report-set archives, retained-report browsing, atomic settings updates, and pruning limited to clearly marked Junior-owned files.
 - GUI scan scheduling configuration for enabled state, local start time, weekdays, scheduled email delivery, calculated next run, and safe last-run or failed-run visibility.

@@ -34,6 +34,17 @@
         margin-top: 16px;
         padding-top: 12px;
     }
+    .diagnostic-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .support-summary {
+        max-height: 320px;
+        overflow: auto;
+        white-space: pre-wrap;
+    }
     @media (max-width: 800px) {
         .diagnostics-grid { grid-template-columns: 1fr; }
     }
@@ -69,10 +80,54 @@
 
 <div class="page-card">
     <h2>Need more detail?</h2>
+    {% if diagnostic_logs %}
+    <p>Open a sanitized Junior log. Only the newest {{ diagnostic_logs|length }} recognized log(s) are listed.</p>
+    <table>
+        <thead><tr><th>Log</th><th>Modified</th><th>Size</th></tr></thead>
+        <tbody>
+            {% for log in diagnostic_logs %}
+            <tr>
+                <td><a href="{{ url_for('settings_diagnostic_log', log_name=log.name) }}">{{ log.name }}</a></td>
+                <td>{{ log.modified_at }}</td>
+                <td>{{ log.size_bytes }} bytes</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No sanitized Junior logs are available.</p>
+    {% endif %}
+</div>
+
+<div class="page-card">
+    <h2>Copy troubleshooting details</h2>
+    <p class="muted">This summary contains version, schema, data-location, and health status only.</p>
+    <pre id="support-summary" class="support-summary">{{ support_summary }}</pre>
+    <div class="diagnostic-actions">
+        <button type="button" id="copy-support-summary">Copy details</button>
+        <span id="copy-support-status" class="muted" aria-live="polite"></span>
+        <form method="post" action="{{ url_for('settings_diagnostics_open_data') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button class="button secondary" type="submit">Open Data Directory</button>
+        </form>
+    </div>
     <p>
-        Safe log viewing and copyable troubleshooting details belong to the next
-        diagnostics milestone. For an unexpected problem that continues, open
+        For an unexpected problem that continues, open
         <a href="{{ url_for('settings_about') }}">About junior</a> for support guidance.
     </p>
 </div>
+
+<script>
+    document.getElementById("copy-support-summary").addEventListener("click", async () => {
+        const status = document.getElementById("copy-support-status");
+        try {
+            await navigator.clipboard.writeText(
+                document.getElementById("support-summary").textContent
+            );
+            status.textContent = "Troubleshooting details copied.";
+        } catch (error) {
+            status.textContent = "Copy failed. Select the text above and copy it manually.";
+        }
+    });
+</script>
 {% endblock %}

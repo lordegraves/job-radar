@@ -74,6 +74,14 @@ class RuntimePaths:
     logs_path: Path
     candidate_profile_path: Path | None
 
+    @property
+    def user_data_directory(self) -> Path:
+        """Return the workspace that owns the active settings and runtime data."""
+        settings_parent = self.settings_path.parent
+        if settings_parent.name.casefold() == "config":
+            return settings_parent.parent
+        return settings_parent
+
     def resolve(self, path: str | Path) -> Path:
         """Resolve a required runtime path from this run's base directory."""
 

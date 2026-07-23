@@ -1930,6 +1930,10 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     write_settings_file(settings_file, database_file)
+    (tmp_path / "startup-errors.log").write_text(
+        "[2026-07-23] sanitized startup entry",
+        encoding="utf-8",
+    )
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
@@ -1945,6 +1949,45 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     assert "Category: Configuration" in html
     assert "Raw exceptions" in html
     assert "No company sources are configured yet." in html
+    assert "startup-errors.log" in html
+    assert "Copy troubleshooting details" in html
+    assert "Open Data Directory" in html
+    assert "Junior troubleshooting summary" in html
+
+    log_response = client.get(
+        "/settings/diagnostics/logs/startup-errors.log"
+    )
+    log_html = log_response.get_data(as_text=True)
+    assert log_response.status_code == 200
+    assert "sanitized startup entry" in log_html
+
+    rejected = client.get("/settings/diagnostics/logs/personal.log")
+    assert rejected.status_code == 302
+
+
+def test_diagnostics_open_data_uses_resolved_runtime_root(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "config" / "settings.yaml"
+    database_file = tmp_path / "data" / "job_radar.sqlite3"
+    settings_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    opened: list[Path] = []
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.open_data_directory",
+        lambda path: opened.append(Path(path)),
+    )
+    app = create_app(
+        settings_path=str(settings_file),
+        base_directory=str(tmp_path),
+    )
+    client = app.test_client()
+
+    response = client.post("/settings/diagnostics/open-data")
+
+    assert response.status_code == 302
+    assert opened == [tmp_path]
 
 
 def test_retention_settings_page_saves_choices(tmp_path: Path) -> None:

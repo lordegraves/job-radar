@@ -140,6 +140,7 @@ logs_path: logs
 
     assert runtime_paths.base_directory == repository_root.resolve()
     assert runtime_paths.settings_path == explicit_settings_path.resolve()
+    assert runtime_paths.user_data_directory == repository_root.resolve()
     assert runtime_paths.database_path == (
         repository_root / "data" / "explicit.sqlite3"
     ).resolve()
@@ -182,6 +183,27 @@ candidate_profile_path: profiles/example/profile.yaml
     assert runtime_paths.candidate_profile_path == (
         user_data_root / "profiles" / "example" / "profile.yaml"
     ).resolve()
+    assert runtime_paths.user_data_directory == user_data_root.resolve()
+
+
+def test_runtime_paths_uses_settings_parent_for_flat_workspace(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    _write_settings(
+        settings_path,
+        """
+database_path: data/job_radar.sqlite3
+reports_path: reports
+logs_path: logs
+""",
+    )
+    monkeypatch.chdir(tmp_path.parent)
+
+    runtime_paths = RuntimePaths.from_settings_argument(settings_path)
+
+    assert runtime_paths.user_data_directory == tmp_path.resolve()
 
 
 def test_runtime_paths_fall_back_to_repository_settings(

@@ -107,7 +107,9 @@ Open **Settings > Diagnostics** for a plain-language health summary of:
 - company job sources
 - email delivery
 
-Each card shows its current state, problem category, summary, and next step. Categories distinguish configuration, collector, network, email, and unexpected application problems. Junior stores safe scan summaries rather than raw exception text, and the page does not display credentials, profile contents, or résumé contents. Detailed safe log viewing and copyable troubleshooting information belong to the next diagnostics milestone.
+Each card shows its current state, problem category, summary, and next step. Categories distinguish configuration, collector, network, email, and unexpected application problems. Junior stores safe scan summaries rather than raw exception text, and the page does not display credentials, profile contents, or résumé contents.
+
+The page also lists up to 20 recognized sanitized Junior logs. Opening one shows only the newest 200,000 bytes so an unexpectedly large file cannot overwhelm the browser. Arbitrary filenames and nested paths are rejected. **Copy details** copies version, schema, data-location, and health state without copying log text or private profile information. **Open Data Directory** opens the workspace that owns the active settings; it does not expose arbitrary server paths through the browser.
 
 ## Reports
 

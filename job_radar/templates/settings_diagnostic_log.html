@@ -1,0 +1,28 @@
+{# Displays only a bounded, allowlisted Junior diagnostic log. #}
+{% extends "base.html" %}
+
+{% block title %}{{ log_view.name }} - Diagnostics - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .diagnostic-log {
+        max-height: 70vh;
+        overflow: auto;
+        white-space: pre-wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('settings_diagnostics') }}">&larr; Diagnostics</a></p>
+<h1 class="page-title">Diagnostic log</h1>
+
+<div class="page-card">
+    <p><strong>Viewing:</strong> <code>{{ log_view.name }}</code></p>
+    <p class="muted">
+        This view is read-only and limited to sanitized logs Junior recognizes.
+        {% if log_view.truncated %}Earlier entries are hidden because the file is large.{% endif %}
+    </p>
+    <pre class="diagnostic-log">{{ log_view.content }}</pre>
+</div>
+{% endblock %}
