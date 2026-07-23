@@ -102,7 +102,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 
 Completed foundations include durable SQLite migrations and backups, shared scan lifecycle services, structured reporting, user-owned runtime paths, distribution-readiness validation, managed profiles and resumes, profile-owned employer selections, profile-owned Tracker and History records, background GUI scans, and the retirement of normal spreadsheet tracking.
 
-Foundation 7A established the Company Workspace: profile-specific Scanning and Paused state, a matching Profile summary, and removal of technical employer-source data from the normal managed-profile view. Add Company, employer resolution, URL detection, suggestions, and an administrative Employer Catalog remain part of later company-management work.
+Foundation 7A established the Company Workspace: profile-specific Scanning and Paused state, a matching Profile summary, and removal of technical employer-source data from the normal managed-profile view. Employer resolution, URL detection, suggestions, and an administrative Employer Catalog remain part of later company-management work.
 
 Foundation 7B is complete: ordinary Settings remains available, installation-wide controls are classified under a session-scoped Administration boundary, the Administration shell requires explicit `ADMIN` confirmation, and an unlocked session is visibly identified and can always be exited. Employer editing and all other global mutations remain deferred.
 
@@ -111,6 +111,8 @@ Foundation 7C is complete: every current state-changing web request requires a v
 Foundation 7D is complete: the active profile can pause or resume any assigned company from the Company Workspace or company detail page. The operation validates active-profile ownership, changes only that profile's assignment, preserves the shared employer catalog and other profiles, and leaves legacy company configuration read-only.
 
 Foundation 7E is complete: a guarded `REMOVE` confirmation lets the active profile remove a company from its own list without deleting the shared employer or affecting another profile. Future scans omit the removed assignment while collected jobs, Tracker records, application history, reports, and other historical records remain intact.
+
+Foundation 7F is complete: the active profile can search a normal-user-safe view of the existing Employer Catalog and add an available, centrally validated scan-ready employer. New assignments default to Scanning, duplicates and cross-profile leakage are prevented, incomplete or globally unavailable employers are blocked with plain-language guidance, and technical collector details remain hidden.
 
 The next major product areas are editable company management, completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
 

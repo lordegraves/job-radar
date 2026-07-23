@@ -4,11 +4,20 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from job_radar.domain_errors import (
+    EmployerAlreadyAssignedError,
+    EmployerConfigurationError,
     EmployerNotAssignedError,
     EmployerNotFoundError,
+    EmployerUnavailableError,
     NoActiveProfileError,
 )
+from job_radar.company_catalog_query_service import (
+    NEEDS_SETUP,
+    UNAVAILABLE,
+    evaluate_employer_availability,
+)
 from job_radar.employer_storage import (
+    assign_employer_to_profile,
     get_employer_source,
     list_profile_employer_assignments,
     set_profile_employer_enabled,
@@ -37,6 +46,17 @@ class CompanyRemovalResult:
     profile_name: str
     employer_id: str
     employer_name: str
+
+
+@dataclass(frozen=True)
+class CompanyAssignmentResult:
+    """Describe an existing catalog employer assigned to one profile."""
+
+    profile_id: str
+    profile_name: str
+    employer_id: str
+    employer_name: str
+    scanning: bool
 
 
 def set_company_scanning_state(
@@ -143,4 +163,53 @@ def remove_company_from_profile(
         profile_name=active_profile.display_name,
         employer_id=employer.employer_id,
         employer_name=employer.name,
+    )
+
+
+def add_existing_company_to_profile(
+    database_path: str | Path,
+    profile_id: str,
+    employer_id: str,
+) -> CompanyAssignmentResult:
+    """Assign one scan-ready catalog employer to the active profile."""
+
+    db_path = initialize_database(database_path)
+    active_profile = get_active_profile(db_path)
+
+    if active_profile is None:
+        raise NoActiveProfileError(
+            "Select a managed profile before adding a company."
+        )
+
+    if active_profile.profile_id != profile_id:
+        raise EmployerNotAssignedError(
+            "The requested profile is no longer active."
+        )
+
+    employer = get_employer_source(db_path, employer_id)
+    if employer is None:
+        raise EmployerNotFoundError("The requested company no longer exists.")
+
+    availability = evaluate_employer_availability(employer)
+    if availability.state == UNAVAILABLE:
+        raise EmployerUnavailableError(availability.explanation)
+    if availability.state == NEEDS_SETUP:
+        raise EmployerConfigurationError(availability.explanation)
+
+    assigned = assign_employer_to_profile(
+        db_path,
+        active_profile.profile_id,
+        employer.employer_id,
+    )
+    if not assigned:
+        raise EmployerAlreadyAssignedError(
+            "This company is already included in the active profile."
+        )
+
+    return CompanyAssignmentResult(
+        profile_id=active_profile.profile_id,
+        profile_name=active_profile.display_name,
+        employer_id=employer.employer_id,
+        employer_name=employer.name,
+        scanning=True,
     )

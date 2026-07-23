@@ -104,7 +104,7 @@ def test_companies_page_shows_only_active_profile_employers(
     assert "Source type" not in html
     assert "https://law.invalid/jobs" not in html
     assert "Local legal employer." not in html
-    assert "Adding companies will be available" in html
+    assert "Add company" in html
 
 
 def test_company_detail_rejects_employer_not_assigned_to_active_profile(
@@ -363,3 +363,127 @@ def test_companies_page_removes_only_confirmed_active_profile_assignment(
     )
     assert get_employer_source(database_path, "example_cafe") is not None
     assert client.get("/companies/example_cafe").status_code == 404
+
+
+def test_add_company_page_searches_safe_catalog_and_adds_available_employer(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="example_cafe",
+            name="Example Cafe",
+            source_type="html",
+            source_config={"source_url": "https://cafe.invalid/jobs"},
+            notes="Internal collector note.",
+        ),
+    )
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="incomplete_bakery",
+            name="Incomplete Bakery",
+            source_type="html",
+            source_config={},
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    page_response = client.get("/companies/add?q=cafe")
+    page_html = page_response.get_data(as_text=True)
+
+    assert page_response.status_code == 200
+    assert "Add a company" in page_html
+    assert "Example Cafe" in page_html
+    assert "Incomplete Bakery" not in page_html
+    assert "Available" in page_html
+    assert "Internal collector note." not in page_html
+    assert "source_type" not in page_html
+
+    response = client.post(
+        "/companies/add",
+        data={"employer_id": "example_cafe"},
+        follow_redirects=True,
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Example Cafe was added to Culinary Profile&#39;s company list" in html
+    assert "will be scanned" in html
+    assert get_profile(database_path, profile.profile_id).company_ids == (
+        "example_cafe",
+    )
+    assert is_profile_employer_enabled(
+        database_path,
+        profile.profile_id,
+        "example_cafe",
+    ) is True
+
+
+def test_add_company_page_blocks_incomplete_and_duplicate_employers(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="assigned_cafe",
+            name="Assigned Cafe",
+            source_type="html",
+            source_config={"source_url": "https://assigned.invalid/jobs"},
+        ),
+    )
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="incomplete_bakery",
+            name="Incomplete Bakery",
+            source_type="html",
+            source_config={},
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+        company_ids=("assigned_cafe",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    page_html = client.get("/companies/add").get_data(as_text=True)
+    assert "Already added" in page_html
+    assert "Needs setup" in page_html
+    assert "needs administrator setup" in page_html
+
+    incomplete_response = client.post(
+        "/companies/add",
+        data={"employer_id": "incomplete_bakery"},
+        follow_redirects=True,
+    )
+    duplicate_response = client.post(
+        "/companies/add",
+        data={"employer_id": "assigned_cafe"},
+        follow_redirects=True,
+    )
+
+    assert "needs administrator setup" in incomplete_response.get_data(
+        as_text=True
+    )
+    assert "already included" in duplicate_response.get_data(as_text=True)
+    assert get_profile(database_path, profile.profile_id).company_ids == (
+        "assigned_cafe",
+    )

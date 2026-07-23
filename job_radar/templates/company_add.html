@@ -1,0 +1,147 @@
+{# Lets a profile add a scan-ready employer without exposing collector details. #}
+{% extends "base.html" %}
+
+{% block title %}Add a Company - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .catalog-search {
+        align-items: end;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(240px, 520px) auto;
+        margin: 18px 0;
+        max-width: 720px;
+    }
+
+    .catalog-search label {
+        display: grid;
+        gap: 6px;
+    }
+
+    .catalog-state {
+        font-weight: 700;
+    }
+
+    .catalog-state-available {
+        color: #8fdc8f;
+    }
+
+    .catalog-state-needs_setup,
+    .catalog-state-unavailable {
+        color: #ffb86c;
+    }
+
+    .catalog-explanation {
+        max-width: 460px;
+    }
+
+    .catalog-action-form {
+        margin: 0;
+    }
+
+    .company-feedback {
+        border-left: 4px solid #ff7b72;
+        margin-top: 16px;
+    }
+
+    @media (max-width: 640px) {
+        .catalog-search {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('companies') }}">&larr; Back to Your Companies</a></p>
+
+<h1 class="page-title">Add a company</h1>
+
+<div class="page-card">
+    <p>
+        Search companies junior already knows how to scan, then add one to
+        <strong>{{ catalog.active_profile.display_name }}'s</strong> profile.
+    </p>
+    <p class="muted">
+        Adding a company affects only this profile. Adding a company Junior
+        does not know yet will be supported in a later step.
+    </p>
+</div>
+
+{% if company_error %}
+<div class="page-card company-feedback company-feedback-error" role="alert">{{ company_error }}</div>
+{% endif %}
+
+<form class="catalog-search" method="get" action="{{ url_for('add_company_page') }}">
+    <label for="company-search">
+        <span>Search known companies</span>
+        <input
+            id="company-search"
+            name="q"
+            type="search"
+            value="{{ catalog.search_query }}"
+            placeholder="Enter a company name"
+            autofocus
+        >
+    </label>
+    <button type="submit">Search</button>
+</form>
+
+{% if catalog.search_query %}
+<p class="muted">
+    Showing results for “{{ catalog.search_query }}”.
+    <a href="{{ url_for('add_company_page') }}">Clear search</a>
+</p>
+{% endif %}
+
+{% if catalog.companies %}
+<table>
+    <thead>
+        <tr>
+            <th>Company</th>
+            <th>Availability</th>
+            <th>What this means</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for company in catalog.companies %}
+        <tr>
+            <td>
+                <strong>{{ company.name }}</strong>
+                {% if company.careers_url %}
+                <br><a href="{{ company.careers_url }}" target="_blank" rel="noopener noreferrer">View careers site</a>
+                {% endif %}
+            </td>
+            <td>
+                <span class="catalog-state catalog-state-{{ company.state }}">{{ company.state_label }}</span>
+            </td>
+            <td class="catalog-explanation">{{ company.explanation }}</td>
+            <td>
+                {% if company.can_assign %}
+                <form class="catalog-action-form" method="post" action="{{ url_for('add_existing_company') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="employer_id" value="{{ company.employer_id }}">
+                    <button type="submit">Add</button>
+                </form>
+                {% else %}
+                <span class="muted">No action available</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% elif catalog.search_query %}
+<div class="page-card">
+    <p>No known companies match “{{ catalog.search_query }}”.</p>
+    <p class="muted">Adding a new company by name or careers link will be available in a later step.</p>
+</div>
+{% else %}
+<div class="page-card">
+    <p>No companies are available in Junior's catalog yet.</p>
+    <p class="muted">An administrator will need to set up companies before they can be added here.</p>
+</div>
+{% endif %}
+{% endblock %}

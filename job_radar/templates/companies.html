@@ -148,6 +148,10 @@
     </p>
 </div>
 
+<div class="actions">
+    <a class="button-link" href="{{ url_for('add_company_page') }}">Add company</a>
+</div>
+
 {% if company_result == "updated" and company_message %}
 <div class="page-card company-feedback" role="status">{{ company_message }}</div>
 {% elif company_result == "error" and company_error %}
@@ -225,7 +229,6 @@
         <p class="muted">junior will not scan employers from another profile.</p>
     </div>
     {% endif %}
-    <p class="muted">Adding companies will be available in the next step.</p>
 </section>
 {% else %}
 <h1 class="page-title">Companies</h1>

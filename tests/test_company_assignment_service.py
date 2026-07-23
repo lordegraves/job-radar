@@ -5,13 +5,17 @@ from pathlib import Path
 import pytest
 
 from job_radar.company_assignment_service import (
+    add_existing_company_to_profile,
     remove_company_from_profile,
     set_company_scanning_state,
 )
 from job_radar.database import connect_database
 from job_radar.domain_errors import (
+    EmployerAlreadyAssignedError,
+    EmployerConfigurationError,
     EmployerNotAssignedError,
     EmployerNotFoundError,
+    EmployerUnavailableError,
     NoActiveProfileError,
 )
 from job_radar.employer_models import EmployerSource
@@ -289,3 +293,100 @@ def test_remove_company_rejects_other_profile_and_unassigned_company(
     assert get_profile(database_path, other_profile.profile_id).company_ids == (
         "other_market",
     )
+
+
+def test_add_existing_company_assigns_scanning_to_only_active_profile(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    add_employer(database_path, "example_market", "Example Market")
+    active_profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Active Profile",
+    )
+    other_profile = ManagedProfile(
+        profile_id="profile_bbbbbbbb",
+        display_name="Other Profile",
+    )
+    create_profile(database_path, active_profile)
+    create_profile(database_path, other_profile)
+    set_active_profile(database_path, active_profile.profile_id)
+
+    result = add_existing_company_to_profile(
+        database_path,
+        active_profile.profile_id,
+        "example_market",
+    )
+
+    assert result.scanning is True
+    assert result.profile_name == "Active Profile"
+    assert get_profile(database_path, active_profile.profile_id).company_ids == (
+        "example_market",
+    )
+    assert get_profile(database_path, other_profile.profile_id).company_ids == ()
+    assert is_profile_employer_enabled(
+        database_path,
+        active_profile.profile_id,
+        "example_market",
+    ) is True
+
+
+def test_add_existing_company_rejects_duplicate_unavailable_and_incomplete(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    add_employer(database_path, "example_market", "Example Market")
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="disabled_market",
+            name="Disabled Market",
+            source_type="html",
+            enabled=False,
+            source_config={"source_url": "https://disabled.invalid/jobs"},
+        ),
+    )
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="incomplete_market",
+            name="Incomplete Market",
+            source_type="html",
+            source_config={},
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Active Profile",
+        company_ids=("example_market",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+
+    with pytest.raises(EmployerAlreadyAssignedError):
+        add_existing_company_to_profile(
+            database_path,
+            profile.profile_id,
+            "example_market",
+        )
+
+    with pytest.raises(EmployerUnavailableError):
+        add_existing_company_to_profile(
+            database_path,
+            profile.profile_id,
+            "disabled_market",
+        )
+
+    with pytest.raises(EmployerConfigurationError):
+        add_existing_company_to_profile(
+            database_path,
+            profile.profile_id,
+            "incomplete_market",
+        )
+
+    with pytest.raises(EmployerNotFoundError):
+        add_existing_company_to_profile(
+            database_path,
+            profile.profile_id,
+            "missing_market",
+        )

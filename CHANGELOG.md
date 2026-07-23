@@ -8,6 +8,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- A safe Add Company page where the active profile can search Junior's existing catalog and add only globally available, scan-ready employers, defaulting the new assignment to Scanning.
 - Guarded profile-company removal that stops future scans for only the active profile while preserving the shared employer, other profiles, collected jobs, applications, and history.
 - Profile-specific Pause and Resume controls in the Company Workspace, with assignment validation that leaves the shared employer catalog and other profiles unchanged.
 - Session-bound CSRF protection for every existing web mutation, including Administration, scans, profiles, résumés, job-fit preferences, Tracker, and History, with safe HTML and JSON failure responses.

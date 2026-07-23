@@ -5,16 +5,22 @@ from collections.abc import Callable
 from flask import Flask, abort, redirect, render_template, request, url_for
 
 from job_radar.company_assignment_service import (
+    add_existing_company_to_profile,
     remove_company_from_profile,
     set_company_scanning_state,
 )
+from job_radar.company_catalog_query_service import build_company_catalog_view
 from job_radar.company_config_service import (
     build_company_source_summaries,
     filter_company_config_views,
 )
 from job_radar.company_workspace_service import build_company_workspace
 from job_radar.company_view_resolution import resolve_company_page_source
-from job_radar.domain_errors import JuniorDomainError, InvalidCompanyStateError
+from job_radar.domain_errors import (
+    EmployerNotFoundError,
+    InvalidCompanyStateError,
+    JuniorDomainError,
+)
 
 
 def register_company_routes(
@@ -226,6 +232,72 @@ def register_company_routes(
                     f"{result.employer_name} was removed from "
                     f"{result.profile_name}'s company list. Existing jobs and "
                     "application history were kept."
+                ),
+            )
+        )
+
+    @app.get("/companies/add")
+    def add_company_page() -> str:
+        catalog = build_company_catalog_view(
+            get_database_path(),
+            search_query=request.args.get("q", ""),
+        )
+        if catalog.active_profile is None:
+            return redirect(
+                url_for(
+                    "companies",
+                    company_result="error",
+                    company_error=(
+                        "Select a managed profile before adding a company."
+                    ),
+                )
+            )
+
+        return render_template(
+            "company_add.html",
+            catalog=catalog,
+            company_error=request.args.get("company_error", "").strip(),
+        )
+
+    @app.post("/companies/add")
+    def add_existing_company():
+        catalog = build_company_catalog_view(get_database_path())
+        if catalog.active_profile is None:
+            return redirect(
+                url_for(
+                    "companies",
+                    company_result="error",
+                    company_error=(
+                        "Select a managed profile before adding a company."
+                    ),
+                )
+            )
+
+        employer_id = request.form.get("employer_id", "").strip()
+        try:
+            if not employer_id:
+                raise EmployerNotFoundError("Choose a company to add.")
+
+            result = add_existing_company_to_profile(
+                get_database_path(),
+                catalog.active_profile.profile_id,
+                employer_id,
+            )
+        except JuniorDomainError as error:
+            return redirect(
+                url_for(
+                    "add_company_page",
+                    company_error=str(error),
+                )
+            )
+
+        return redirect(
+            url_for(
+                "companies",
+                company_result="updated",
+                company_message=(
+                    f"{result.employer_name} was added to "
+                    f"{result.profile_name}'s company list and will be scanned."
                 ),
             )
         )
