@@ -145,7 +145,7 @@ Junior can also suggest fresh employers that appear in recent profile-owned job 
 
 ## Settings and Administration boundary
 
-Settings remains the normal-user home for safe personal and product preferences. Administration is a separate, session-scoped safety boundary for installation-wide and technical controls. Unlocking Administration requires typing `ADMIN`; this is an explicit confirmation, not a password or protection from someone who already controls the local computer. Administration unlock state is limited to the current browser session and Junior process, and restarting Junior invalidates it. The Flask session signing key is generated locally under the user-owned database runtime directory. It is never committed or stored in YAML or SQLite; deleting it invalidates existing browser sessions.
+Settings remains the normal-user home for safe personal and product preferences. Its About page shows the installed version, release channel, user-data location, database and profile schema versions, and safe support guidance without exposing profile contents or credentials. Administration is a separate, session-scoped safety boundary for installation-wide and technical controls. Unlocking Administration requires typing `ADMIN`; this is an explicit confirmation, not a password or protection from someone who already controls the local computer. Administration unlock state is limited to the current browser session and Junior process, and restarting Junior invalidates it. The Flask session signing key is generated locally under the user-owned database runtime directory. It is never committed or stored in YAML or SQLite; deleting it invalidates existing browser sessions.
 
 | Classification | Controls |
 |---|---|

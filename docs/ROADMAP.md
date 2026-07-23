@@ -69,7 +69,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 45 | Planned | Evaluate and select the final desktop application shell, with preference for wrapping the existing Flask GUI in a lightweight native window rather than rewriting the interface without a clear need. |
 | 46 | Planned | Implement the selected desktop shell with an application icon, native window, normal minimize/maximize/close behavior, startup error dialogs, and no visible Flask development console for normal users. |
 | 47 | In Progress | Preserve browser-based local mode, developer CLI mode, desktop mode, and future server mode through shared service-layer code rather than maintaining separate implementations. |
-| 48 | Planned | Add application About and Version views showing installed version, release channel, data location, database version, configuration version, and support/diagnostic information. |
+| 48 | Completed | Add application About and Version views showing installed version, release channel, data location, database version, configuration version, and support/diagnostic information. |
 | 49 | In Progress | Complete GUI consistency and polish across setup, profiles, companies, tracker, history, reports, scan, settings, dialogs, validation messages, empty states, loading states, and error states. |
 | 50 | Planned | Review keyboard navigation, focus behavior, readable contrast, scaling, text wrapping, form labels, confirmation wording, and other accessibility concerns throughout the application. |
 | 51 | In Progress | Add realistic demo/sample data and screenshots that can be used for documentation, release validation, and demonstrations without exposing private job-search data. |
@@ -124,6 +124,8 @@ Guided source confirmation is complete: when a public Greenhouse, Lever, or Ashb
 GUI company management is complete: the unlocked Employer Catalog can create, edit, locally validate, connection-test, enable, disable, retire, and inspect every shared employer. An administrator can assign an available validated employer to any managed profile or remove one profile's assignment without changing another. Permanent deletion requires typed confirmation and remains blocked while any profile assignment or collected job references the employer.
 
 Shipped and user-owned company boundaries are complete: new installations receive an empty packaged company list, while an existing legacy list can be imported once for the active profile. Import conflicts preserve the database employer, so a packaged or legacy definition cannot overwrite a user's later catalog edits. Subsequent GUI changes stay in the user-owned database and do not rewrite shipped or legacy YAML.
+
+About and Version information is complete: Settings links to a read-only page showing the installed application version, stable or pre-release channel, resolved user-data location, current database migration version, profile schema version, and approved support contact. The page shows no profile content, résumé content, credential value, or raw diagnostic failure.
 
 Foundation 7I is complete: the Administration-only Employer Review Queue can inspect safe unresolved submissions, match an existing employer, prefill new-employer setup, optionally assign an available employer to the requesting profile, or mark a request unsupported, rejected, or duplicate. Decisions are audited without raw collector failures or profile content, while normal users see only their own plain-language request state.
 

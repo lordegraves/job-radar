@@ -1,9 +1,12 @@
-"""Prepare and serve the read-only view of active application settings."""
+"""Prepare and serve normal-user settings and application information."""
 
 from dataclasses import dataclass
 
+from collections.abc import Callable
+
 from flask import Flask, render_template
 
+from job_radar.application_info_service import build_application_info
 from job_radar.config import load_settings
 from job_radar.email_sender import get_email_readiness
 from job_radar.runtime_paths import (
@@ -11,6 +14,7 @@ from job_radar.runtime_paths import (
     DEFAULT_EMAIL_PREVIEW_PATH,
     DEFAULT_REPORT_PATH,
     DEFAULT_SCORING_CONFIG_PATH,
+    RuntimePaths,
 )
 
 
@@ -35,8 +39,9 @@ def register_settings_routes(
     app: Flask,
     *,
     settings_path: str,
+    get_runtime_paths: Callable[[], RuntimePaths],
 ) -> None:
-    """Register the read-only application settings page."""
+    """Register normal-user settings and read-only application information."""
 
     @app.get("/settings")
     def settings() -> str:
@@ -45,6 +50,17 @@ def register_settings_routes(
         return render_template(
             "settings.html",
             settings_view=settings_view,
+        )
+
+    @app.get("/settings/about")
+    def settings_about() -> str:
+        runtime_paths = get_runtime_paths()
+        return render_template(
+            "settings_about.html",
+            application_info=build_application_info(
+                database_path=runtime_paths.database_path,
+                user_data_location=runtime_paths.base_directory,
+            ),
         )
 
 

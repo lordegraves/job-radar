@@ -110,6 +110,7 @@ def create_app(
     register_settings_routes(
         app,
         settings_path=app.config["JOB_RADAR_SETTINGS_PATH"],
+        get_runtime_paths=lambda: _get_runtime_paths(app),
     )
 
     register_setup_routes(

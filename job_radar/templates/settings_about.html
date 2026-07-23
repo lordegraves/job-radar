@@ -1,0 +1,40 @@
+{# Gives users safe version and storage facts for support and upgrades. #}
+{% extends "base.html" %}
+
+{% block title %}About junior{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('settings') }}">&larr; Settings</a></p>
+<h1 class="page-title">About junior</h1>
+
+<div class="two-column">
+    <section class="page-card">
+        <h2>Application information</h2>
+        <dl>
+            <dt>Installed version</dt>
+            <dd>{{ application_info.version }}</dd>
+            <dt>Release channel</dt>
+            <dd>{{ application_info.release_channel }}</dd>
+            <dt>Database schema version</dt>
+            <dd>{{ application_info.database_schema_version }}</dd>
+            <dt>Profile/configuration schema version</dt>
+            <dd>{{ application_info.profile_schema_version }}</dd>
+        </dl>
+    </section>
+
+    <section class="page-card">
+        <h2>Data and support</h2>
+        <p>Your Junior data is stored under:</p>
+        <code class="settings-value">{{ application_info.user_data_location }}</code>
+        <p>
+            For an unexpected problem that you cannot correct, contact
+            Clayton Graves at
+            <a href="mailto:claytonmgraves@outlook.com">claytonmgraves@outlook.com</a>.
+        </p>
+        <p class="muted">
+            Do not include passwords, access tokens, credentials, your database,
+            résumé, or profile contents in a support message.
+        </p>
+    </section>
+</div>
+{% endblock %}
