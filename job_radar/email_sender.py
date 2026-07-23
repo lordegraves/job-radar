@@ -125,10 +125,13 @@ def send_email_report(
             message=message,
             password=password,
         )
-    except (OSError, smtplib.SMTPException) as error:
+    except (OSError, smtplib.SMTPException):
         return EmailSendResult(
             sent=False,
-            message=f"Email send failed: {error}",
+            message=(
+                "Email could not be sent. Review Email Settings or open "
+                "Diagnostics for safe troubleshooting details."
+            ),
         )
 
     return EmailSendResult(

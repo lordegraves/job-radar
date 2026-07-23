@@ -1,0 +1,121 @@
+{# Edits safe SMTP fields while sending the credential only to the OS store. #}
+{% extends "base.html" %}
+
+{% block title %}Email setup - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .email-status-card { margin-bottom: 18px; }
+    .connection-status { align-items: center; display: flex; gap: 8px; font-weight: 700; }
+    .connection-dot { background: #8b949e; border-radius: 50%; height: 12px; width: 12px; }
+    .connection-status.success .connection-dot { background: #55d6a3; }
+    .connection-status.error .connection-dot { background: #ff6477; }
+    .connection-status.warning .connection-dot { background: #f5c451; }
+    .connection-facts { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin: 18px 0; }
+    .connection-facts span { color: var(--muted); display: block; font-size: 0.9rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('settings') }}">&larr; Settings</a></p>
+<h1 class="page-title">Email setup</h1>
+
+<section class="page-card email-status-card">
+    <h2>Email connection</h2>
+    {% if connection_test %}
+    <div class="connection-status {{ connection_test.tone }}">
+        <span class="connection-dot" aria-hidden="true"></span>
+        {{ connection_test.status }}
+    </div>
+    <div class="connection-facts">
+        <div><span>Provider</span><strong>{{ connection_test.provider }}</strong></div>
+        <div><span>Last test</span><strong>{{ connection_test.tested_at }}</strong></div>
+        <div><span>Reason</span><strong>{{ connection_test.reason }}</strong></div>
+    </div>
+    {% else %}
+    <div class="connection-status">
+        <span class="connection-dot" aria-hidden="true"></span>
+        Not tested
+    </div>
+    <p class="muted">Enter or review the connection details below, then select Test Connection.</p>
+    {% endif %}
+    <p><strong>Credential storage:</strong> {{ email_form.credential_status }}</p>
+</section>
+
+<form class="page-card" method="post" action="{{ url_for('settings_email_save') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <label>
+        <input type="checkbox" name="enabled" value="yes" {% if email_form.enabled %}checked{% endif %}>
+        Send reports by email
+    </label>
+
+    <h2>Connection</h2>
+    <div class="form-grid">
+        <label>Provider
+            <select id="email-provider" name="provider">
+                <option value="gmail" {% if email_form.provider == 'gmail' %}selected{% endif %}>Gmail</option>
+                <option value="outlook" {% if email_form.provider == 'outlook' %}selected{% endif %}>Outlook</option>
+                <option value="custom" {% if email_form.provider == 'custom' %}selected{% endif %}>Custom SMTP</option>
+            </select>
+            <span class="muted">Gmail or Outlook may require an app password or provider-approved SMTP access.</span>
+        </label>
+        <label>Username
+            <input name="smtp_username" value="{{ email_form.smtp_username }}">
+        </label>
+        <label>Password
+            <input type="password" name="credential" autocomplete="new-password">
+            <span class="muted">Leave blank to keep the current credential.</span>
+        </label>
+        <div>
+            <strong>Storage</strong>
+            <p>{% if email_form.credential_saved or 'environment variable' in email_form.credential_status %}✓{% else %}—{% endif %} {{ email_form.credential_status }}</p>
+        </div>
+    </div>
+
+    <details id="custom-smtp-settings" {% if email_form.provider == 'custom' %}open{% endif %}>
+        <summary>Custom SMTP server settings</summary>
+        <div class="form-grid">
+            <label>SMTP server
+                <input id="smtp-host" name="smtp_host" value="{{ email_form.smtp_host }}">
+            </label>
+            <label>SMTP port
+                <input id="smtp-port" name="smtp_port" inputmode="numeric" value="{{ email_form.smtp_port }}">
+            </label>
+            <label>Security
+                <select id="smtp-security" name="smtp_tls_mode">
+                    <option value="starttls" {% if email_form.smtp_tls_mode == 'starttls' %}selected{% endif %}>STARTTLS</option>
+                    <option value="ssl" {% if email_form.smtp_tls_mode == 'ssl' %}selected{% endif %}>SSL/TLS</option>
+                    <option value="none" {% if email_form.smtp_tls_mode == 'none' %}selected{% endif %}>None (local relay only)</option>
+                </select>
+            </label>
+        </div>
+    </details>
+
+    <button type="submit" formaction="{{ url_for('settings_email_test') }}">Test Connection</button>
+
+    <h2>Delivery details</h2>
+    <div class="form-grid">
+        <label>Sender email
+            <input type="email" name="sender" value="{{ email_form.sender }}">
+        </label>
+        <label>Sender name
+            <input name="sender_name" value="{{ email_form.sender_name }}">
+        </label>
+        <label>Recipients, one per line
+            <textarea name="recipients" rows="4">{{ email_form.recipients | join('\n') }}</textarea>
+        </label>
+    </div>
+
+    <p class="muted">The password is stored by your operating system, not in Junior's settings or database.</p>
+    <button type="submit">Save email settings</button>
+    <a class="button-link button-secondary" href="{{ url_for('settings') }}">Cancel</a>
+</form>
+
+<script>
+    const provider = document.getElementById("email-provider");
+    const customSettings = document.getElementById("custom-smtp-settings");
+    provider.addEventListener("change", () => {
+        customSettings.open = provider.value === "custom";
+    });
+</script>
+{% endblock %}

@@ -1895,7 +1895,7 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Settings" in html
-    assert "This page is read-only for now." in html
+    assert "Runtime paths remain read-only." in html
     assert "Runtime paths" in html
     assert "Active settings file" in html
     assert f"<code class=\"settings-value\">{settings_file}</code>" in html
