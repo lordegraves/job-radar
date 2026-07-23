@@ -45,52 +45,53 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 21 | Planned | Add guided company-source detection from a company name or careers URL, with confirmation of detected ATS/source type before saving. |
 | 22 | Planned | Add company connection testing, collector validation, last-success status, last-error status, and clear troubleshooting messages. |
 | 23 | In Progress | Preserve support for shipped/default company definitions while allowing users to maintain their own company inventory and overrides safely. |
-| 24 | Completed | Add first-run detection so a new installation opens guided setup instead of failing because configuration, profiles, companies, or data directories do not yet exist. |
-| 25 | Completed | Create a guided first-run setup wizard that collects profile name, resume, role preferences, compensation, locations, remote/hybrid rules, exclusions, and initial companies. |
-| 26 | Completed | Add a first-run review step that clearly shows the generated profile, preferences, companies, data location, and scan behavior before the user saves the setup. |
-| 27 | Planned | Add a first-run validation scan that tests configuration, confirms at least one working company source, and explains any setup problems in plain language. |
-| 28 | Completed | Add resumable setup so an interrupted or incomplete first-run wizard can continue safely without starting over or leaving broken partial configuration. |
-| 29 | In Progress | Build editable Settings pages for application paths, report behavior, scan behavior, retention, profile defaults, company defaults, logs, backups, and application version information. |
-| 30 | Planned | Add safe credential storage using OS-appropriate secret handling so SMTP passwords, API keys, and tokens are never stored in committed files or plain-text application settings. |
-| 31 | Planned | Add an email setup flow for SMTP server, port, security mode, sender, recipients, credentials, and clear validation errors. |
-| 32 | Planned | Add a safe test-email workflow that does not accidentally trigger a full scan or send a normal production report. |
-| 33 | Planned | Add scan scheduling configuration for enabled/disabled state, time of day, selected weekdays, email delivery, next scheduled run, last run, and failed-run visibility. |
-| 34 | Planned | Implement Windows scheduling support through a controlled Task Scheduler integration that can be created, inspected, updated, disabled, and removed through the app. |
-| 35 | Planned | Add Linux scheduling support for standalone and server installations using a documented, shared scheduling abstraction rather than separate product logic. |
-| 36 | Planned | Add configurable report and log retention options such as latest only, latest plus previous, or retain the most recent configured number of runs. |
-| 37 | In Progress | Add source-health, scan-health, and application diagnostics that clearly distinguish configuration errors, collector failures, network problems, email failures, and unexpected application errors. |
-| 38 | Planned | Add an in-app logs and diagnostics page with safe log viewing, copyable troubleshooting details, and an Open Data Directory action. |
-| 39 | In Progress | Add user-facing backup, restore, export, and recovery workflows for profiles, companies, settings, SQLite data, reports, and other user-owned application data. |
-| 40 | In Progress | Add automatic safety backups before destructive migrations, major upgrades, profile deletion, company deletion, database repair, or data reset operations. |
-| 41 | In Progress | Add a normal application launcher that starts Job Radar, waits for readiness, opens the interface, reports startup failures, and does not require the user to enter Python or Flask commands. |
-| 42 | In Progress | Add single-instance handling so launching Job Radar twice focuses or reports the existing application instead of starting conflicting servers or opening duplicate databases. |
-| 43 | In Progress | Add clean application shutdown that stops background services, closes database connections, completes pending writes safely, and prevents orphaned Flask or Python processes. |
-| 44 | Planned | Evaluate and select the final desktop application shell, with preference for wrapping the existing Flask GUI in a lightweight native window rather than rewriting the interface without a clear need. |
-| 45 | Planned | Implement the selected desktop shell with an application icon, native window, normal minimize/maximize/close behavior, startup error dialogs, and no visible Flask development console for normal users. |
-| 46 | In Progress | Preserve browser-based local mode, developer CLI mode, desktop mode, and future server mode through shared service-layer code rather than maintaining separate implementations. |
-| 47 | Planned | Add application About and Version views showing installed version, release channel, data location, database version, configuration version, and support/diagnostic information. |
-| 48 | In Progress | Complete GUI consistency and polish across setup, profiles, companies, tracker, history, reports, scan, settings, dialogs, validation messages, empty states, loading states, and error states. |
-| 49 | Planned | Review keyboard navigation, focus behavior, readable contrast, scaling, text wrapping, form labels, confirmation wording, and other accessibility concerns throughout the application. |
-| 50 | In Progress | Add realistic demo/sample data and screenshots that can be used for documentation, release validation, and demonstrations without exposing private job-search data. |
-| 51 | Completed | Define packaging architecture, bundled dependencies, application resources, default configuration, user-data creation, migrations, launch behavior, and upgrade behavior before producing installers. |
-| 52 | Planned | Create a reproducible Windows packaged build with an `.exe` entry point that does not require the user to install Python, create a virtual environment, clone the repository, or run terminal commands. |
-| 53 | Planned | Create a Windows installer with application icon, Start Menu entry, optional desktop shortcut, guided installation, clear install location, user-data preservation, and clean uninstall support. |
-| 54 | In Progress | Ensure Windows upgrades preserve profiles, resumes, settings, companies, tracker/history data, reports, credentials, backups, and schedules while updating only application-owned files. |
-| 55 | Planned | Add Windows installer repair, upgrade, and uninstall validation, including confirmation that uninstalling the application does not delete user data without explicit approval. |
-| 56 | Planned | Add optional update checking that reports available stable releases without silently replacing the application or changing user data. |
-| 57 | Planned | Package the application for Linux using a supported tarball-based distribution with launch scripts, dependency checks, user-data paths, migrations, logs, and clear install/uninstall instructions. |
-| 58 | In Progress | Support standalone local PC operation on Windows and Linux for users who want Job Radar to run only when they launch it. |
-| 59 | Planned | Support unattended service-style operation on Windows and Linux for users who want scheduled scans without keeping the desktop application open. |
-| 60 | Planned | Add container/server mode with persistent user data, configuration injection, logs, health checks, controlled upgrades, and the same service-layer behavior as the desktop application. |
-| 61 | Planned | Support Kubernetes deployment with persistent storage, Secrets, configuration, health checks, scheduled scans, backups, retention, and safe upgrade procedures. |
-| 62 | In Progress | Write complete installation, guided setup, profile management, company management, email, scheduling, backup, restore, troubleshooting, upgrade, and uninstall documentation for Windows users. |
-| 63 | Planned | Write complete installation and operations documentation for Linux standalone mode, Linux service mode, container mode, and Kubernetes mode. |
-| 64 | In Progress | Add automated release validation for clean installation, first launch, guided setup, initial scan, application restart, upgrade, migration, backup, restore, and uninstall behavior. |
-| 65 | Planned | Test packaged builds on clean Windows and Linux environments that do not contain the development repository, Python virtual environment, existing settings, or developer tools. |
-| 66 | Planned | Add release-candidate acceptance testing using a new-user workflow from installer download through first report, application tracking, restart, update, backup, restore, and uninstall. |
-| 67 | Planned | Resolve all release-blocking defects, incomplete setup paths, unexplained errors, broken migrations, packaging failures, data-loss risks, accessibility blockers, and documentation gaps found during release-candidate testing. |
-| 68 | Planned | Publish the first fully productized stable release with installer downloads, checksums, release notes, screenshots, supported-platform details, upgrade instructions, known limitations, and verified documentation. |
-| 69 | In Progress | Finalize the product finish line: a user can download Job Radar, run the installer, launch the application, complete guided setup, add their own profile and companies, run and schedule scans, review reports, manage applications, preserve and back up their data, upgrade safely, and use the product daily without editing code or YAML. |
+| 24 | In Progress | Add profile-owned role discovery and title mapping based on demonstrated skills, tools, responsibilities, and domain evidence; explain adjacent-title suggestions in plain language, require approval before expanding scans, and record Relevant, Not relevant, or Different discipline feedback without relying on dictionary synonyms. |
+| 25 | Completed | Add first-run detection so a new installation opens guided setup instead of failing because configuration, profiles, companies, or data directories do not yet exist. |
+| 26 | Completed | Create a guided first-run setup wizard that collects profile name, resume, role preferences, compensation, locations, remote/hybrid rules, exclusions, and initial companies. |
+| 27 | Completed | Add a first-run review step that clearly shows the generated profile, preferences, companies, data location, and scan behavior before the user saves the setup. |
+| 28 | Planned | Add a first-run validation scan that tests configuration, confirms at least one working company source, and explains any setup problems in plain language. |
+| 29 | Completed | Add resumable setup so an interrupted or incomplete first-run wizard can continue safely without starting over or leaving broken partial configuration. |
+| 30 | In Progress | Build editable Settings pages for application paths, report behavior, scan behavior, retention, profile defaults, company defaults, logs, backups, and application version information. |
+| 31 | Planned | Add safe credential storage using OS-appropriate secret handling so SMTP passwords, API keys, and tokens are never stored in committed files or plain-text application settings. |
+| 32 | Planned | Add an email setup flow for SMTP server, port, security mode, sender, recipients, credentials, and clear validation errors. |
+| 33 | Planned | Add a safe test-email workflow that does not accidentally trigger a full scan or send a normal production report. |
+| 34 | Planned | Add scan scheduling configuration for enabled/disabled state, time of day, selected weekdays, email delivery, next scheduled run, last run, and failed-run visibility. |
+| 35 | Planned | Implement Windows scheduling support through a controlled Task Scheduler integration that can be created, inspected, updated, disabled, and removed through the app. |
+| 36 | Planned | Add Linux scheduling support for standalone and server installations using a documented, shared scheduling abstraction rather than separate product logic. |
+| 37 | Planned | Add configurable report and log retention options such as latest only, latest plus previous, or retain the most recent configured number of runs. |
+| 38 | In Progress | Add source-health, scan-health, and application diagnostics that clearly distinguish configuration errors, collector failures, network problems, email failures, and unexpected application errors. |
+| 39 | Planned | Add an in-app logs and diagnostics page with safe log viewing, copyable troubleshooting details, and an Open Data Directory action. |
+| 40 | In Progress | Add user-facing backup, restore, export, and recovery workflows for profiles, companies, settings, SQLite data, reports, and other user-owned application data. |
+| 41 | In Progress | Add automatic safety backups before destructive migrations, major upgrades, profile deletion, company deletion, database repair, or data reset operations. |
+| 42 | In Progress | Add a normal application launcher that starts Job Radar, waits for readiness, opens the interface, reports startup failures, and does not require the user to enter Python or Flask commands. |
+| 43 | In Progress | Add single-instance handling so launching Job Radar twice focuses or reports the existing application instead of starting conflicting servers or opening duplicate databases. |
+| 44 | In Progress | Add clean application shutdown that stops background services, closes database connections, completes pending writes safely, and prevents orphaned Flask or Python processes. |
+| 45 | Planned | Evaluate and select the final desktop application shell, with preference for wrapping the existing Flask GUI in a lightweight native window rather than rewriting the interface without a clear need. |
+| 46 | Planned | Implement the selected desktop shell with an application icon, native window, normal minimize/maximize/close behavior, startup error dialogs, and no visible Flask development console for normal users. |
+| 47 | In Progress | Preserve browser-based local mode, developer CLI mode, desktop mode, and future server mode through shared service-layer code rather than maintaining separate implementations. |
+| 48 | Planned | Add application About and Version views showing installed version, release channel, data location, database version, configuration version, and support/diagnostic information. |
+| 49 | In Progress | Complete GUI consistency and polish across setup, profiles, companies, tracker, history, reports, scan, settings, dialogs, validation messages, empty states, loading states, and error states. |
+| 50 | Planned | Review keyboard navigation, focus behavior, readable contrast, scaling, text wrapping, form labels, confirmation wording, and other accessibility concerns throughout the application. |
+| 51 | In Progress | Add realistic demo/sample data and screenshots that can be used for documentation, release validation, and demonstrations without exposing private job-search data. |
+| 52 | Completed | Define packaging architecture, bundled dependencies, application resources, default configuration, user-data creation, migrations, launch behavior, and upgrade behavior before producing installers. |
+| 53 | Planned | Create a reproducible Windows packaged build with an `.exe` entry point that does not require the user to install Python, create a virtual environment, clone the repository, or run terminal commands. |
+| 54 | Planned | Create a Windows installer with application icon, Start Menu entry, optional desktop shortcut, guided installation, clear install location, user-data preservation, and clean uninstall support. |
+| 55 | In Progress | Ensure Windows upgrades preserve profiles, resumes, settings, companies, tracker/history data, reports, credentials, backups, and schedules while updating only application-owned files. |
+| 56 | Planned | Add Windows installer repair, upgrade, and uninstall validation, including confirmation that uninstalling the application does not delete user data without explicit approval. |
+| 57 | Planned | Add optional update checking that reports available stable releases without silently replacing the application or changing user data. |
+| 58 | Planned | Package the application for Linux using a supported tarball-based distribution with launch scripts, dependency checks, user-data paths, migrations, logs, and clear install/uninstall instructions. |
+| 59 | In Progress | Support standalone local PC operation on Windows and Linux for users who want Job Radar to run only when they launch it. |
+| 60 | Planned | Support unattended service-style operation on Windows and Linux for users who want scheduled scans without keeping the desktop application open. |
+| 61 | Planned | Add container/server mode with persistent user data, configuration injection, logs, health checks, controlled upgrades, and the same service-layer behavior as the desktop application. |
+| 62 | Planned | Support Kubernetes deployment with persistent storage, Secrets, configuration, health checks, scheduled scans, backups, retention, and safe upgrade procedures. |
+| 63 | In Progress | Write complete installation, guided setup, profile management, company management, email, scheduling, backup, restore, troubleshooting, upgrade, and uninstall documentation for Windows users. |
+| 64 | Planned | Write complete installation and operations documentation for Linux standalone mode, Linux service mode, container mode, and Kubernetes mode. |
+| 65 | In Progress | Add automated release validation for clean installation, first launch, guided setup, initial scan, application restart, upgrade, migration, backup, restore, and uninstall behavior. |
+| 66 | Planned | Test packaged builds on clean Windows and Linux environments that do not contain the development repository, Python virtual environment, existing settings, or developer tools. |
+| 67 | Planned | Add release-candidate acceptance testing using a new-user workflow from installer download through first report, application tracking, restart, update, backup, restore, and uninstall. |
+| 68 | Planned | Resolve all release-blocking defects, incomplete setup paths, unexplained errors, broken migrations, packaging failures, data-loss risks, accessibility blockers, and documentation gaps found during release-candidate testing. |
+| 69 | Planned | Publish the first fully productized stable release with installer downloads, checksums, release notes, screenshots, supported-platform details, upgrade instructions, known limitations, and verified documentation. |
+| 70 | In Progress | Finalize the product finish line: a user can download Job Radar, run the installer, launch the application, complete guided setup, add their own profile and companies, run and schedule scans, review reports, manage applications, preserve and back up their data, upgrade safely, and use the product daily without editing code or YAML. |
 
 ## Protected wording notes
 
@@ -128,9 +129,11 @@ Foundation 7J3 is complete: Junior can suggest up to 50 fresh employers from the
 
 Foundation 7K is complete: guarded Recommendation Administration can maintain global employer aliases, industries, occupation families, employer type, geographic presence, remote-hiring information, and recommendation eligibility. An administrator can inspect stored score, positive and negative evidence, feedback, availability, and timestamps for one profile/employer pair without exposing numeric ranking to normal users. Feedback reset is explicitly confirmed, profile-specific, and audited. Rebuilds are bounded to one profile or one employer unless the administrator types `REBUILD ALL`; rebuilds preserve saved feedback.
 
-Foundation 7L is complete: the normal Companies GUI no longer exposes or manages legacy `target-companies.yaml` records. A user without an active managed profile receives a clear profile setup action, and direct legacy-company detail routes are unavailable. Protected one-time import remains available to existing upgraded profiles, while released CLI/server scans without a managed profile retain YAML compatibility to avoid an unapproved breaking change.
+Foundation 7L is in progress: Role Discovery and Title Mapping will suggest adjacent work only when profile-owned résumé evidence supports the underlying skills, tools, responsibilities, and domain. Similar wording alone is insufficient. Every suggestion must explain the evidence, remain profile-specific, require user approval before expanding scans, and accept Relevant, Not relevant, or Different discipline feedback.
 
-The company workspace and recommendation milestone sequence is complete. Other major product areas include completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
+Foundation 7M is complete: the normal Companies GUI no longer exposes or manages legacy `target-companies.yaml` records. A user without an active managed profile receives a clear profile setup action, and direct legacy-company detail routes are unavailable. Protected one-time import remains available to existing upgraded profiles, while released CLI/server scans without a managed profile retain YAML compatibility to avoid an unapproved breaking change.
+
+The company workspace and employer-recommendation sequence is complete. Profile-owned Role Discovery and Title Mapping is the active Foundation 7L milestone. Other major product areas include completing profile configuration, guided first-run validation, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
 
 First-run detection and resumable setup are complete: after safe desktop bootstrap, a genuinely empty database opens a dedicated setup welcome page. Existing profiles, employers, jobs, Tracker records, or History records prevent first-run mode, so upgrades and established installations are not redirected into onboarding. Once setup starts, SQLite records the current profile, résumé, companies, or review checkpoint. Restarting returns to that checkpoint, and setup is completed only through the explicit review action. Existing user data is not inferred, replaced, or removed.
 
