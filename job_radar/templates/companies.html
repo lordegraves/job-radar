@@ -173,6 +173,26 @@
     </div>
 </section>
 
+{% if review_states %}
+<section>
+    <h2>Company setup requests</h2>
+    <table>
+        <thead>
+            <tr><th>Company</th><th>Status</th><th>What this means</th></tr>
+        </thead>
+        <tbody>
+            {% for state in review_states %}
+            <tr>
+                <td>{{ state.company_label }}</td>
+                <td>{{ state.state_label }}</td>
+                <td>{{ state.explanation }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
+
 <section>
     <h2>Companies in this search</h2>
     {% if workspace.companies %}

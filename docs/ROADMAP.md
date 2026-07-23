@@ -118,6 +118,8 @@ Foundation 7G is complete: the Administration-only Employer Catalog provides sea
 
 Foundation 7H is complete: a normal user can enter a company name or public careers URL. Junior normalizes the input, checks exact catalog identity and aliases, prevents silent ambiguous merges, recognizes supported career-site families centrally, creates and assigns only confidently complete sources in one transaction, and otherwise records a safe pending administrator-review request. Resolution makes no network request and rejects local or private destinations.
 
-The next major product areas are the pending employer review queue, company recommendations, completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
+Foundation 7I is complete: the Administration-only Employer Review Queue can inspect safe unresolved submissions, match an existing employer, prefill new-employer setup, optionally assign an available employer to the requesting profile, or mark a request unsupported, rejected, or duplicate. Decisions are audited without raw collector failures or profile content, while normal users see only their own plain-language request state.
+
+The next major product areas are company recommendations, completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
 
 The projected full-product target remains September 30, 2026. Milestone quality, user-data safety, and dependency order take precedence over the date.

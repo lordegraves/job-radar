@@ -58,6 +58,8 @@
         <p>{{ description }}</p>
         {% if title == "Employer Catalog" %}
         <a class="button-link primary-action" href="{{ url_for('administration_employers') }}">Manage employers</a>
+        {% elif title == "Employer review queue" %}
+        <a class="button-link primary-action" href="{{ url_for('administration_employer_reviews') }}">Review submissions</a>
         {% else %}
         <span class="planned-label">Planned</span>
         {% endif %}

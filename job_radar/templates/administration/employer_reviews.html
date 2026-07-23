@@ -1,0 +1,65 @@
+{# Lists safe employer submissions for Administration review. #}
+{% extends "base.html" %}
+
+{% block title %}Employer Review Queue - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .review-heading { align-items: center; display: flex; justify-content: space-between; }
+    .review-filter { align-items: end; display: flex; gap: 10px; margin: 16px 0; }
+    .review-filter label { margin: 0; }
+    .review-filter select { display: block; margin-top: 6px; }
+    .review-table { overflow-x: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('administration') }}">&larr; Administration</a></p>
+<div class="review-heading">
+    <div>
+        <h1 class="page-title">Employer Review Queue</h1>
+        <p class="muted">Resolve company submissions Junior could not configure safely on its own.</p>
+    </div>
+</div>
+
+<form class="review-filter" method="get">
+    <label>Status
+        <select name="status">
+            <option value="" {% if not selected_status %}selected{% endif %}>All statuses</option>
+            {% for status in statuses %}
+            <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status|replace('_', ' ')|title }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <button type="submit">Apply</button>
+</form>
+
+<div class="review-table">
+    <table>
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Careers URL</th>
+                <th>Requesting profile</th>
+                <th>What Junior found</th>
+                <th>Submitted</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for review in reviews %}
+            <tr>
+                <td><a href="{{ url_for('administration_employer_review_detail', request_id=review.request_id) }}">{{ review.company_label }}</a></td>
+                <td>{{ review.submitted_careers_url or 'Not provided' }}</td>
+                <td>{{ review.requesting_profile_name }}</td>
+                <td>{{ review.detection_label }}</td>
+                <td>{{ review.created_at }}</td>
+                <td>{{ review.status|replace('_', ' ')|title }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">No review requests match this status.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

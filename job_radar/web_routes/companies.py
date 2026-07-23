@@ -22,6 +22,7 @@ from job_radar.domain_errors import (
     JuniorDomainError,
 )
 from job_radar.employer_resolution_service import resolve_employer_submission
+from job_radar.employer_review_service import list_profile_review_states
 
 
 def register_company_routes(
@@ -45,6 +46,10 @@ def register_company_routes(
                 company_result=request.args.get("company_result", "").strip(),
                 company_message=request.args.get("company_message", "").strip(),
                 company_error=request.args.get("company_error", "").strip(),
+                review_states=list_profile_review_states(
+                    get_database_path(),
+                    workspace.active_profile.profile_id,
+                ),
             )
 
         # Compatibility: technical YAML visibility remains until the legacy

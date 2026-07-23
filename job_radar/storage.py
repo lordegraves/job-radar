@@ -258,6 +258,11 @@ def _schema_migrations() -> tuple:
             "add employer identity resolution and review requests",
             _migrate_employer_resolution,
         ),
+        (
+            15,
+            "add employer review audit",
+            _migrate_employer_review_audit,
+        ),
     )
 
 
@@ -831,6 +836,32 @@ def _migrate_employer_resolution(connection: sqlite3.Connection) -> None:
         """
         CREATE INDEX IF NOT EXISTS idx_employer_review_status_created
         ON employer_review_requests(status, created_at)
+        """
+    )
+
+
+def _migrate_employer_review_audit(connection: sqlite3.Connection) -> None:
+    """Record safe review-queue decisions without raw collector failures."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS employer_review_audit (
+            audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id TEXT NOT NULL,
+            operation TEXT NOT NULL,
+            previous_status TEXT NOT NULL,
+            new_status TEXT NOT NULL,
+            resolved_employer_id TEXT,
+            assignment_requested INTEGER NOT NULL DEFAULT 0,
+            assignment_completed INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_employer_review_audit_request
+        ON employer_review_audit(request_id, audit_id DESC)
         """
     )
 

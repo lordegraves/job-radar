@@ -23,8 +23,11 @@
 
 <form class="page-card employer-form" method="post" action="{{ form_action }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    {% if review_request_id %}
+    <input type="hidden" name="review_request_id" value="{{ review_request_id }}">
+    {% endif %}
     <label>Employer name
-        <input name="name" required value="{{ employer_record.employer.name if employer_record else '' }}">
+        <input name="name" required value="{{ employer_record.employer.name if employer_record else prefill_name }}">
     </label>
     <label>Job source
         <select name="source_type"

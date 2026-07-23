@@ -31,6 +31,19 @@ from job_radar.employer_admin_service import (
     update_employer,
     validate_employer,
 )
+from job_radar.employer_review_service import (
+    EmployerReviewError,
+    PENDING,
+    REVIEW_STATUSES,
+    assign_resolved_employer,
+    get_review_request,
+    list_review_audit,
+    list_review_requests,
+    mark_configured_new,
+    mark_review_status,
+    resolve_to_existing_employer,
+)
+from job_radar.employer_storage import list_employer_sources
 
 
 def register_administration_routes(
@@ -79,14 +92,25 @@ def register_administration_routes(
             source_types=sorted(SUPPORTED_SOURCE_TYPES),
             selected_source=selected_source,
             fields=source_fields(selected_source),
-            field_values={},
+            field_values={
+                "careers_url": request.args.get("careers_url", ""),
+            },
             form_action=url_for("administration_employer_new_submit"),
+            prefill_name=request.args.get("name", ""),
+            prefill_careers_url=request.args.get("careers_url", ""),
+            review_request_id=request.args.get("review_request_id", ""),
         )
 
     @app.post("/administration/employers/new")
     @administration_required
     def administration_employer_new_submit():
         source_type = request.form.get("source_type", "")
+        review_request_id = request.form.get("review_request_id", "").strip()
+        if review_request_id:
+            review = get_review_request(get_database_path(), review_request_id)
+            if review is None or review.status != PENDING:
+                flash("That review request is no longer pending.", "error")
+                return redirect(url_for("administration_employer_reviews"))
         try:
             record = create_employer(
                 get_database_path(),
@@ -95,6 +119,12 @@ def register_administration_routes(
                 source_config=dict(request.form),
                 notes=request.form.get("notes", ""),
             )
+            if review_request_id:
+                mark_configured_new(
+                    get_database_path(),
+                    review_request_id,
+                    record.employer.employer_id,
+                )
         except EmployerAdminError as error:
             flash(str(error), "error")
             return redirect(
@@ -140,6 +170,9 @@ def register_administration_routes(
                 "administration_employer_edit_submit",
                 employer_id=employer_id,
             ),
+            prefill_name="",
+            prefill_careers_url="",
+            review_request_id="",
         )
 
     @app.post("/administration/employers/<employer_id>/edit")
@@ -217,6 +250,96 @@ def register_administration_routes(
     @administration_required
     def administration_employer_retire(employer_id: str):
         return _lifecycle_response(employer_id, "retire")
+
+    @app.get("/administration/employer-reviews")
+    @administration_required
+    def administration_employer_reviews() -> str:
+        status = request.args.get("status", PENDING)
+        if status not in REVIEW_STATUSES and status:
+            status = PENDING
+        return render_template(
+            "administration/employer_reviews.html",
+            reviews=list_review_requests(get_database_path(), status=status),
+            selected_status=status,
+            statuses=REVIEW_STATUSES,
+        )
+
+    @app.get("/administration/employer-reviews/<request_id>")
+    @administration_required
+    def administration_employer_review_detail(request_id: str) -> str:
+        review = get_review_request(get_database_path(), request_id)
+        if review is None:
+            return "Employer review request not found.", 404
+        return render_template(
+            "administration/employer_review_detail.html",
+            review=review,
+            employers=list_employer_sources(get_database_path()),
+            audit=list_review_audit(get_database_path(), request_id),
+        )
+
+    @app.post("/administration/employer-reviews/<request_id>/match")
+    @administration_required
+    def administration_employer_review_match(request_id: str):
+        try:
+            resolve_to_existing_employer(
+                get_database_path(),
+                request_id,
+                request.form.get("employer_id", ""),
+                assign_to_profile=request.form.get("assign_to_profile") == "yes",
+            )
+            flash("Review matched to the existing employer.", "success")
+        except EmployerReviewError as error:
+            flash(str(error), "error")
+        return redirect(
+            url_for(
+                "administration_employer_review_detail",
+                request_id=request_id,
+            )
+        )
+
+    @app.post("/administration/employer-reviews/<request_id>/status")
+    @administration_required
+    def administration_employer_review_status(request_id: str):
+        try:
+            mark_review_status(
+                get_database_path(),
+                request_id,
+                request.form.get("status", ""),
+            )
+            flash("Review status updated.", "success")
+        except EmployerReviewError as error:
+            flash(str(error), "error")
+        return redirect(
+            url_for(
+                "administration_employer_review_detail",
+                request_id=request_id,
+            )
+        )
+
+    @app.post("/administration/employer-reviews/<request_id>/assign")
+    @administration_required
+    def administration_employer_review_assign(request_id: str):
+        try:
+            created = assign_resolved_employer(
+                get_database_path(),
+                request_id,
+            )
+            flash(
+                (
+                    "Employer assigned to the requesting profile."
+                    if created
+                    else "The employer is already assigned to that profile."
+                ),
+                "success",
+            )
+        except EmployerReviewError as error:
+            flash(str(error), "error")
+        return redirect(
+            url_for(
+                "administration_employer_review_detail",
+                request_id=request_id,
+            )
+        )
 
     @app.get("/administration/unlock")
     def administration_unlock() -> str:

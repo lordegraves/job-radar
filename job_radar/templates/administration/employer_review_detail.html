@@ -1,0 +1,93 @@
+{# Resolves one company submission without exposing raw collector errors. #}
+{% extends "base.html" %}
+
+{% block title %}Review {{ review.company_label }} - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .review-grid { display: grid; gap: 18px; grid-template-columns: 2fr 1fr; }
+    .review-details dt { color: var(--muted); font-weight: 650; margin-top: 12px; }
+    .review-details dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+    .review-actions { display: grid; gap: 18px; margin-top: 20px; }
+    .review-action { border-top: 1px solid var(--border); padding-top: 16px; }
+    .review-action select { margin: 8px 0; min-width: 280px; }
+    .decision-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    @media (max-width: 850px) { .review-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('administration_employer_reviews') }}">&larr; Employer Review Queue</a></p>
+<h1 class="page-title">{{ review.company_label }}</h1>
+
+<div class="review-grid">
+    <section class="page-card">
+        <h2>Submitted company</h2>
+        <dl class="review-details">
+            <dt>Company name</dt><dd>{{ review.submitted_company_name or 'Not provided' }}</dd>
+            <dt>Careers URL</dt><dd>{{ review.submitted_careers_url or 'Not provided' }}</dd>
+            <dt>Requesting profile</dt><dd>{{ review.requesting_profile_name }}</dd>
+            <dt>What Junior found</dt><dd>{{ review.detection_label }}</dd>
+            <dt>Safe summary</dt><dd>{{ review.safe_summary }}</dd>
+            <dt>Status</dt><dd>{{ review.status|replace('_', ' ')|title }}</dd>
+            <dt>Submitted</dt><dd>{{ review.created_at }}</dd>
+            <dt>Reviewed</dt><dd>{{ review.reviewed_at or 'Not reviewed' }}</dd>
+            <dt>Resolved employer</dt><dd>{{ review.resolved_employer_id or 'Not resolved' }}</dd>
+        </dl>
+
+        {% if review.status == 'PENDING' %}
+        <div class="review-actions">
+            <form class="review-action" method="post" action="{{ url_for('administration_employer_review_match', request_id=review.request_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <h3>Match an existing employer</h3>
+                <select name="employer_id" required>
+                    <option value="">Choose an employer</option>
+                    {% for employer in employers %}
+                    <option value="{{ employer.employer_id }}">{{ employer.name }}</option>
+                    {% endfor %}
+                </select>
+                <label>
+                    <input type="checkbox" name="assign_to_profile" value="yes">
+                    Assign it to {{ review.requesting_profile_name }} now
+                </label>
+                <button type="submit">Match employer</button>
+            </form>
+
+            <div class="review-action">
+                <h3>Configure a new employer</h3>
+                <p class="muted">The new employer remains disabled until its setup validates.</p>
+                <a class="button-link" href="{{ url_for('administration_employer_new', review_request_id=review.request_id, name=review.submitted_company_name or '', careers_url=review.submitted_careers_url or '') }}">Configure new employer</a>
+            </div>
+
+            <form class="review-action" method="post" action="{{ url_for('administration_employer_review_status', request_id=review.request_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <h3>Close without an employer</h3>
+                <div class="decision-buttons">
+                    <button class="button-secondary" type="submit" name="status" value="UNSUPPORTED">Mark unsupported</button>
+                    <button class="button-secondary" type="submit" name="status" value="REJECTED">Reject request</button>
+                    <button class="button-danger" type="submit" name="status" value="CANCELLED">Cancel duplicate</button>
+                </div>
+            </form>
+        </div>
+        {% elif review.resolved_employer_id %}
+        <form class="review-action" method="post" action="{{ url_for('administration_employer_review_assign', request_id=review.request_id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <p>Assign the resolved employer to {{ review.requesting_profile_name }} when it is validated and globally available.</p>
+            <button type="submit">Assign to requesting profile</button>
+        </form>
+        {% endif %}
+    </section>
+
+    <aside class="page-card">
+        <h2>Review history</h2>
+        <ul>
+            {% for entry in audit %}
+            <li>{{ entry.created_at }} — {{ entry.operation|replace('_', ' ') }}</li>
+            {% else %}
+            <li>No review decisions recorded yet.</li>
+            {% endfor %}
+        </ul>
+        <p class="muted">Raw collector errors and private profile contents are not stored here.</p>
+    </aside>
+</div>
+{% endblock %}
