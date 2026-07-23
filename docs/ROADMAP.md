@@ -49,7 +49,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 25 | In Progress | Create a guided first-run setup wizard that collects profile name, resume, role preferences, compensation, locations, remote/hybrid rules, exclusions, and initial companies. |
 | 26 | In Progress | Add a first-run review step that clearly shows the generated profile, preferences, companies, data location, and scan behavior before the user saves the setup. |
 | 27 | Planned | Add a first-run validation scan that tests configuration, confirms at least one working company source, and explains any setup problems in plain language. |
-| 28 | Planned | Add resumable setup so an interrupted or incomplete first-run wizard can continue safely without starting over or leaving broken partial configuration. |
+| 28 | Completed | Add resumable setup so an interrupted or incomplete first-run wizard can continue safely without starting over or leaving broken partial configuration. |
 | 29 | In Progress | Build editable Settings pages for application paths, report behavior, scan behavior, retention, profile defaults, company defaults, logs, backups, and application version information. |
 | 30 | Planned | Add safe credential storage using OS-appropriate secret handling so SMTP passwords, API keys, and tokens are never stored in committed files or plain-text application settings. |
 | 31 | Planned | Add an email setup flow for SMTP server, port, security mode, sender, recipients, credentials, and clear validation errors. |
@@ -132,6 +132,6 @@ Foundation 7L is complete: the normal Companies GUI no longer exposes or manages
 
 The company workspace and recommendation milestone sequence is complete. Other major product areas include completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
 
-First-run detection is complete: after safe desktop bootstrap, a genuinely empty database opens a dedicated setup welcome page. Existing profiles, employers, jobs, Tracker records, or History records prevent first-run mode, so upgrades and established installations are not redirected into onboarding. The welcome page does not write partial data and hands off to the existing explicit profile-creation workflow.
+First-run detection and resumable setup are complete: after safe desktop bootstrap, a genuinely empty database opens a dedicated setup welcome page. Existing profiles, employers, jobs, Tracker records, or History records prevent first-run mode, so upgrades and established installations are not redirected into onboarding. Once setup starts, SQLite records the current profile, résumé, companies, or review checkpoint. Restarting returns to that checkpoint, and setup is completed only through the explicit review action. Existing user data is not inferred, replaced, or removed.
 
 The projected full-product target remains September 30, 2026. Milestone quality, user-data safety, and dependency order take precedence over the date.

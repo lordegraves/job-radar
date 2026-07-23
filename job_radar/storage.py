@@ -283,6 +283,11 @@ def _schema_migrations() -> tuple:
             "add recommendation administration metadata",
             _migrate_recommendation_administration,
         ),
+        (
+            20,
+            "add resumable first-run setup",
+            _migrate_resumable_setup,
+        ),
     )
 
 
@@ -1003,6 +1008,23 @@ def _migrate_recommendation_administration(
         """
         CREATE INDEX IF NOT EXISTS idx_recommendation_admin_audit_employer
         ON recommendation_admin_audit(employer_id, audit_id DESC)
+        """
+    )
+
+
+def _migrate_resumable_setup(connection: sqlite3.Connection) -> None:
+    """Store one installation-local onboarding checkpoint."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS setup_progress (
+            singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+            current_step TEXT NOT NULL,
+            profile_id TEXT,
+            started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at TEXT
+        )
         """
     )
 

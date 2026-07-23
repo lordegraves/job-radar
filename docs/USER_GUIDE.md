@@ -1,6 +1,6 @@
 # junior User Guide
 
-This guide describes the current local application. It does not assume that installer or first-run onboarding work is complete.
+This guide describes the current local application. It does not assume that installer or all first-run onboarding work is complete.
 
 ## First-time setup
 
@@ -20,6 +20,8 @@ This creates:
 It does not copy a personal profile, résumé, database, credentials, or live company list.
 
 Existing junior data can be brought over deliberately with the optional `--source-settings`, `--source-companies`, `--source-scoring`, `--source-profiles`, and `--source-database` arguments. Existing destination files are always preserved.
+
+After launch, a genuinely empty installation opens the guided setup welcome page. The current guided path creates a profile, accepts or skips a résumé, opens profile-owned company selection, and shows an initial review. Junior records the completed step in its SQLite database. If the application closes before setup is finished, reopening it returns to that step without deleting or recreating the partial profile. Setup is marked complete only when **Finish setup** is selected on the review page.
 
 ## Launching the application
 

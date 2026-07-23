@@ -13,8 +13,11 @@
         <input id="resume_file" name="resume_file" type="file" accept=".md,.txt,.pdf,.docx" required>
         <div class="actions">
             <button type="submit">Save résumé and continue</button>
-            <a class="button-link button-secondary" href="{{ url_for('setup_companies') }}">Skip for now</a>
         </div>
+    </form>
+    <form method="post" action="{{ url_for('setup_skip_resume') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button class="button-secondary" type="submit">Skip for now</button>
     </form>
 </section>
 {% endblock %}

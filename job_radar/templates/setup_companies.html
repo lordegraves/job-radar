@@ -9,7 +9,10 @@
     <p><strong>{{ workspace.total_companies }}</strong> companies are currently included.</p>
     <div class="actions">
         <a class="button-link" href="{{ url_for('add_company_page') }}">Add a company</a>
-        <a class="button-link button-secondary" href="{{ url_for('setup_review') }}">Continue to review</a>
+        <form method="post" action="{{ url_for('setup_begin_review') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button class="button-secondary" type="submit">Continue to review</button>
+        </form>
     </div>
     <p class="muted">After adding companies, return to this setup page to review the final count.</p>
 </section>

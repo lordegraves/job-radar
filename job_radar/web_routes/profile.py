@@ -32,6 +32,7 @@ from job_radar.profile_service import (
 from job_radar.scoring_preferences import (
     build_effective_scoring_preferences_view,
 )
+from job_radar.setup_progress_service import COMPANIES, RESUME, advance_setup
 
 
 def register_profile_routes(
@@ -273,6 +274,11 @@ def register_profile_routes(
             )
         if created:
             if request.form.get("setup_mode") == "1":
+                advance_setup(
+                    database_path,
+                    RESUME,
+                    profile_id=saved_profile.profile_id,
+                )
                 return redirect(
                     url_for(
                         "setup_resume",
@@ -423,6 +429,11 @@ def register_profile_routes(
             )
 
         if request.form.get("setup_mode") == "1":
+            advance_setup(
+                database_path,
+                COMPANIES,
+                profile_id=profile_id,
+            )
             return redirect(url_for("setup_companies"))
         return redirect(url_for("profile", upload_result="success"))
 

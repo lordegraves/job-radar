@@ -17,6 +17,7 @@ from job_radar.session_secret import load_or_create_session_secret
 from job_radar.profile_storage import get_active_profile
 from job_radar.first_run_service import needs_first_run_setup
 from job_radar.scan_service import handle_scan
+from job_radar.setup_progress_service import incomplete_setup_destination
 from job_radar.storage import initialize_database
 from job_radar.web_routes.companies import register_company_routes
 from job_radar.web_routes.administration import register_administration_routes
@@ -73,6 +74,9 @@ def create_app(
     @app.get("/")
     def index() -> str:
         database_path = _get_database_path(app)
+        setup_destination = incomplete_setup_destination(database_path)
+        if setup_destination is not None:
+            return redirect(url_for(setup_destination, setup="1"))
         runtime_paths = _get_runtime_paths(app)
         legacy_profile_exists = (
             runtime_paths.candidate_profile_path is not None
