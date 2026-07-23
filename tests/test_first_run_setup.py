@@ -160,6 +160,13 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
     assert "Step 4 of 4" in review_html
     assert "Fictional Baker" in review_html
     assert "Bakers" in review_html
+    assert "Full-time" in review_html
+    assert "Day shift" in review_html
+    assert "On-site" in review_html
+    assert "10%" in review_html
+    assert "resume.md" in review_html
+    assert "junior will scan only the companies you deliberately selected" in review_html
+    assert str(tmp_path) in review_html
 
     rejected_completion = client.post(
         "/setup/complete",

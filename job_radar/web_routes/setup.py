@@ -1,6 +1,7 @@
 """Guide a new installation into profile setup without writing partial data."""
 
 from collections.abc import Callable
+from pathlib import Path
 
 from flask import Flask, flash, redirect, render_template, request, url_for
 
@@ -71,6 +72,7 @@ def register_setup_routes(
             "setup_review.html",
             profile=workspace.active_profile,
             workspace=workspace,
+            data_location=Path(get_database_path()).parent,
         )
 
     @app.post("/setup/complete")

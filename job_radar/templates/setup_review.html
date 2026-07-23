@@ -4,17 +4,55 @@
 {% block content %}
 <p class="muted">Step 4 of 4</p>
 <h1 class="page-title">Review your setup</h1>
+<p class="muted">Confirm what junior will use before normal operation begins.</p>
 <div class="summary-grid">
     <section class="page-card">
-        <h2>{{ profile.display_name }}</h2>
+        <h2>Profile and résumé</h2>
+        <p><strong>Profile:</strong> {{ profile.display_name }}</p>
+        <p><strong>Résumé:</strong> {{ profile.resume.source_file_name if profile.resume else 'Not added yet' }}</p>
         <p><strong>Target roles:</strong> {{ profile.preferences.target_roles|join(', ') or 'None selected' }}</p>
+        <p><strong>Job levels:</strong> {{ profile.preferences.seniority_levels|join(', ') or 'None selected' }}</p>
+        <p><strong>Roles or responsibilities to avoid:</strong> {{ profile.preferences.exclusions|join(', ') or 'None recorded' }}</p>
+        <a class="button-link button-secondary" href="{{ url_for('edit_profile_page', profile_id=profile.profile_id) }}">Review profile</a>
+    </section>
+    <section class="page-card">
+        <h2>Employment</h2>
+        <p><strong>Employment types:</strong> {{ profile.preferences.employment_types|join(', ') or 'None selected' }}</p>
+        <p><strong>Schedule:</strong> {{ profile.preferences.schedule_preference or 'Any schedule' }}</p>
+        <p><strong>On-call:</strong> {{ profile.preferences.on_call_preference }}</p>
         <p><strong>Workplace arrangements:</strong> {{ profile.preferences.work_arrangements|join(', ') or 'None selected' }}</p>
         <p><strong>Minimum compensation:</strong> {% if profile.preferences.compensation_floor_usd is not none %}${{ "{:,}".format(profile.preferences.compensation_floor_usd) }}{% else %}Not set{% endif %}</p>
+        <p><strong>Maximum travel:</strong> {{ (profile.preferences.travel_tolerance ~ '%') if profile.preferences.travel_tolerance else '0%' }}</p>
+    </section>
+    <section class="page-card">
+        <h2>Locations</h2>
+        {% if profile.preferences.location_selections %}
+        <ul>
+            {% for location in profile.preferences.location_selections %}
+            <li>{{ location.label }} — within {{ location.radius_miles }} miles</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No locations selected.</p>
+        {% endif %}
+        <p class="muted">Locations define acceptable hybrid and on-site commutes. Truly remote jobs use them only when an employer restricts where remote employees may live.</p>
     </section>
     <section class="page-card">
         <h2>Companies</h2>
         <p><strong>{{ workspace.total_companies }}</strong> selected</p>
         <p>{{ workspace.scanning_companies }} scanning; {{ workspace.paused_companies }} paused.</p>
+        <a class="button-link button-secondary" href="{{ url_for('setup_companies') }}">Review companies</a>
+    </section>
+    <section class="page-card">
+        <h2>How scans will work</h2>
+        <p>junior will scan only the companies you deliberately selected. It will not search a broad public job board.</p>
+        <p>Jobs are evaluated against this profile. Unclear information is placed in Needs Review instead of being guessed.</p>
+        <p>Starting or scheduling a scan remains a separate action after setup.</p>
+    </section>
+    <section class="page-card">
+        <h2>Where your data is stored</h2>
+        <p class="path-text">{{ data_location }}</p>
+        <p class="muted">Your database and its protected migration backups remain outside the installed application files.</p>
     </section>
 </div>
 <div class="actions">

@@ -21,7 +21,7 @@ It does not copy a personal profile, résumé, database, credentials, or live co
 
 Existing junior data can be brought over deliberately with the optional `--source-settings`, `--source-companies`, `--source-scoring`, `--source-profiles`, and `--source-database` arguments. Existing destination files are always preserved.
 
-After launch, a genuinely empty installation opens the guided setup welcome page. The current guided path creates a profile, accepts or skips a résumé, opens profile-owned company selection, and shows an initial review. Junior records the completed step in its SQLite database. If the application closes before setup is finished, reopening it returns to that step without deleting or recreating the partial profile. Setup is marked complete only when **Finish setup** is selected on the review page.
+After launch, a genuinely empty installation opens the guided setup welcome page. The current guided path creates a profile, accepts or skips a résumé, opens profile-owned company selection, and shows a final review. Junior records the completed step in its SQLite database. If the application closes before setup is finished, reopening it returns to that step without deleting or recreating the partial profile. The review shows the profile, résumé status, saved job preferences, locations, companies, local data location, and how targeted scans will behave. Setup is marked complete only when **Finish setup** is selected on the review page.
 
 ## Launching the application
 
