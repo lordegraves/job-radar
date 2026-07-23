@@ -8,6 +8,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- Explicit confirmation for confidently detected Greenhouse, Lever, and Ashby career sites before Junior creates the employer or adds it to a profile; uncertain sources continue to use administrator review.
 - Administrator-controlled company connection testing that runs the configured collector without importing jobs, records bounded source-health timestamps and returned-job counts, and shows safe configuration, network, source-response, collector, or unexpected-error guidance without retaining raw failures.
 - SQLite migration version 22 for employer connection health, protected by backup-before-migration and atomic rollback behavior.
 - A first-run setup test that checks the saved profile's minimum usable search rules, confirms at least one selected company collector can connect, explains corrections in plain language, and prevents setup completion until validation passes without importing or scoring jobs.

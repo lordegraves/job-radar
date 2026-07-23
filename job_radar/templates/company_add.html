@@ -78,6 +78,21 @@
         <input type="hidden" name="employer_id" value="{{ resolution.employer_id }}">
         <button type="submit">Add {{ resolution.employer_name }} to this profile</button>
     </form>
+    {% elif resolution.status == 'DETECTED_SCAN_READY' %}
+    <p>
+        <strong>Detected job source:</strong>
+        {{ resolution.detected_source_label }} career site
+    </p>
+    <p class="muted">
+        Junior has not added or scanned this company yet. Confirm only if the
+        company name and public careers address above are correct.
+    </p>
+    <form method="post" action="{{ url_for('confirm_detected_company') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="company_name" value="{{ resolution.employer_name }}">
+        <input type="hidden" name="careers_url" value="{{ resolution.careers_url }}">
+        <button type="submit">Confirm and add {{ resolution.employer_name }}</button>
+    </form>
     {% elif resolution.status == 'CREATED_SCAN_READY' %}
     <p><a href="{{ url_for('companies') }}">Return to Your Companies</a></p>
     {% elif resolution.status in ['PENDING_REVIEW', 'UNSUPPORTED_SITE'] %}

@@ -365,6 +365,29 @@ def register_company_routes(
             submission=submission,
         )
 
+    @app.post("/companies/add/confirm-detected")
+    def confirm_detected_company():
+        workspace = build_company_workspace(get_database_path())
+        if workspace.active_profile is None:
+            return redirect(url_for("companies"))
+        company_name = request.form.get("company_name", "").strip()
+        careers_url = request.form.get("careers_url", "").strip()
+        resolution = resolve_employer_submission(
+            get_database_path(),
+            profile_id=workspace.active_profile.profile_id,
+            company_name=company_name,
+            careers_url=careers_url,
+            confirm_detected=True,
+        )
+        catalog = build_company_catalog_view(get_database_path())
+        return render_template(
+            "company_add.html",
+            catalog=catalog,
+            company_error="",
+            resolution=resolution,
+            submission=careers_url or company_name,
+        )
+
     @app.post("/companies/add")
     def add_existing_company():
         catalog = build_company_catalog_view(get_database_path())

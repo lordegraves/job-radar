@@ -17,6 +17,7 @@ from job_radar.storage import initialize_database
 
 
 MATCHED_EXISTING = "MATCHED_EXISTING"
+DETECTED_SCAN_READY = "DETECTED_SCAN_READY"
 CREATED_SCAN_READY = "CREATED_SCAN_READY"
 PENDING_REVIEW = "PENDING_REVIEW"
 AMBIGUOUS_MATCH = "AMBIGUOUS_MATCH"
@@ -53,6 +54,7 @@ class EmployerResolutionResult:
     careers_url: str | None = None
     review_request_id: str | None = None
     possible_employers: tuple[tuple[str, str], ...] = ()
+    detected_source_label: str | None = None
 
 
 def resolve_employer_submission(
@@ -61,6 +63,7 @@ def resolve_employer_submission(
     profile_id: str,
     company_name: str = "",
     careers_url: str = "",
+    confirm_detected: bool = False,
 ) -> EmployerResolutionResult:
     """Resolve, safely create, or queue one company for a managed profile."""
 
@@ -119,6 +122,22 @@ def resolve_employer_submission(
         else DetectedEmployerSource(None, None, {}, False)
     )
     if detection.scan_ready and normalized_url is not None:
+        if not confirm_detected:
+            name = display_name or _display_name_from_detection(
+                normalized_url,
+                detection,
+            )
+            return EmployerResolutionResult(
+                status=DETECTED_SCAN_READY,
+                message=(
+                    f"Junior recognized {name}'s public "
+                    f"{_source_label(detection.source_type)} career site. "
+                    "Confirm this is the company you want before adding it."
+                ),
+                employer_name=name,
+                careers_url=normalized_url,
+                detected_source_label=_source_label(detection.source_type),
+            )
         return _create_and_assign_scan_ready(
             db_path,
             profile_id=profile_id,
@@ -529,6 +548,16 @@ def _slug_detection(
         },
         scan_ready=True,
     )
+
+
+def _source_label(source_type: str | None) -> str:
+    """Return the small set of scan-ready source names shown for confirmation."""
+
+    return {
+        "greenhouse": "Greenhouse",
+        "lever": "Lever",
+        "ashby": "Ashby",
+    }.get(source_type or "", "supported")
 
 
 def _unsafe_hostname(hostname: str) -> bool:

@@ -42,7 +42,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 18 | In Progress | Add safe import tools for bringing existing applications, history, resumes, profiles, and company lists into the app without duplicating or overwriting existing records. |
 | 19 | Completed | Create a user-owned company persistence model that does not directly rewrite or risk corrupting the released grouped `target-companies.yaml` configuration. |
 | 20 | In Progress | Add GUI company management for creating, editing, enabling, disabling, deleting, validating, and assigning companies to one or more profiles. |
-| 21 | Planned | Add guided company-source detection from a company name or careers URL, with confirmation of detected ATS/source type before saving. |
+| 21 | Completed | Add guided company-source detection from a company name or careers URL, with confirmation of detected ATS/source type before saving. |
 | 22 | Completed | Add company connection testing, collector validation, last-success status, last-error status, and clear troubleshooting messages. |
 | 23 | In Progress | Preserve support for shipped/default company definitions while allowing users to maintain their own company inventory and overrides safely. |
 | 24 | Completed | Add profile-owned role discovery and title mapping based on demonstrated skills, tools, responsibilities, and domain evidence; explain adjacent-title suggestions in plain language, require approval before expanding scans, and record Relevant, Not relevant, or Different discipline feedback without relying on dictionary synonyms. |
@@ -118,6 +118,8 @@ Foundation 7F is complete: the active profile can search a normal-user-safe view
 Foundation 7G is complete: the Administration-only Employer Catalog provides searchable global employer records, structured source forms, bounded local validation, reversible global enable/disable/retire controls, preserved profile assignments, protected hard deletion, assignment counts, and a sanitized change audit. Validation does not run a scan or contact an employer.
 
 Foundation 7H is complete: a normal user can enter a company name or public careers URL. Junior normalizes the input, checks exact catalog identity and aliases, prevents silent ambiguous merges, recognizes supported career-site families centrally, creates and assigns only confidently complete sources in one transaction, and otherwise records a safe pending administrator-review request. Resolution makes no network request and rejects local or private destinations.
+
+Guided source confirmation is complete: when a public Greenhouse, Lever, or Ashby URL contains enough information for scan-ready setup, Junior displays the detected provider and company identity but writes nothing until the user explicitly confirms. Confirmation re-normalizes and re-detects the submitted public URL on the server, then uses the existing atomic create-and-assign boundary. Existing catalog matches still require a direct choice, while uncertain and unsupported sites remain in administrator review.
 
 Foundation 7I is complete: the Administration-only Employer Review Queue can inspect safe unresolved submissions, match an existing employer, prefill new-employer setup, optionally assign an available employer to the requesting profile, or mark a request unsupported, rejected, or duplicate. Decisions are audited without raw collector failures or profile content, while normal users see only their own plain-language request state.
 

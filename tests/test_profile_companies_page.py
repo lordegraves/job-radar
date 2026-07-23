@@ -492,7 +492,7 @@ def test_add_company_page_blocks_incomplete_and_duplicate_employers(
     )
 
 
-def test_add_company_by_careers_url_resolves_and_assigns_without_ats_jargon(
+def test_add_company_by_careers_url_requires_detected_source_confirmation(
     tmp_path: Path,
 ) -> None:
     settings_path = tmp_path / "settings.yaml"
@@ -517,9 +517,24 @@ def test_add_company_by_careers_url_resolves_and_assigns_without_ats_jargon(
 
     assert response.status_code == 200
     assert "What Junior found" in html
-    assert "was added and will be included in future scans" in html
+    assert "Detected job source" in html
+    assert "Lever career site" in html
+    assert "has not added or scanned this company yet" in html
     assert "source_slug" not in html
     assert "Platform:" not in html
+    assert get_profile(database_path, profile.profile_id).company_ids == ()
+
+    confirmed = client.post(
+        "/companies/add/confirm-detected",
+        data={
+            "company_name": "Example Kitchens",
+            "careers_url": "https://jobs.lever.co/example-kitchens",
+        },
+    )
+    confirmed_html = confirmed.get_data(as_text=True)
+
+    assert confirmed.status_code == 200
+    assert "was added and will be included in future scans" in confirmed_html
     assert get_profile(database_path, profile.profile_id).company_ids == (
         "example-kitchens",
     )

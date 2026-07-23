@@ -11,6 +11,7 @@ from job_radar.employer_resolution_service import (
     ALREADY_ASSIGNED,
     AMBIGUOUS_MATCH,
     CREATED_SCAN_READY,
+    DETECTED_SCAN_READY,
     INVALID_INPUT,
     MATCHED_EXISTING,
     PENDING_REVIEW,
@@ -170,17 +171,31 @@ def test_similar_name_requires_confirmation_without_merging(
     )
 
 
-def test_recognized_scan_ready_url_creates_and_assigns_atomically(
+def test_recognized_scan_ready_url_requires_confirmation_before_creation(
     tmp_path: Path,
 ) -> None:
     database_path = tmp_path / "junior.sqlite3"
     profile = create_test_profile(database_path)
 
-    result = resolve_employer_submission(
+    detected = resolve_employer_submission(
         database_path,
         profile_id=profile.profile_id,
         company_name="Example Kitchens",
         careers_url="https://jobs.lever.co/example-kitchens",
+    )
+    assert detected.status == DETECTED_SCAN_READY
+    assert detected.detected_source_label == "Lever"
+    assert get_employer_source(database_path, "example-kitchens") is None
+    assert list_profile_employer_assignments(
+        database_path, profile.profile_id
+    ) == []
+
+    result = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name=detected.employer_name or "",
+        careers_url=detected.careers_url or "",
+        confirm_detected=True,
     )
 
     employer = get_employer_source(database_path, result.employer_id or "")
@@ -244,6 +259,7 @@ def test_assignments_remain_profile_specific(tmp_path: Path) -> None:
         database_path,
         profile_id=first.profile_id,
         careers_url="https://boards.greenhouse.io/example",
+        confirm_detected=True,
     )
 
     assert result.status == CREATED_SCAN_READY
@@ -263,6 +279,7 @@ def test_concurrent_submission_cannot_duplicate_scan_ready_employer(
             database_path,
             profile_id=profile_id,
             careers_url="https://jobs.lever.co/concurrent-example",
+            confirm_detected=True,
         )
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -310,6 +327,7 @@ def test_transaction_rolls_back_employer_when_assignment_fails(
             database_path,
             profile_id=profile.profile_id,
             careers_url="https://jobs.ashbyhq.com/rollback-example",
+            confirm_detected=True,
         )
 
     assert get_employer_source(database_path, "rollback-example") is None
