@@ -18,6 +18,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Added shared keyboard and scaling safeguards across Junior's pages, including a skip-to-content link, strong focus-visible indicators, current-page navigation semantics, responsive narrow-window behavior, forced-color borders, error announcements, labeled administrative matching controls, and screen-reader descriptions for every data table.
 - Made profile occupation and location suggestions announce their open state and support Enter, Escape, arrow-key, Tab, and click interaction without requiring a mouse.
 - Replaced developer-facing tracker and history deletion terms such as “row” and “terminal action” with explicit, plain-language descriptions of what will be permanently removed and how to preserve an application in history.
+- Added repository-wide accessibility guards that require programmatic labels for visible form controls and WCAG AA contrast for Junior's shared text, link, status, and action colors.
 - Removed employer recommendations from the normal Companies workflow. Users choose employers, while Junior focuses on making company and careers-page identification, confirmation, configuration, and scanning easy.
 
 - Bounded in-app viewing for allowlisted sanitized Junior logs, a copyable privacy-safe troubleshooting summary, and a CSRF-protected Open Data Directory action using the resolved settings-owned workspace.
