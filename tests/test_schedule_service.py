@@ -8,6 +8,7 @@ import pytest
 from job_radar.database import connect_database
 from job_radar.schedule_service import (
     ScanSchedule,
+    ScheduleIntegrationStatus,
     ScheduleError,
     build_schedule_view,
     calculate_next_run,
@@ -16,7 +17,6 @@ from job_radar.schedule_service import (
 )
 from job_radar.storage import complete_scan_run, start_scan_run
 from job_radar.web_app import create_app
-from job_radar.windows_scheduler import WindowsTaskStatus
 
 
 def _write_settings(path: Path) -> None:
@@ -132,8 +132,9 @@ def test_schedule_page_saves_and_discloses_automation_boundary(
     settings_path = tmp_path / "config" / "settings.yaml"
     _write_settings(settings_path)
     monkeypatch.setattr(
-        "job_radar.web_routes.settings.inspect_windows_task",
-        lambda: WindowsTaskStatus(
+        "job_radar.web_routes.settings.inspect_scheduler",
+        lambda: ScheduleIntegrationStatus(
+            platform_name="Windows",
             available=True,
             installed=False,
             enabled=False,
@@ -178,8 +179,9 @@ def test_schedule_page_can_apply_disable_and_remove_windows_task(
     _write_settings(settings_path)
     calls: list[str] = []
     monkeypatch.setattr(
-        "job_radar.web_routes.settings.inspect_windows_task",
-        lambda: WindowsTaskStatus(
+        "job_radar.web_routes.settings.inspect_scheduler",
+        lambda: ScheduleIntegrationStatus(
+            platform_name="Windows",
             available=True,
             installed=True,
             enabled=True,
@@ -188,15 +190,16 @@ def test_schedule_page_can_apply_disable_and_remove_windows_task(
         ),
     )
     monkeypatch.setattr(
-        "job_radar.web_routes.settings.apply_windows_schedule",
-        lambda schedule: calls.append("apply") or "Windows task updated.",
+        "job_radar.web_routes.settings.apply_scheduler",
+        lambda schedule, user_data_root: calls.append("apply")
+        or "Windows task updated.",
     )
     monkeypatch.setattr(
-        "job_radar.web_routes.settings.disable_windows_task",
+        "job_radar.web_routes.settings.disable_scheduler",
         lambda: calls.append("disable") or "Windows task disabled.",
     )
     monkeypatch.setattr(
-        "job_radar.web_routes.settings.remove_windows_task",
+        "job_radar.web_routes.settings.remove_scheduler",
         lambda: calls.append("remove") or "Windows task removed.",
     )
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
@@ -205,9 +208,9 @@ def test_schedule_page_can_apply_disable_and_remove_windows_task(
     responses = [
         client.post(path, follow_redirects=True)
         for path in (
-            "/settings/schedule/windows/apply",
-            "/settings/schedule/windows/disable",
-            "/settings/schedule/windows/remove",
+            "/settings/schedule/system/apply",
+            "/settings/schedule/system/disable",
+            "/settings/schedule/system/remove",
         )
     ]
 

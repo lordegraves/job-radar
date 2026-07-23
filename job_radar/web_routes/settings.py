@@ -27,12 +27,12 @@ from job_radar.schedule_service import (
     build_schedule_view,
     save_scan_schedule,
 )
-from job_radar.windows_scheduler import (
-    WindowsSchedulerError,
-    apply_windows_schedule,
-    disable_windows_task,
-    inspect_windows_task,
-    remove_windows_task,
+from job_radar.scheduler_integration import (
+    SchedulerIntegrationError,
+    apply_scheduler,
+    disable_scheduler,
+    inspect_scheduler,
+    remove_scheduler,
 )
 
 
@@ -117,7 +117,7 @@ def register_settings_routes(
         return render_template(
             "settings_schedule.html",
             schedule_view=build_schedule_view(runtime_paths.database_path),
-            windows_task=inspect_windows_task(),
+            scheduler_integration=inspect_scheduler(),
         )
 
     @app.post("/settings/schedule")
@@ -137,36 +137,37 @@ def register_settings_routes(
         flash("Scan schedule saved.", "success")
         return redirect(url_for("settings_schedule"))
 
-    @app.post("/settings/schedule/windows/apply")
-    def settings_schedule_windows_apply():
+    @app.post("/settings/schedule/system/apply")
+    def settings_schedule_system_apply():
         runtime_paths = get_runtime_paths()
         try:
-            message = apply_windows_schedule(
+            message = apply_scheduler(
                 build_schedule_view(
                     runtime_paths.database_path
-                ).schedule
+                ).schedule,
+                user_data_root=runtime_paths.base_directory,
             )
-        except WindowsSchedulerError as error:
+        except SchedulerIntegrationError as error:
             flash(str(error), "error")
         else:
             flash(message, "success")
         return redirect(url_for("settings_schedule"))
 
-    @app.post("/settings/schedule/windows/disable")
-    def settings_schedule_windows_disable():
+    @app.post("/settings/schedule/system/disable")
+    def settings_schedule_system_disable():
         try:
-            message = disable_windows_task()
-        except WindowsSchedulerError as error:
+            message = disable_scheduler()
+        except SchedulerIntegrationError as error:
             flash(str(error), "error")
         else:
             flash(message, "success")
         return redirect(url_for("settings_schedule"))
 
-    @app.post("/settings/schedule/windows/remove")
-    def settings_schedule_windows_remove():
+    @app.post("/settings/schedule/system/remove")
+    def settings_schedule_system_remove():
         try:
-            message = remove_windows_task()
-        except WindowsSchedulerError as error:
+            message = remove_scheduler()
+        except SchedulerIntegrationError as error:
             flash(str(error), "error")
         else:
             flash(message, "success")

@@ -194,13 +194,21 @@ Administration's Employer Catalog supports global employer creation and editing 
 
 ## Settings
 
-The current Settings page is read-only.
+Settings surfaces active runtime paths, the current latest-scan-only report policy, scan defaults, profile paths, and email readiness without displaying secrets. Runtime paths remain read-only, while Email Setup and Scan Schedule have dedicated editing pages.
 
-It surfaces active runtime paths, the current latest-scan-only report policy, scan defaults, profile paths, and email readiness without displaying secrets.
+## Scan scheduling
+
+Open **Settings**, then **Set up scan scheduling**. Choose whether scheduling is on, the local start time, at least one weekday, and whether a completed scheduled scan should email its report. Save the schedule before applying it to the operating system.
+
+On Windows, **Apply schedule to Windows** creates or updates only `\Junior Scheduled Scan`. Junior can inspect, disable, or remove that task from the same page. It runs with normal privileges while the Windows user is signed in and stores no Windows password.
+
+On Linux, the equivalent controls manage `junior-scan.service` and `junior-scan.timer` in the current user's systemd directory. Junior marks both files, refuses to overwrite unmarked files with the same names, writes updates atomically, and restores the prior files if systemd rejects an update. A dedicated Linux server account can use the same user timer and `job-radar-scheduled --user-data-root <path>` entry point; it does not have a separate scan implementation.
+
+Disabling an operating-system schedule leaves its definition available for later use. Removing it deletes only Junior's own task or marked unit files. Neither action deletes profiles, scan history, reports, companies, or application data.
 
 ## Email
 
-Email delivery requires explicit configuration and the CLI `--send-email` option. The GUI Scan page currently creates the email preview but does not send email.
+Email delivery requires explicit configuration. Open **Settings**, then **Set up email delivery** to choose Gmail, Outlook, or Custom SMTP, store the credential through the operating system, save delivery details, and test the connection without sending a report. The GUI Scan page currently creates the email preview but does not send email; a saved schedule can request email delivery after its scan.
 
 To run a scan and deliberately request configured SMTP delivery:
 

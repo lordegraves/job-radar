@@ -49,6 +49,16 @@ class ScheduleView:
     last_run: ScheduledRunSummary
 
 
+@dataclass(frozen=True)
+class ScheduleIntegrationStatus:
+    platform_name: str
+    available: bool
+    installed: bool
+    enabled: bool
+    state: str
+    message: str
+
+
 def load_scan_schedule(database_path: str | Path) -> ScanSchedule:
     """Load the singleton schedule after ensuring its migration is present."""
     initialize_database(database_path)

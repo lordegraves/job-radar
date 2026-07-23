@@ -19,8 +19,9 @@ These surfaces must share the same service and storage layers rather than becomi
 - `job-radar` / `job_radar.cli`: developer, automation, validation, scan, history, database, and tracker commands.
 - `job-radar-web` / `job_radar.web_app`: local browser/server mode. An explicit settings path may be supplied; otherwise runtime-path resolution selects bootstrapped user settings when present and falls back to repository settings for development compatibility.
 - `job-radar-desktop` / `job_radar.desktop_launcher`: the current desktop-style launcher. It prepares packaged user configuration when needed, starts a local Werkzeug server, waits for readiness, and opens the default browser.
+- `job-radar-scheduled` / `job_radar.scheduled_scan`: the unattended scan entry point. It reads the saved schedule, exits safely when scheduling is off, and calls the same scan service used by GUI and CLI scans.
 - A future native desktop shell may wrap the shared Flask interface, but it must not duplicate application rules.
-- Future unattended Windows, Linux, container, and Kubernetes modes must call the same scan and storage services.
+- Windows Task Scheduler and Linux systemd user timers invoke the shared scheduled entry point. Future container and Kubernetes modes must call the same scan and storage services.
 
 ## Startup and shutdown flow
 
@@ -78,6 +79,12 @@ The lifecycle includes:
 - HTML and email-preview outputs
 
 CLI and GUI scan execution must call the same service.
+
+### Scheduling
+
+`schedule_service.py` owns the durable, application-wide schedule and scheduled-run summary. `scheduler_integration.py` selects the host integration without changing scan behavior. `windows_scheduler.py` manages only Junior's named Task Scheduler entry. `linux_scheduler.py` manages only Junior-marked systemd user service/timer files and rolls their prior contents back if systemd rejects an update. Both integrations invoke `scheduled_scan.py`; neither contains its own collection, scoring, report, or email rules.
+
+Linux standalone use installs the marked units under the current user's systemd configuration. A server may run the same user timer under a dedicated service account and pass that account's explicit user-data root to `job-radar-scheduled`. System-wide packaging and service-account provisioning remain deployment concerns rather than a second scheduler implementation.
 
 ### Scoring and recommendation policy
 

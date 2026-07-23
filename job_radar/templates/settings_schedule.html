@@ -128,33 +128,40 @@
             before expecting unattended scans.
         </p>
 
-        <h2>Windows connection</h2>
+        <h2>{{ scheduler_integration.platform_name }} connection</h2>
         <div class="schedule-status">
-            <div class="status-line {% if windows_task.enabled %}success{% elif windows_task.installed %}warning{% endif %}">
+            <div class="status-line {% if scheduler_integration.enabled %}success{% elif scheduler_integration.installed %}warning{% endif %}">
                 <span class="status-dot" aria-hidden="true"></span>
-                {{ windows_task.state }}
+                {{ scheduler_integration.state }}
             </div>
-            <p>{{ windows_task.message }}</p>
+            <p>{{ scheduler_integration.message }}</p>
         </div>
-        {% if windows_task.available %}
-        <form method="post" action="{{ url_for('settings_schedule_windows_apply') }}">
+        {% if scheduler_integration.available %}
+        <form method="post" action="{{ url_for('settings_schedule_system_apply') }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Apply schedule to Windows</button>
+            <button type="submit">Apply schedule to {{ scheduler_integration.platform_name }}</button>
         </form>
         <div class="form-actions">
-            <form method="post" action="{{ url_for('settings_schedule_windows_disable') }}">
+            <form method="post" action="{{ url_for('settings_schedule_system_disable') }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <button class="button-secondary" type="submit">Disable Windows task</button>
+                <button class="button-secondary" type="submit">Disable {{ scheduler_integration.platform_name }} schedule</button>
             </form>
-            <form method="post" action="{{ url_for('settings_schedule_windows_remove') }}">
+            <form method="post" action="{{ url_for('settings_schedule_system_remove') }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <button class="button-secondary" type="submit">Remove Windows task</button>
+                <button class="button-secondary" type="submit">Remove {{ scheduler_integration.platform_name }} schedule</button>
             </form>
         </div>
+        {% if scheduler_integration.platform_name == "Windows" %}
         <p class="muted">
             The task runs only while this Windows user is signed in. It uses
             normal user permissions and does not store a Windows password.
         </p>
+        {% else %}
+        <p class="muted">
+            The timer runs as this Linux user and uses the same saved Junior
+            schedule and scan service as other launch modes.
+        </p>
+        {% endif %}
         {% endif %}
     </aside>
 </div>

@@ -1,7 +1,6 @@
 """Manage Junior's one Windows Task Scheduler entry without stored secrets."""
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
 import getpass
 import os
 from pathlib import Path
@@ -11,7 +10,10 @@ import sys
 from typing import Protocol
 from xml.etree import ElementTree
 
-from job_radar.schedule_service import ScanSchedule
+from job_radar.schedule_service import (
+    ScanSchedule,
+    ScheduleIntegrationStatus,
+)
 
 
 JUNIOR_TASK_NAME = r"\Junior Scheduled Scan"
@@ -38,23 +40,15 @@ class CompletedCommand(Protocol):
 CommandRunner = Callable[[Sequence[str]], CompletedCommand]
 
 
-@dataclass(frozen=True)
-class WindowsTaskStatus:
-    available: bool
-    installed: bool
-    enabled: bool
-    state: str
-    message: str
-
-
 def inspect_windows_task(
     *,
     task_name: str = JUNIOR_TASK_NAME,
     command_runner: CommandRunner | None = None,
-) -> WindowsTaskStatus:
+) -> ScheduleIntegrationStatus:
     """Inspect only Junior's named task and sanitize command failures."""
     if os.name != "nt" and command_runner is None:
-        return WindowsTaskStatus(
+        return ScheduleIntegrationStatus(
+            platform_name="Windows",
             available=False,
             installed=False,
             enabled=False,
@@ -65,7 +59,8 @@ def inspect_windows_task(
     runner = command_runner or _run_schtasks
     result = runner(("schtasks.exe", "/Query", "/TN", task_name, "/XML", "ONE"))
     if result.returncode != 0:
-        return WindowsTaskStatus(
+        return ScheduleIntegrationStatus(
+            platform_name="Windows",
             available=True,
             installed=False,
             enabled=False,
@@ -86,7 +81,8 @@ def inspect_windows_task(
         enabled_element is None
         or (enabled_element.text or "").strip().casefold() == "true"
     )
-    return WindowsTaskStatus(
+    return ScheduleIntegrationStatus(
+        platform_name="Windows",
         available=True,
         installed=True,
         enabled=enabled,
