@@ -10,6 +10,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Added automatic safety backups inside permanent profile and company deletion services, extending the existing backup-before-migration protection to every currently implemented destructive data operation.
 - Added an operating-system-managed desktop instance lock so repeated launches reuse the same user-data workspace and local interface even when a different port was requested.
 - Added a desktop-only Exit Junior control that stops the local server cleanly and waits for an active scan worker to finish protected writes before releasing the instance lock.
+- Selected pywebview as Junior's native desktop shell, with PySide6/QWebEngineView as the defined fallback and a strict one-interface cross-platform consistency gate.
 
 - Bounded in-app viewing for allowlisted sanitized Junior logs, a copyable privacy-safe troubleshooting summary, and a CSRF-protected Open Data Directory action using the resolved settings-owned workspace.
 - Read-only Settings diagnostics for application configuration, latest scan, company-source, and email health, with plain-language configuration, collector, network, email, and unexpected-application categories; scan diagnostics no longer persist raw exception text.

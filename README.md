@@ -121,6 +121,8 @@ The desktop launcher holds one operating-system lock per Junior user-data worksp
 
 Desktop-launched sessions show **Exit Junior** in Settings. The action requests a clean local-server shutdown and confirms that the window can be closed. If a GUI scan is active, Junior keeps the process and instance lock alive until the scan worker finishes its protected database and report writes. Browser/server mode does not present a process-exit control it cannot safely own.
 
+The selected native shell for the next implementation milestone is pywebview. It will wrap the same local Flask interface rather than create a second UI. Windows, Linux, and macOS must share the same pages, controls, layouts, validation, typography, and workflows; only genuinely native window chrome, dialogs, notifications, and keyboard conventions may differ. PySide6/QWebEngineView is the documented fallback if cross-platform testing proves system webview rendering cannot satisfy that shared-interface requirement.
+
 ## Configuration and private data
 
 Safe starter files included in the install package:

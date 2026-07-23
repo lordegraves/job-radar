@@ -35,6 +35,23 @@ The desktop launcher injects a process-local shutdown event into the Flask appli
 
 The current launcher stops its server on a GUI Exit request or startup failure and preserves active scan writes before releasing its instance lock. It does not yet provide a native application window, focus an existing native window, or manage an unattended background service.
 
+### Desktop shell selection
+
+Junior will use **pywebview** as its desktop shell. It is the smallest direct fit for the existing Python/Flask architecture, supplies a native window and operating-system dialogs, and does not require a second Node or Rust application layer. The shell loads the same loopback Flask application used by browser mode; it does not receive separate routes, templates, CSS, validation, or workflow logic.
+
+The selection order and result are:
+
+| Candidate | Decision |
+|---|---|
+| pywebview | Selected. Python-native, lightweight, and designed to wrap web content in native Windows, macOS, and Linux windows. |
+| PySide6/QWebEngineView | First fallback only if real cross-platform testing proves the system webviews cannot meet Junior's page-consistency gate. It offers a common Chromium-based renderer at substantially greater packaging size and Qt deployment complexity. |
+| Electron | Not selected. It would add a separate Node/Chromium process and packaging stack beside the Python product. |
+| Tauri | Not selected. It would add Rust/build-tooling ownership while retaining platform webview differences. |
+
+pywebview uses WebView2 on supported Windows systems, WKWebView on macOS, and GTK/WebKit or Qt on Linux. Therefore shell selection alone does not prove page consistency. Release validation must exercise the same supported viewport sizes and workflows on all three operating systems. Platform-native window chrome, file dialogs, notifications, and keyboard conventions may differ. Junior pages, layout, navigation, form behavior, validation, spacing, and typography may not fork by operating system. A renderer defect that cannot be fixed in shared standards-based HTML/CSS reopens the shell decision and moves Junior to the PySide6 fallback; it does not authorize an OS-specific page implementation.
+
+Official references: [pywebview introduction](https://pywebview.flowrl.com/guide/), [pywebview web engines](https://pywebview.flowrl.com/guide/web_engine), [Qt WebEngine view](https://doc.qt.io/qtforpython-6/PySide6/QtWebEngineWidgets/QWebEngineView.html), [Electron process model](https://www.electronjs.org/docs/latest/tutorial/process-model), and [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
+
 ## Major layers
 
 ### Configuration and runtime paths
