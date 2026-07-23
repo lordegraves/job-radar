@@ -12,6 +12,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Added a desktop-only Exit Junior control that stops the local server cleanly and waits for an active scan worker to finish protected writes before releasing the instance lock.
 - Selected pywebview as Junior's native desktop shell, with PySide6/QWebEngineView as the defined fallback and a strict one-interface cross-platform consistency gate.
 - Added Junior's native pywebview window with normal window controls, application icon support, safe graphical startup errors, deliberate browser/server launch options, and clean shell-owned shutdown.
+- Verified that native desktop, browser-based local use, developer CLI scans, and scheduled scans share the same Flask application, scan service, storage, and product rules instead of maintaining mode-specific implementations.
 
 - Bounded in-app viewing for allowlisted sanitized Junior logs, a copyable privacy-safe troubleshooting summary, and a CSRF-protected Open Data Directory action using the resolved settings-owned workspace.
 - Read-only Settings diagnostics for application configuration, latest scan, company-source, and email health, with plain-language configuration, collector, network, email, and unexpected-application categories; scan diagnostics no longer persist raw exception text.
