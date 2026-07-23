@@ -1,0 +1,12 @@
+{# Confirms that the desktop lifecycle received a clean shutdown request. #}
+{% extends "base.html" %}
+
+{% block title %}Junior is closing{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Junior is closing</h1>
+<div class="page-card">
+    <p>Junior is stopping its local server safely. You can close this window.</p>
+    <p class="muted">If a scan was running, the process will finish its protected writes before it exits.</p>
+</div>
+{% endblock %}

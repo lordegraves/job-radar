@@ -4,7 +4,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 from job_radar.application_info_service import build_application_info
 from job_radar.config import load_settings
@@ -81,7 +90,25 @@ def register_settings_routes(
         return render_template(
             "settings.html",
             settings_view=settings_view,
+            desktop_shutdown_available=(
+                current_app.config.get("JOB_RADAR_DESKTOP_SHUTDOWN_EVENT")
+                is not None
+            ),
         )
+
+    @app.post("/settings/shutdown")
+    def settings_shutdown():
+        shutdown_event = current_app.config.get(
+            "JOB_RADAR_DESKTOP_SHUTDOWN_EVENT"
+        )
+        if shutdown_event is None:
+            flash(
+                "Exit Junior is available from the desktop launcher only.",
+                "error",
+            )
+            return redirect(url_for("settings"))
+        shutdown_event.set()
+        return render_template("shutdown.html")
 
     @app.get("/settings/about")
     def settings_about() -> str:

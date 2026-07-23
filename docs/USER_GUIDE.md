@@ -35,6 +35,8 @@ It creates the user-owned workspace when needed, starts junior locally, waits fo
 
 Launching Junior again does not start another copy against the same data, even if the second shortcut or command requests a different local port. The second launch waits for the first copy when it is still starting, then opens the first copy's interface. If Junior previously stopped unexpectedly, the operating system releases the instance lock automatically.
 
+To close a desktop-launched session, open **Settings** and choose **Exit Junior**. The confirmation page means the local server received the shutdown request. You may close the window. If a scan is running, Junior finishes its protected writes before the process fully exits. This control is intentionally absent in browser/server mode, where another process owns the server lifecycle.
+
 This is a browser-opening launcher, not the final native desktop window or Windows installer. Those remain future productization work.
 
 From an activated development environment:

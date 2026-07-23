@@ -162,6 +162,7 @@ def run_desktop_server(
     *,
     url: str,
     open_browser: bool,
+    shutdown_event: threading.Event | None = None,
 ) -> None:
     server_thread = threading.Thread(
         target=server.serve_forever,
@@ -176,7 +177,14 @@ def run_desktop_server(
         if open_browser:
             webbrowser.open(url)
 
-        server_thread.join()
+        if shutdown_event is None:
+            server_thread.join()
+        else:
+            while server_thread.is_alive():
+                if shutdown_event.wait(timeout=0.1):
+                    server.shutdown()
+                    break
+            server_thread.join()
     except BaseException:
         server.shutdown()
         server_thread.join(timeout=5.0)
@@ -224,13 +232,22 @@ def launch_desktop() -> None:
             settings_path=settings_path,
             base_directory=settings_path.parent.parent,
         )
+        shutdown_event = threading.Event()
+        app.config["JOB_RADAR_DESKTOP_SHUTDOWN_EVENT"] = shutdown_event
         server = make_server(args.host, args.port, app)
 
-        run_desktop_server(
-            server,
-            url=url,
-            open_browser=not args.no_browser,
-        )
+        try:
+            run_desktop_server(
+                server,
+                url=url,
+                open_browser=not args.no_browser,
+                shutdown_event=shutdown_event,
+            )
+        finally:
+            # GUI scans use a non-daemon worker. Keep the instance lock until
+            # its durable database/report writes finish instead of allowing a
+            # second launcher to open the same workspace during shutdown.
+            app.extensions["junior_scan_runner"].wait()
 
 
 def _lock_stream(stream: BinaryIO) -> None:

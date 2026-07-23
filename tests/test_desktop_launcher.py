@@ -7,6 +7,7 @@ the operator's live Job Radar workspace.
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -156,9 +157,15 @@ def test_main_bootstraps_starts_and_opens_job_radar(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings_path = tmp_path / "config" / "settings.yaml"
-    fake_app = object()
     fake_server = object()
     calls: dict[str, Any] = {}
+    fake_runner = SimpleNamespace(
+        wait=lambda: calls.update({"scan_waited": True})
+    )
+    fake_app = SimpleNamespace(
+        config={},
+        extensions={"junior_scan_runner": fake_runner},
+    )
 
     monkeypatch.setattr(
         sys,
@@ -205,17 +212,20 @@ def test_main_bootstraps_starts_and_opens_job_radar(
     monkeypatch.setattr(
         desktop_launcher,
         "run_desktop_server",
-        lambda server, *, url, open_browser: calls.update(
+        lambda server, *, url, open_browser, shutdown_event: calls.update(
             {
                 "server": server,
                 "url": url,
                 "open_browser": open_browser,
+                "shutdown_event": shutdown_event,
             }
         ),
     )
 
     desktop_launcher.launch_desktop()
 
+    shutdown_event = calls.pop("shutdown_event")
+    assert isinstance(shutdown_event, desktop_launcher.threading.Event)
     assert calls == {
         "settings_path": settings_path,
         "base_directory": tmp_path,
@@ -225,6 +235,7 @@ def test_main_bootstraps_starts_and_opens_job_radar(
         "server": fake_server,
         "url": "http://127.0.0.1:5000/",
         "open_browser": True,
+        "scan_waited": True,
     }
 
 
@@ -235,6 +246,14 @@ def test_main_no_browser_starts_without_opening_browser(
     settings_path = tmp_path / "config" / "settings.yaml"
     fake_server = object()
     calls: dict[str, Any] = {}
+    fake_app = SimpleNamespace(
+        config={},
+        extensions={
+            "junior_scan_runner": SimpleNamespace(
+                wait=lambda: calls.update({"scan_waited": True})
+            )
+        },
+    )
 
     monkeypatch.setattr(
         sys,
@@ -257,7 +276,7 @@ def test_main_no_browser_starts_without_opening_browser(
     monkeypatch.setattr(
         desktop_launcher,
         "create_app",
-        lambda **_kwargs: object(),
+        lambda **_kwargs: fake_app,
     )
     monkeypatch.setattr(
         desktop_launcher,
@@ -267,21 +286,25 @@ def test_main_no_browser_starts_without_opening_browser(
     monkeypatch.setattr(
         desktop_launcher,
         "run_desktop_server",
-        lambda server, *, url, open_browser: calls.update(
+        lambda server, *, url, open_browser, shutdown_event: calls.update(
             {
                 "server": server,
                 "url": url,
                 "open_browser": open_browser,
+                "shutdown_event": shutdown_event,
             }
         ),
     )
 
     desktop_launcher.launch_desktop()
 
+    shutdown_event = calls.pop("shutdown_event")
+    assert isinstance(shutdown_event, desktop_launcher.threading.Event)
     assert calls == {
         "server": fake_server,
         "url": "http://127.0.0.1:5000/",
         "open_browser": False,
+        "scan_waited": True,
     }
 
 

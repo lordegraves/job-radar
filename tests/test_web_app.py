@@ -1923,7 +1923,40 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "Disabled" in html
     assert "Secrets are not shown on this page." in html
     assert "View diagnostics" in html
+    assert "Exit Junior" not in html
     assert "Save" not in html
+
+
+def test_desktop_settings_requests_clean_shutdown(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file))
+    shutdown_event = threading.Event()
+    app.config["JOB_RADAR_DESKTOP_SHUTDOWN_EVENT"] = shutdown_event
+    client = app.test_client()
+
+    page = client.get("/settings")
+    response = client.post("/settings/shutdown")
+
+    assert "Exit Junior" in page.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "Junior is closing" in response.get_data(as_text=True)
+    assert shutdown_event.is_set()
+
+
+def test_browser_mode_rejects_desktop_shutdown(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post("/settings/shutdown", follow_redirects=True)
+
+    assert "available from the desktop launcher only" in response.get_data(
+        as_text=True
+    )
 
 
 def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:

@@ -161,5 +161,17 @@
         <p><a href="{{ url_for('settings_diagnostics') }}">View diagnostics</a></p>
         <p class="muted">Private contents, credentials, and raw exception text are never shown.</p>
     </section>
+
+    {% if desktop_shutdown_available %}
+    <section class="settings-card">
+        <h2>Exit Junior</h2>
+        <p>Finish this desktop session and close Junior's local server cleanly.</p>
+        <form method="post" action="{{ url_for('settings_shutdown') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Exit Junior</button>
+        </form>
+        <p class="muted">If a scan is running, Junior finishes its protected writes before the process fully closes.</p>
+    </section>
+    {% endif %}
 </div>
 {% endblock %}

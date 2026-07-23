@@ -13,6 +13,7 @@ class ScanTaskRunner:
         self._lock = threading.Lock()
         self._running = False
         self._failed = False
+        self._worker: threading.Thread | None = None
 
     @property
     def is_running(self) -> bool:
@@ -39,8 +40,17 @@ class ScanTaskRunner:
             name="junior-scan-worker",
             daemon=False,
         )
+        with self._lock:
+            self._worker = worker
         worker.start()
         return True
+
+    def wait(self) -> None:
+        """Wait for an active scan to finish its normal durable writes."""
+        with self._lock:
+            worker = self._worker
+        if worker is not None and worker is not threading.current_thread():
+            worker.join()
 
     def _run(self, **scan_arguments: Any) -> None:
         failed = False

@@ -31,7 +31,9 @@ The desktop launcher first checks whether junior already responds at its configu
 
 One OS-managed file lock under the user-data `runtime` directory owns the desktop process. Its metadata contains only the active loopback URL. A competing launch cannot acquire the lock, so it waits for and opens the recorded instance rather than initializing the same SQLite database on another port. The lock's lifetime is the open process handle; a stale file after a crash does not block startup.
 
-The current launcher stops its server when its process exits or startup fails, but it does not yet provide a native application window, a GUI Exit command, focus an existing native window, or manage an unattended background service. Complete shutdown controls and service lifecycle integration remain future product work.
+The desktop launcher injects a process-local shutdown event into the Flask application. Settings renders its Exit control only when that event exists. A valid POST sets the event, the launcher stops Werkzeug after the response completes, and then it waits for the shared non-daemon scan runner before leaving the instance-lock scope. The browser/server entry point has no event and cannot shut down an externally owned process.
+
+The current launcher stops its server on a GUI Exit request or startup failure and preserves active scan writes before releasing its instance lock. It does not yet provide a native application window, focus an existing native window, or manage an unattended background service.
 
 ## Major layers
 
