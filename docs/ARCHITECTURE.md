@@ -177,7 +177,7 @@ Scan artifacts belong in the user-owned `reports` directory:
 - the fixed-name plain-text email preview supports review before delivery
 - the fixed-name structured JSON snapshot supports application behavior and is not a separate user-facing report
 
-Each successful scan replaces the previous fixed-name outputs. Arbitrary files in the reports directory are not part of the normal Reports-page interface. Configurable report history, retention, and rotation remain future product work.
+The latest outputs keep stable filenames for compatibility. Before replacement, `retention_service.py` can copy and verify the prior known report set into a marked, timestamped directory under `reports/archive`. Retention supports latest only, latest plus previous, or a configured total from 1 through 50. Pruning accepts only strict Junior archive markers and dated-log filename patterns; arbitrary report directories, unrelated logs, and the active fixed-name startup log are never retention targets. `retention_settings_service.py` validates and atomically replaces only the known retention keys while preserving unknown settings.
 
 Databases belong in `data`, logs belong in `logs`, and migration backups are safety artifacts rather than user reports. None of these runtime artifacts belong in source control or release packages.
 

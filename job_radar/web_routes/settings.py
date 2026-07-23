@@ -22,6 +22,11 @@ from job_radar.runtime_paths import (
     DEFAULT_SCORING_CONFIG_PATH,
     RuntimePaths,
 )
+from job_radar.retention_settings_service import (
+    RetentionSettingsError,
+    load_retention_settings_form,
+    save_retention_settings,
+)
 from job_radar.schedule_service import (
     ScheduleError,
     build_schedule_view,
@@ -137,6 +142,29 @@ def register_settings_routes(
         flash("Scan schedule saved.", "success")
         return redirect(url_for("settings_schedule"))
 
+    @app.get("/settings/retention")
+    def settings_retention() -> str:
+        return render_template(
+            "settings_retention.html",
+            retention_form=load_retention_settings_form(settings_path),
+        )
+
+    @app.post("/settings/retention")
+    def settings_retention_save():
+        try:
+            save_retention_settings(
+                settings_path,
+                report_policy=request.form.get("report_policy", ""),
+                report_count_text=request.form.get("report_count", ""),
+                log_policy=request.form.get("log_policy", ""),
+                log_count_text=request.form.get("log_count", ""),
+            )
+        except RetentionSettingsError as error:
+            flash(str(error), "error")
+            return redirect(url_for("settings_retention"))
+        flash("Report and log retention settings saved.", "success")
+        return redirect(url_for("settings_retention"))
+
     @app.post("/settings/schedule/system/apply")
     def settings_schedule_system_apply():
         runtime_paths = get_runtime_paths()
@@ -204,10 +232,13 @@ def _build_settings_view(settings_path: str) -> SettingsView:
         reports_path=settings["reports_path"],
         logs_path=settings["logs_path"],
         candidate_profile_path=settings.get("candidate_profile_path"),
-        report_history_policy="Latest scan only",
+        report_history_policy=_retention_policy_label(
+            settings.retention.reports.mode,
+            settings.retention.reports.total_to_keep,
+        ),
         report_replacement_behavior=(
-            "Each successful scan replaces the previous HTML report, "
-            "structured snapshot, and email preview."
+            "The latest filenames remain stable. Junior archives the previous "
+            "report set when report history is enabled."
         ),
         scan_config_path=DEFAULT_COMPANY_CONFIG_PATH,
         scan_settings_path=settings_path,
@@ -216,6 +247,14 @@ def _build_settings_view(settings_path: str) -> SettingsView:
         scan_email_preview_path=DEFAULT_EMAIL_PREVIEW_PATH,
         email_status=email_readiness.message,
     )
+
+
+def _retention_policy_label(mode: str, total_to_keep: int) -> str:
+    if mode == "latest_only":
+        return "Latest scan only"
+    if mode == "latest_plus_previous":
+        return "Latest scan plus the previous scan"
+    return f"Most recent {total_to_keep} scans"
 
 
 def _email_connection_status(provider: str, result: str) -> dict[str, str]:

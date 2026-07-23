@@ -1,0 +1,99 @@
+{# Lets normal users choose how many Junior-owned report runs and dated logs remain. #}
+{% extends "base.html" %}
+
+{% block title %}Report and log retention - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .retention-grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .retention-card {
+        display: flex;
+        flex-direction: column;
+    }
+    .retention-card label {
+        display: block;
+        margin-top: 16px;
+    }
+    .retention-card select,
+    .retention-card input {
+        margin-top: 7px;
+        width: 100%;
+    }
+    .retention-actions {
+        margin-top: 18px;
+    }
+    @media (max-width: 800px) {
+        .retention-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('settings') }}">&larr; Settings</a></p>
+<h1 class="page-title">Report and log retention</h1>
+
+<div class="page-card">
+    <p>Choose how much Junior-generated history remains on this computer.</p>
+    <p class="muted">
+        Changes take effect during the next successful scan. Junior removes only
+        report archives and dated log files that it created and recognizes.
+        Unrelated files are left alone.
+    </p>
+</div>
+
+<form method="post" action="{{ url_for('settings_retention_save') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <div class="retention-grid">
+        <section class="page-card retention-card">
+            <h2>Scan reports</h2>
+            <p class="muted">The latest report keeps its familiar filename. Older complete report sets are stored as history.</p>
+            <label>Report history
+                <select name="report_policy" data-count-control="report_count">
+                    {% for value, label in retention_form.policy_options %}
+                    <option value="{{ value }}" {% if retention_form.reports.mode == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label data-count-field="report_count">Number of report runs to keep
+                <input type="number" min="1" max="50" name="report_count" value="{{ retention_form.reports.count }}">
+            </label>
+        </section>
+
+        <section class="page-card retention-card">
+            <h2>Dated logs</h2>
+            <p class="muted">This limit applies only to dated Junior log files. The active startup log and unrelated files are preserved.</p>
+            <label>Log history
+                <select name="log_policy" data-count-control="log_count">
+                    {% for value, label in retention_form.policy_options %}
+                    <option value="{{ value }}" {% if retention_form.logs.mode == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label data-count-field="log_count">Number of dated logs to keep
+                <input type="number" min="1" max="50" name="log_count" value="{{ retention_form.logs.count }}">
+            </label>
+        </section>
+    </div>
+    <div class="retention-actions">
+        <button type="submit">Save retention settings</button>
+        <a class="button secondary" href="{{ url_for('settings') }}">Cancel</a>
+    </div>
+</form>
+
+<script>
+    document.querySelectorAll("[data-count-control]").forEach((control) => {
+        const updateCountVisibility = () => {
+            const field = document.querySelector(
+                `[data-count-field="${control.dataset.countControl}"]`
+            );
+            field.hidden = control.value !== "keep_last_n";
+        };
+        control.addEventListener("change", updateCountVisibility);
+        updateCountVisibility();
+    });
+</script>
+{% endblock %}

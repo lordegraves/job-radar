@@ -2,10 +2,16 @@ database_path: data/job_radar.sqlite3
 reports_path: reports
 logs_path: logs
 
+retention:
+  report_policy: latest_only
+  report_count: 1
+  log_policy: latest_only
+  log_count: 1
+
 email:
   enabled: false
   sender: ""
-  sender_name: "Job Radar"
+  sender_name: "Junior"
   recipients: []
   smtp_host: ""
   smtp_port: 587

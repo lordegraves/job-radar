@@ -19,6 +19,7 @@ from job_radar.report_snapshot import (
     ReportSnapshotJob,
     load_report_snapshot,
 )
+from job_radar.retention_service import list_retained_report_runs
 
 REPORT_FILE_EXTENSIONS = {".html", ".htm", ".md", ".txt"}
 
@@ -200,6 +201,7 @@ def register_report_routes(
             "reports.html",
             reports_path=reports_path,
             primary_report_files=primary_report_files,
+            retained_report_runs=list_retained_report_runs(reports_path),
         )
 
     @app.get("/reports/view/<path:report_name>")

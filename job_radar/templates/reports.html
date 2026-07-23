@@ -44,7 +44,7 @@
     </p>
 
     <p class="muted">
-        Each successful scan replaces the previous scan outputs.
+        The latest filenames remain stable. Older report sets appear below when retention is enabled.
     </p>
 
     <p><strong>Reports path:</strong> <code>{{ reports_path }}</code></p>
@@ -89,6 +89,44 @@
 {% else %}
 <div class="page-card">
     <p>No scan outputs found yet. Run a scan first.</p>
+</div>
+{% endif %}
+
+<h2>Retained report history</h2>
+{% if retained_report_runs %}
+<table>
+    <thead>
+        <tr>
+            <th>Generated</th>
+            <th>HTML report</th>
+            <th>Email preview</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for run in retained_report_runs %}
+        <tr>
+            <td>{{ run.generated_at }}</td>
+            <td>
+                {% if run.html_report_name %}
+                <a href="{{ url_for('report_view', report_name=run.html_report_name) }}">Open report</a>
+                {% else %}
+                <span class="muted">Not retained</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if run.email_preview_name %}
+                <a href="{{ url_for('report_view', report_name=run.email_preview_name) }}">Open preview</a>
+                {% else %}
+                <span class="muted">Not retained</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="page-card">
+    <p>No previous report runs are retained.</p>
 </div>
 {% endif %}
 {% endblock %}

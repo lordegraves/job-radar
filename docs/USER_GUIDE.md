@@ -108,7 +108,13 @@ Current scan artifacts are:
 - plain-text email preview — the message that can be reviewed before delivery
 - structured JSON snapshot — internal structured data used by the application
 
-Each successful scan replaces the previous fixed-name outputs. The Reports page does not expose arbitrary files from the reports directory. Configurable report history and retention are planned but are not implemented yet.
+The latest outputs keep the same fixed filenames. In **Settings > Report and log retention**, choose:
+
+- latest only
+- latest plus the previous run
+- a chosen total from 1 through 50
+
+When history is enabled, Junior copies and verifies the previous complete report set before replacing the latest files. Older HTML reports and email previews appear under **Retained report history** on the Reports page. Lower limits take effect during the next successful scan. Junior removes only marked report archives and recognized dated Junior logs; the active startup log and unrelated files remain untouched.
 
 ## Active Applications
 

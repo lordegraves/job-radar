@@ -13,6 +13,7 @@ from job_radar.config import (
     ApplicationSettings,
     ConfigError,
     EmailSettings,
+    RetentionSettings,
     load_companies,
     load_settings,
 )
@@ -82,6 +83,38 @@ logs_path: logs
     assert settings.reports_path == "reports"
     assert settings.logs_path == "logs"
     assert "retention" not in settings
+    assert isinstance(settings.retention, RetentionSettings)
+    assert settings.retention.reports.mode == "latest_only"
+    assert settings.retention.logs.total_to_keep == 1
+
+
+@pytest.mark.parametrize(
+    ("retention_yaml", "message"),
+    [
+        ("report_policy: forever", "supported retention policy"),
+        ("report_count: 0", "between 1 and 50"),
+        ("log_count: true", "must be a number"),
+    ],
+)
+def test_load_settings_rejects_invalid_retention(
+    tmp_path: Path,
+    retention_yaml: str,
+    message: str,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text(
+        f"""
+database_path: data/test.sqlite3
+reports_path: reports
+logs_path: logs
+retention:
+  {retention_yaml}
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match=message):
+        load_settings(settings_file)
 
 
 @pytest.mark.parametrize(

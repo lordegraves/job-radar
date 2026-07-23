@@ -80,6 +80,28 @@ class ActiveProfileSettings:
 
 
 @dataclass(frozen=True)
+class RetentionPolicySettings:
+    """Describe how many current and prior Junior-owned outputs to keep."""
+
+    mode: str
+    count: int
+
+    @property
+    def total_to_keep(self) -> int:
+        if self.mode == "latest_only":
+            return 1
+        if self.mode == "latest_plus_previous":
+            return 2
+        return self.count
+
+
+@dataclass(frozen=True)
+class RetentionSettings:
+    reports: RetentionPolicySettings
+    logs: RetentionPolicySettings
+
+
+@dataclass(frozen=True)
 class ApplicationSettings(Mapping[str, Any]):
     """Application-owned settings loaded from the current settings YAML file.
 
@@ -94,6 +116,7 @@ class ApplicationSettings(Mapping[str, Any]):
     logs_path: str
     active_profile: ActiveProfileSettings
     email: EmailSettings
+    retention: RetentionSettings
     _data: dict[str, Any] = field(repr=False, compare=False)
 
     @property
@@ -201,6 +224,7 @@ def load_settings(
         candidate_profile_path=candidate_profile_path,
     )
     email = _validate_email_settings(data.get("email", {}))
+    retention = _validate_retention_settings(data.get("retention", {}))
 
     # Preserve the original mapping shape during the compatibility migration.
     # Existing CLI and GUI callers can keep using [] and .get() until each
@@ -220,8 +244,49 @@ def load_settings(
         logs_path=logs_path,
         active_profile=active_profile,
         email=email,
+        retention=retention,
         _data=normalized_data,
     )
+
+
+def _validate_retention_settings(raw_retention: Any) -> RetentionSettings:
+    if raw_retention is None:
+        raw_retention = {}
+    if not isinstance(raw_retention, dict):
+        raise ConfigError("settings.yaml retention section must be a mapping")
+
+    return RetentionSettings(
+        reports=_validate_retention_policy(
+            raw_retention.get("report_policy", "latest_only"),
+            raw_retention.get("report_count", 1),
+            label="report",
+        ),
+        logs=_validate_retention_policy(
+            raw_retention.get("log_policy", "latest_only"),
+            raw_retention.get("log_count", 1),
+            label="log",
+        ),
+    )
+
+
+def _validate_retention_policy(
+    raw_mode: Any,
+    raw_count: Any,
+    *,
+    label: str,
+) -> RetentionPolicySettings:
+    modes = {"latest_only", "latest_plus_previous", "keep_last_n"}
+    if not isinstance(raw_mode, str) or raw_mode not in modes:
+        raise ConfigError(
+            f"settings.yaml {label}_policy must be a supported retention policy"
+        )
+    if isinstance(raw_count, bool) or not isinstance(raw_count, int):
+        raise ConfigError(f"settings.yaml {label}_count must be a number")
+    if not 1 <= raw_count <= 50:
+        raise ConfigError(
+            f"settings.yaml {label}_count must be between 1 and 50"
+        )
+    return RetentionPolicySettings(mode=raw_mode, count=raw_count)
 
 
 def _required_settings_string(raw_value: Any, key: str) -> str:

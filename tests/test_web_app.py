@@ -9,6 +9,7 @@ from pathlib import Path
 
 import job_radar.web_app as web_app_module
 
+from job_radar.config import load_settings
 from job_radar.history_models import JobHistoryRecord
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_storage import upsert_employer_source
@@ -1914,17 +1915,41 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "reports/target-email-preview.txt" in html
     assert "Report history" in html
     assert "Latest scan only" in html
-    assert (
-        "Each successful scan replaces the previous HTML report, "
-        "structured snapshot, and email preview."
-    ) in html
-    assert "Configurable report retention is planned for a later milestone." in html
+    assert "The latest filenames remain stable." in html
+    assert "Manage report and log retention" in html
     assert "report_retention_days" not in html
     assert "raw_capture_enabled" not in html
     assert "Email" in html
     assert "Disabled" in html
     assert "Secrets are not shown on this page." in html
     assert "Save" not in html
+
+
+def test_retention_settings_page_saves_choices(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    page = client.get("/settings/retention")
+    assert page.status_code == 200
+    assert "Report and log retention" in page.get_data(as_text=True)
+
+    response = client.post(
+        "/settings/retention",
+        data={
+            "report_policy": "keep_last_n",
+            "report_count": "6",
+            "log_policy": "latest_plus_previous",
+            "log_count": "2",
+        },
+    )
+
+    assert response.status_code == 302
+    saved = load_settings(settings_file)
+    assert saved.retention.reports.total_to_keep == 6
+    assert saved.retention.logs.total_to_keep == 2
 
 
 def test_settings_page_shows_email_enabled_without_credential(
@@ -2385,7 +2410,7 @@ def test_reports_page_lists_only_current_scan_outputs(
     assert "Latest scan result shortcuts" in html
     assert "primary-output-card" in html
     assert "Open the latest generated scan report and email preview." in html
-    assert "Each successful scan replaces the previous scan outputs." in html
+    assert "Older report sets appear below when retention is enabled." in html
     assert "target-email-preview.txt" in html
     assert "Latest plain-text email preview." in html
     assert "code-audit.md" not in html

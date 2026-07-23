@@ -35,6 +35,10 @@ from job_radar.report_view_model import (
     is_review_needed_report_posting,
     is_top_match_report_posting,
 )
+from job_radar.retention_service import (
+    apply_retention_after_report_write,
+    archive_before_report_write,
+)
 from job_radar.runtime_paths import DEFAULT_SCORING_CONFIG_PATH, RuntimePaths
 from job_radar.scored_posting import ScoredPosting
 from job_radar.resume_match import match_resume_to_posting
@@ -222,6 +226,7 @@ def handle_scan(
             ),
             send_email=send_email,
             database_path=str(database_path),
+            logs_path=str(runtime_paths.logs_path),
             base_directory=runtime_paths.base_directory,
             candidate_profile_path=runtime_paths.candidate_profile_path,
             trigger_source=trigger_source,
@@ -238,6 +243,7 @@ def _handle_scan_unlocked(
     email_preview_path: str | None,
     send_email: bool,
     database_path: str,
+    logs_path: str,
     base_directory: Path,
     candidate_profile_path: Path | None,
     trigger_source: str,
@@ -554,6 +560,12 @@ def _handle_scan_unlocked(
             collector_errors=len(collector_errors),
         )
 
+        archive_before_report_write(
+            html_report_path=Path(report_path).with_suffix(".html"),
+            snapshot_path=Path(report_path).with_suffix(".json"),
+            email_preview_path=email_preview_path,
+        )
+
         written_html_report_path = write_html_report(
             Path(report_path).with_suffix(".html"),
             report,
@@ -571,6 +583,12 @@ def _handle_scan_unlocked(
                 email_preview_path,
                 report,
             )
+
+        apply_retention_after_report_write(
+            reports_path=Path(report_path).parent,
+            logs_path=logs_path,
+            retention=settings.retention,
+        )
 
         email_send_result = None
 

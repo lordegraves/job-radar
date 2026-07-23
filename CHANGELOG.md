@@ -6,6 +6,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Configurable report and log retention with latest-only, latest-plus-previous, or a chosen 1-to-50-run limit; verified report-set archives, retained-report browsing, atomic settings updates, and pruning limited to clearly marked Junior-owned files.
 - GUI scan scheduling configuration for enabled state, local start time, weekdays, scheduled email delivery, calculated next run, and safe last-run or failed-run visibility.
 - Controlled Windows Task Scheduler integration that manages only Junior's named task, runs the shared scheduled-scan entry point with normal user privileges, stores no Windows password, and supports inspection, update, disable, and removal through Settings.
 - Guarded Linux systemd user scheduling that atomically manages only Junior-marked service/timer files, rolls back failed updates, and reuses the same saved schedule and scan entry point for standalone or service-account operation.
