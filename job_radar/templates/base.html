@@ -346,6 +346,30 @@
             width: 8px;
         }
 
+        .admin-mode-indicator {
+            align-items: center;
+            background: #392f1d;
+            border: 1px solid #9a762d;
+            border-radius: 999px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 10px auto 0;
+            padding: 5px 10px;
+            width: fit-content;
+        }
+
+        .admin-mode-indicator form {
+            margin: 0;
+        }
+
+        .admin-mode-indicator button {
+            background: transparent;
+            border: 0;
+            color: var(--link);
+            padding: 0;
+        }
+
         .scan-notification {
             background: #18242b;
             border: 1px solid var(--link);
@@ -397,12 +421,24 @@
                 <a class="{% if request.endpoint == 'companies' %}active-nav{% endif %}" href="{{ url_for('companies') }}">Companies</a>
                 <a class="{% if request.endpoint in ['scan', 'run_scan'] %}active-nav{% endif %}" href="{{ url_for('scan') }}">Scan</a>
                 <a class="{% if request.endpoint == 'settings' %}active-nav{% endif %}" href="{{ url_for('settings') }}">Settings</a>
+                {% if admin_mode_active %}
+                <a class="{% if request.endpoint == 'administration' %}active-nav{% endif %}" href="{{ url_for('administration') }}">Administration</a>
+                {% endif %}
             </nav>
             <div id="global-scan-status" class="global-scan-status" role="status" aria-live="polite" hidden>
                 <span class="global-scan-dot" aria-hidden="true"></span>
                 <span id="global-scan-status-text">Scan running</span>
             </div>
         </div>
+        {% if admin_mode_active %}
+        <div class="admin-mode-indicator" role="status">
+            <span>Administration mode</span>
+            <form method="post" action="{{ url_for('administration_lock') }}">
+                <input type="hidden" name="next" value="{{ url_for('index') }}">
+                <button type="submit">Exit</button>
+            </form>
+        </div>
+        {% endif %}
     </header>
 
     <aside id="scan-notification" class="scan-notification" role="alert" hidden>

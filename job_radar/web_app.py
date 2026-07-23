@@ -1,6 +1,7 @@
 """Create and launch the Job Radar web interface with safe startup diagnostics."""
 
 import argparse
+import secrets
 import sys
 import traceback
 from datetime import UTC, date, datetime
@@ -11,10 +12,12 @@ from flask import Flask, render_template
 from job_radar import __version__
 from job_radar.config import ConfigError
 from job_radar.runtime_paths import RuntimePaths, get_default_user_data_directory
+from job_radar.session_secret import load_or_create_session_secret
 from job_radar.profile_storage import get_active_profile
 from job_radar.scan_service import handle_scan
 from job_radar.storage import initialize_database
 from job_radar.web_routes.companies import register_company_routes
+from job_radar.web_routes.administration import register_administration_routes
 from job_radar.web_routes.history import register_history_routes
 from job_radar.web_routes.profile import register_profile_routes
 from job_radar.web_routes.reports import (
@@ -50,8 +53,15 @@ def create_app(
     )
     app.config["JOB_RADAR_RUNTIME_PATHS"] = runtime_paths
     app.config["JOB_RADAR_SETTINGS_PATH"] = str(runtime_paths.settings_path)
+    app.config["SECRET_KEY"] = load_or_create_session_secret(
+        runtime_paths.database_path
+    )
+    # This marker makes an Administration unlock valid only for this process.
+    app.config["JOB_RADAR_ADMIN_SESSION_MARKER"] = secrets.token_urlsafe(32)
 
     initialize_database(runtime_paths.database_path)
+
+    register_administration_routes(app)
 
     @app.get("/")
     def index() -> str:

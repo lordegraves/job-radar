@@ -136,6 +136,18 @@ The Profile / Resume page is a read-only home for selecting profiles and reviewi
 
 Each profile owns its own company search list. The Companies workspace shows only the active profile's employers and labels each one Scanning or Paused according to that profile's assignment. The Profile / Resume summary shows the same company count and links to the workspace. Normal users do not see ATS names, source slugs, collector configuration, or internal company keys there; those technical records remain part of the shared employer catalog for later administration. When no managed profile is active, the existing read-only legacy YAML view remains available for compatibility.
 
+## Settings and Administration boundary
+
+Settings remains the normal-user home for safe personal and product preferences. Administration is a separate, session-scoped safety boundary for installation-wide and technical controls. Unlocking Administration requires typing `ADMIN`; this is an explicit confirmation, not a password or protection from someone who already controls the local computer. Administration unlock state is limited to the current browser session and Junior process, and restarting Junior invalidates it. The Flask session signing key is generated locally under the user-owned database runtime directory. It is never committed or stored in YAML or SQLite; deleting it invalidates existing browser sessions.
+
+| Classification | Controls |
+|---|---|
+| Normal Settings | Email setup, report retention, scan preferences, ordinary interface preferences, scheduling preferences, and safe user-facing defaults |
+| Administration | Employer Catalog and collector configuration, runtime paths, database operations, backup and restore, legacy import and migration, raw diagnostics, support bundles, and installation-wide defaults affecting every profile |
+| Undecided / future | The final placement of support links, bounded diagnostic summaries, and recovery guidance will be decided when those workflows become editable |
+
+The current Settings page is still read-only and temporarily displays runtime paths and scan file locations. Foundation 7B classifies those technical values for eventual Administration placement but does not move or edit them yet. The Administration landing page contains planned categories only; global employer editing begins in a later milestone.
+
 A successful scan writes fixed-name outputs in the user-owned `reports` directory. The current HTML report and email preview replace the previous versions. The structured JSON snapshot supports the application internally and is not presented as a separate user report. Configurable report history and retention are not implemented yet.
 
 Scans started from the GUI run in the background. The rest of junior remains available while a scan is running, and every page monitors the same durable scan status. An app-wide notification reports completion, completion with source warnings, or failure and links to the appropriate results or details.

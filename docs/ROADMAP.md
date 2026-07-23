@@ -104,6 +104,8 @@ Completed foundations include durable SQLite migrations and backups, shared scan
 
 Foundation 7A now includes the completed read-only Company Workspace: profile-specific Scanning and Paused state, a matching Profile summary, and removal of technical employer-source data from the normal managed-profile view. Add Company, Pause/Resume and Remove controls, employer resolution, URL detection, suggestions, and an administrative Employer Catalog remain part of later company-management work.
 
+Foundation 7B is complete: ordinary Settings remains available, installation-wide controls are classified under a session-scoped Administration boundary, the Administration shell requires explicit `ADMIN` confirmation, and an unlocked session is visibly identified and can always be exited. Employer editing and all other global mutations remain deferred.
+
 The next major product areas are editable company management, completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
 
 The projected full-product target remains September 30, 2026. Milestone quality, user-data safety, and dependency order take precedence over the date.

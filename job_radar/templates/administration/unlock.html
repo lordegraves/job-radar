@@ -1,0 +1,35 @@
+{# Explains and unlocks the session-scoped Administration safety boundary. #}
+{% extends "base.html" %}
+
+{% block title %}Unlock Administration - junior{% endblock %}
+
+{% block content %}
+<div class="page-card form-page" style="max-width: 720px; margin: 0 auto;">
+    <h1 class="page-title">Unlock Administration</h1>
+    <p>
+        Administration contains installation-wide controls that can affect every
+        profile, employer source, scan, backup, and recovery option in Junior.
+    </p>
+    <p class="muted">
+        This confirmation prevents accidental entry into advanced controls. It is
+        not a password and does not prevent a determined person with access to this
+        computer.
+    </p>
+
+    {% if unlock_error %}
+    <div class="error" role="alert">
+        Administration remains locked. Type <strong>ADMIN</strong> exactly to continue.
+    </div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('administration_unlock_submit') }}">
+        <input type="hidden" name="next" value="{{ next_path }}">
+        <label for="admin-confirmation">Type ADMIN to continue</label>
+        <input id="admin-confirmation" name="confirmation" type="text" autocomplete="off">
+        <div class="actions">
+            <button type="submit">Unlock Administration</button>
+            <a class="button-link button-secondary" href="{{ url_for('settings') }}">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

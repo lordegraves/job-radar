@@ -8,6 +8,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- A session-scoped Administration shell with explicit `ADMIN` confirmation, safe local redirects, a visible mode indicator and exit action, and an installation-local Flask session signing key.
 - A read-only Company Workspace showing the active profile's company count and per-profile Scanning or Paused state, with a matching Profile / Resume summary link.
 - Profile-specific employer assignment state, allowing each managed profile to independently assign and enable or disable employers from the shared installation-wide employer catalog.
 - Versioned SQLite schema migrations.
@@ -36,6 +37,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Changed
 
+- Classified ordinary Settings separately from installation-wide Administration without moving or enabling technical configuration controls yet.
 - Replaced technical employer-source details on the managed-profile Companies page with a normal-user workspace while preserving the legacy YAML view when no managed profile is active.
 - Replaced personal identities and nonessential real-company names in repository policy, roadmap history, and general-purpose test fixtures with neutral examples while preserving the approved support contact and source-specific collector coverage.
 - Removed the remaining global infrastructure, SRE, Kubernetes, employer, title-family, and Northern Colorado recommendation assumptions. Recommendation actions, risks, report grouping, resume gaps, and history-title matching now use profile-owned evidence and occupation-neutral rules, with explicit food-service coverage.
