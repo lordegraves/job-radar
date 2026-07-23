@@ -9,12 +9,20 @@ from urllib.parse import parse_qs, urlparse
 
 from job_radar.config import SUPPORTED_SOURCE_TYPES
 from job_radar.database import connect_database
+from job_radar.domain_errors import EmployerInUseError
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_resolution_service import (
     normalize_careers_url,
     normalize_company_name,
 )
-from job_radar.employer_storage import get_employer_source
+from job_radar.employer_storage import (
+    assign_employer_to_profile,
+    delete_employer_source,
+    get_employer_source,
+    list_profile_employer_assignments,
+    unassign_employer_from_profile,
+)
+from job_radar.profile_storage import get_profile, list_profiles
 from job_radar.storage import initialize_database
 
 
@@ -68,6 +76,16 @@ class EmployerAdminRecord:
             VALID: "Valid",
             INVALID: "Has issues",
         }.get(self.validation_state, "Not checked")
+
+
+@dataclass(frozen=True)
+class EmployerProfileAssignment:
+    """Show whether one managed profile currently scans an employer."""
+
+    profile_id: str
+    profile_name: str
+    assigned: bool
+    scanning: bool
 
 
 class EmployerAdminError(ValueError):
@@ -407,6 +425,93 @@ def set_employer_lifecycle(
             connection, employer_id, operation, record, updated, retired
         )
     return get_admin_employer(db_path, employer_id)  # type: ignore[return-value]
+
+
+def list_employer_profile_assignments(
+    database_path: str | Path,
+    employer_id: str,
+) -> tuple[EmployerProfileAssignment, ...]:
+    """List every active profile and its assignment to one employer."""
+
+    if get_admin_employer(database_path, employer_id) is None:
+        raise EmployerAdminError("That employer no longer exists.")
+    records = []
+    for profile in list_profiles(database_path):
+        assignment = next(
+            (
+                item
+                for item in list_profile_employer_assignments(
+                    database_path, profile.profile_id
+                )
+                if item.employer_id == employer_id
+            ),
+            None,
+        )
+        records.append(
+            EmployerProfileAssignment(
+                profile_id=profile.profile_id,
+                profile_name=profile.display_name,
+                assigned=assignment is not None,
+                scanning=bool(assignment and assignment.enabled),
+            )
+        )
+    return tuple(records)
+
+
+def set_employer_profile_assignment(
+    database_path: str | Path,
+    employer_id: str,
+    profile_id: str,
+    *,
+    assigned: bool,
+) -> bool:
+    """Assign or remove one employer without changing another profile."""
+
+    record = get_admin_employer(database_path, employer_id)
+    if record is None:
+        raise EmployerAdminError("That employer no longer exists.")
+    profile = get_profile(database_path, profile_id)
+    if profile is None or profile.archived:
+        raise EmployerAdminError("That profile is no longer available.")
+    if assigned:
+        if (
+            record.retired
+            or not record.employer.enabled
+            or record.validation_state != VALID
+        ):
+            raise EmployerAdminError(
+                "Validate and enable this employer before assigning it."
+            )
+        return assign_employer_to_profile(
+            database_path, profile_id, employer_id
+        )
+    return unassign_employer_from_profile(
+        database_path, profile_id, employer_id
+    )
+
+
+def permanently_delete_employer(
+    database_path: str | Path,
+    employer_id: str,
+    *,
+    confirmation: str,
+) -> bool:
+    """Delete only an unused employer after explicit typed confirmation."""
+
+    if get_admin_employer(database_path, employer_id) is None:
+        raise EmployerAdminError("That employer no longer exists.")
+    if confirmation != "DELETE":
+        raise EmployerAdminError("Type DELETE to confirm permanent deletion.")
+    try:
+        deleted = delete_employer_source(database_path, employer_id)
+    except EmployerInUseError as error:
+        raise EmployerAdminError(
+            "This employer cannot be deleted because a profile or collected "
+            "job still uses it. Disable or retire it instead."
+        ) from error
+    if not deleted:
+        raise EmployerAdminError("That employer no longer exists.")
+    return True
 
 
 def validate_source_configuration(employer: EmployerSource) -> tuple[str, ...]:

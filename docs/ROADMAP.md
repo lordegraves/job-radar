@@ -41,10 +41,10 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 17 | Completed | Decide and document the final role of the spreadsheet bridge: one-time migration, optional bulk import, export-only compatibility path, or full retirement from normal use. |
 | 18 | In Progress | Add safe import tools for bringing existing applications, history, resumes, profiles, and company lists into the app without duplicating or overwriting existing records. |
 | 19 | Completed | Create a user-owned company persistence model that does not directly rewrite or risk corrupting the released grouped `target-companies.yaml` configuration. |
-| 20 | In Progress | Add GUI company management for creating, editing, enabling, disabling, deleting, validating, and assigning companies to one or more profiles. |
+| 20 | Completed | Add GUI company management for creating, editing, enabling, disabling, deleting, validating, and assigning companies to one or more profiles. |
 | 21 | Completed | Add guided company-source detection from a company name or careers URL, with confirmation of detected ATS/source type before saving. |
 | 22 | Completed | Add company connection testing, collector validation, last-success status, last-error status, and clear troubleshooting messages. |
-| 23 | In Progress | Preserve support for shipped/default company definitions while allowing users to maintain their own company inventory and overrides safely. |
+| 23 | Completed | Preserve support for shipped/default company definitions while allowing users to maintain their own company inventory and overrides safely. |
 | 24 | Completed | Add profile-owned role discovery and title mapping based on demonstrated skills, tools, responsibilities, and domain evidence; explain adjacent-title suggestions in plain language, require approval before expanding scans, and record Relevant, Not relevant, or Different discipline feedback without relying on dictionary synonyms. |
 | 25 | Completed | Add first-run detection so a new installation opens guided setup instead of failing because configuration, profiles, companies, or data directories do not yet exist. |
 | 26 | Completed | Create a guided first-run setup wizard that collects profile name, resume, role preferences, compensation, locations, remote/hybrid rules, exclusions, and initial companies. |
@@ -120,6 +120,10 @@ Foundation 7G is complete: the Administration-only Employer Catalog provides sea
 Foundation 7H is complete: a normal user can enter a company name or public careers URL. Junior normalizes the input, checks exact catalog identity and aliases, prevents silent ambiguous merges, recognizes supported career-site families centrally, creates and assigns only confidently complete sources in one transaction, and otherwise records a safe pending administrator-review request. Resolution makes no network request and rejects local or private destinations.
 
 Guided source confirmation is complete: when a public Greenhouse, Lever, or Ashby URL contains enough information for scan-ready setup, Junior displays the detected provider and company identity but writes nothing until the user explicitly confirms. Confirmation re-normalizes and re-detects the submitted public URL on the server, then uses the existing atomic create-and-assign boundary. Existing catalog matches still require a direct choice, while uncertain and unsupported sites remain in administrator review.
+
+GUI company management is complete: the unlocked Employer Catalog can create, edit, locally validate, connection-test, enable, disable, retire, and inspect every shared employer. An administrator can assign an available validated employer to any managed profile or remove one profile's assignment without changing another. Permanent deletion requires typed confirmation and remains blocked while any profile assignment or collected job references the employer.
+
+Shipped and user-owned company boundaries are complete: new installations receive an empty packaged company list, while an existing legacy list can be imported once for the active profile. Import conflicts preserve the database employer, so a packaged or legacy definition cannot overwrite a user's later catalog edits. Subsequent GUI changes stay in the user-owned database and do not rewrite shipped or legacy YAML.
 
 Foundation 7I is complete: the Administration-only Employer Review Queue can inspect safe unresolved submissions, match an existing employer, prefill new-employer setup, optionally assign an available employer to the requesting profile, or mark a request unsupported, rejected, or duplicate. Decisions are audited without raw collector failures or profile content, while normal users see only their own plain-language request state.
 

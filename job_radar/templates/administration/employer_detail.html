@@ -10,6 +10,8 @@
     .detail-list dt { color: var(--muted); font-weight: 650; margin-top: 12px; }
     .detail-list dd { margin: 3px 0 0; }
     .issue-list { color: #ffb4b4; }
+    .profile-assignment { align-items: center; border-top: 1px solid var(--border); display: flex; justify-content: space-between; padding: 12px 0; }
+    .danger-zone { border-color: #8d3f46; margin-top: 18px; }
     @media (max-width: 850px) { .detail-grid { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}
@@ -97,6 +99,35 @@
     </section>
 
     <aside class="page-card">
+        <h2>Profile assignments</h2>
+        <p class="muted">Choose which profiles include this employer. Removing an assignment preserves collected jobs and application history.</p>
+        {% for profile in profile_assignments %}
+        <div class="profile-assignment">
+            <div>
+                <strong>{{ profile.profile_name }}</strong><br>
+                <span class="muted">
+                    {% if profile.assigned %}
+                    {{ 'Scanning' if profile.scanning else 'Paused' }}
+                    {% else %}
+                    Not assigned
+                    {% endif %}
+                </span>
+            </div>
+            <form method="post" action="{{ url_for('administration_employer_profile_assignment', employer_id=record.employer.employer_id, profile_id=profile.profile_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                {% if profile.assigned %}
+                <input type="hidden" name="operation" value="remove">
+                <button class="button-secondary" type="submit">Remove</button>
+                {% else %}
+                <input type="hidden" name="operation" value="assign">
+                <button type="submit" {% if record.retired or not record.employer.enabled or record.validation_state != 'valid' %}disabled{% endif %}>Assign</button>
+                {% endif %}
+            </form>
+        </div>
+        {% else %}
+        <p>No managed profiles are available.</p>
+        {% endfor %}
+
         <h2>Recent changes</h2>
         <ul>
             {% for entry in audit %}
@@ -106,6 +137,17 @@
             {% endfor %}
         </ul>
         <p class="muted">The audit intentionally excludes source settings, notes, and credentials.</p>
+
+        <section class="danger-zone">
+            <h2>Permanent deletion</h2>
+            <p class="muted">Only an employer with no profile assignments and no collected jobs can be deleted. Otherwise, disable or retire it.</p>
+            <form method="post" action="{{ url_for('administration_employer_delete', employer_id=record.employer.employer_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <label for="delete-confirmation">Type DELETE to confirm</label>
+                <input id="delete-confirmation" name="confirmation" autocomplete="off">
+                <button class="button-danger" type="submit">Permanently delete employer</button>
+            </form>
+        </section>
     </aside>
 </div>
 {% endblock %}

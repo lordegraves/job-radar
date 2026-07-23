@@ -10,9 +10,12 @@ from job_radar.employer_admin_service import (
     EmployerAdminError,
     create_employer,
     get_admin_employer,
+    list_employer_profile_assignments,
     list_admin_employers,
     list_employer_audit,
+    permanently_delete_employer,
     set_employer_lifecycle,
+    set_employer_profile_assignment,
     update_employer,
     validate_employer,
 )
@@ -275,3 +278,150 @@ def test_admin_connection_test_shows_safe_result(
     assert response.status_code == 200
     assert "Connection succeeded and returned 0 jobs." in html
     assert "Source connection</dt><dd>Connected" in html
+
+
+def test_administrator_assigns_and_removes_one_profile_only(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    first = create_test_profile(database_path)
+    second = ManagedProfile(
+        profile_id="profile_5678efgh",
+        display_name="Second Test User",
+    )
+    create_profile(database_path, second)
+    employer = create_employer(
+        database_path,
+        name="Example Catering",
+        source_type="greenhouse",
+        source_config={"source_slug": "example-catering"},
+        notes="",
+    )
+    validate_employer(database_path, employer.employer.employer_id)
+    set_employer_lifecycle(
+        database_path, employer.employer.employer_id, "enable"
+    )
+
+    assert set_employer_profile_assignment(
+        database_path,
+        employer.employer.employer_id,
+        first.profile_id,
+        assigned=True,
+    )
+    assignments = list_employer_profile_assignments(
+        database_path, employer.employer.employer_id
+    )
+    assert [(item.profile_name, item.assigned) for item in assignments] == [
+        ("Second Test User", False),
+        ("Test User", True),
+    ]
+
+    assert set_employer_profile_assignment(
+        database_path,
+        employer.employer.employer_id,
+        first.profile_id,
+        assigned=False,
+    )
+    assert list_profile_employer_assignments(database_path, first.profile_id) == []
+    assert list_profile_employer_assignments(database_path, second.profile_id) == []
+
+
+def test_permanent_delete_requires_confirmation_and_unused_employer(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    unused = create_employer(
+        database_path,
+        name="Unused Example",
+        source_type="lever",
+        source_config={"source_slug": "unused-example"},
+        notes="",
+    )
+
+    with pytest.raises(EmployerAdminError, match="Type DELETE"):
+        permanently_delete_employer(
+            database_path,
+            unused.employer.employer_id,
+            confirmation="delete",
+        )
+    assert permanently_delete_employer(
+        database_path,
+        unused.employer.employer_id,
+        confirmation="DELETE",
+    )
+    assert get_admin_employer(
+        database_path, unused.employer.employer_id
+    ) is None
+
+    used = create_employer(
+        database_path,
+        name="Used Example",
+        source_type="lever",
+        source_config={"source_slug": "used-example"},
+        notes="",
+    )
+    assign_employer_to_profile(
+        database_path, profile.profile_id, used.employer.employer_id
+    )
+    with pytest.raises(EmployerAdminError, match="cannot be deleted"):
+        permanently_delete_employer(
+            database_path,
+            used.employer.employer_id,
+            confirmation="DELETE",
+        )
+
+
+def test_admin_profile_assignment_and_delete_routes(tmp_path: Path) -> None:
+    app = build_test_app(tmp_path)
+    database_path = tmp_path / "data" / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    employer = create_employer(
+        database_path,
+        name="Example Restaurant",
+        source_type="greenhouse",
+        source_config={"source_slug": "example-restaurant"},
+        notes="",
+    )
+    validate_employer(database_path, employer.employer.employer_id)
+    set_employer_lifecycle(
+        database_path, employer.employer.employer_id, "enable"
+    )
+    client = app.test_client()
+    client.post("/administration/unlock", data={"confirmation": "ADMIN"})
+
+    detail = client.get(
+        f"/administration/employers/{employer.employer.employer_id}"
+    )
+    assert "Profile assignments" in detail.get_data(as_text=True)
+    assert "Test User" in detail.get_data(as_text=True)
+
+    assigned = client.post(
+        (
+            f"/administration/employers/{employer.employer.employer_id}"
+            f"/profiles/{profile.profile_id}"
+        ),
+        data={"operation": "assign"},
+        follow_redirects=True,
+    )
+    assert "Employer assigned to that profile." in assigned.get_data(as_text=True)
+
+    invalid = client.post(
+        (
+            f"/administration/employers/{employer.employer.employer_id}"
+            f"/profiles/{profile.profile_id}"
+        ),
+        data={"operation": "unexpected"},
+        follow_redirects=True,
+    )
+    assert "Choose Assign or Remove." in invalid.get_data(as_text=True)
+    assert len(list_profile_employer_assignments(
+        database_path, profile.profile_id
+    )) == 1
+
+    blocked_delete = client.post(
+        f"/administration/employers/{employer.employer.employer_id}/delete",
+        data={"confirmation": "DELETE"},
+        follow_redirects=True,
+    )
+    assert "cannot be deleted" in blocked_delete.get_data(as_text=True)

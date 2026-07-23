@@ -26,7 +26,10 @@ from job_radar.employer_admin_service import (
     get_admin_employer,
     list_admin_employers,
     list_employer_audit,
+    list_employer_profile_assignments,
+    permanently_delete_employer,
     set_employer_lifecycle,
+    set_employer_profile_assignment,
     source_fields,
     update_employer,
     validate_employer,
@@ -290,6 +293,9 @@ def register_administration_routes(
             connection_health=get_employer_connection_health(
                 get_database_path(), employer_id
             ),
+            profile_assignments=list_employer_profile_assignments(
+                get_database_path(), employer_id
+            ),
         )
 
     @app.get("/administration/employers/<employer_id>/edit")
@@ -406,6 +412,59 @@ def register_administration_routes(
     @administration_required
     def administration_employer_retire(employer_id: str):
         return _lifecycle_response(employer_id, "retire")
+
+    @app.post("/administration/employers/<employer_id>/profiles/<profile_id>")
+    @administration_required
+    def administration_employer_profile_assignment(
+        employer_id: str,
+        profile_id: str,
+    ):
+        operation = request.form.get("operation", "")
+        try:
+            if operation not in {"assign", "remove"}:
+                raise EmployerAdminError("Choose Assign or Remove.")
+            assigned = operation == "assign"
+            changed = set_employer_profile_assignment(
+                get_database_path(),
+                employer_id,
+                profile_id,
+                assigned=assigned,
+            )
+            flash(
+                (
+                    "Employer assigned to that profile."
+                    if assigned
+                    else "Employer removed from that profile."
+                )
+                if changed
+                else "That profile assignment was already up to date.",
+                "success",
+            )
+        except EmployerAdminError as error:
+            flash(str(error), "error")
+        return redirect(
+            url_for("administration_employer_detail", employer_id=employer_id)
+        )
+
+    @app.post("/administration/employers/<employer_id>/delete")
+    @administration_required
+    def administration_employer_delete(employer_id: str):
+        try:
+            permanently_delete_employer(
+                get_database_path(),
+                employer_id,
+                confirmation=request.form.get("confirmation", ""),
+            )
+        except EmployerAdminError as error:
+            flash(str(error), "error")
+            return redirect(
+                url_for(
+                    "administration_employer_detail",
+                    employer_id=employer_id,
+                )
+            )
+        flash("Unused employer permanently deleted.", "success")
+        return redirect(url_for("administration_employers"))
 
     @app.get("/administration/employer-reviews")
     @administration_required
