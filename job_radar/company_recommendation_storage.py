@@ -53,14 +53,31 @@ def save_recommendation(
 def load_visible_rows(
     database_path: str | Path,
     profile_id: str,
+    *,
+    employer_ids: set[str] | None = None,
 ) -> tuple[sqlite3.Row, ...]:
     """Load visible recommendations after applying durable feedback."""
 
     db_path = initialize_database(database_path)
     with connect_database(db_path) as connection:
         connection.row_factory = sqlite3.Row
+        employer_filter = ""
+        parameters: list[object] = [
+            profile_id,
+            NEW,
+            MAYBE_LATER,
+            DISMISSED,
+        ]
+        if employer_ids is not None:
+            if not employer_ids:
+                return ()
+            placeholders = ", ".join("?" for _ in employer_ids)
+            employer_filter = (
+                f" AND recommendation.employer_id IN ({placeholders})"
+            )
+            parameters.extend(sorted(employer_ids))
         rows = connection.execute(
-            """
+            f"""
             SELECT recommendation.*, employer.name AS employer_name
             FROM company_recommendations AS recommendation
             INNER JOIN employer_sources AS employer
@@ -77,11 +94,12 @@ def load_visible_rows(
                     AND recommendation.hidden_until <= CURRENT_TIMESTAMP
                  )
               )
+              {employer_filter}
             ORDER BY recommendation.recommendation_score DESC,
                      employer.name COLLATE NOCASE,
                      recommendation.employer_id
             """,
-            (profile_id, NEW, MAYBE_LATER, DISMISSED),
+            parameters,
         ).fetchall()
     return tuple(rows)
 

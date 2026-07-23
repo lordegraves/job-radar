@@ -1,0 +1,181 @@
+{# Keeps technical recommendation controls behind the Administration boundary. #}
+{% extends "base.html" %}
+
+{% block title %}Recommendation Administration - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .recommendation-admin-grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
+    }
+    .field-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .field-grid label, .selector-grid label {
+        display: grid;
+        gap: 6px;
+        font-weight: 650;
+    }
+    .selector-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+        align-items: end;
+    }
+    .field-grid textarea { min-height: 110px; }
+    .full-width { grid-column: 1 / -1; }
+    .admin-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .diagnostic-list dt { color: var(--muted); font-weight: 650; margin-top: 12px; }
+    .diagnostic-list dd { margin: 3px 0 0; }
+    @media (max-width: 900px) {
+        .recommendation-admin-grid, .field-grid, .selector-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('administration') }}">&larr; Administration</a></p>
+<h1 class="page-title">Recommendation Administration</h1>
+
+<section class="page-card">
+    <h2>Choose what to inspect</h2>
+    <form method="get" class="selector-grid">
+        <label>Employer
+            <select name="employer_id">
+                {% for employer in employers %}
+                <option value="{{ employer.employer_id }}" {% if employer.employer_id == employer_id %}selected{% endif %}>{{ employer.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Profile
+            <select name="profile_id">
+                {% for profile in profiles %}
+                <option value="{{ profile.profile_id }}" {% if profile.profile_id == profile_id %}selected{% endif %}>{{ profile.display_name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit">Inspect</button>
+    </form>
+    {% if not employers or not profiles %}
+    <p class="muted">At least one employer and one profile are required before recommendation diagnostics are available.</p>
+    {% endif %}
+</section>
+
+{% if metadata %}
+<div class="recommendation-admin-grid">
+    <section class="page-card">
+        <h2>Employer recommendation metadata</h2>
+        <p class="muted">These global facts affect future recommendations for every profile. Enter one list item per line.</p>
+        <form method="post" action="{{ url_for('administration_recommendation_metadata') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="employer_id" value="{{ employer_id }}">
+            <input type="hidden" name="profile_id" value="{{ profile_id }}">
+            <div class="field-grid">
+                <label>Aliases
+                    <textarea name="aliases">{{ metadata.aliases|join('\n') }}</textarea>
+                </label>
+                <label>Industries
+                    <textarea name="industries">{{ metadata.industries|join('\n') }}</textarea>
+                </label>
+                <label>Occupation families
+                    <textarea name="occupation_families">{{ metadata.occupation_families|join('\n') }}</textarea>
+                </label>
+                <label>Geographic presence
+                    <textarea name="geographic_presence">{{ metadata.geographic_presence|join('\n') }}</textarea>
+                </label>
+                <label>Employer type
+                    <input name="employer_type" value="{{ metadata.employer_type }}">
+                </label>
+                <label>Recommendation eligibility
+                    <select name="eligibility">
+                        {% for option in eligibility_options %}
+                        <option value="{{ option }}" {% if option == metadata.eligibility %}selected{% endif %}>{{ option|replace('_', ' ')|title }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="full-width">Remote-hiring information
+                    <input name="remote_hiring_metadata" value="{{ metadata.remote_hiring_metadata }}">
+                </label>
+            </div>
+            <p><button type="submit">Save metadata</button></p>
+        </form>
+    </section>
+
+    <aside class="page-card">
+        <h2>Stored diagnostic</h2>
+        {% if diagnostic %}
+        <dl class="diagnostic-list">
+            <dt>Internal ranking</dt><dd>{{ diagnostic.score if diagnostic.score is not none else 'Not generated' }}</dd>
+            <dt>User feedback</dt><dd>{{ diagnostic.feedback_state|replace('_', ' ')|title }}</dd>
+            <dt>Employer availability</dt><dd>{{ diagnostic.availability_state|replace('_', ' ')|title }}</dd>
+            <dt>Generated</dt><dd>{{ diagnostic.generated_at or 'Not generated' }}</dd>
+            <dt>Last evaluated</dt><dd>{{ diagnostic.last_evaluated_at or 'Not evaluated' }}</dd>
+        </dl>
+        <h3>Contributing evidence</h3>
+        <ul>{% for item in diagnostic.positive_evidence %}<li>{{ item }}</li>{% else %}<li>No positive evidence stored.</li>{% endfor %}</ul>
+        <h3>Negative evidence</h3>
+        <ul>{% for item in diagnostic.negative_evidence %}<li>{{ item }}</li>{% else %}<li>No negative evidence stored.</li>{% endfor %}</ul>
+        {% endif %}
+    </aside>
+</div>
+
+<section class="page-card">
+    <h2>Controlled maintenance</h2>
+    <p class="muted">Each action is deliberately bounded. Rebuilding does not change saved user feedback.</p>
+    <div class="admin-actions">
+        <form method="post" action="{{ url_for('administration_recommendation_rebuild') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="scope" value="profile">
+            <input type="hidden" name="employer_id" value="{{ employer_id }}">
+            <input type="hidden" name="profile_id" value="{{ profile_id }}">
+            <button type="submit">Rebuild selected profile</button>
+        </form>
+        <form method="post" action="{{ url_for('administration_recommendation_rebuild') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="scope" value="employer">
+            <input type="hidden" name="employer_id" value="{{ employer_id }}">
+            <input type="hidden" name="profile_id" value="{{ profile_id }}">
+            <button class="button-secondary" type="submit">Rebuild selected employer</button>
+        </form>
+    </div>
+    <h3>Reset one profile's feedback</h3>
+    <form method="post" action="{{ url_for('administration_recommendation_reset_feedback') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="employer_id" value="{{ employer_id }}">
+        <input type="hidden" name="profile_id" value="{{ profile_id }}">
+        <label>Type RESET
+            <input name="confirmation" autocomplete="off">
+        </label>
+        <button class="button-danger" type="submit">Reset selected feedback</button>
+    </form>
+    <h3>Rebuild every profile</h3>
+    <form method="post" action="{{ url_for('administration_recommendation_rebuild') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="scope" value="all">
+        <input type="hidden" name="employer_id" value="{{ employer_id }}">
+        <input type="hidden" name="profile_id" value="{{ profile_id }}">
+        <label>Type REBUILD ALL
+            <input name="confirmation" autocomplete="off">
+        </label>
+        <button class="button-danger" type="submit">Rebuild every profile</button>
+    </form>
+</section>
+
+<section class="page-card">
+    <h2>Recent administration actions</h2>
+    <ul>
+        {% for entry in audit %}
+        <li>{{ entry.created_at }} &mdash; {{ entry.operation }}{% if entry.profile_id %} for {{ entry.profile_id }}{% endif %}</li>
+        {% else %}
+        <li>No recommendation administration changes recorded.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endblock %}

@@ -8,6 +8,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- Guarded Recommendation Administration for global employer metadata and eligibility, profile/employer diagnostics, profile-specific feedback reset, bounded rebuilds, and a sanitized audit.
+- SQLite migration version 19 for recommendation-administration metadata and audit records, protected by backup-before-migration and atomic rollback behavior.
 - An Administration-only Employer Review Queue for matching unresolved submissions, prefilled new-employer setup, guarded profile assignment, unsupported/rejected/duplicate decisions, and a sanitized decision audit.
 - Profile-specific, catalog-only company recommendations with plain-language reasons, deterministic ordering, one-click assignment, and durable Maybe later, Dismiss, and Not relevant feedback.
 - Bounded recommendation evidence from recent profile-owned scans, including relevant-job counts, strong title matches, remote compatibility, and recency without reusing unowned legacy scans.

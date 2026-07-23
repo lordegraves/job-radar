@@ -44,6 +44,17 @@ from job_radar.employer_review_service import (
     resolve_to_existing_employer,
 )
 from job_radar.employer_storage import list_employer_sources
+from job_radar.profile_storage import list_profiles
+from job_radar.recommendation_admin_service import (
+    ELIGIBILITY_OPTIONS,
+    RecommendationAdminError,
+    list_recommendation_audit,
+    load_recommendation_diagnostic,
+    load_recommendation_metadata,
+    rebuild_recommendations,
+    reset_recommendation_feedback,
+    update_recommendation_metadata,
+)
 
 
 def register_administration_routes(
@@ -61,6 +72,126 @@ def register_administration_routes(
     @administration_required
     def administration() -> str:
         return render_template("administration/index.html")
+
+    @app.get("/administration/recommendations")
+    @administration_required
+    def administration_recommendations() -> str:
+        employers = list_employer_sources(get_database_path())
+        profiles = list_profiles(get_database_path())
+        employer_id = request.args.get("employer_id", "")
+        profile_id = request.args.get("profile_id", "")
+        employer_ids = {item.employer_id for item in employers}
+        profile_ids = {item.profile_id for item in profiles}
+        if employer_id not in employer_ids:
+            employer_id = employers[0].employer_id if employers else ""
+        if profile_id not in profile_ids:
+            profile_id = profiles[0].profile_id if profiles else ""
+        return render_template(
+            "administration/recommendations.html",
+            employers=employers,
+            profiles=profiles,
+            employer_id=employer_id,
+            profile_id=profile_id,
+            metadata=(
+                load_recommendation_metadata(
+                    get_database_path(), employer_id
+                )
+                if employer_id
+                else None
+            ),
+            diagnostic=(
+                load_recommendation_diagnostic(
+                    get_database_path(), profile_id, employer_id
+                )
+                if employer_id and profile_id
+                else None
+            ),
+            audit=(
+                list_recommendation_audit(
+                    get_database_path(), employer_id
+                )
+                if employer_id
+                else ()
+            ),
+            eligibility_options=ELIGIBILITY_OPTIONS,
+        )
+
+    def _recommendation_redirect(employer_id: str, profile_id: str):
+        return redirect(
+            url_for(
+                "administration_recommendations",
+                employer_id=employer_id,
+                profile_id=profile_id,
+            )
+        )
+
+    @app.post("/administration/recommendations/metadata")
+    @administration_required
+    def administration_recommendation_metadata():
+        employer_id = request.form.get("employer_id", "")
+        profile_id = request.form.get("profile_id", "")
+        try:
+            update_recommendation_metadata(
+                get_database_path(),
+                employer_id,
+                aliases=request.form.get("aliases", ""),
+                industries=request.form.get("industries", ""),
+                occupation_families=request.form.get(
+                    "occupation_families", ""
+                ),
+                employer_type=request.form.get("employer_type", ""),
+                geographic_presence=request.form.get(
+                    "geographic_presence", ""
+                ),
+                remote_hiring_metadata=request.form.get(
+                    "remote_hiring_metadata", ""
+                ),
+                eligibility=request.form.get("eligibility", ""),
+            )
+            flash("Recommendation metadata saved.", "success")
+        except RecommendationAdminError as error:
+            flash(str(error), "error")
+        return _recommendation_redirect(employer_id, profile_id)
+
+    @app.post("/administration/recommendations/rebuild")
+    @administration_required
+    def administration_recommendation_rebuild():
+        employer_id = request.form.get("employer_id", "")
+        profile_id = request.form.get("profile_id", "")
+        scope = request.form.get("scope", "")
+        try:
+            count = rebuild_recommendations(
+                get_database_path(),
+                profile_id=profile_id if scope == "profile" else None,
+                employer_id=employer_id if scope == "employer" else None,
+                all_profiles_confirmation=request.form.get(
+                    "confirmation", ""
+                ),
+            )
+            flash(
+                f"Recommendation rebuild completed for {count} profile(s).",
+                "success",
+            )
+        except RecommendationAdminError as error:
+            flash(str(error), "error")
+        return _recommendation_redirect(employer_id, profile_id)
+
+    @app.post("/administration/recommendations/reset-feedback")
+    @administration_required
+    def administration_recommendation_reset_feedback():
+        employer_id = request.form.get("employer_id", "")
+        profile_id = request.form.get("profile_id", "")
+        try:
+            reset_recommendation_feedback(
+                get_database_path(),
+                profile_id,
+                employer_id,
+                confirmation=request.form.get("confirmation", ""),
+            )
+            flash("Recommendation feedback reset for this profile only.", "success")
+        except RecommendationAdminError as error:
+            flash(str(error), "error")
+        return _recommendation_redirect(employer_id, profile_id)
 
     @app.get("/administration/employers")
     @administration_required

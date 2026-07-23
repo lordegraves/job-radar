@@ -278,6 +278,11 @@ def _schema_migrations() -> tuple:
             "add external employer discovery candidates",
             _migrate_external_employer_discoveries,
         ),
+        (
+            19,
+            "add recommendation administration metadata",
+            _migrate_recommendation_administration,
+        ),
     )
 
 
@@ -958,6 +963,46 @@ def _migrate_external_employer_discoveries(
         ON external_employer_discoveries(
             profile_id, readiness_state, last_evaluated_at DESC
         )
+        """
+    )
+
+
+def _migrate_recommendation_administration(
+    connection: sqlite3.Connection,
+) -> None:
+    """Store global recommendation metadata and a sanitized admin audit."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS employer_recommendation_metadata (
+            employer_id TEXT PRIMARY KEY,
+            industries_json TEXT NOT NULL DEFAULT '[]',
+            occupation_families_json TEXT NOT NULL DEFAULT '[]',
+            employer_type TEXT NOT NULL DEFAULT '',
+            geographic_presence_json TEXT NOT NULL DEFAULT '[]',
+            remote_hiring_metadata TEXT NOT NULL DEFAULT '',
+            eligibility TEXT NOT NULL DEFAULT 'needs_review',
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (employer_id) REFERENCES employer_sources(employer_id)
+                ON DELETE CASCADE
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS recommendation_admin_audit (
+            audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employer_id TEXT NOT NULL,
+            profile_id TEXT,
+            operation TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_recommendation_admin_audit_employer
+        ON recommendation_admin_audit(employer_id, audit_id DESC)
         """
     )
 

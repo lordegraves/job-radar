@@ -60,6 +60,8 @@
         <a class="button-link primary-action" href="{{ url_for('administration_employers') }}">Manage employers</a>
         {% elif title == "Employer review queue" %}
         <a class="button-link primary-action" href="{{ url_for('administration_employer_reviews') }}">Review submissions</a>
+        {% elif title == "Recommendation administration" %}
+        <a class="button-link primary-action" href="{{ url_for('administration_recommendations') }}">Inspect recommendations</a>
         {% else %}
         <span class="planned-label">Planned</span>
         {% endif %}
