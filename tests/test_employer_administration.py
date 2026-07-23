@@ -353,6 +353,18 @@ def test_permanent_delete_requires_confirmation_and_unused_employer(
     assert get_admin_employer(
         database_path, unused.employer.employer_id
     ) is None
+    safety_backups = list(
+        (tmp_path / "backups" / "safety").glob(
+            "junior.sqlite3.pre-company-delete-*.bak"
+        )
+    )
+    assert len(safety_backups) == 1
+    with sqlite3.connect(safety_backups[0]) as backup_connection:
+        backed_up_employer = backup_connection.execute(
+            "SELECT name FROM employer_sources WHERE employer_id = ?",
+            (unused.employer.employer_id,),
+        ).fetchone()
+    assert backed_up_employer == ("Unused Example",)
 
     used = create_employer(
         database_path,
@@ -370,6 +382,13 @@ def test_permanent_delete_requires_confirmation_and_unused_employer(
             used.employer.employer_id,
             confirmation="DELETE",
         )
+    assert len(
+        list(
+            (tmp_path / "backups" / "safety").glob(
+                "junior.sqlite3.pre-company-delete-*.bak"
+            )
+        )
+    ) == 1
 
 
 def test_admin_profile_assignment_and_delete_routes(tmp_path: Path) -> None:

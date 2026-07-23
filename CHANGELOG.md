@@ -7,6 +7,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 ## Unreleased
 
 - Added guarded Administration workflows for verified private backups, pre-restore safety copies, readable JSON exports, and validated user-data recovery without copying credential values.
+- Added automatic safety backups inside permanent profile and company deletion services, extending the existing backup-before-migration protection to every currently implemented destructive data operation.
 
 - Bounded in-app viewing for allowlisted sanitized Junior logs, a copyable privacy-safe troubleshooting summary, and a CSRF-protected Open Data Directory action using the resolved settings-owned workspace.
 - Read-only Settings diagnostics for application configuration, latest scan, company-source, and email health, with plain-language configuration, collector, network, email, and unexpected-application categories; scan diagnostics no longer persist raw exception text.

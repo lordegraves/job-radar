@@ -136,6 +136,33 @@ def create_export(runtime_paths: RuntimePaths) -> Path:
     return destination
 
 
+def create_database_safety_backup(
+    database_path: str | Path,
+    *,
+    reason: str,
+) -> Path:
+    """Create and verify a SQLite-only backup immediately before a DB mutation."""
+    source_path = Path(database_path).resolve()
+    if not source_path.is_file():
+        raise BackupError("Junior's database is not available for safety backup.")
+    backup_root = source_path.parent / "backups" / "safety"
+    backup_root.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    destination = backup_root / (
+        f"{source_path.name}.pre-{reason}-{timestamp}.bak"
+    )
+    temporary = destination.with_suffix(".tmp")
+    try:
+        with closing(connect_database(source_path)) as source:
+            with closing(sqlite3.connect(temporary)) as backup:
+                source.backup(backup)
+        _validate_restored_database(temporary)
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return destination
+
+
 def restore_backup(
     runtime_paths: RuntimePaths,
     upload: BinaryIO,

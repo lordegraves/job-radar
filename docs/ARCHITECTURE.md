@@ -130,6 +130,8 @@ The broader preference model can store target roles, locations, work arrangement
 
 `backup_service.py` owns manual backup, readable export, and restore. Restorable bundles use a manifest with bounded paths, sizes, and SHA-256 checksums; SQLite is copied and restored through its online-backup API. Restore validates the staged database before touching active data and creates an independent pre-restore bundle first. Only known Junior-owned paths are accepted, symlinks and archive traversal are rejected, and credentials are excluded by remaining in the operating-system credential boundary. JSON export serializes database records for portability but deliberately omits résumé documents and is not accepted by restore.
 
+Destructive services invoke safety backup at their ownership boundary. Managed-profile deletion creates a complete bundle after eligibility checks and before moving the résumé or deleting SQLite rows. Employer storage creates a validated SQLite-only backup after reference checks and immediately before its delete statement. Schema migration retains its established pre-migration copy. Future repair or reset operations must use the same boundary before they become available.
+
 ### Tracker and History
 
 Active Applications and Application History are separate but related workflows.

@@ -321,6 +321,12 @@ def test_delete_profile_removes_only_its_database_data_and_resume(
     assert view.active_profile_id == first.profile_id
     assert not (tmp_path / "resumes" / second.profile_id).exists()
     assert (tmp_path / "resumes" / first.profile_id / "resume.md").exists()
+    safety_backups = list(
+        (tmp_path / "data" / "backups" / "manual").glob(
+            "junior-pre-profile-delete-*.jrbackup"
+        )
+    )
+    assert len(safety_backups) == 1
 
 
 def test_delete_profile_preserves_owned_tracker_activity(tmp_path: Path) -> None:

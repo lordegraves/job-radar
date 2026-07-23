@@ -12,6 +12,7 @@ import shutil
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from job_radar.backup_service import create_backup
 from job_radar.config import ConfigError
 from job_radar.profile_models import (
     LocationPreference,
@@ -411,6 +412,8 @@ def delete_managed_profile(
     if profile is None:
         raise ConfigError("The selected profile no longer exists.")
 
+    # A full bundle preserves the database record and managed résumé together.
+    create_backup(runtime_paths, reason="pre-profile-delete")
     resume_directory = (
         runtime_paths.base_directory / get_managed_resume_directory(profile_id)
     )

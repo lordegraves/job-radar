@@ -66,6 +66,8 @@ Unlocked **Administration → Backup and recovery** can create a private, restor
 
 To restore, choose a Junior `.jrbackup` file and type `RESTORE`. Junior validates the bundle and database, creates a separate safety backup of the current state, and only then replaces approved user data. Restart Junior after a successful restore. If validation fails, the current workspace is not changed.
 
+Junior automatically creates a safety backup before it permanently deletes an eligible profile or employer. A refused deletion does not create a backup or change data. Database upgrades retain their separate pre-migration backups.
+
 ## Home
 
 The Home page summarizes the latest scan and active application work.

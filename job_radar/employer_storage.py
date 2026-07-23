@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from job_radar.database import connect_database
+from job_radar.backup_service import create_database_safety_backup
 from job_radar.domain_errors import EmployerInUseError
 from job_radar.employer_models import EmployerSource, ProfileEmployerAssignment
 from job_radar.storage import initialize_database
@@ -283,6 +284,12 @@ def delete_employer_source(
                 "Employer records with profile or job history references "
                 "cannot be permanently deleted."
             )
+        # The backup is intentionally inside the storage boundary so GUI, CLI,
+        # and future administration callers cannot bypass deletion protection.
+        create_database_safety_backup(
+            db_path,
+            reason="company-delete",
+        )
         cursor = connection.execute(
             "DELETE FROM employer_sources WHERE employer_id = ?",
             (employer_id,),

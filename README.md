@@ -173,6 +173,8 @@ If junior reports an upgrade failure, close junior and do not delete, rename, re
 
 Unlocked Administration provides a **Backup and recovery** screen. A restorable `.jrbackup` bundle contains a consistent SQLite copy plus Junior-owned settings, company/scoring configuration, managed profile and résumé files, reports, and sanitized logs. Junior validates the manifest, file paths, sizes, checksums, and database before restoring. It creates a separate pre-restore safety backup first and tells the user to restart after success. Credentials remain in Windows Credential Manager or their configured environment variable and are never included. The same screen can download a readable JSON database export; that export is for review and portability and cannot be used as a restore bundle.
 
+Junior also creates safety backups automatically immediately before an eligible permanent profile or company deletion. Profile deletion preserves the complete workspace because the profile and managed résumé span SQLite and files; company deletion preserves a verified SQLite copy because the employer catalog is database-owned. Invalid confirmations and in-use records are rejected before a backup or deletion occurs. Existing schema upgrades continue to create their established pre-migration backups.
+
 ## Documentation
 
 - [User Guide](docs/USER_GUIDE.md)
