@@ -50,6 +50,22 @@
         <p>Starting or scheduling a scan remains a separate action after setup.</p>
     </section>
     <section class="page-card">
+        <h2>Test your setup</h2>
+        {% if progress and progress.validation_state == 'passed' %}
+        <p><strong>Ready:</strong> {{ progress.validation_message }}</p>
+        <p class="muted">Last checked {{ progress.validated_at }}. Editing the working company source requires another test.</p>
+        {% elif progress and progress.validation_state == 'failed' %}
+        <p><strong>Needs attention:</strong> {{ progress.validation_message }}</p>
+        <p class="muted">Correct the items described above, then test again.</p>
+        {% else %}
+        <p>Junior will check your saved profile rules and contact selected company sources without importing, scoring, or recommending any jobs.</p>
+        {% endif %}
+        <form method="post" action="{{ url_for('setup_validate') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Test setup</button>
+        </form>
+    </section>
+    <section class="page-card">
         <h2>Where your data is stored</h2>
         <p class="path-text">{{ data_location }}</p>
         <p class="muted">Your database and its protected migration backups remain outside the installed application files.</p>
@@ -59,7 +75,7 @@
     <form method="post" action="{{ url_for('setup_complete') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="confirmation" value="FINISH">
-        <button type="submit">Finish setup</button>
+        <button type="submit" {% if not progress or progress.validation_state != 'passed' %}disabled{% endif %}>Finish setup</button>
     </form>
     <a class="button-link button-secondary" href="{{ url_for('setup_companies') }}">Back to companies</a>
 </div>

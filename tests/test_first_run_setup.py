@@ -6,15 +6,22 @@ from pathlib import Path
 
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_storage import upsert_employer_source
+from job_radar.employer_storage import assign_employer_to_profile
 from job_radar.first_run_service import needs_first_run_setup
-from job_radar.profile_models import ManagedProfile
-from job_radar.profile_storage import create_profile, get_active_profile
+from job_radar.profile_models import ManagedProfile, ProfilePreferences
+from job_radar.profile_storage import (
+    create_profile,
+    get_active_profile,
+    set_active_profile,
+)
 from job_radar.setup_progress_service import (
     COMPANIES,
     COMPLETE,
     RESUME,
     REVIEW,
+    advance_setup,
     get_setup_progress,
+    start_setup,
 )
 from job_radar.web_app import create_app
 
@@ -86,6 +93,7 @@ def test_existing_employer_is_not_mistaken_for_new_installation(
 
 def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     app = _app(tmp_path)
     client = app.test_client()
@@ -102,7 +110,17 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
             "occupation_selections_json": json.dumps(
                 [{"value": "35-2011.00", "label": "Bakers"}]
             ),
-            "location_selections_json": "[]",
+            "location_selections_json": json.dumps(
+                [
+                    {
+                        "value": "place:0000001",
+                        "label": "Example City, Colorado",
+                        "latitude": 40.0,
+                        "longitude": -105.0,
+                        "radius": 25,
+                    }
+                ]
+            ),
             "responsibility-level": ["Mid-level"],
             "employment-type": ["Full-time"],
             "workplace-arrangement": ["On-site"],
@@ -169,6 +187,30 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
     assert "resume.md" in review_html
     assert "junior will scan only the companies you deliberately selected" in review_html
     assert str(tmp_path) in review_html
+    upsert_employer_source(
+        tmp_path / "junior.sqlite3",
+        EmployerSource(
+            employer_id="example_bakery",
+            name="Example Bakery",
+            source_type="greenhouse",
+            source_config={"source_slug": "example-bakery"},
+        ),
+    )
+    assign_employer_to_profile(
+        tmp_path / "junior.sqlite3",
+        profile.profile_id,
+        "example_bakery",
+    )
+
+    monkeypatch.setattr(
+        "job_radar.employer_connection_service.collect_jobs_for_company",
+        lambda config: [],
+    )
+    validation = client.post("/setup/validate")
+    assert validation.headers["Location"] == "/setup/review"
+    progress = get_setup_progress(tmp_path / "junior.sqlite3")
+    assert progress is not None
+    assert progress.validation_state == "passed"
 
     rejected_completion = client.post(
         "/setup/complete",
@@ -190,6 +232,40 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
     assert progress.current_step == COMPLETE
     assert progress.completed_at is not None
     assert client.get("/").status_code == 200
+
+
+def test_setup_cannot_finish_without_successful_validation(
+    tmp_path: Path,
+) -> None:
+    app = _app(tmp_path)
+    client = app.test_client()
+    database_path = tmp_path / "junior.sqlite3"
+    profile = ManagedProfile(
+        profile_id="profile_12345678",
+        display_name="Fictional Cook",
+        preferences=ProfilePreferences(
+            target_roles=("Cooks, Institution and Cafeteria",),
+            work_arrangements=("Remote",),
+        ),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    start_setup(database_path)
+    advance_setup(database_path, REVIEW, profile_id=profile.profile_id)
+
+    validation = client.post("/setup/validate")
+    validation_page = client.get(validation.headers["Location"])
+    completion = client.post(
+        "/setup/complete",
+        data={"confirmation": "FINISH"},
+    )
+    completion_page = client.get(completion.headers["Location"])
+
+    assert "Add at least one company" in validation_page.get_data(as_text=True)
+    assert "Test the setup successfully" in completion_page.get_data(as_text=True)
+    progress = get_setup_progress(database_path)
+    assert progress is not None
+    assert progress.completed_at is None
 
 
 def test_setup_can_skip_resume_and_resume_at_companies(tmp_path: Path) -> None:

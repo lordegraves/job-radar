@@ -13,9 +13,11 @@ from job_radar.setup_progress_service import (
     REVIEW,
     advance_setup,
     complete_setup,
+    get_setup_progress,
     incomplete_setup_destination,
     start_setup,
 )
+from job_radar.setup_validation_service import validate_first_run_setup
 
 
 def register_setup_routes(
@@ -73,7 +75,19 @@ def register_setup_routes(
             profile=workspace.active_profile,
             workspace=workspace,
             data_location=Path(get_database_path()).parent,
+            progress=get_setup_progress(get_database_path()),
         )
+
+    @app.post("/setup/validate")
+    def setup_validate():
+        result = validate_first_run_setup(get_database_path())
+        flash(result.message, "success" if result.passed else "error")
+        for issue in result.issues:
+            flash(issue, "error")
+        for company in result.companies:
+            if not company.connected:
+                flash(f"{company.name}: {company.message}", "error")
+        return redirect(url_for("setup_review"))
 
     @app.post("/setup/complete")
     def setup_complete():

@@ -298,6 +298,11 @@ def _schema_migrations() -> tuple:
             "add employer source health",
             _migrate_employer_source_health,
         ),
+        (
+            23,
+            "add first-run validation result",
+            _migrate_first_run_validation,
+        ),
     )
 
 
@@ -792,6 +797,29 @@ def _migrate_employer_source_health(connection: sqlite3.Connection) -> None:
         if column_name not in existing_columns:
             connection.execute(
                 f"ALTER TABLE employer_sources ADD COLUMN "
+                f"{column_name} {definition}"
+            )
+
+
+def _migrate_first_run_validation(connection: sqlite3.Connection) -> None:
+    """Persist the latest bounded setup-validation result."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(setup_progress)"
+        ).fetchall()
+    }
+    required_columns = {
+        "validation_state": "TEXT NOT NULL DEFAULT 'not_tested'",
+        "validation_message": "TEXT",
+        "validated_employer_id": "TEXT",
+        "validated_at": "TEXT",
+    }
+    for column_name, definition in required_columns.items():
+        if column_name not in existing_columns:
+            connection.execute(
+                f"ALTER TABLE setup_progress ADD COLUMN "
                 f"{column_name} {definition}"
             )
 

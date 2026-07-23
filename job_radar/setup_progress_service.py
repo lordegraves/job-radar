@@ -25,6 +25,10 @@ class SetupProgress:
     started_at: str
     updated_at: str
     completed_at: str | None
+    validation_state: str
+    validation_message: str | None
+    validated_employer_id: str | None
+    validated_at: str | None
 
     @property
     def complete(self) -> bool:
@@ -50,6 +54,10 @@ def get_setup_progress(
         started_at=row["started_at"],
         updated_at=row["updated_at"],
         completed_at=row["completed_at"],
+        validation_state=row["validation_state"],
+        validation_message=row["validation_message"],
+        validated_employer_id=row["validated_employer_id"],
+        validated_at=row["validated_at"],
     )
 
 
@@ -94,6 +102,10 @@ def advance_setup(
                 profile_id = COALESCE(
                     excluded.profile_id, setup_progress.profile_id
                 ),
+                validation_state = 'not_tested',
+                validation_message = NULL,
+                validated_employer_id = NULL,
+                validated_at = NULL,
                 updated_at = CURRENT_TIMESTAMP,
                 completed_at = NULL
             """,
@@ -115,6 +127,20 @@ def complete_setup(
     if confirmation != "FINISH":
         raise ValueError("Confirm the review before finishing setup.")
     db_path = initialize_database(database_path)
+    progress = get_setup_progress(db_path)
+    if progress is None or progress.validation_state != "passed":
+        raise ValueError("Test the setup successfully before finishing.")
+    if not progress.validated_employer_id:
+        raise ValueError("Confirm at least one working company source.")
+    from job_radar.employer_connection_service import (
+        get_employer_connection_health,
+    )
+
+    health = get_employer_connection_health(
+        db_path, progress.validated_employer_id
+    )
+    if health.state != "success":
+        raise ValueError("Test the setup again after changing company settings.")
     with connect_database(db_path) as connection:
         cursor = connection.execute(
             """
