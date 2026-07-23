@@ -6,6 +6,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- GUI scan scheduling configuration for enabled state, local start time, weekdays, scheduled email delivery, calculated next run, and safe last-run or failed-run visibility. Operating-system automation remains a separate follow-on milestone.
+
 ### Added
 
 - A normal-user Email Setup page with Gmail, Outlook, and Custom SMTP choices, secure credential status, atomically saved delivery settings, and a connection-only test card reporting provider, status, test time, and simple authentication, reachability, or TLS outcomes without sending mail.

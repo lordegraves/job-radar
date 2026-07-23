@@ -194,6 +194,7 @@ def handle_scan(
     email_preview_path: str | None = None,
     send_email: bool = False,
     base_directory: str | Path | None = None,
+    trigger_source: str = "manual",
 ) -> None:
     settings = load_settings(settings_path)
     runtime_paths = RuntimePaths.from_application_settings(
@@ -223,6 +224,7 @@ def handle_scan(
             database_path=str(database_path),
             base_directory=runtime_paths.base_directory,
             candidate_profile_path=runtime_paths.candidate_profile_path,
+            trigger_source=trigger_source,
         )
 
 
@@ -238,6 +240,7 @@ def _handle_scan_unlocked(
     database_path: str,
     base_directory: Path,
     candidate_profile_path: Path | None,
+    trigger_source: str,
 ) -> None:
     initialize_database(database_path)
 
@@ -257,6 +260,7 @@ def _handle_scan_unlocked(
         profile_id=(
             active_profile.profile_id if active_profile is not None else None
         ),
+        trigger_source=trigger_source,
     )
 
     current_stage = "configuration"

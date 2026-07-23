@@ -1,0 +1,133 @@
+{# Edits the durable schedule definition without installing an OS scheduler. #}
+{% extends "base.html" %}
+
+{% block title %}Scan schedule - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .schedule-grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 0.55fr);
+    }
+    .schedule-status {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 16px;
+        padding: 14px 16px;
+    }
+    .schedule-status .status-line {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        font-weight: 700;
+    }
+    .schedule-status .status-dot {
+        background: #8b949e;
+        border-radius: 50%;
+        height: 11px;
+        width: 11px;
+    }
+    .schedule-status .success .status-dot { background: #55d6a3; }
+    .schedule-status .warning .status-dot { background: #f5c451; }
+    .schedule-status .error .status-dot { background: #ff6477; }
+    .weekday-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        margin: 12px 0 20px;
+    }
+    .weekday-option {
+        align-items: center;
+        background: rgba(45, 45, 51, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        display: flex;
+        gap: 9px;
+        padding: 10px 12px;
+    }
+    .schedule-fact {
+        border-top: 1px solid var(--border);
+        padding: 14px 0;
+    }
+    .schedule-fact:first-of-type { border-top: 0; }
+    .schedule-fact span {
+        color: var(--muted);
+        display: block;
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+    }
+    @media (max-width: 800px) {
+        .schedule-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('settings') }}">&larr; Settings</a></p>
+<h1 class="page-title">Scan schedule</h1>
+
+<div class="schedule-grid">
+    <form class="page-card" method="post" action="{{ url_for('settings_schedule_save') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <h2>When Junior should scan</h2>
+        <p class="muted">This schedule uses the computer's local time and the active profile at the time the scan starts.</p>
+
+        <label>
+            <input type="checkbox" name="enabled" value="yes" {% if schedule_view.schedule.enabled %}checked{% endif %}>
+            Turn on scheduled scans
+        </label>
+
+        <div class="form-grid">
+            <label>Start time
+                <input type="time" name="run_time" value="{{ schedule_view.schedule.run_time }}" required>
+            </label>
+            <label>
+                <input type="checkbox" name="email_delivery" value="yes" {% if schedule_view.schedule.email_delivery %}checked{% endif %}>
+                Email the report after a scheduled scan
+            </label>
+        </div>
+
+        <fieldset>
+            <legend>Days to scan</legend>
+            <div class="weekday-grid">
+                {% for value, label in schedule_view.weekday_options %}
+                <label class="weekday-option">
+                    <input type="checkbox" name="weekdays" value="{{ value }}" {% if value in schedule_view.schedule.weekdays %}checked{% endif %}>
+                    {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <button type="submit">Save schedule</button>
+        <a class="button-link button-secondary" href="{{ url_for('settings') }}">Cancel</a>
+    </form>
+
+    <aside class="page-card">
+        <h2>Schedule status</h2>
+        <div class="schedule-fact">
+            <span>Next scheduled run</span>
+            <strong>{{ schedule_view.next_run }}</strong>
+        </div>
+        <div class="schedule-fact">
+            <span>Last scheduled run</span>
+            <strong>{{ schedule_view.last_run.status }}</strong>
+            {% if schedule_view.last_run.finished_at %}
+            <p>{{ schedule_view.last_run.finished_at }}</p>
+            {% endif %}
+        </div>
+        <div class="schedule-status">
+            <div class="status-line {{ schedule_view.last_run.tone }}">
+                <span class="status-dot" aria-hidden="true"></span>
+                {{ schedule_view.last_run.message }}
+            </div>
+        </div>
+        <p class="muted">
+            Saving this page records the schedule safely. Windows Task Scheduler
+            connection is not installed yet, so Junior will not run unattended
+            until that next milestone is complete.
+        </p>
+    </aside>
+</div>
+{% endblock %}

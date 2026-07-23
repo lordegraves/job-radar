@@ -22,6 +22,11 @@ from job_radar.runtime_paths import (
     DEFAULT_SCORING_CONFIG_PATH,
     RuntimePaths,
 )
+from job_radar.schedule_service import (
+    ScheduleError,
+    build_schedule_view,
+    save_scan_schedule,
+)
 
 
 @dataclass(frozen=True)
@@ -98,6 +103,31 @@ def register_settings_routes(
             return redirect(url_for("settings_email"))
         flash("Email settings saved.", "success")
         return redirect(url_for("settings_email"))
+
+    @app.get("/settings/schedule")
+    def settings_schedule() -> str:
+        runtime_paths = get_runtime_paths()
+        return render_template(
+            "settings_schedule.html",
+            schedule_view=build_schedule_view(runtime_paths.database_path),
+        )
+
+    @app.post("/settings/schedule")
+    def settings_schedule_save():
+        runtime_paths = get_runtime_paths()
+        try:
+            save_scan_schedule(
+                runtime_paths.database_path,
+                enabled=request.form.get("enabled") == "yes",
+                run_time=request.form.get("run_time", ""),
+                weekdays=request.form.getlist("weekdays"),
+                email_delivery=request.form.get("email_delivery") == "yes",
+            )
+        except ScheduleError as error:
+            flash(str(error), "error")
+            return redirect(url_for("settings_schedule"))
+        flash("Scan schedule saved.", "success")
+        return redirect(url_for("settings_schedule"))
 
     @app.post("/settings/email/test")
     def settings_email_test():

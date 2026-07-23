@@ -90,7 +90,8 @@ CREATE TABLE IF NOT EXISTS scan_runs (
     collector_errors INTEGER NOT NULL DEFAULT 0,
     errors_count INTEGER NOT NULL DEFAULT 0,
     top_matches_count INTEGER NOT NULL DEFAULT 0,
-    review_needed_count INTEGER NOT NULL DEFAULT 0
+    review_needed_count INTEGER NOT NULL DEFAULT 0,
+    trigger_source TEXT NOT NULL DEFAULT 'manual'
 );
 
 CREATE TABLE IF NOT EXISTS scan_errors (
@@ -302,6 +303,11 @@ def _schema_migrations() -> tuple:
             23,
             "add first-run validation result",
             _migrate_first_run_validation,
+        ),
+        (
+            24,
+            "add scan scheduling configuration",
+            _migrate_scan_scheduling,
         ),
     )
 
@@ -1001,6 +1007,42 @@ def _migrate_profile_owned_scan_runs(connection: sqlite3.Connection) -> None:
     )
 
 
+def _migrate_scan_scheduling(connection: sqlite3.Connection) -> None:
+    """Add one durable schedule and distinguish scheduled scan history."""
+    scan_columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(scan_runs)").fetchall()
+    }
+    if "trigger_source" not in scan_columns:
+        connection.execute(
+            """
+            ALTER TABLE scan_runs
+            ADD COLUMN trigger_source TEXT NOT NULL DEFAULT 'manual'
+            """
+        )
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS scan_schedule (
+            singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+            enabled INTEGER NOT NULL DEFAULT 0,
+            run_time TEXT NOT NULL DEFAULT '09:00',
+            weekdays_json TEXT NOT NULL DEFAULT '[]',
+            email_delivery INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    connection.execute(
+        """
+        INSERT OR IGNORE INTO scan_schedule (
+            singleton_id, enabled, run_time, weekdays_json, email_delivery
+        )
+        VALUES (1, 0, '09:00', '[]', 0)
+        """
+    )
+
+
 def _migrate_external_employer_discoveries(
     connection: sqlite3.Connection,
 ) -> None:
@@ -1337,6 +1379,7 @@ def start_scan_run(
     companies_enabled: int,
     current_stage: str = "initialization",
     profile_id: str | None = None,
+    trigger_source: str = "manual",
 ) -> int:
     db_path = Path(database_path)
 
@@ -1351,9 +1394,10 @@ def start_scan_run(
                 current_stage,
                 companies_requested,
                 companies_enabled,
-                profile_id
+                profile_id,
+                trigger_source
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 requested_at,
@@ -1364,6 +1408,7 @@ def start_scan_run(
                 companies_requested,
                 companies_enabled,
                 profile_id,
+                trigger_source,
             ),
         )
 

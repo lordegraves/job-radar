@@ -88,6 +88,7 @@ def register_scan_routes(
             ),
             send_email=False,
             base_directory=str(runtime_paths.base_directory),
+            trigger_source="manual",
         )
 
         if not started:

@@ -2232,6 +2232,7 @@ def test_scan_run_calls_handle_scan_and_redirects(
             ),
             "send_email": False,
             "base_directory": str(runtime_paths.base_directory),
+            "trigger_source": "manual",
         }
     ]
     release_scan.set()

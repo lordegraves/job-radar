@@ -55,7 +55,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 31 | Completed | Add safe credential storage using OS-appropriate secret handling so SMTP passwords, API keys, and tokens are never stored in committed files or plain-text application settings. |
 | 32 | Completed | Add an email setup flow for SMTP server, port, security mode, sender, recipients, credentials, and clear validation errors. |
 | 33 | Completed | Add a safe test-email workflow that does not accidentally trigger a full scan or send a normal production report. |
-| 34 | Planned | Add scan scheduling configuration for enabled/disabled state, time of day, selected weekdays, email delivery, next scheduled run, last run, and failed-run visibility. |
+| 34 | Completed | Add scan scheduling configuration for enabled/disabled state, time of day, selected weekdays, email delivery, next scheduled run, last run, and failed-run visibility. |
 | 35 | Planned | Implement Windows scheduling support through a controlled Task Scheduler integration that can be created, inspected, updated, disabled, and removed through the app. |
 | 36 | Planned | Add Linux scheduling support for standalone and server installations using a documented, shared scheduling abstraction rather than separate product logic. |
 | 37 | Planned | Add configurable report and log retention options such as latest only, latest plus previous, or retain the most recent configured number of runs. |
@@ -90,8 +90,9 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 66 | Planned | Test packaged builds on clean Windows and Linux environments that do not contain the development repository, Python virtual environment, existing settings, or developer tools. |
 | 67 | Planned | Add release-candidate acceptance testing using a new-user workflow from installer download through first report, application tracking, restart, update, backup, restore, and uninstall. |
 | 68 | Planned | Resolve all release-blocking defects, incomplete setup paths, unexplained errors, broken migrations, packaging failures, data-loss risks, accessibility blockers, and documentation gaps found during release-candidate testing. |
-| 69 | Planned | Publish the first fully productized stable release with installer downloads, checksums, release notes, screenshots, supported-platform details, upgrade instructions, known limitations, and verified documentation. |
-| 70 | In Progress | Finalize the product finish line: a user can download Job Radar, run the installer, launch the application, complete guided setup, add their own profile and companies, run and schedule scans, review reports, manage applications, preserve and back up their data, upgrade safely, and use the product daily without editing code or YAML. |
+| 69 | Planned | Verify junior remains responsive with large real-world datasets, including 100 or more companies, 100,000 or more scanned jobs, several years of application history, and multiple profiles; identify and fix performance bottlenecks before the first stable release. |
+| 70 | Planned | Publish the first fully productized stable release with installer downloads, checksums, release notes, screenshots, supported-platform details, upgrade instructions, known limitations, and verified documentation. |
+| 71 | In Progress | Finalize the product finish line: a user can download Job Radar, run the installer, launch the application, complete guided setup, add their own profile and companies, run and schedule scans, review reports, manage applications, preserve and back up their data, upgrade safely, and use the product daily without editing code or YAML. |
 
 ## Protected wording notes
 
