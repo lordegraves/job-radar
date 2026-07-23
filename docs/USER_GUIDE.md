@@ -166,6 +166,8 @@ Existing YAML profiles are not migrated automatically. junior now has an interna
 
 Employer organizations and source definitions are shared once per local junior installation, while each managed profile has its own company list. The normal Companies workspace shows the active profile's employers and whether each one is Scanning or Paused. You can pause, resume, or remove a company for that profile without changing another profile.
 
+Select **View recommendations** to see scan-ready companies already configured in Junior's local Employer Catalog but not yet added to the active profile. Junior explains each suggestion in ordinary language and does not show its internal ranking number. **Add to profile** begins scanning that company for the active profile. **Maybe later** hides it for 30 days, **Dismiss** hides it for 90 days, and **Not relevant** hides it persistently. These choices belong only to the active profile. This catalog-only recommendation stage does not search the public web.
+
 To add a company, enter its ordinary name or public careers URL. Junior looks for an exact known company first. If more than one company may match, Junior asks you to choose instead of merging them. Junior can safely configure a limited set of clearly recognizable career sites; other names and sites are sent for administrator review. This check does not visit the submitted website. A company awaiting review is not scanned. Its requesting profile may see Setup pending, Ready to add, or Unsupported; another profile does not see that request.
 
 Technical job-source settings do not appear in the normal Companies workspace. They are managed in the session-guarded Administration area after typing `ADMIN`. This confirmation is a safety boundary, not a password.

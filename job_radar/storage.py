@@ -263,6 +263,11 @@ def _schema_migrations() -> tuple:
             "add employer review audit",
             _migrate_employer_review_audit,
         ),
+        (
+            16,
+            "add profile company recommendations",
+            _migrate_company_recommendations,
+        ),
     )
 
 
@@ -862,6 +867,35 @@ def _migrate_employer_review_audit(connection: sqlite3.Connection) -> None:
         """
         CREATE INDEX IF NOT EXISTS idx_employer_review_audit_request
         ON employer_review_audit(request_id, audit_id DESC)
+        """
+    )
+
+
+def _migrate_company_recommendations(connection: sqlite3.Connection) -> None:
+    """Store profile-owned recommendation state and bounded cooldowns."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS company_recommendations (
+            profile_id TEXT NOT NULL,
+            employer_id TEXT NOT NULL,
+            recommendation_score INTEGER NOT NULL,
+            evidence_json TEXT NOT NULL DEFAULT '[]',
+            availability_state TEXT NOT NULL,
+            recommendation_state TEXT NOT NULL DEFAULT 'NEW',
+            generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_evaluated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            hidden_until TEXT,
+            PRIMARY KEY (profile_id, employer_id)
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_company_recommendations_profile_state
+        ON company_recommendations(
+            profile_id, recommendation_state, recommendation_score DESC
+        )
         """
     )
 

@@ -1,0 +1,83 @@
+{# Shows catalog-only company recommendations and profile-owned feedback. #}
+{% extends "base.html" %}
+
+{% block title %}Company Recommendations - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .recommendation-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    }
+    .recommendation-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .recommendation-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 18px;
+    }
+    .recommendation-actions form { margin: 0; }
+    .scan-ready { color: #8fdc8f; font-weight: 700; }
+    .recommendation-feedback { border-left: 4px solid var(--link); }
+    .recommendation-error { border-left-color: #ff7b72; }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('companies') }}">&larr; Your Companies</a></p>
+<h1 class="page-title">Recommended companies for {{ profile.display_name }}</h1>
+<div class="page-card">
+    <p>These suggestions come only from companies already configured in Junior's Employer Catalog.</p>
+    <p class="muted">Junior does not search the public web for employers on this page. Your responses apply only to this profile.</p>
+</div>
+
+{% if company_message %}
+<div class="page-card recommendation-feedback" role="status">{{ company_message }}</div>
+{% elif company_error %}
+<div class="page-card recommendation-feedback recommendation-error" role="alert">{{ company_error }}</div>
+{% endif %}
+
+{% if recommendations %}
+<div class="recommendation-grid">
+    {% for recommendation in recommendations %}
+    <article class="page-card recommendation-card">
+        <div>
+            <h2>{{ recommendation.employer_name }}</h2>
+            <p class="scan-ready">Ready for Junior to scan</p>
+            <h3>Why Junior recommends this company</h3>
+            <ul>
+                {% for reason in recommendation.evidence %}
+                <li>{{ reason }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="recommendation-actions">
+            <form method="post" action="{{ url_for('add_company_recommendation', employer_id=recommendation.employer_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Add to profile</button>
+            </form>
+            {% for state, label in [('MAYBE_LATER', 'Maybe later'), ('DISMISSED', 'Dismiss'), ('NOT_RELEVANT', 'Not relevant')] %}
+            <form method="post" action="{{ url_for('company_recommendation_feedback', employer_id=recommendation.employer_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="state" value="{{ state }}">
+                <button class="button-secondary" type="submit">{{ label }}</button>
+            </form>
+            {% endfor %}
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<div class="page-card">
+    <h2>No new company suggestions right now</h2>
+    <p>Every scan-ready catalog company is already in this profile or has been hidden by your feedback.</p>
+    <p class="muted">You can still add a company by name or careers-page address.</p>
+    <a class="button-link" href="{{ url_for('add_company_page') }}">Add company</a>
+</div>
+{% endif %}
+{% endblock %}

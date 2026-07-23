@@ -80,6 +80,7 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
             "job_radar/templates/administration/employers.html",
             "job_radar/templates/administration/unlock.html",
             "job_radar/templates/base.html",
+            "job_radar/templates/company_recommendations.html",
             "job_radar/templates/mutation_error.html",
         }
         assert required_files <= archive_names
@@ -185,6 +186,7 @@ def test_built_source_distribution_excludes_private_runtime_data(
         "job_radar/templates/administration/employers.html",
         "job_radar/templates/administration/unlock.html",
         "job_radar/templates/base.html",
+        "job_radar/templates/company_recommendations.html",
         "job_radar/templates/mutation_error.html",
         "tests/test_packaging.py",
     }

@@ -120,6 +120,8 @@ Foundation 7H is complete: a normal user can enter a company name or public care
 
 Foundation 7I is complete: the Administration-only Employer Review Queue can inspect safe unresolved submissions, match an existing employer, prefill new-employer setup, optionally assign an available employer to the requesting profile, or mark a request unsupported, rejected, or duplicate. Decisions are audited without raw collector failures or profile content, while normal users see only their own plain-language request state.
 
-The next major product areas are company recommendations, completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
+Foundation 7J1 is complete: the active profile can view deterministic recommendations from scan-ready employers already in the local Employer Catalog. Assigned and unavailable employers are excluded, grounded catalog overlap is explained in plain language, numeric ranking remains internal, and Add, Maybe later, Dismiss, and Not relevant responses persist independently per profile with bounded cooldowns where appropriate.
+
+The next company milestone is Foundation 7J2, which adds bounded recommendation evidence from actual profile-relevant jobs and scans. Other major product areas include completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
 
 The projected full-product target remains September 30, 2026. Milestone quality, user-data safety, and dependency order take precedence over the date.
