@@ -1,12 +1,13 @@
-"""Launch Job Radar's browser-based interface as a desktop-style application.
+"""Launch Junior's shared local interface in a native desktop window.
 
 The launcher prepares the user-owned workspace, starts a local-only web server,
-waits for readiness, and then opens the browser. It reuses an existing Job Radar
-instance when possible and presents safe graphical startup errors on Windows.
+waits for readiness, and then opens the native shell or requested browser mode.
+It reuses an existing Junior instance and presents safe startup errors.
 """
 
 import argparse
 import ctypes
+import html
 import json
 import os
 import sys
@@ -15,11 +16,12 @@ import time
 import webbrowser
 from contextlib import AbstractContextManager
 from pathlib import Path
-from typing import BinaryIO
+from typing import Any, BinaryIO
 from urllib.error import URLError
 from urllib.request import urlopen
 
 from werkzeug.serving import BaseWSGIServer, make_server
+import webview
 
 from job_radar.runtime_paths import UserDataPaths
 from job_radar.user_data_bootstrap import bootstrap_packaged_user_configuration
@@ -102,6 +104,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-browser",
         action="store_true",
         help="Start junior without opening the default web browser",
+    )
+    parser.add_argument(
+        "--browser",
+        action="store_true",
+        help="Open junior in the default browser instead of its native window",
     )
     return parser
 
@@ -191,7 +198,59 @@ def run_desktop_server(
         raise
 
 
-def show_desktop_error(message: str) -> None:
+def run_native_window(
+    server: BaseWSGIServer,
+    *,
+    url: str,
+    shutdown_event: threading.Event,
+    webview_module: Any = webview,
+) -> None:
+    """Run the shared Flask UI inside one normal native application window."""
+    server_thread = threading.Thread(
+        target=server.serve_forever,
+        name="job-radar-local-server",
+        daemon=True,
+    )
+    server_thread.start()
+    try:
+        wait_until_ready(url)
+        window = webview_module.create_window(
+            "Junior",
+            url,
+            width=1280,
+            height=820,
+            min_size=(960, 640),
+            resizable=True,
+            background_color="#101114",
+            text_select=True,
+        )
+
+        def close_window_when_requested() -> None:
+            shutdown_event.wait()
+            try:
+                window.destroy()
+            except Exception:
+                # The user may have already closed the native window.
+                return
+
+        close_monitor = threading.Thread(
+            target=close_window_when_requested,
+            name="junior-window-shutdown",
+            daemon=True,
+        )
+        close_monitor.start()
+        webview_module.start(**_webview_start_options())
+    finally:
+        shutdown_event.set()
+        server.shutdown()
+        server_thread.join(timeout=5.0)
+
+
+def show_desktop_error(
+    message: str,
+    *,
+    webview_module: Any = webview,
+) -> None:
     if sys.platform == "win32":
         try:
             ctypes.windll.user32.MessageBoxW(
@@ -204,11 +263,35 @@ def show_desktop_error(message: str) -> None:
         except (AttributeError, OSError):
             pass
 
+    try:
+        safe_message = html.escape(message).replace("\n", "<br>")
+        webview_module.create_window(
+            "Junior could not start",
+            html=(
+                "<html><body style=\"background:#101114;color:#f2f4f7;"
+                "font-family:system-ui;padding:24px;line-height:1.5\">"
+                f"<h2>Junior could not start</h2><p>{safe_message}</p>"
+                "</body></html>"
+            ),
+            width=620,
+            height=420,
+            resizable=True,
+            background_color="#101114",
+        )
+        webview_module.start(private_mode=True)
+        return
+    except Exception:
+        # If the platform GUI toolkit is itself unavailable, the terminal is
+        # the only place left to provide the already-sanitized guidance.
+        pass
+
     sys.stderr.write(f"{DESKTOP_ERROR_TITLE}\n\n{message}")
 
 
 def launch_desktop() -> None:
     args = build_parser().parse_args()
+    if args.browser and args.no_browser:
+        raise ValueError("Choose either --browser or --no-browser, not both.")
     url = build_local_url(args.host, args.port)
     settings_path = ensure_desktop_workspace()
     lock_path = settings_path.parent.parent / "runtime" / INSTANCE_LOCK_NAME
@@ -217,13 +300,21 @@ def launch_desktop() -> None:
         if not instance.acquired:
             existing_url = instance.existing_url or url
             wait_until_ready(existing_url)
-            if not args.no_browser:
+            if args.browser:
                 webbrowser.open(existing_url)
+            elif not args.no_browser:
+                show_desktop_notice(
+                    "Junior is already open. Return to the existing Junior window."
+                )
             return
 
         if is_job_radar_running(url):
-            if not args.no_browser:
+            if args.browser:
                 webbrowser.open(url)
+            elif not args.no_browser:
+                show_desktop_notice(
+                    "Junior is already open at this local address."
+                )
             return
 
         # Packaged settings use paths relative to the user-owned workspace, not
@@ -237,12 +328,19 @@ def launch_desktop() -> None:
         server = make_server(args.host, args.port, app)
 
         try:
-            run_desktop_server(
-                server,
-                url=url,
-                open_browser=not args.no_browser,
-                shutdown_event=shutdown_event,
-            )
+            if args.browser or args.no_browser:
+                run_desktop_server(
+                    server,
+                    url=url,
+                    open_browser=args.browser,
+                    shutdown_event=shutdown_event,
+                )
+            else:
+                run_native_window(
+                    server,
+                    url=url,
+                    shutdown_event=shutdown_event,
+                )
         finally:
             # GUI scans use a non-daemon worker. Keep the instance lock until
             # its durable database/report writes finish instead of allowing a
@@ -288,6 +386,41 @@ def _read_instance_url(stream: BinaryIO) -> str | None:
     ):
         return url
     return None
+
+
+def _desktop_icon_path() -> Path:
+    static_directory = Path(__file__).resolve().parent / "static"
+    if sys.platform == "win32":
+        # WinForms requires a real multi-resolution ICO, not a PNG renamed or
+        # decoded at runtime. Packaged macOS applications receive their icon
+        # from the application bundle.
+        return static_directory / "junior.ico"
+    return static_directory / "junior_icon_v2.png"
+
+
+def _webview_start_options() -> dict[str, object]:
+    options: dict[str, object] = {"private_mode": True}
+    if sys.platform == "win32" or sys.platform.startswith("linux"):
+        # WinForms and Linux GTK/Qt accept runtime icon paths. Packaged macOS
+        # applications receive Junior's icon from their application bundle.
+        options["icon"] = str(_desktop_icon_path())
+    return options
+
+
+def show_desktop_notice(message: str) -> None:
+    """Report a harmless launcher condition without exposing technical detail."""
+    if sys.platform == "win32":
+        try:
+            ctypes.windll.user32.MessageBoxW(
+                None,
+                message,
+                "Junior",
+                0x00000040,
+            )
+            return
+        except (AttributeError, OSError):
+            pass
+    sys.stderr.write(f"Junior\n\n{message}")
 
 
 def main() -> None:

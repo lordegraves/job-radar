@@ -7,8 +7,9 @@ junior is one local-first Python application with multiple launch surfaces:
 ```text
 Developer and automation CLI
 Local Flask web interface
-Browser-opening desktop launcher
-Future native desktop shell and installer
+Native pywebview desktop shell
+Browser-based local mode
+Future packaged installer
 Future unattended service/container mode
 ```
 
@@ -18,26 +19,25 @@ These surfaces must share the same service and storage layers rather than becomi
 
 - `job-radar` / `job_radar.cli`: developer, automation, validation, scan, history, database, and tracker commands.
 - `job-radar-web` / `job_radar.web_app`: local browser/server mode. An explicit settings path may be supplied; otherwise runtime-path resolution selects bootstrapped user settings when present and falls back to repository settings for development compatibility.
-- `job-radar-desktop` / `job_radar.desktop_launcher`: the current desktop-style launcher. It prepares packaged user configuration when needed, starts a local Werkzeug server, waits for readiness, and opens the default browser.
+- `job-radar-desktop` / `job_radar.desktop_launcher`: the native desktop launcher. It prepares packaged user configuration when needed, starts a local Werkzeug server, waits for readiness, and displays the shared interface in pywebview. `--browser` deliberately opens the same interface in the default browser, while `--no-browser` leaves the local server externally managed.
 - `job-radar-scheduled` / `job_radar.scheduled_scan`: the unattended scan entry point. It reads the saved schedule, exits safely when scheduling is off, and calls the same scan service used by GUI and CLI scans.
-- A future native desktop shell may wrap the shared Flask interface, but it must not duplicate application rules.
 - Windows Task Scheduler and Linux systemd user timers invoke the shared scheduled entry point. Future container and Kubernetes modes must call the same scan and storage services.
 
 ## Startup and shutdown flow
 
 The web application resolves runtime paths, loads settings, initializes or migrates the SQLite database, and then registers feature routes. Startup failures are converted into safe user-facing messages, with sanitized diagnostics written under the user-owned logs directory when possible.
 
-The desktop launcher first checks whether junior already responds at its configured local address. If so, it opens the existing interface. Otherwise, it ensures the user-owned workspace exists, creates the Flask application, starts a local server, waits for readiness, and opens the browser.
+The desktop launcher ensures the user-owned workspace exists, claims its OS-managed instance lock, creates the Flask application, starts a local server, waits for readiness, and opens the native pywebview window. Browser mode follows the same path and opens the same loopback URL in the default browser instead. A second launch reports the existing native instance or reopens the recorded URL in deliberate browser mode.
 
 One OS-managed file lock under the user-data `runtime` directory owns the desktop process. Its metadata contains only the active loopback URL. A competing launch cannot acquire the lock, so it waits for and opens the recorded instance rather than initializing the same SQLite database on another port. The lock's lifetime is the open process handle; a stale file after a crash does not block startup.
 
 The desktop launcher injects a process-local shutdown event into the Flask application. Settings renders its Exit control only when that event exists. A valid POST sets the event, the launcher stops Werkzeug after the response completes, and then it waits for the shared non-daemon scan runner before leaving the instance-lock scope. The browser/server entry point has no event and cannot shut down an externally owned process.
 
-The current launcher stops its server on a GUI Exit request or startup failure and preserves active scan writes before releasing its instance lock. It does not yet provide a native application window, focus an existing native window, or manage an unattended background service.
+The launcher stops its server when the native window closes, on a GUI Exit request, or after a startup failure. It preserves active scan writes before releasing its instance lock. Startup problems use a normal Windows error dialog or a small safe pywebview error window on Linux and macOS, with terminal text only when the platform GUI itself is unavailable. It does not yet focus an existing native window or manage an unattended background service.
 
 ### Desktop shell selection
 
-Junior will use **pywebview** as its desktop shell. It is the smallest direct fit for the existing Python/Flask architecture, supplies a native window and operating-system dialogs, and does not require a second Node or Rust application layer. The shell loads the same loopback Flask application used by browser mode; it does not receive separate routes, templates, CSS, validation, or workflow logic.
+Junior uses **pywebview** as its desktop shell. It is the smallest direct fit for the existing Python/Flask architecture, supplies a native window and operating-system dialogs, and does not require a second Node or Rust application layer. The shell loads the same loopback Flask application used by browser mode; it does not receive separate routes, templates, CSS, validation, or workflow logic. Windows and Linux receive Junior's runtime window icon directly; the future macOS application bundle owns its native icon as required by that platform.
 
 The selection order and result are:
 

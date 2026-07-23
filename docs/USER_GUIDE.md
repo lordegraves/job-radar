@@ -31,13 +31,13 @@ The current installed desktop-style entry point is:
 job-radar-desktop
 ```
 
-It creates the user-owned workspace when needed, starts junior locally, waits for the interface to become ready, and opens the default browser. If junior is already running on the selected local address, the launcher reuses that instance instead of starting another server.
+It creates the user-owned workspace when needed, starts junior locally, waits for the interface to become ready, and opens Junior in a normal native application window. If junior is already running for that user-owned workspace, the launcher reports the existing instance instead of starting another server against the same data.
 
 Launching Junior again does not start another copy against the same data, even if the second shortcut or command requests a different local port. The second launch waits for the first copy when it is still starting, then opens the first copy's interface. If Junior previously stopped unexpectedly, the operating system releases the instance lock automatically.
 
 To close a desktop-launched session, open **Settings** and choose **Exit Junior**. The confirmation page means the local server received the shutdown request. You may close the window. If a scan is running, Junior finishes its protected writes before the process fully exits. This control is intentionally absent in browser/server mode, where another process owns the server lifecycle.
 
-This is a browser-opening launcher, not the final native desktop window or Windows installer. Those remain future productization work.
+To use the same local interface in the default browser, run `job-radar-desktop --browser`. Developers and externally managed processes may use `job-radar-desktop --no-browser` to start the local server without opening a window. The native shell is implemented; the signed Windows installer and final packaged application bundle remain future productization work.
 
 From an activated development environment:
 

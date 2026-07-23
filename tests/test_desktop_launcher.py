@@ -6,6 +6,7 @@ the operator's live Job Radar workspace.
 """
 
 import sys
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -83,7 +84,7 @@ def test_main_reuses_running_job_radar(
     monkeypatch.setattr(
         sys,
         "argv",
-        ["job-radar-desktop"],
+        ["job-radar-desktop", "--browser"],
     )
     monkeypatch.setattr(
         desktop_launcher,
@@ -112,8 +113,8 @@ def test_second_launcher_uses_locked_workspace_instance(
 ) -> None:
     settings_path = tmp_path / "config" / "settings.yaml"
     lock_path = tmp_path / "runtime" / desktop_launcher.INSTANCE_LOCK_NAME
-    opened_urls: list[str] = []
     readiness_urls: list[str] = []
+    notices: list[str] = []
 
     monkeypatch.setattr(
         sys,
@@ -131,9 +132,9 @@ def test_second_launcher_uses_locked_workspace_instance(
         lambda url: readiness_urls.append(url),
     )
     monkeypatch.setattr(
-        desktop_launcher.webbrowser,
-        "open",
-        lambda url: opened_urls.append(url),
+        desktop_launcher,
+        "show_desktop_notice",
+        lambda message: notices.append(message),
     )
     monkeypatch.setattr(
         desktop_launcher,
@@ -149,10 +150,12 @@ def test_second_launcher_uses_locked_workspace_instance(
         desktop_launcher.launch_desktop()
 
     assert readiness_urls == ["http://127.0.0.1:5019/"]
-    assert opened_urls == ["http://127.0.0.1:5019/"]
+    assert notices == [
+        "Junior is already open. Return to the existing Junior window."
+    ]
 
 
-def test_main_bootstraps_starts_and_opens_job_radar(
+def test_main_bootstraps_starts_native_job_radar(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -211,12 +214,11 @@ def test_main_bootstraps_starts_and_opens_job_radar(
     )
     monkeypatch.setattr(
         desktop_launcher,
-        "run_desktop_server",
-        lambda server, *, url, open_browser, shutdown_event: calls.update(
+        "run_native_window",
+        lambda server, *, url, shutdown_event: calls.update(
             {
                 "server": server,
                 "url": url,
-                "open_browser": open_browser,
                 "shutdown_event": shutdown_event,
             }
         ),
@@ -234,7 +236,6 @@ def test_main_bootstraps_starts_and_opens_job_radar(
         "app": fake_app,
         "server": fake_server,
         "url": "http://127.0.0.1:5000/",
-        "open_browser": True,
         "scan_waited": True,
     }
 
@@ -339,6 +340,78 @@ def test_wait_until_ready_reports_timeout(
         )
 
 
+def test_native_window_uses_shared_url_icon_and_normal_chrome(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shutdown_event = threading.Event()
+    server_stopped = threading.Event()
+    calls: dict[str, Any] = {}
+
+    class FakeServer:
+        def serve_forever(self) -> None:
+            server_stopped.wait(timeout=2)
+
+        def shutdown(self) -> None:
+            server_stopped.set()
+
+    class FakeWindow:
+        def destroy(self) -> None:
+            calls["destroyed"] = True
+
+    class FakeWebview:
+        @staticmethod
+        def create_window(title: str, url: str, **kwargs: Any) -> FakeWindow:
+            calls["window"] = (title, url, kwargs)
+            return FakeWindow()
+
+        @staticmethod
+        def start(**kwargs: Any) -> None:
+            calls["start"] = kwargs
+
+    monkeypatch.setattr(
+        desktop_launcher,
+        "wait_until_ready",
+        lambda _url: None,
+    )
+    icon_path = tmp_path / "junior.ico"
+    monkeypatch.setattr(
+        desktop_launcher,
+        "_desktop_icon_path",
+        lambda: icon_path,
+    )
+
+    desktop_launcher.run_native_window(
+        FakeServer(),
+        url="http://127.0.0.1:5000/",
+        shutdown_event=shutdown_event,
+        webview_module=FakeWebview,
+    )
+
+    title, url, options = calls["window"]
+    assert title == "Junior"
+    assert url == "http://127.0.0.1:5000/"
+    assert options["resizable"] is True
+    assert options["min_size"] == (960, 640)
+    assert options["background_color"] == "#101114"
+    assert calls["start"] == {
+        "icon": str(icon_path),
+        "private_mode": True,
+    }
+    assert shutdown_event.is_set()
+    assert server_stopped.is_set()
+
+    monkeypatch.setattr(desktop_launcher.sys, "platform", "linux")
+    assert desktop_launcher._webview_start_options() == {
+        "icon": str(icon_path),
+        "private_mode": True,
+    }
+    monkeypatch.setattr(desktop_launcher.sys, "platform", "darwin")
+    assert desktop_launcher._webview_start_options() == {
+        "private_mode": True,
+    }
+
+
 def test_main_shows_graphical_support_error_for_unexpected_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -417,12 +490,47 @@ def test_show_desktop_error_falls_back_to_standard_error(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    class UnavailableWebview:
+        @staticmethod
+        def create_window(*_args: object, **_kwargs: object) -> None:
+            raise RuntimeError("GUI toolkit unavailable")
+
     monkeypatch.setattr(desktop_launcher.sys, "platform", "linux")
 
-    desktop_launcher.show_desktop_error("Helpful failure message")
+    desktop_launcher.show_desktop_error(
+        "Helpful failure message",
+        webview_module=UnavailableWebview,
+    )
 
     captured = capsys.readouterr()
 
     assert captured.out == ""
     assert "junior could not start" in captured.err
     assert "Helpful failure message" in captured.err
+
+
+def test_non_windows_startup_error_uses_safe_graphical_window(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, Any] = {}
+
+    class FakeWebview:
+        @staticmethod
+        def create_window(title: str, **kwargs: Any) -> None:
+            calls["window"] = (title, kwargs)
+
+        @staticmethod
+        def start(**kwargs: Any) -> None:
+            calls["start"] = kwargs
+
+    monkeypatch.setattr(desktop_launcher.sys, "platform", "linux")
+
+    desktop_launcher.show_desktop_error(
+        "Safe guidance <without raw markup>",
+        webview_module=FakeWebview,
+    )
+
+    title, options = calls["window"]
+    assert title == "Junior could not start"
+    assert "Safe guidance &lt;without raw markup&gt;" in options["html"]
+    assert calls["start"] == {"private_mode": True}
