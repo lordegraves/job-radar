@@ -46,8 +46,8 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 22 | Planned | Add company connection testing, collector validation, last-success status, last-error status, and clear troubleshooting messages. |
 | 23 | In Progress | Preserve support for shipped/default company definitions while allowing users to maintain their own company inventory and overrides safely. |
 | 24 | Completed | Add first-run detection so a new installation opens guided setup instead of failing because configuration, profiles, companies, or data directories do not yet exist. |
-| 25 | Planned | Create a guided first-run setup wizard that collects profile name, resume, role preferences, compensation, locations, remote/hybrid rules, exclusions, and initial companies. |
-| 26 | Planned | Add a first-run review step that clearly shows the generated profile, preferences, companies, data location, and scan behavior before the user saves the setup. |
+| 25 | In Progress | Create a guided first-run setup wizard that collects profile name, resume, role preferences, compensation, locations, remote/hybrid rules, exclusions, and initial companies. |
+| 26 | In Progress | Add a first-run review step that clearly shows the generated profile, preferences, companies, data location, and scan behavior before the user saves the setup. |
 | 27 | Planned | Add a first-run validation scan that tests configuration, confirms at least one working company source, and explains any setup problems in plain language. |
 | 28 | Planned | Add resumable setup so an interrupted or incomplete first-run wizard can continue safely without starting over or leaving broken partial configuration. |
 | 29 | In Progress | Build editable Settings pages for application paths, report behavior, scan behavior, retention, profile defaults, company defaults, logs, backups, and application version information. |

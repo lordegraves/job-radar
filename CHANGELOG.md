@@ -9,6 +9,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 ### Added
 
 - First-run detection that sends only genuinely empty installations to a setup welcome page while leaving existing profiles, employers, jobs, Tracker records, and History records alone.
+- A guided first-run path that reuses validated profile creation, app-owned résumé upload, profile-owned company selection, and setup review services without introducing duplicate save rules.
 - Guarded Recommendation Administration for global employer metadata and eligibility, profile/employer diagnostics, profile-specific feedback reset, bounded rebuilds, and a sanitized audit.
 - SQLite migration version 19 for recommendation-administration metadata and audit records, protected by backup-before-migration and atomic rollback behavior.
 - An Administration-only Employer Review Queue for matching unresolved submissions, prefilled new-employer setup, guarded profile assignment, unsupported/rejected/duplicate decisions, and a sanitized decision audit.

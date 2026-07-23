@@ -13,7 +13,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-The current release is a functional local application with up to five independent managed profiles. Python wheel and source-package validation are complete. A genuinely empty installation now opens a first-run setup welcome page instead of an empty dashboard. The complete guided wizard, standalone executable, installer, fully editable configuration, scheduling, backup/export, and broader release-readiness work are still in progress.
+The current release is a functional local application with up to five independent managed profiles. Python wheel and source-package validation are complete. A genuinely empty installation now opens a guided first-run path through profile creation, résumé upload, company selection, and an initial review. Exclusion setup, the complete final review, resumable progress, standalone executable, installer, fully editable configuration, scheduling, backup/export, and broader release-readiness work are still in progress.
 
 See [CHANGELOG.md](CHANGELOG.md) for released and unreleased changes.
 

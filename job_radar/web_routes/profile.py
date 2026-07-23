@@ -169,6 +169,7 @@ def register_profile_routes(
         return render_template(
             "profile_form.html",
             **_profile_page_context(create_new=True),
+            setup_mode=request.args.get("setup") == "1",
         )
 
     @app.get("/profile/<profile_id>/edit")
@@ -225,7 +226,7 @@ def register_profile_routes(
     @app.post("/preferences")
     def save_preferences():
         try:
-            _, created = save_managed_search_profile(
+            saved_profile, created = save_managed_search_profile(
                 settings_path,
                 display_name=request.form.get("display_name", ""),
                 create_new=request.form.get("profile_mode", "") == "create",
@@ -271,6 +272,13 @@ def register_profile_routes(
                 )
             )
         if created:
+            if request.form.get("setup_mode") == "1":
+                return redirect(
+                    url_for(
+                        "setup_resume",
+                        profile_id=saved_profile.profile_id,
+                    )
+                )
             return redirect(url_for("profile", profile_result="created"))
         return redirect(url_for("profile", profile_result="preferences_saved"))
 
@@ -414,6 +422,8 @@ def register_profile_routes(
                 )
             )
 
+        if request.form.get("setup_mode") == "1":
+            return redirect(url_for("setup_companies"))
         return redirect(url_for("profile", upload_result="success"))
 
     def _profile_redirect(result: str, error: str = ""):
