@@ -404,12 +404,14 @@
     </select>
     <div class="actions">
         <form method="post" action="{{ url_for('select_profile_route') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <input id="selected-profile-for-use" name="profile_id" type="hidden" value="{{ profile_management.active_profile_id or profile_management.profiles[0].profile_id }}">
             <button type="submit">Use this profile</button>
         </form>
         <a id="edit-selected-profile" class="button-link button-secondary" href="{{ url_for('edit_profile_page', profile_id=profile_management.active_profile_id or profile_management.profiles[0].profile_id) }}">Edit</a>
         {% if not profile_limit_reached %}<a class="button-link button-secondary" href="{{ url_for('new_profile_page') }}">Create profile</a>{% endif %}
         <form id="delete-profile-form" method="post" action="{{ url_for('delete_profile_route') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <input id="selected-profile-for-delete" name="profile_id" type="hidden" value="{{ profile_management.active_profile_id or profile_management.profiles[0].profile_id }}">
             <button class="button-danger" type="submit">Delete</button>
         </form>

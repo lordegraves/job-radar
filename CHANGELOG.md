@@ -8,6 +8,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- Session-bound CSRF protection for every existing web mutation, including Administration, scans, profiles, résumés, job-fit preferences, Tracker, and History, with safe HTML and JSON failure responses.
+- Shared domain-error types for upcoming profile-company assignment, employer catalog, Administration, and recommendation services.
 - A session-scoped Administration shell with explicit `ADMIN` confirmation, safe local redirects, a visible mode indicator and exit action, and an installation-local Flask session signing key.
 - A read-only Company Workspace showing the active profile's company count and per-profile Scanning or Paused state, with a matching Profile / Resume summary link.
 - Profile-specific employer assignment state, allowing each managed profile to independently assign and enable or disable employers from the shared installation-wide employer catalog.
@@ -37,6 +39,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Changed
 
+- Included nested Administration templates in wheel and source packages and extended installed-package rendering coverage.
 - Classified ordinary Settings separately from installation-wide Administration without moving or enabling technical configuration controls yet.
 - Replaced technical employer-source details on the managed-profile Companies page with a normal-user workspace while preserving the legacy YAML view when no managed profile is active.
 - Replaced personal identities and nonessential real-company names in repository policy, roadmap history, and general-purpose test fixtures with neutral examples while preserving the approved support contact and source-specific collector coverage.

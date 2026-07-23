@@ -72,7 +72,10 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
             "job_radar/static/junior_logo.png",
             "job_radar/tracker/__init__.py",
             "job_radar/web_routes/__init__.py",
+            "job_radar/templates/administration/index.html",
+            "job_radar/templates/administration/unlock.html",
             "job_radar/templates/base.html",
+            "job_radar/templates/mutation_error.html",
         }
         assert required_files <= archive_names
 
@@ -169,7 +172,10 @@ def test_built_source_distribution_excludes_private_runtime_data(
         "job_radar/bootstrap_defaults/target-companies.yaml",
         "job_radar/bootstrap_defaults/scoring.yaml",
         "job_radar/cli.py",
+        "job_radar/templates/administration/index.html",
+        "job_radar/templates/administration/unlock.html",
         "job_radar/templates/base.html",
+        "job_radar/templates/mutation_error.html",
         "tests/test_packaging.py",
     }
     assert required_files <= normalized_names
@@ -471,12 +477,17 @@ logs_path: {logs_directory}
                 "database_path = "
                 "Path(os.environ['JOB_RADAR_TEST_DATABASE']); "
                 "app = web_app.create_app(settings_path=settings_path); "
-                "response = app.test_client().get('/'); "
+                "client = app.test_client(); "
+                "response = client.get('/'); "
                 "html = response.get_data(as_text=True); "
                 "assert response.status_code == 200; "
                 "assert 'Active Applications dashboard' in html; "
                 "assert 'Tracked applications' in html; "
                 "assert 'Latest scan' in html; "
+                "unlock_response = client.get('/administration/unlock'); "
+                "assert unlock_response.status_code == 200; "
+                "assert 'Unlock Administration' in "
+                "unlock_response.get_data(as_text=True); "
                 "assert database_path.is_file(); "
                 "print('installed web render passed')"
             ),

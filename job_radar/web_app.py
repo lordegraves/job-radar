@@ -11,6 +11,7 @@ from flask import Flask, render_template
 
 from job_radar import __version__
 from job_radar.config import ConfigError
+from job_radar.csrf import register_csrf_protection
 from job_radar.runtime_paths import RuntimePaths, get_default_user_data_directory
 from job_radar.session_secret import load_or_create_session_secret
 from job_radar.profile_storage import get_active_profile
@@ -61,6 +62,7 @@ def create_app(
 
     initialize_database(runtime_paths.database_path)
 
+    register_csrf_protection(app)
     register_administration_routes(app)
 
     @app.get("/")

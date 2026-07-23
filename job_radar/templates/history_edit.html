@@ -62,6 +62,7 @@
     <p><strong>Import Key:</strong> <code>{{ record.import_key }}</code></p>
 
     <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <div class="workspace-section">
             <h2>Quick actions</h2>
             <p class="muted quick-action-intro">Use this to reopen an archived application without manually changing its workflow fields.</p>

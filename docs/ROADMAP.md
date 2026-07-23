@@ -106,6 +106,8 @@ Foundation 7A now includes the completed read-only Company Workspace: profile-sp
 
 Foundation 7B is complete: ordinary Settings remains available, installation-wide controls are classified under a session-scoped Administration boundary, the Administration shell requires explicit `ADMIN` confirmation, and an unlocked session is visibly identified and can always be exited. Employer editing and all other global mutations remain deferred.
 
+Foundation 7C is complete: every current state-changing web request requires a valid session-bound CSRF token, mutation GET routes remain unavailable, invalid submissions fail before business logic runs, and normal forms and background requests receive consistent safe recovery responses. Shared domain errors are ready for later company and recommendation services.
+
 The next major product areas are editable company management, completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
 
 The projected full-product target remains September 30, 2026. Milestone quality, user-data safety, and dependency order take precedence over the date.

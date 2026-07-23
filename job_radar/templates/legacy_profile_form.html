@@ -14,6 +14,7 @@
     <h2>Replace résumé</h2>
     <p>Current résumé: <strong>{{ profile.resume_source_file_name or "Not configured" }}</strong></p>
     <form id="legacy-resume-form" method="post" action="{{ url_for('upload_resume') }}" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <label for="resume_file">Choose résumé file</label>
         <input id="resume_file" name="resume_file" type="file" accept=".md,.txt,.pdf,.docx" required>
         <p class="muted">Supported formats: .md, .txt, .pdf, and .docx.</p>

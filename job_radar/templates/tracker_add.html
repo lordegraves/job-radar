@@ -10,6 +10,7 @@
     <p class="muted">Create a tracker record for an application or external lead. junior assigns the ID when one is not already linked from a scan result.</p>
 
     <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <label for="job_radar_id">Job Radar ID</label>
         <input id="job_radar_id" name="job_radar_id" value="{{ prefill_values.job_radar_id }}" readonly>
         <p class="muted">Leave blank for junior to assign a manual tracker ID.</p>

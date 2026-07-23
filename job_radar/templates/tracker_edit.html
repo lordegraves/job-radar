@@ -306,6 +306,7 @@
     {% endif %}
 
     <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="return_filter" value="{{ return_filter }}">
 
         <div class="workspace-section">

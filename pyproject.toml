@@ -39,6 +39,7 @@ job_radar = [
     "static/*.ico",
     "static/*.png",
     "templates/*.html",
+    "templates/administration/*.html",
 ]
 
 [tool.pytest.ini_options]

@@ -23,6 +23,7 @@
     {% endif %}
 
     <form method="post" action="{{ url_for('administration_unlock_submit') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="next" value="{{ next_path }}">
         <label for="admin-confirmation">Type ADMIN to continue</label>
         <input id="admin-confirmation" name="confirmation" type="text" autocomplete="off">

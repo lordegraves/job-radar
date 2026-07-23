@@ -148,6 +148,8 @@ Settings remains the normal-user home for safe personal and product preferences.
 
 The current Settings page is still read-only and temporarily displays runtime paths and scan file locations. Foundation 7B classifies those technical values for eventual Administration placement but does not move or edit them yet. The Administration landing page contains planned categories only; global employer editing begins in a later milestone.
 
+Every state-changing web form and background action uses a session-bound CSRF token. Junior rejects missing, invalid, or stale tokens before route business logic runs, so the attempted change is not written. Normal forms receive a plain-language recovery page; background requests receive a bounded JSON error. Refreshing the page creates or loads the current token and allows the user to review and resubmit. GET routes remain read-only.
+
 A successful scan writes fixed-name outputs in the user-owned `reports` directory. The current HTML report and email preview replace the previous versions. The structured JSON snapshot supports the application internally and is not presented as a separate user report. Configurable report history and retention are not implemented yet.
 
 Scans started from the GUI run in the background. The rest of junior remains available while a scan is running, and every page monitors the same durable scan status. An app-wide notification reports completion, completion with source warnings, or failure and links to the appropriate results or details.

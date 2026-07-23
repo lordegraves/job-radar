@@ -434,6 +434,7 @@
         <div class="admin-mode-indicator" role="status">
             <span>Administration mode</span>
             <form method="post" action="{{ url_for('administration_lock') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="next" value="{{ url_for('index') }}">
                 <button type="submit">Exit</button>
             </form>

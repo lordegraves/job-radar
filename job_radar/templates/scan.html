@@ -97,6 +97,7 @@
     <p class="muted">Some company/source errors are temporary. If a company failed or looks stale, rerun the scan later.</p>
 
     <form id="scan-form" method="post" action="{{ url_for('run_scan') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <button
             id="scan-submit-button"
             type="submit"
@@ -175,6 +176,7 @@
     const scanFailure = document.getElementById("scan-failure");
     const scanFailureSummary = document.getElementById("scan-failure-summary");
     const latestOutput = document.getElementById("latest-output");
+    const csrfToken = scanForm.elements["_csrf_token"].value;
 
     function renderScanStatus(status) {
         scanButton.disabled = status.is_running;
@@ -229,6 +231,7 @@
                 method: "POST",
                 headers: {
                     "Accept": "application/json",
+                    "X-CSRF-Token": csrfToken,
                 },
             });
 

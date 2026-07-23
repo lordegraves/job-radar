@@ -405,6 +405,7 @@
     }
 </style>
 <form id="preferences-form" method="post" action="{{ url_for('save_preferences') }}">
+<input name="_csrf_token" type="hidden" value="{{ csrf_token() }}">
 <input name="profile_mode" type="hidden" value="{{ 'create' if create_new else 'edit' }}">
 {% if active_managed_profile %}<input name="profile_id" type="hidden" value="{{ active_managed_profile.profile_id }}">{% endif %}
 <div class="section">

@@ -152,6 +152,7 @@
 {% endif %}
 
 <form id="fit-board-form" method="post" action="{{ url_for('save_profile_fit_board_route', profile_id=managed_profile.profile_id) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input id="fit-signals-json" name="fit_signals_json" type="hidden">
 
     <div class="fit-board">
