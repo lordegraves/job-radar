@@ -3,6 +3,7 @@
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
 from job_radar.config import ConfigError
+from job_radar.company_workspace_service import build_company_workspace
 from job_radar.profile_management import (
     MAX_MANAGED_PROFILES,
     build_profile_management_view,
@@ -139,6 +140,7 @@ def register_profile_routes(
             "profile_limit_reached": (
                 len(management_view.profiles) >= MAX_MANAGED_PROFILES
             ),
+            "company_workspace": build_company_workspace(database_path),
         }
 
     @app.get("/profile")

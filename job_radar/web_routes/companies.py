@@ -8,6 +8,7 @@ from job_radar.company_config_service import (
     build_company_source_summaries,
     filter_company_config_views,
 )
+from job_radar.company_workspace_service import build_company_workspace
 from job_radar.company_view_resolution import resolve_company_page_source
 
 
@@ -21,6 +22,18 @@ def register_company_routes(
 
     @app.get("/companies")
     def companies() -> str:
+        workspace = build_company_workspace(get_database_path())
+
+        if workspace.active_profile is not None:
+            return render_template(
+                "companies.html",
+                workspace=workspace,
+                active_profile=workspace.active_profile,
+                uses_legacy_yaml=False,
+            )
+
+        # Compatibility: technical YAML visibility remains until the legacy
+        # configuration workflow is deliberately retired.
         page_source = resolve_company_page_source(
             get_database_path(),
             get_company_config_path(),
@@ -39,6 +52,7 @@ def register_company_routes(
 
         return render_template(
             "companies.html",
+            workspace=workspace,
             companies=filtered_companies,
             source_summaries=source_summaries,
             company_config_path=page_source.company_config_path,
@@ -59,6 +73,27 @@ def register_company_routes(
 
     @app.get("/companies/<company_key>")
     def company_detail(company_key: str) -> str:
+        workspace = build_company_workspace(get_database_path())
+
+        if workspace.active_profile is not None:
+            company = next(
+                (
+                    item
+                    for item in workspace.companies
+                    if item.company_key == company_key
+                ),
+                None,
+            )
+            if company is None:
+                abort(404)
+
+            return render_template(
+                "company_detail.html",
+                company=company,
+                active_profile=workspace.active_profile,
+                uses_legacy_yaml=False,
+            )
+
         page_source = resolve_company_page_source(
             get_database_path(),
             get_company_config_path(),

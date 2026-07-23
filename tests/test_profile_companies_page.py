@@ -3,7 +3,10 @@
 from pathlib import Path
 
 from job_radar.employer_models import EmployerSource
-from job_radar.employer_storage import upsert_employer_source
+from job_radar.employer_storage import (
+    set_profile_employer_enabled,
+    upsert_employer_source,
+)
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_storage import create_profile, set_active_profile
 from job_radar.web_app import create_app
@@ -48,6 +51,12 @@ def test_companies_page_shows_only_active_profile_employers(
             notes="Local legal employer.",
         ),
     )
+    set_profile_employer_enabled(
+        database_path,
+        profile.profile_id,
+        "disabled_insurance",
+        enabled=False,
+    )
     upsert_employer_source(
         database_path,
         EmployerSource(
@@ -82,12 +91,18 @@ def test_companies_page_shows_only_active_profile_employers(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
+    assert "Your Companies" in html
     assert "Paralegal Profile" in html
     assert "Assigned Law Firm" in html
     assert "Disabled Insurance" in html
     assert "Unassigned Bakery" not in html
+    assert "Scanning" in html
+    assert "Paused" in html
     assert "Legacy config file:" not in html
-    assert "Adding and editing employers will be enabled" in html
+    assert "Source type" not in html
+    assert "https://law.invalid/jobs" not in html
+    assert "Local legal employer." not in html
+    assert "Adding companies will be available" in html
 
 
 def test_company_detail_rejects_employer_not_assigned_to_active_profile(
@@ -145,6 +160,10 @@ def test_company_detail_rejects_employer_not_assigned_to_active_profile(
     assert "Electrician Profile" in assigned_response.get_data(
         as_text=True
     )
+    assert "Source detail" not in assigned_response.get_data(as_text=True)
+    assert "https://contractor.invalid/jobs" not in assigned_response.get_data(
+        as_text=True
+    )
     assert unassigned_response.status_code == 404
 
 
@@ -172,7 +191,5 @@ def test_companies_page_shows_empty_profile_guidance(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "New Secretary Profile does not have any employers yet." in (
-        " ".join(html.split())
-    )
-    assert "will not silently use employers from another profile" in html
+    assert "No companies have been added to this search yet." in html
+    assert "will not scan employers from another profile" in html

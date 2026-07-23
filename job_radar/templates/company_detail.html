@@ -46,6 +46,27 @@
 {% endblock %}
 
 {% block content %}
+{% if active_profile and not uses_legacy_yaml %}
+<p><a href="{{ url_for('companies') }}">&larr; Back to Your Companies</a></p>
+
+<h1 class="page-title">{{ company.name }}</h1>
+
+<section class="company-detail-grid" aria-label="Company summary">
+    <div class="company-detail-card">
+        {% if company.scanning %}
+        <strong class="status-enabled">Scanning</strong>
+        {% else %}
+        <strong class="status-disabled">Paused</strong>
+        {% endif %}
+        <span class="muted">Status</span>
+    </div>
+
+    <div class="company-detail-card">
+        <strong>{{ active_profile.display_name }}</strong>
+        <span class="muted">Included in profile</span>
+    </div>
+</section>
+{% else %}
 <p><a href="{{ url_for('companies') }}">&larr; Back to Companies</a></p>
 
 <h1 class="page-title">{{ company.name }}</h1>
@@ -118,4 +139,5 @@
         </tbody>
     </table>
 </section>
+{% endif %}
 {% endblock %}

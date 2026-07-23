@@ -364,6 +364,21 @@
         <div class="profile-status-card"><strong>Schedule</strong><span>{{ active_managed_profile.preferences.schedule_preference or 'Any schedule' }}</span></div>
         <div class="profile-status-card"><strong>On-call</strong><span>{{ active_managed_profile.preferences.on_call_preference }}</span></div>
         <div class="profile-status-card"><strong>Travel</strong><span>Jobs may require up to {{ active_managed_profile.preferences.travel_tolerance or '0' }}% travel</span></div>
+        <div class="profile-status-card">
+            <strong>Companies</strong>
+            <span>
+                {% if company_workspace.total_companies %}
+                {{ company_workspace.total_companies }}
+                compan{{ "y" if company_workspace.total_companies == 1 else "ies" }}
+                configured
+                {% else %}
+                No companies configured
+                {% endif %}
+            </span>
+            <div class="actions">
+                <a class="button-link button-secondary" href="{{ url_for('companies') }}">Manage companies</a>
+            </div>
+        </div>
     </div>
     {% endif %}
     {% endif %}

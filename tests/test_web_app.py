@@ -4130,6 +4130,10 @@ def test_profile_summary_and_edit_page_have_separate_jobs(tmp_path: Path) -> Non
     )
 
     assert "What junior will scan for" in summary_html
+    assert "Companies" in summary_html
+    assert "No companies configured" in summary_html
+    assert 'href="/companies"' in summary_html
+    assert "Manage companies" in summary_html
     assert f'href="/profile/{profile.profile_id}/edit"' in summary_html
     assert 'name="occupation_selections_json"' not in summary_html
     assert "Edit profile" in edit_html

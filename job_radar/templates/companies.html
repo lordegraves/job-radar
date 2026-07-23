@@ -98,10 +98,85 @@
     .company-notes {
         max-width: 420px;
     }
+
+    .workspace-status {
+        font-weight: 700;
+    }
+
+    .status-scanning {
+        color: #8fdc8f;
+    }
+
+    .status-paused {
+        color: #ffb86c;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+{% if workspace.active_profile %}
+<h1 class="page-title">Your Companies</h1>
+
+<div class="page-card">
+    <p>
+        These are the companies included in
+        <strong>{{ workspace.active_profile.display_name }}'s</strong>
+        current job search.
+    </p>
+    <p class="muted">
+        junior scans companies marked Scanning and skips companies marked Paused.
+    </p>
+</div>
+
+<section class="company-summary-grid" aria-label="Company workspace summary">
+    <div class="company-summary-card">
+        <strong>{{ workspace.total_companies }}</strong>
+        <span class="muted">Companies</span>
+    </div>
+    <div class="company-summary-card">
+        <strong>{{ workspace.scanning_companies }}</strong>
+        <span class="muted">Scanning</span>
+    </div>
+    <div class="company-summary-card">
+        <strong>{{ workspace.paused_companies }}</strong>
+        <span class="muted">Paused</span>
+    </div>
+</section>
+
+<section>
+    <h2>Companies in this search</h2>
+    {% if workspace.companies %}
+    <table>
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for company in workspace.companies %}
+            <tr>
+                <td><a href="{{ url_for('company_detail', company_key=company.company_key) }}">{{ company.name }}</a></td>
+                <td>
+                    {% if company.scanning %}
+                    <span class="workspace-status status-scanning">Scanning</span>
+                    {% else %}
+                    <span class="workspace-status status-paused">Paused</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="page-card">
+        <p>No companies have been added to this search yet.</p>
+        <p class="muted">junior will not scan employers from another profile.</p>
+    </div>
+    {% endif %}
+    <p class="muted">Adding companies will be available in the next step.</p>
+</section>
+{% else %}
 <h1 class="page-title">Companies</h1>
 
 <div class="page-card">
@@ -253,5 +328,6 @@
         </tbody>
     </table>
 </section>
+{% endif %}
 {% endif %}
 {% endblock %}
