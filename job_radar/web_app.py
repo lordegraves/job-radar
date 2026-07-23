@@ -7,7 +7,7 @@ import traceback
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from flask import Flask, render_template
+from flask import Flask, redirect, render_template, url_for
 
 from job_radar import __version__
 from job_radar.config import ConfigError
@@ -15,6 +15,7 @@ from job_radar.csrf import register_csrf_protection
 from job_radar.runtime_paths import RuntimePaths, get_default_user_data_directory
 from job_radar.session_secret import load_or_create_session_secret
 from job_radar.profile_storage import get_active_profile
+from job_radar.first_run_service import needs_first_run_setup
 from job_radar.scan_service import handle_scan
 from job_radar.storage import initialize_database
 from job_radar.web_routes.companies import register_company_routes
@@ -27,6 +28,7 @@ from job_radar.web_routes.reports import (
 )
 from job_radar.web_routes.scan import register_scan_routes
 from job_radar.web_routes.settings import register_settings_routes
+from job_radar.web_routes.setup import register_setup_routes
 from job_radar.web_routes.tracker import (
     CANONICAL_DECISION_FILTER_OPTIONS,
     TRACKER_EDIT_OUTCOME_OPTIONS,
@@ -71,6 +73,16 @@ def create_app(
     @app.get("/")
     def index() -> str:
         database_path = _get_database_path(app)
+        runtime_paths = _get_runtime_paths(app)
+        legacy_profile_exists = (
+            runtime_paths.candidate_profile_path is not None
+            and runtime_paths.candidate_profile_path.is_file()
+        )
+        if (
+            not legacy_profile_exists
+            and needs_first_run_setup(database_path)
+        ):
+            return redirect(url_for("setup_welcome"))
         profile_id = _get_active_profile_id(app)
         applications = get_tracker_application_views(
             database_path,
@@ -94,6 +106,11 @@ def create_app(
     register_settings_routes(
         app,
         settings_path=app.config["JOB_RADAR_SETTINGS_PATH"],
+    )
+
+    register_setup_routes(
+        app,
+        get_database_path=lambda: _get_database_path(app),
     )
 
     register_company_routes(

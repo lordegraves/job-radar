@@ -45,7 +45,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 21 | Planned | Add guided company-source detection from a company name or careers URL, with confirmation of detected ATS/source type before saving. |
 | 22 | Planned | Add company connection testing, collector validation, last-success status, last-error status, and clear troubleshooting messages. |
 | 23 | In Progress | Preserve support for shipped/default company definitions while allowing users to maintain their own company inventory and overrides safely. |
-| 24 | In Progress | Add first-run detection so a new installation opens guided setup instead of failing because configuration, profiles, companies, or data directories do not yet exist. |
+| 24 | Completed | Add first-run detection so a new installation opens guided setup instead of failing because configuration, profiles, companies, or data directories do not yet exist. |
 | 25 | Planned | Create a guided first-run setup wizard that collects profile name, resume, role preferences, compensation, locations, remote/hybrid rules, exclusions, and initial companies. |
 | 26 | Planned | Add a first-run review step that clearly shows the generated profile, preferences, companies, data location, and scan behavior before the user saves the setup. |
 | 27 | Planned | Add a first-run validation scan that tests configuration, confirms at least one working company source, and explains any setup problems in plain language. |
@@ -131,5 +131,7 @@ Foundation 7K is complete: guarded Recommendation Administration can maintain gl
 Foundation 7L is complete: the normal Companies GUI no longer exposes or manages legacy `target-companies.yaml` records. A user without an active managed profile receives a clear profile setup action, and direct legacy-company detail routes are unavailable. Protected one-time import remains available to existing upgraded profiles, while released CLI/server scans without a managed profile retain YAML compatibility to avoid an unapproved breaking change.
 
 The company workspace and recommendation milestone sequence is complete. Other major product areas include completing profile configuration, guided first-run setup, editable Settings and credential workflows, scheduling, user-facing backup and recovery, and final desktop packaging.
+
+First-run detection is complete: after safe desktop bootstrap, a genuinely empty database opens a dedicated setup welcome page. Existing profiles, employers, jobs, Tracker records, or History records prevent first-run mode, so upgrades and established installations are not redirected into onboarding. The welcome page does not write partial data and hands off to the existing explicit profile-creation workflow.
 
 The projected full-product target remains September 30, 2026. Milestone quality, user-data safety, and dependency order take precedence over the date.

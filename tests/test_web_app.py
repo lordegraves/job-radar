@@ -10,6 +10,8 @@ from pathlib import Path
 import job_radar.web_app as web_app_module
 
 from job_radar.history_models import JobHistoryRecord
+from job_radar.employer_models import EmployerSource
+from job_radar.employer_storage import upsert_employer_source
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_storage import (
     create_profile,
@@ -32,6 +34,21 @@ from job_radar.tracker.tracker_storage import (
     upsert_application,
 )
 from job_radar.web_app import create_app
+
+
+def mark_existing_installation(database_file: Path) -> None:
+    """Keep dashboard-only tests outside the intentional first-run path."""
+
+    upsert_employer_source(
+        database_file,
+        EmployerSource(
+            employer_id="existing_test_employer",
+            name="Existing Test Employer",
+            source_type="greenhouse",
+            enabled=False,
+            source_config={"source_slug": "existing-test"},
+        ),
+    )
 
 
 def test_profile_switch_isolates_tracker_and_history_pages(tmp_path: Path) -> None:
@@ -465,6 +482,7 @@ def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
     database_file = tmp_path / "job_radar.sqlite3"
 
     write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
@@ -638,6 +656,7 @@ def test_index_page_summarizes_latest_scan_report(tmp_path: Path) -> None:
 
     reports_path.mkdir()
     write_settings_file(settings_file, database_file, reports_path=reports_path)
+    mark_existing_installation(database_file)
 
     (reports_path / "target-scan.html").write_text(
         "<html><body><h1>Job Radar Report</h1></body></html>",
@@ -1631,6 +1650,7 @@ def test_index_page_links_to_scan(tmp_path: Path) -> None:
     database_file = tmp_path / "job_radar.sqlite3"
 
     write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
@@ -1648,6 +1668,7 @@ def test_index_page_links_to_settings(tmp_path: Path) -> None:
     database_file = tmp_path / "job_radar.sqlite3"
 
     write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
@@ -1665,6 +1686,7 @@ def test_index_page_links_to_companies(tmp_path: Path) -> None:
     database_file = tmp_path / "job_radar.sqlite3"
 
     write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
@@ -2175,6 +2197,7 @@ def test_scan_run_calls_handle_scan_and_redirects(
     release_scan = threading.Event()
 
     write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
     monkeypatch.chdir(tmp_path)
 
     def fake_handle_scan(**kwargs):
@@ -2287,6 +2310,7 @@ def test_every_page_includes_global_scan_monitor(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
@@ -2304,6 +2328,7 @@ def test_index_page_links_to_reports(tmp_path: Path) -> None:
     database_file = tmp_path / "job_radar.sqlite3"
 
     write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
@@ -3840,6 +3865,7 @@ def test_index_page_links_to_profile(tmp_path: Path) -> None:
     database_file = tmp_path / "job_radar.sqlite3"
 
     write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
 
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()

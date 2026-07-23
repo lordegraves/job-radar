@@ -82,6 +82,7 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
             "job_radar/templates/administration/unlock.html",
             "job_radar/templates/base.html",
             "job_radar/templates/company_recommendations.html",
+            "job_radar/templates/setup_welcome.html",
             "job_radar/templates/mutation_error.html",
         }
         assert required_files <= archive_names
@@ -189,6 +190,7 @@ def test_built_source_distribution_excludes_private_runtime_data(
         "job_radar/templates/administration/unlock.html",
         "job_radar/templates/base.html",
         "job_radar/templates/company_recommendations.html",
+        "job_radar/templates/setup_welcome.html",
         "job_radar/templates/mutation_error.html",
         "tests/test_packaging.py",
     }
@@ -491,13 +493,14 @@ logs_path: {logs_directory}
                 "database_path = "
                 "Path(os.environ['JOB_RADAR_TEST_DATABASE']); "
                 "app = web_app.create_app(settings_path=settings_path); "
-                "client = app.test_client(); "
-                "response = client.get('/'); "
-                "html = response.get_data(as_text=True); "
-                "assert response.status_code == 200; "
-                "assert 'Active Applications dashboard' in html; "
-                "assert 'Tracked applications' in html; "
-                "assert 'Latest scan' in html; "
+                    "client = app.test_client(); "
+                    "response = client.get('/'); "
+                    "assert response.status_code == 302; "
+                    "assert response.headers['Location'] == '/setup'; "
+                    "setup_response = client.get('/setup'); "
+                    "assert setup_response.status_code == 200; "
+                    "assert 'Welcome to junior' in "
+                    "setup_response.get_data(as_text=True); "
                 "unlock_response = client.get('/administration/unlock'); "
                 "assert unlock_response.status_code == 200; "
                 "assert 'Unlock Administration' in "

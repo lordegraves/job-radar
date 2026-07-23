@@ -1,0 +1,60 @@
+{# Starts first-run setup without saving incomplete profile information. #}
+{% extends "base.html" %}
+
+{% block title %}Set up junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .setup-shell { margin: 48px auto; max-width: 820px; }
+    .setup-steps { display: grid; gap: 12px; margin: 24px 0; }
+    .setup-step {
+        align-items: start;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 36px 1fr;
+    }
+    .setup-step-number {
+        align-items: center;
+        background: var(--link);
+        border-radius: 50%;
+        color: #071018;
+        display: flex;
+        font-weight: 800;
+        height: 32px;
+        justify-content: center;
+        width: 32px;
+    }
+    .setup-step h2 { font-size: 1.1rem; margin: 3px 0 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="setup-shell">
+    <h1 class="page-title">Welcome to junior</h1>
+    <section class="page-card">
+        <p>
+            Let&rsquo;s set up the job search Junior will run for you. Nothing
+            has been saved yet.
+        </p>
+        <div class="setup-steps">
+            <div class="setup-step">
+                <span class="setup-step-number">1</span>
+                <div><h2>Create your profile</h2><span class="muted">Tell Junior what work you want and how you want to work.</span></div>
+            </div>
+            <div class="setup-step">
+                <span class="setup-step-number">2</span>
+                <div><h2>Add your r&eacute;sum&eacute;</h2><span class="muted">Junior will keep its own safe copy with this profile.</span></div>
+            </div>
+            <div class="setup-step">
+                <span class="setup-step-number">3</span>
+                <div><h2>Choose companies</h2><span class="muted">Junior scans only the organizations you deliberately select.</span></div>
+            </div>
+            <div class="setup-step">
+                <span class="setup-step-number">4</span>
+                <div><h2>Review before scanning</h2><span class="muted">You will see exactly what Junior is prepared to do.</span></div>
+            </div>
+        </div>
+        <a class="button-link primary-action" href="{{ url_for('new_profile_page') }}">Start setup</a>
+    </section>
+</div>
+{% endblock %}
