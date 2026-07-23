@@ -221,6 +221,7 @@ def save_managed_search_profile(
     on_call_preference: str,
     compensation_floor_usd: str,
     travel_percentage: str,
+    exclusions: str = "",
     base_directory: str | Path | None = None,
 ) -> tuple[ManagedProfile, bool]:
     """Create a complete search profile or update the active one safely."""
@@ -257,6 +258,7 @@ def save_managed_search_profile(
         on_call_preference=on_call_preference,
         compensation_floor_usd=compensation_floor_usd,
         travel_percentage=travel_percentage,
+        exclusions=exclusions,
     )
 
     if current is None:
@@ -296,6 +298,7 @@ def _validated_search_preferences(
     on_call_preference: str,
     compensation_floor_usd: str,
     travel_percentage: str,
+    exclusions: str,
 ) -> ProfilePreferences:
     occupations = _occupation_preferences(occupation_selections_json)
     locations = _location_preferences(location_selections_json)
@@ -315,6 +318,7 @@ def _validated_search_preferences(
         raise ConfigError("Choose a valid on-call preference.")
 
     travel = _percentage(travel_percentage, "Maximum travel")
+    exclusion_values = _profile_exclusions(exclusions)
 
     return replace(
         existing,
@@ -331,7 +335,30 @@ def _validated_search_preferences(
         on_call_preference=on_call,
         occupation_selections=occupations,
         location_selections=locations,
+        exclusions=exclusion_values,
     )
+
+
+def _profile_exclusions(value: str) -> tuple[str, ...]:
+    """Normalize a small, readable list of work the user does not want."""
+
+    unique: list[str] = []
+    seen: set[str] = set()
+    for raw_value in value.splitlines():
+        normalized = " ".join(raw_value.split())
+        if not normalized:
+            continue
+        if len(normalized) > 120:
+            raise ConfigError(
+                "Keep each role or responsibility to avoid under 120 characters."
+            )
+        key = normalized.casefold()
+        if key not in seen:
+            seen.add(key)
+            unique.append(normalized)
+    if len(unique) > 20:
+        raise ConfigError("Enter no more than 20 roles or responsibilities to avoid.")
+    return tuple(unique)
 
 
 def _reject_duplicate_display_name(

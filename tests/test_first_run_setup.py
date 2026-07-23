@@ -108,6 +108,7 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
             "workplace-arrangement": ["On-site"],
             "schedule_preference": "Day shift",
             "travel_percentage": "10",
+            "exclusions": "Commission-only sales",
         },
     )
 
@@ -160,6 +161,7 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
     assert "Step 4 of 4" in review_html
     assert "Fictional Baker" in review_html
     assert "Bakers" in review_html
+    assert "Commission-only sales" in review_html
     assert "Full-time" in review_html
     assert "Day shift" in review_html
     assert "On-site" in review_html

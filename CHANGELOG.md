@@ -13,6 +13,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Resumable first-run setup with a durable SQLite checkpoint after profile, résumé, and company steps, plus explicit completion from the review page.
 - SQLite migration version 20 for first-run setup progress, protected by backup-before-migration and atomic rollback behavior.
 - A complete first-run review showing the selected profile, résumé, preferences, locations, companies, user-data location, and plain-language scan behavior before setup is finished.
+- Profile-owned work exclusions in profile creation and editing, with one responsibility or role per line, duplicate normalization, bounded input, and résumé/context-aware evaluation instead of title-synonym expansion.
 - Guarded Recommendation Administration for global employer metadata and eligibility, profile/employer diagnostics, profile-specific feedback reset, bounded rebuilds, and a sanitized audit.
 - SQLite migration version 19 for recommendation-administration metadata and audit records, protected by backup-before-migration and atomic rollback behavior.
 - An Administration-only Employer Review Queue for matching unresolved submissions, prefilled new-employer setup, guarded profile assignment, unsupported/rejected/duplicate decisions, and a sanitized decision audit.

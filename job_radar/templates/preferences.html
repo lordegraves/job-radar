@@ -443,6 +443,11 @@
             <div class="selection-groups">
                 <div class="selection-group"><h4>Roles included in this search</h4><div id="target-role-list" class="chip-list" aria-live="polite"></div></div>
             </div>
+            <div class="control-field" style="margin-top: 1.25rem;">
+                <label for="profile-exclusions">Work you do not want</label>
+                <span class="field-help">Optional. Enter one role or responsibility per line. Describe the work itself when a job title could mean different things.</span>
+                <textarea id="profile-exclusions" name="exclusions" rows="4" placeholder="Example: commission-only sales">{{ saved_preferences.exclusions|join('\n') if saved_preferences else '' }}</textarea>
+            </div>
         </section>
 
         <section class="preference-panel">
@@ -589,7 +594,7 @@
                 <h3>Roles or responsibilities to avoid</h3>
                 {% if not create_new and profile.avoid %}
                 <ul>{% for item in profile.avoid %}<li>{{ item }}</li>{% endfor %}</ul>
-                {% else %}<p class="muted">No avoid signals are recorded.</p>{% endif %}
+                {% else %}<p class="muted">Use “Work you do not want” to add optional role or responsibility exclusions.</p>{% endif %}
             </div>
 
             <div class="summary-section">

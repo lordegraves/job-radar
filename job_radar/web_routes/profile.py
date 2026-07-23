@@ -249,6 +249,7 @@ def register_profile_routes(
                     "compensation_floor_usd", ""
                 ),
                 travel_percentage=request.form.get("travel_percentage", ""),
+                exclusions=request.form.get("exclusions", ""),
                 base_directory=base_directory,
             )
         except (ConfigError, ProfileStorageError, ValueError) as error:
