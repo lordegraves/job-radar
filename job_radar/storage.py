@@ -273,6 +273,11 @@ def _schema_migrations() -> tuple:
             "add profile ownership to scan runs",
             _migrate_profile_owned_scan_runs,
         ),
+        (
+            18,
+            "add external employer discovery candidates",
+            _migrate_external_employer_discoveries,
+        ),
     )
 
 
@@ -918,6 +923,41 @@ def _migrate_profile_owned_scan_runs(connection: sqlite3.Connection) -> None:
         """
         CREATE INDEX IF NOT EXISTS idx_scan_runs_profile_finished
         ON scan_runs(profile_id, finished_at DESC)
+        """
+    )
+
+
+def _migrate_external_employer_discoveries(
+    connection: sqlite3.Connection,
+) -> None:
+    """Cache bounded external candidates and their review disposition."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS external_employer_discoveries (
+            profile_id TEXT NOT NULL,
+            candidate_key TEXT NOT NULL,
+            proposed_name TEXT NOT NULL,
+            proposed_careers_url TEXT,
+            discovery_source TEXT NOT NULL,
+            evidence_json TEXT NOT NULL DEFAULT '[]',
+            possible_employer_id TEXT,
+            detection_result TEXT NOT NULL,
+            confidence TEXT NOT NULL,
+            readiness_state TEXT NOT NULL,
+            discovered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_evaluated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            review_request_id TEXT,
+            PRIMARY KEY (profile_id, candidate_key)
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_external_discoveries_profile_state
+        ON external_employer_discoveries(
+            profile_id, readiness_state, last_evaluated_at DESC
+        )
         """
     )
 

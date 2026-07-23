@@ -73,17 +73,48 @@ def test_recommendations_are_profile_specific_ranked_and_scan_ready(
 
     assert [item.employer_id for item in cook_results] == [
         "example_kitchen",
-        "example_compute",
     ]
     assert [item.employer_id for item in engineer_results] == [
         "example_compute",
-        "example_kitchen",
     ]
     assert "target work: cook" in cook_results[0].evidence[0]
     assert all(item.can_scan for item in cook_results)
     assert "offline_example" not in {
         item.employer_id for item in cook_results + engineer_results
     }
+
+
+def test_unrelated_company_is_not_recommended_for_desired_role(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    decorator = _profile(
+        "profile_aaaaaaaa",
+        "Cake Decorator Profile",
+        "cake decorator",
+    )
+    create_profile(database_path, decorator)
+    set_active_profile(database_path, decorator.profile_id)
+    upsert_employer_source(
+        database_path,
+        _employer(
+            "example_bakery",
+            "Example Bakery",
+            tags=["cake", "decorator", "bakery"],
+        ),
+    )
+    upsert_employer_source(
+        database_path,
+        _employer(
+            "nvidia_fixture",
+            "NVIDIA Fixture",
+            tags=["gpu", "software", "platform"],
+        ),
+    )
+
+    results = build_company_recommendations(database_path)
+
+    assert [item.employer_id for item in results] == ["example_bakery"]
 
 
 def test_feedback_persists_without_leaking_between_profiles(

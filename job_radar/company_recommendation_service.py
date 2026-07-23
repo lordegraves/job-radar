@@ -43,6 +43,9 @@ def build_company_recommendations(
         )
     }
     profile_terms = _profile_terms(profile)
+    if not profile_terms:
+        return ()
+    qualified_employer_ids: set[str] = set()
 
     for employer in list_employer_sources(database_path):
         if employer.employer_id in assigned_ids:
@@ -50,14 +53,20 @@ def build_company_recommendations(
         availability = evaluate_employer_availability(employer)
         if availability.state != AVAILABLE:
             continue
-        score, evidence = _rank_employer(employer, profile_terms)
-        evidence_score, job_evidence = format_job_evidence(
-            aggregate_employer_job_evidence(
-                database_path,
-                profile=profile,
-                employer_id=employer.employer_id,
-            )
+        score, evidence, metadata_matches = _rank_employer(
+            employer, profile_terms
         )
+        employer_job_evidence = aggregate_employer_job_evidence(
+            database_path,
+            profile=profile,
+            employer_id=employer.employer_id,
+        )
+        evidence_score, job_evidence = format_job_evidence(
+            employer_job_evidence
+        )
+        if not metadata_matches and not employer_job_evidence.has_evidence:
+            continue
+        qualified_employer_ids.add(employer.employer_id)
         save_recommendation(
             database_path,
             profile_id=profile.profile_id,
@@ -69,6 +78,8 @@ def build_company_recommendations(
 
     recommendations = []
     for row in load_visible_rows(database_path, profile.profile_id):
+        if row["employer_id"] not in qualified_employer_ids:
+            continue
         recommendations.append(
             CompanyRecommendation(
                 profile_id=row["profile_id"],
@@ -122,7 +133,10 @@ def _profile_terms(profile) -> set[str]:
     }
 
 
-def _rank_employer(employer, profile_terms: set[str]) -> tuple[int, tuple[str, ...]]:
+def _rank_employer(
+    employer,
+    profile_terms: set[str],
+) -> tuple[int, tuple[str, ...], bool]:
     metadata = employer.source_config
     metadata_values = [
         employer.name,
@@ -138,7 +152,7 @@ def _rank_employer(employer, profile_terms: set[str]) -> tuple[int, tuple[str, .
     }
     overlap = sorted(profile_terms & employer_terms)
     evidence = []
-    score = 10
+    score = 0
     if overlap:
         score += 10 * len(overlap)
         evidence.append(
@@ -147,7 +161,7 @@ def _rank_employer(employer, profile_terms: set[str]) -> tuple[int, tuple[str, .
             + "."
         )
     evidence.append("Junior already has a supported, scan-ready careers source.")
-    return score, tuple(evidence)
+    return score, tuple(evidence), bool(overlap)
 
 
 def _tokens(value: str) -> set[str]:

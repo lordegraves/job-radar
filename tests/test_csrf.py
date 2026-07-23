@@ -142,6 +142,7 @@ def test_mutation_routes_do_not_accept_get_requests(tmp_path: Path) -> None:
         "add_existing_company",
         "add_company_recommendation",
         "company_recommendation_feedback",
+        "review_external_company_candidate",
         "resolve_company_submission",
         "remove_profile_company",
         "set_company_scanning",

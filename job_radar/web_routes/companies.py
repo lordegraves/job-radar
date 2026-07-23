@@ -34,6 +34,11 @@ from job_radar.domain_errors import (
 )
 from job_radar.employer_resolution_service import resolve_employer_submission
 from job_radar.employer_review_service import list_profile_review_states
+from job_radar.external_company_discovery_service import (
+    ExternalCompanyDiscoveryError,
+    build_external_company_candidates,
+    send_external_candidate_to_review,
+)
 
 
 def register_company_routes(
@@ -295,6 +300,9 @@ def register_company_routes(
             "company_recommendations.html",
             profile=workspace.active_profile,
             recommendations=build_company_recommendations(get_database_path()),
+            external_candidates=build_external_company_candidates(
+                get_database_path()
+            ),
             company_message=request.args.get("company_message", "").strip(),
             company_error=request.args.get("company_error", "").strip(),
         )
@@ -328,6 +336,28 @@ def register_company_routes(
                 company_message=(
                     f"{result.employer_name} was added and will be scanned."
                 ),
+            )
+        )
+
+    @app.post("/companies/recommendations/external/<candidate_key>/review")
+    def review_external_company_candidate(candidate_key: str):
+        workspace = build_company_workspace(get_database_path())
+        if workspace.active_profile is None:
+            return redirect(url_for("companies"))
+        try:
+            result = send_external_candidate_to_review(
+                get_database_path(),
+                profile_id=workspace.active_profile.profile_id,
+                candidate_key=candidate_key,
+            )
+        except ExternalCompanyDiscoveryError as error:
+            return redirect(
+                url_for("company_recommendations", company_error=str(error))
+            )
+        return redirect(
+            url_for(
+                "company_recommendations",
+                company_message=result.message,
             )
         )
 

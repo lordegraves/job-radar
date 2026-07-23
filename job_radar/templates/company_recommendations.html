@@ -32,8 +32,8 @@
 <p><a href="{{ url_for('companies') }}">&larr; Your Companies</a></p>
 <h1 class="page-title">Recommended companies for {{ profile.display_name }}</h1>
 <div class="page-card">
-    <p>These suggestions come only from companies already configured in Junior's Employer Catalog.</p>
-    <p class="muted">Junior does not search the public web for employers on this page. Your responses apply only to this profile.</p>
+    <p>Junior recommends companies only when it has evidence connecting them to this profile's desired roles.</p>
+    <p class="muted">Catalog suggestions are ready to scan. Outside-catalog suggestions require review first. Junior does not broadly crawl the public web, and your responses apply only to this profile.</p>
 </div>
 
 {% if company_message %}
@@ -80,4 +80,43 @@
     <a class="button-link" href="{{ url_for('add_company_page') }}">Add company</a>
 </div>
 {% endif %}
+
+<section>
+    <h2>Companies Junior found outside your catalog</h2>
+    <p class="muted">
+        These employers appeared in recent job data owned by this profile.
+        Junior will not scan or globally add them until their identity and careers source are verified.
+    </p>
+    {% if external_candidates %}
+    <div class="recommendation-grid">
+        {% for candidate in external_candidates %}
+        <article class="page-card recommendation-card">
+            <div>
+                <h3>{{ candidate.proposed_name }}</h3>
+                <p><strong>Confidence:</strong> {{ candidate.confidence }}</p>
+                <h4>Why Junior suggests reviewing it</h4>
+                <ul>
+                    {% for reason in candidate.evidence %}
+                    <li>{{ reason }}</li>
+                    {% endfor %}
+                </ul>
+                <p class="muted">
+                    Source: {{ candidate.discovery_source }}.
+                    Status: {{ candidate.readiness_state|replace('_', ' ')|title }}.
+                </p>
+            </div>
+            <form method="post" action="{{ url_for('review_external_company_candidate', candidate_key=candidate.candidate_key) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Review company</button>
+            </form>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="page-card">
+        <p>No fresh outside-catalog company suggestions are available.</p>
+        <p class="muted">Junior does not perform uncontrolled broad web crawling to fill this section.</p>
+    </div>
+    {% endif %}
+</section>
 {% endblock %}
