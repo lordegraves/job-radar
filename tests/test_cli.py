@@ -498,8 +498,12 @@ top_matches:
     assert len(error_rows) == 1
     assert error_rows[0]["company_key"] == "example_ai"
     assert error_rows[0]["source_type"] == "greenhouse"
-    assert error_rows[0]["error_type"] == "collection_error"
-    assert error_rows[0]["error_message"] == "temporary collector failure"
+    assert error_rows[0]["error_type"] == "collector_failure"
+    assert (
+        error_rows[0]["error_message"]
+        == "Junior reached this company source but could not read its job list."
+    )
+    assert "temporary collector failure" not in error_rows[0]["error_message"]
 
 
 def test_handle_scan_records_failed_stage(
@@ -558,11 +562,18 @@ logs_path: {tmp_path}
 
     assert scan_row["status"] == "failed"
     assert scan_row["current_stage"] == "configuration"
-    assert scan_row["failure_summary"] == "invalid scoring configuration"
+    assert (
+        scan_row["failure_summary"]
+        == "Junior could not load valid scan settings or profile information."
+    )
     assert scan_row["finished_at"] is not None
     assert len(error_rows) == 1
     assert error_rows[0]["error_type"] == "configuration_failure"
-    assert error_rows[0]["error_message"] == "invalid scoring configuration"
+    assert (
+        error_rows[0]["error_message"]
+        == "Junior could not load valid scan settings or profile information."
+    )
+    assert "invalid scoring configuration" not in error_rows[0]["error_message"]
 
 
 def test_handle_scan_records_report_generation_failure(
@@ -662,11 +673,18 @@ top_matches:
 
     assert scan_row["status"] == "failed"
     assert scan_row["current_stage"] == "report_generation"
-    assert scan_row["failure_summary"] == "report writer failed"
+    assert (
+        scan_row["failure_summary"]
+        == "Junior encountered an unexpected application problem during the scan."
+    )
     assert scan_row["report_status"] == "not_started"
     assert len(error_rows) == 1
-    assert error_rows[0]["error_type"] == "report_generation_failure"
-    assert error_rows[0]["error_message"] == "report writer failed"
+    assert error_rows[0]["error_type"] == "application_failure"
+    assert (
+        error_rows[0]["error_message"]
+        == "Junior encountered an unexpected application problem during the scan."
+    )
+    assert "report writer failed" not in error_rows[0]["error_message"]
 
 
 def test_handle_scan_collects_stores_scores_and_reports_jobs(

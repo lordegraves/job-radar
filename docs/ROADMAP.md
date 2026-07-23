@@ -59,7 +59,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 35 | Completed | Implement Windows scheduling support through a controlled Task Scheduler integration that can be created, inspected, updated, disabled, and removed through the app. |
 | 36 | Completed | Add Linux scheduling support for standalone and server installations using a documented, shared scheduling abstraction rather than separate product logic. |
 | 37 | Completed | Add configurable report and log retention options such as latest only, latest plus previous, or retain the most recent configured number of runs. |
-| 38 | In Progress | Add source-health, scan-health, and application diagnostics that clearly distinguish configuration errors, collector failures, network problems, email failures, and unexpected application errors. |
+| 38 | Completed | Add source-health, scan-health, and application diagnostics that clearly distinguish configuration errors, collector failures, network problems, email failures, and unexpected application errors. |
 | 39 | Planned | Add an in-app logs and diagnostics page with safe log viewing, copyable troubleshooting details, and an Open Data Directory action. |
 | 40 | In Progress | Add user-facing backup, restore, export, and recovery workflows for profiles, companies, settings, SQLite data, reports, and other user-owned application data. |
 | 41 | In Progress | Add automatic safety backups before destructive migrations, major upgrades, profile deletion, company deletion, database repair, or data reset operations. |

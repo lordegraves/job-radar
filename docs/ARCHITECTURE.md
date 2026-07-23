@@ -181,6 +181,10 @@ The latest outputs keep stable filenames for compatibility. Before replacement, 
 
 Databases belong in `data`, logs belong in `logs`, and migration backups are safety artifacts rather than user reports. None of these runtime artifacts belong in source control or release packages.
 
+### Diagnostics
+
+`diagnostic_service.py` owns the shared safe vocabulary for configuration, collector, network, email, and unexpected application failures. Scan collection and terminal scan failures store only these bounded summaries and categories, never raw exception text. The read-only Settings diagnostics view combines the latest sanitized scan state, aggregated employer connection health, email readiness, and successful settings loading. Log contents and operating-system navigation remain outside this boundary for the next diagnostics milestone.
+
 ### Web interface
 
 `web_app.py` creates the Flask application and registers route modules.

@@ -154,5 +154,12 @@
         <p><a href="{{ url_for('settings_schedule') }}">Set up scan scheduling</a></p>
         <p class="muted">Operating-system scheduling is connected in the next milestone.</p>
     </section>
+
+    <section class="settings-card">
+        <h2>Diagnostics</h2>
+        <p>Review safe health summaries for Junior, scans, company sources, and email.</p>
+        <p><a href="{{ url_for('settings_diagnostics') }}">View diagnostics</a></p>
+        <p class="muted">Private contents, credentials, and raw exception text are never shown.</p>
+    </section>
 </div>
 {% endblock %}

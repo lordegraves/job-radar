@@ -98,6 +98,17 @@ A scan:
 
 Occasional company or network errors may be temporary. The interface preserves error details and does not imply that one collector failure invalidates the entire scan.
 
+## Diagnostics
+
+Open **Settings > Diagnostics** for a plain-language health summary of:
+
+- application configuration
+- the latest scan
+- company job sources
+- email delivery
+
+Each card shows its current state, problem category, summary, and next step. Categories distinguish configuration, collector, network, email, and unexpected application problems. Junior stores safe scan summaries rather than raw exception text, and the page does not display credentials, profile contents, or résumé contents. Detailed safe log viewing and copyable troubleshooting information belong to the next diagnostics milestone.
+
 ## Reports
 
 The Reports page opens the latest successful scan outputs.

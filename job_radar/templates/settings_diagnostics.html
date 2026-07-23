@@ -1,0 +1,78 @@
+{# Shows safe service health without exposing raw errors or private user data. #}
+{% extends "base.html" %}
+
+{% block title %}Diagnostics - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .diagnostics-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .health-card {
+        border-left: 5px solid #8b949e;
+    }
+    .health-card.success { border-left-color: #55d6a3; }
+    .health-card.warning { border-left-color: #f5c451; }
+    .health-card.error { border-left-color: #ff6477; }
+    .health-heading {
+        align-items: baseline;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+    }
+    .health-heading h2 { margin: 0; }
+    .health-state { font-weight: 750; }
+    .health-category {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-top: 8px;
+    }
+    .health-next-step {
+        border-top: 1px solid var(--border);
+        margin-top: 16px;
+        padding-top: 12px;
+    }
+    @media (max-width: 800px) {
+        .diagnostics-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('settings') }}">&larr; Settings</a></p>
+<h1 class="page-title">Diagnostics</h1>
+
+<div class="page-card">
+    <p>See what is healthy and what needs attention without reading technical logs.</p>
+    <p class="muted">
+        Categories distinguish configuration, collector, network, email, and
+        unexpected application problems. Raw exceptions, credentials, profile
+        contents, and résumé contents are not displayed.
+    </p>
+</div>
+
+<div class="diagnostics-grid">
+    {% for card in diagnostics.cards %}
+    <section class="page-card health-card {{ card.tone }}">
+        <div class="health-heading">
+            <h2>{{ card.title }}</h2>
+            <span class="health-state">{{ card.state }}</span>
+        </div>
+        <p class="health-category">Category: {{ card.category }}</p>
+        <p>{{ card.summary }}</p>
+        <p class="health-next-step"><strong>Next step:</strong> {{ card.next_step }}</p>
+    </section>
+    {% endfor %}
+</div>
+
+<div class="page-card">
+    <h2>Need more detail?</h2>
+    <p>
+        Safe log viewing and copyable troubleshooting details belong to the next
+        diagnostics milestone. For an unexpected problem that continues, open
+        <a href="{{ url_for('settings_about') }}">About junior</a> for support guidance.
+    </p>
+</div>
+{% endblock %}

@@ -8,6 +8,7 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 
 from job_radar.application_info_service import build_application_info
 from job_radar.config import load_settings
+from job_radar.diagnostic_service import build_diagnostics_view
 from job_radar.email_settings_service import (
     EmailSettingsError,
     load_email_settings_form,
@@ -83,6 +84,17 @@ def register_settings_routes(
             application_info=build_application_info(
                 database_path=runtime_paths.database_path,
                 user_data_location=runtime_paths.base_directory,
+            ),
+        )
+
+    @app.get("/settings/diagnostics")
+    def settings_diagnostics() -> str:
+        runtime_paths = get_runtime_paths()
+        return render_template(
+            "settings_diagnostics.html",
+            diagnostics=build_diagnostics_view(
+                runtime_paths.database_path,
+                settings_path,
             ),
         )
 

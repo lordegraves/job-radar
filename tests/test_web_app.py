@@ -1922,7 +1922,29 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "Email" in html
     assert "Disabled" in html
     assert "Secrets are not shown on this page." in html
+    assert "View diagnostics" in html
     assert "Save" not in html
+
+
+def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.get("/settings/diagnostics")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Diagnostics" in html
+    assert "Application configuration" in html
+    assert "Latest scan" in html
+    assert "Company sources" in html
+    assert "Email delivery" in html
+    assert "Category: Configuration" in html
+    assert "Raw exceptions" in html
+    assert "No company sources are configured yet." in html
 
 
 def test_retention_settings_page_saves_choices(tmp_path: Path) -> None:

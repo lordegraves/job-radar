@@ -9,6 +9,10 @@ from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import evaluate_compensation
 from job_radar.config import ApplicationSettings, load_settings
 from job_radar.email_sender import send_email_report
+from job_radar.diagnostic_service import (
+    classify_collector_failure,
+    classify_scan_failure,
+)
 from job_radar.eligibility import evaluate_practical_eligibility
 from job_radar.employer_resolution import resolve_scan_companies
 from job_radar.email_summary import (
@@ -171,15 +175,6 @@ def _get_application_for_posting(
     return None
 
 
-def _build_scan_failure_type(stage: str) -> str:
-    normalized_stage = stage.strip().lower().replace("-", "_").replace(" ", "_")
-
-    if not normalized_stage:
-        return "scan_failure"
-
-    return f"{normalized_stage}_failure"
-
-
 def _is_storage_relevant_posting(scored_posting: ScoredPosting) -> bool:
     if scored_posting.application is not None:
         return True
@@ -325,12 +320,13 @@ def _handle_scan_unlocked(
             try:
                 postings = collect_jobs_for_company(company)
             except CollectorError as error:
+                diagnostic = classify_collector_failure(error)
                 collector_errors.append(
                     ScanError(
                         company_key=company_key,
                         company_name=company_name,
                         source_type=source_type,
-                        message=str(error),
+                        message=diagnostic.message,
                     )
                 )
                 record_scan_error(
@@ -338,8 +334,8 @@ def _handle_scan_unlocked(
                     scan_run_id=scan_run_id,
                     company_key=company_key,
                     source_type=source_type,
-                    error_type="collection_error",
-                    error_message=str(error),
+                    error_type=f"{diagnostic.category}_failure",
+                    error_message=diagnostic.message,
                 )
                 companies_scanned += 1
                 update_scan_run_progress(
@@ -350,7 +346,7 @@ def _handle_scan_unlocked(
                     jobs_found=total_jobs,
                     collector_errors=len(collector_errors),
                 )
-                print(f"  ERROR: {error}")
+                print(f"  ERROR: {diagnostic.message}")
                 continue
 
             total_jobs += len(postings)
@@ -618,7 +614,9 @@ def _handle_scan_unlocked(
                 ),
                 attachment_path=written_html_report_path,
             )
-            email_status = "completed"
+            email_status = (
+                "completed" if email_send_result.sent else "failed"
+            )
 
         finished_at = datetime.now(UTC).isoformat()
 
@@ -670,20 +668,21 @@ def _handle_scan_unlocked(
 
         if email_send_result is not None:
             print(f"Email send result: {email_send_result.message}")
-    except Exception as error:
+    except Exception:
         finished_at = datetime.now(UTC).isoformat()
+        diagnostic = classify_scan_failure(current_stage)
         record_scan_error(
             database_path,
             scan_run_id=scan_run_id,
-            error_type=_build_scan_failure_type(current_stage),
-            error_message=str(error),
+            error_type=f"{diagnostic.category}_failure",
+            error_message=diagnostic.message,
         )
         fail_scan_run(
             database_path,
             scan_run_id=scan_run_id,
             finished_at=finished_at,
             failed_stage=current_stage,
-            failure_summary=str(error),
+            failure_summary=diagnostic.message,
             companies_scanned=companies_scanned,
             jobs_found=total_jobs,
             collector_errors=len(collector_errors),
