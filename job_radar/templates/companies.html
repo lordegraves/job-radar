@@ -110,6 +110,19 @@
     .status-paused {
         color: #ffb86c;
     }
+
+    .company-action-form {
+        margin: 0;
+    }
+
+    .company-feedback {
+        border-left: 4px solid var(--link);
+        margin-top: 16px;
+    }
+
+    .company-feedback-error {
+        border-left-color: #ff7b72;
+    }
 </style>
 {% endblock %}
 
@@ -127,6 +140,12 @@
         junior scans companies marked Scanning and skips companies marked Paused.
     </p>
 </div>
+
+{% if company_result == "updated" and company_message %}
+<div class="page-card company-feedback" role="status">{{ company_message }}</div>
+{% elif company_result == "error" and company_error %}
+<div class="page-card company-feedback company-feedback-error" role="alert">{{ company_error }}</div>
+{% endif %}
 
 <section class="company-summary-grid" aria-label="Company workspace summary">
     <div class="company-summary-card">
@@ -151,6 +170,7 @@
             <tr>
                 <th>Company</th>
                 <th>Status</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody>
@@ -163,6 +183,18 @@
                     {% else %}
                     <span class="workspace-status status-paused">Paused</span>
                     {% endif %}
+                </td>
+                <td>
+                    <form class="company-action-form" method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        {% if company.scanning %}
+                        <input type="hidden" name="state" value="paused">
+                        <button class="button-secondary" type="submit">Pause</button>
+                        {% else %}
+                        <input type="hidden" name="state" value="scanning">
+                        <button type="submit">Resume</button>
+                        {% endif %}
+                    </form>
                 </td>
             </tr>
             {% endfor %}

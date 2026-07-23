@@ -4,6 +4,7 @@ from pathlib import Path
 
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_storage import (
+    is_profile_employer_enabled,
     set_profile_employer_enabled,
     upsert_employer_source,
 )
@@ -193,3 +194,111 @@ def test_companies_page_shows_empty_profile_guidance(
     assert response.status_code == 200
     assert "No companies have been added to this search yet." in html
     assert "will not scan employers from another profile" in html
+
+
+def test_companies_page_can_pause_and_resume_active_profile_company(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="example_cafe",
+            name="Example Cafe",
+            source_type="html",
+            source_config={"source_url": "https://cafe.invalid/jobs"},
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+        company_ids=("example_cafe",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    initial_html = client.get("/companies").get_data(as_text=True)
+    assert "Pause" in initial_html
+    assert "1</strong>" in initial_html
+
+    paused_response = client.post(
+        "/companies/example_cafe/scanning",
+        data={"state": "paused"},
+        follow_redirects=True,
+    )
+    paused_html = paused_response.get_data(as_text=True)
+
+    assert paused_response.status_code == 200
+    assert "Example Cafe is now paused for Culinary Profile&#39;s profile." in (
+        paused_html
+    )
+    assert "Resume" in paused_html
+    assert is_profile_employer_enabled(
+        database_path, profile.profile_id, "example_cafe"
+    ) is False
+
+    resumed_response = client.post(
+        "/companies/example_cafe/scanning",
+        data={"state": "scanning"},
+        follow_redirects=True,
+    )
+
+    assert resumed_response.status_code == 200
+    assert "Example Cafe is now scanning" in resumed_response.get_data(
+        as_text=True
+    )
+    assert is_profile_employer_enabled(
+        database_path, profile.profile_id, "example_cafe"
+    ) is True
+
+
+def test_company_scanning_route_rejects_invalid_state_and_legacy_mode(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="example_cafe",
+            name="Example Cafe",
+            source_type="html",
+            source_config={"source_url": "https://cafe.invalid/jobs"},
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+        company_ids=("example_cafe",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    invalid_response = client.post(
+        "/companies/example_cafe/scanning",
+        data={"state": "unexpected"},
+        follow_redirects=True,
+    )
+    assert "Choose Pause or Resume" in invalid_response.get_data(as_text=True)
+    assert is_profile_employer_enabled(
+        database_path, profile.profile_id, "example_cafe"
+    ) is True
+
+    set_active_profile(database_path, None)
+    legacy_response = client.post(
+        "/companies/example_cafe/scanning",
+        data={"state": "paused"},
+    )
+    assert legacy_response.status_code == 302
+    assert "company_result=error" in legacy_response.headers["Location"]
+    assert "Select+a+managed+profile" in legacy_response.headers["Location"]
+    assert is_profile_employer_enabled(
+        database_path, profile.profile_id, "example_cafe"
+    ) is True

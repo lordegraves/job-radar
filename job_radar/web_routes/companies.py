@@ -2,14 +2,16 @@
 
 from collections.abc import Callable
 
-from flask import Flask, abort, render_template, request
+from flask import Flask, abort, redirect, render_template, request, url_for
 
+from job_radar.company_assignment_service import set_company_scanning_state
 from job_radar.company_config_service import (
     build_company_source_summaries,
     filter_company_config_views,
 )
 from job_radar.company_workspace_service import build_company_workspace
 from job_radar.company_view_resolution import resolve_company_page_source
+from job_radar.domain_errors import JuniorDomainError, InvalidCompanyStateError
 
 
 def register_company_routes(
@@ -30,6 +32,9 @@ def register_company_routes(
                 workspace=workspace,
                 active_profile=workspace.active_profile,
                 uses_legacy_yaml=False,
+                company_result=request.args.get("company_result", "").strip(),
+                company_message=request.args.get("company_message", "").strip(),
+                company_error=request.args.get("company_error", "").strip(),
             )
 
         # Compatibility: technical YAML visibility remains until the legacy
@@ -69,6 +74,9 @@ def register_company_routes(
             selected_source_type=selected_source_type,
             search_query=search_query,
             filtered_company_count=len(filtered_companies),
+            company_result=request.args.get("company_result", "").strip(),
+            company_message=request.args.get("company_message", "").strip(),
+            company_error=request.args.get("company_error", "").strip(),
         )
 
     @app.get("/companies/<company_key>")
@@ -92,6 +100,9 @@ def register_company_routes(
                 company=company,
                 active_profile=workspace.active_profile,
                 uses_legacy_yaml=False,
+                company_result=request.args.get("company_result", "").strip(),
+                company_message=request.args.get("company_message", "").strip(),
+                company_error=request.args.get("company_error", "").strip(),
             )
 
         page_source = resolve_company_page_source(
@@ -116,4 +127,55 @@ def register_company_routes(
             company_config_path=page_source.company_config_path,
             active_profile=page_source.active_profile,
             uses_legacy_yaml=page_source.uses_legacy_yaml,
+            company_result=request.args.get("company_result", "").strip(),
+            company_message=request.args.get("company_message", "").strip(),
+            company_error=request.args.get("company_error", "").strip(),
+        )
+
+    @app.post("/companies/<company_key>/scanning")
+    def set_company_scanning(company_key: str):
+        workspace = build_company_workspace(get_database_path())
+        if workspace.active_profile is None:
+            return redirect(
+                url_for(
+                    "companies",
+                    company_result="error",
+                    company_error=(
+                        "Select a managed profile before changing a company."
+                    ),
+                )
+            )
+
+        requested_state = request.form.get("state", "").strip().casefold()
+        try:
+            if requested_state not in {"scanning", "paused"}:
+                raise InvalidCompanyStateError(
+                    "Choose Pause or Resume and try again."
+                )
+
+            result = set_company_scanning_state(
+                get_database_path(),
+                workspace.active_profile.profile_id,
+                company_key,
+                scanning=requested_state == "scanning",
+            )
+        except JuniorDomainError as error:
+            return redirect(
+                url_for(
+                    "companies",
+                    company_result="error",
+                    company_error=str(error),
+                )
+            )
+
+        state_label = "scanning" if result.scanning else "paused"
+        return redirect(
+            url_for(
+                "companies",
+                company_result="updated",
+                company_message=(
+                    f"{result.employer_name} is now {state_label} for "
+                    f"{result.profile_name}'s profile."
+                ),
+            )
         )

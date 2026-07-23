@@ -94,6 +94,8 @@ def test_every_current_post_form_renders_a_csrf_token() -> None:
     templates_with_post_forms = (
         "administration/unlock.html",
         "base.html",
+        "companies.html",
+        "company_detail.html",
         "history_edit.html",
         "legacy_profile_form.html",
         "preferences.html",
@@ -123,6 +125,7 @@ def test_mutation_routes_do_not_accept_get_requests(tmp_path: Path) -> None:
         "update_history_record",
         "save_preferences",
         "create_profile_route",
+        "set_company_scanning",
         "select_profile_route",
         "edit_profile_route",
         "save_profile_fit_board_route",

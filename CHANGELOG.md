@@ -8,6 +8,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- Profile-specific Pause and Resume controls in the Company Workspace, with assignment validation that leaves the shared employer catalog and other profiles unchanged.
 - Session-bound CSRF protection for every existing web mutation, including Administration, scans, profiles, résumés, job-fit preferences, Tracker, and History, with safe HTML and JSON failure responses.
 - Shared domain-error types for upcoming profile-company assignment, employer catalog, Administration, and recommendation services.
 - A session-scoped Administration shell with explicit `ADMIN` confirmation, safe local redirects, a visible mode indicator and exit action, and an installation-local Flask session signing key.
