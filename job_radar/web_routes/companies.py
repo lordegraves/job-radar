@@ -21,12 +21,7 @@ from job_radar.company_recommendation_service import (
     record_recommendation_feedback,
 )
 from job_radar.company_recommendation_storage import mark_added
-from job_radar.company_config_service import (
-    build_company_source_summaries,
-    filter_company_config_views,
-)
 from job_radar.company_workspace_service import build_company_workspace
-from job_radar.company_view_resolution import resolve_company_page_source
 from job_radar.domain_errors import (
     EmployerNotFoundError,
     InvalidCompanyStateError,
@@ -44,7 +39,6 @@ from job_radar.external_company_discovery_service import (
 def register_company_routes(
     app: Flask,
     *,
-    get_company_config_path: Callable[[], str],
     get_database_path: Callable[[], str],
 ) -> None:
     """Register profile-aware read-only company configuration pages."""
@@ -68,43 +62,10 @@ def register_company_routes(
                 ),
             )
 
-        # Compatibility: technical YAML visibility remains until the legacy
-        # configuration workflow is deliberately retired.
-        page_source = resolve_company_page_source(
-            get_database_path(),
-            get_company_config_path(),
-        )
-        company_views = page_source.companies
-        selected_status = request.args.get("status", "")
-        selected_source_type = request.args.get("source_type", "")
-        search_query = request.args.get("q", "").strip()
-        filtered_companies = filter_company_config_views(
-            company_views,
-            selected_status=selected_status,
-            selected_source_type=selected_source_type,
-            search_query=search_query,
-        )
-        source_summaries = build_company_source_summaries(company_views)
-
         return render_template(
             "companies.html",
             workspace=workspace,
-            companies=filtered_companies,
-            source_summaries=source_summaries,
-            company_config_path=page_source.company_config_path,
-            active_profile=page_source.active_profile,
-            uses_legacy_yaml=page_source.uses_legacy_yaml,
-            total_companies=len(company_views),
-            enabled_companies=sum(
-                1 for company in company_views if company.enabled
-            ),
-            disabled_companies=sum(
-                1 for company in company_views if not company.enabled
-            ),
-            selected_status=selected_status,
-            selected_source_type=selected_source_type,
-            search_query=search_query,
-            filtered_company_count=len(filtered_companies),
+            profile_required=True,
             company_result=request.args.get("company_result", "").strip(),
             company_message=request.args.get("company_message", "").strip(),
             company_error=request.args.get("company_error", "").strip(),
@@ -136,32 +97,7 @@ def register_company_routes(
                 company_error=request.args.get("company_error", "").strip(),
             )
 
-        page_source = resolve_company_page_source(
-            get_database_path(),
-            get_company_config_path(),
-        )
-        company_view = next(
-            (
-                company
-                for company in page_source.companies
-                if company.company_key == company_key
-            ),
-            None,
-        )
-
-        if company_view is None:
-            abort(404)
-
-        return render_template(
-            "company_detail.html",
-            company=company_view,
-            company_config_path=page_source.company_config_path,
-            active_profile=page_source.active_profile,
-            uses_legacy_yaml=page_source.uses_legacy_yaml,
-            company_result=request.args.get("company_result", "").strip(),
-            company_message=request.args.get("company_message", "").strip(),
-            company_error=request.args.get("company_error", "").strip(),
-        )
+        abort(404)
 
     @app.post("/companies/<company_key>/scanning")
     def set_company_scanning(company_key: str):

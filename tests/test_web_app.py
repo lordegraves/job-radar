@@ -1677,7 +1677,7 @@ def test_index_page_links_to_companies(tmp_path: Path) -> None:
     assert ">Companies</a>" in html
 
 
-def test_companies_page_shows_read_only_company_config(tmp_path: Path, monkeypatch) -> None:
+def test_companies_page_requires_profile_instead_of_showing_legacy_yaml(tmp_path: Path, monkeypatch) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     companies_file = tmp_path / "config" / "target-companies.yaml"
@@ -1715,43 +1715,16 @@ companies:
 
     response = client.get("/companies")
     html = response.get_data(as_text=True)
-    normalized_html = " ".join(html.split())
-
     assert response.status_code == 200
     assert "Companies" in html
-    assert "No managed profile is active." in html
-    assert "This page is showing the legacy company configuration" in html
-    assert f"Legacy config file: <code>{companies_file}</code>" in html
-    assert "<strong>3</strong> <span class=\"muted\">Total companies</span>" in normalized_html
-    assert "<strong>2</strong> <span class=\"muted\">Enabled</span>" in normalized_html
-    assert "<strong>1</strong> <span class=\"muted\">Disabled</span>" in normalized_html
-    assert "<strong>3</strong> <span class=\"muted\">Source types</span>" in normalized_html
-    assert "greenhouse" in html
-    assert "workday" in html
-    assert "usajobs" in html
-    assert "<th>Enabled</th>" in html
-    assert "<th>Disabled</th>" in html
-    assert "<th>Total</th>" in html
-    assert "Enabled AI" in html
-    assert '<a href="/companies/enabled_ai">Enabled AI</a>' in html
-    assert "enabled_ai" in html
-    assert "source_slug: enabledai" in html
-    assert "Strong target." in html
-    assert "Disabled Lab" in html
-    assert "disabled_lab" in html
-    assert "source_url: https://example.com/workday/jobs" in html
-    assert "source_base_url: https://example.com/workday" in html
-    assert "Example Federal Agency" in html
-    assert "query_params: Organization=NN" in html
-    assert 'href="/companies?status=enabled&amp;q="' in html
-    assert 'href="/companies?status=disabled&amp;q="' in html
-    assert 'href="/companies?source_type=greenhouse&amp;status=&amp;q="' in html
-    assert "Search companies" in html
-    assert 'name="q"' in html
-    assert "Save" not in html
+    assert "Create or select a profile first" in html
+    assert "Legacy YAML company files are no longer displayed" in html
+    assert 'href="/profile"' in html
+    assert "Enabled AI" not in html
+    assert str(companies_file) not in html
 
 
-def test_companies_page_filters_company_config(tmp_path: Path, monkeypatch) -> None:
+def test_legacy_company_filters_do_not_restore_yaml_view(tmp_path: Path, monkeypatch) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     companies_file = tmp_path / "config" / "target-companies.yaml"
@@ -1789,54 +1762,35 @@ companies:
     enabled_html = enabled_response.get_data(as_text=True)
 
     assert enabled_response.status_code == 200
-    assert "Showing 2 of 3 configured companies." in enabled_html
-    assert "Enabled AI" in enabled_html
-    assert "Example Federal Agency" in enabled_html
-    assert "Disabled Lab" not in enabled_html
-    assert "Clear filters" in enabled_html
+    assert "Create or select a profile first" in enabled_html
+    assert "Enabled AI" not in enabled_html
 
     disabled_response = client.get("/companies?status=disabled")
     disabled_html = disabled_response.get_data(as_text=True)
 
     assert disabled_response.status_code == 200
-    assert "Showing 1 of 3 configured companies." in disabled_html
-    assert "Disabled Lab" in disabled_html
-    assert "Enabled AI" not in disabled_html
-    assert "Example Federal Agency" not in disabled_html
+    assert "Create or select a profile first" in disabled_html
 
     source_response = client.get("/companies?source_type=greenhouse")
     source_html = source_response.get_data(as_text=True)
 
     assert source_response.status_code == 200
-    assert "Showing 1 of 3 configured companies." in source_html
-    assert "Enabled AI" in source_html
-    assert "Disabled Lab" not in source_html
-    assert "Example Federal Agency" not in source_html
+    assert "Create or select a profile first" in source_html
 
     search_response = client.get("/companies?q=organization")
     search_html = search_response.get_data(as_text=True)
 
     assert search_response.status_code == 200
-    assert "Showing 1 of 3 configured companies." in search_html
-    assert "Example Federal Agency" in search_html
-    assert "Enabled AI" not in search_html
-    assert "Disabled Lab" not in search_html
-    assert 'value="organization"' in search_html
-    assert "Clear filters" in search_html
+    assert "Create or select a profile first" in search_html
 
     combined_response = client.get("/companies?status=enabled&source_type=usajobs&q=nn")
     combined_html = combined_response.get_data(as_text=True)
 
     assert combined_response.status_code == 200
-    assert "Showing 1 of 3 configured companies." in combined_html
-    assert "Example Federal Agency" in combined_html
-    assert "Enabled AI" not in combined_html
-    assert "Disabled Lab" not in combined_html
-    assert 'href="/companies?status=enabled&amp;q=nn"' in combined_html
-    assert 'href="/companies?source_type=usajobs&amp;status=enabled&amp;q=nn"' in combined_html
+    assert "Create or select a profile first" in combined_html
 
 
-def test_company_detail_page_shows_read_only_company_config(tmp_path: Path, monkeypatch) -> None:
+def test_legacy_company_detail_is_not_exposed_without_profile(tmp_path: Path, monkeypatch) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     companies_file = tmp_path / "config" / "target-companies.yaml"
@@ -1867,22 +1821,7 @@ companies:
     client = app.test_client()
 
     response = client.get("/companies/enabled_ai")
-    html = response.get_data(as_text=True)
-
-    assert response.status_code == 200
-    assert "Enabled AI" in html
-    assert "No managed profile is active." in html
-    assert "This record comes from the legacy company configuration." in html
-    assert f"Legacy config file: <code>{companies_file}</code>" in html
-    assert '<a href="/companies">&larr; Back to Companies</a>' in html
-    assert "<code>enabled_ai</code>" in html
-    assert "<code>greenhouse</code>" in html
-    assert "Enabled" in html
-    assert "source_slug: enabledai" in html
-    assert "<code>company_key</code>" in html
-    assert "<code>source_slug</code>" in html
-    assert "Strong target." in html
-    assert "Save" not in html
+    assert response.status_code == 404
 
 
 def test_company_detail_page_returns_404_for_missing_company(tmp_path: Path, monkeypatch) -> None:

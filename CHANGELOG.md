@@ -54,6 +54,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Changed
 
+- Retired the legacy YAML-backed Companies GUI. The normal application now requires a managed profile while preserving protected one-time import and released CLI/server scan compatibility.
 - Employer records referenced by a profile or collected job can no longer be permanently deleted; global disable and retirement preserve assignments and history.
 - Included nested Administration templates in wheel and source packages and extended installed-package rendering coverage.
 - Classified ordinary Settings separately from installation-wide Administration without moving or enabling technical configuration controls yet.

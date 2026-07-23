@@ -134,7 +134,22 @@
 {% endblock %}
 
 {% block content %}
-{% if workspace.active_profile %}
+{% if profile_required %}
+<h1 class="page-title">Companies</h1>
+
+<div class="page-card">
+    <h2>Create or select a profile first</h2>
+    <p>
+        Companies belong to a specific profile so Junior knows whose job
+        search they are part of.
+    </p>
+    <p class="muted">
+        Legacy YAML company files are no longer displayed or managed in the
+        normal application.
+    </p>
+    <a class="button-link" href="{{ url_for('profile') }}">Go to Profile / Resume</a>
+</div>
+{% elif workspace.active_profile %}
 <h1 class="page-title">Your Companies</h1>
 
 <div class="page-card">
