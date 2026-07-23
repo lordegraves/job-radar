@@ -16,6 +16,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Kept parent navigation visibly active throughout profile, company, report, Settings, and Administration subpages, and standardized spacing around user-facing status messages.
 - Fixed pending legacy-company imports so profile-owned company pages are populated before rendering, added honest profile-specific starter guidance when no verified named recommendation exists, compacted Profile troubleshooting details, corrected Settings card spacing and page-top restoration, and assigned the unpackaged Windows window a Junior taskbar identity.
 - Added shared keyboard and scaling safeguards across Junior's pages, including a skip-to-content link, strong focus-visible indicators, current-page navigation semantics, responsive narrow-window behavior, forced-color borders, error announcements, labeled administrative matching controls, and screen-reader descriptions for every data table.
+- Made profile occupation and location suggestions announce their open state and support Enter, Escape, arrow-key, Tab, and click interaction without requiring a mouse.
 - Removed employer recommendations from the normal Companies workflow. Users choose employers, while Junior focuses on making company and careers-page identification, confirmation, configuration, and scanning easy.
 
 - Bounded in-app viewing for allowlisted sanitized Junior logs, a copyable privacy-safe troubleshooting summary, and a CSRF-protected Open Data Directory action using the resolved settings-owned workspace.

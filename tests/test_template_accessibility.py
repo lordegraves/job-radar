@@ -32,3 +32,14 @@ def test_shared_shell_has_keyboard_and_scaling_boundaries() -> None:
     assert 'id="main-content"' in template
     assert ":focus-visible" in template
     assert 'aria-current="page"' in template
+
+
+def test_profile_suggestions_expose_and_support_keyboard_navigation() -> None:
+    template = (TEMPLATE_ROOT / "preferences.html").read_text(encoding="utf-8")
+
+    assert 'aria-controls="occupation-suggestions"' in template
+    assert 'aria-controls="location-suggestions"' in template
+    assert template.count('aria-expanded="false"') == 2
+    assert 'role="listbox"' not in template
+    assert 'event.key === "ArrowDown"' in template
+    assert 'event.key === "Escape"' in template

@@ -435,8 +435,8 @@
                 <div class="search-box">
                     <label for="occupation-search">Find an occupation</label>
                     <span class="field-help">Search the occupation catalog, or enter your own wording and press Enter when a changing title is not listed. Try “baker” or “head cook.”</span>
-                    <input id="occupation-search" type="search" autocomplete="off" placeholder="Start typing an occupation">
-                    <div id="occupation-suggestions" class="suggestions" role="listbox" aria-label="Occupation suggestions"></div>
+                    <input id="occupation-search" type="search" autocomplete="off" placeholder="Start typing an occupation" aria-autocomplete="list" aria-controls="occupation-suggestions" aria-expanded="false">
+                    <div id="occupation-suggestions" class="suggestions" role="list" aria-label="Occupation suggestions"></div>
                 </div>
             </div>
 
@@ -532,8 +532,8 @@
                     <div class="search-box">
                         <label for="location-search">Add a location</label>
                         <span class="field-help">Search by U.S. city/state or ZIP, then choose a suggestion or press Enter. Try “Chicago IL,” “Chicago Illinois,” or “60601.”</span>
-                        <input id="location-search" type="search" autocomplete="off" placeholder="City, state, or ZIP">
-                        <div id="location-suggestions" class="suggestions" role="listbox" aria-label="Location suggestions"></div>
+                        <input id="location-search" type="search" autocomplete="off" placeholder="City, state, or ZIP" aria-autocomplete="list" aria-controls="location-suggestions" aria-expanded="false">
+                        <div id="location-suggestions" class="suggestions" role="list" aria-label="Location suggestions"></div>
                     </div>
                     <div>
                         <label for="location-radius">Distance</label>
@@ -684,17 +684,35 @@
         return response.json();
     }
 
-    function showSuggestions(container, items, choose) {
+    function setSuggestionsVisible(container, input, visible) {
+        container.classList.toggle("is-visible", visible);
+        input.setAttribute("aria-expanded", String(visible));
+    }
+
+    function showSuggestions(container, input, items, choose) {
         container.innerHTML = "";
-        items.forEach((item) => {
+        items.forEach((item, index) => {
             const button = document.createElement("button");
             button.type = "button";
             button.className = "suggestion-button";
             button.innerHTML = `<strong>${escapeHtml(item.label)}</strong>${item.description ? `<span>${escapeHtml(item.description)}</span>` : ""}`;
             button.addEventListener("click", () => choose(item));
+            button.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    setSuggestionsVisible(container, input, false);
+                    input.focus();
+                    return;
+                }
+                if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
+                event.preventDefault();
+                const buttons = container.querySelectorAll(".suggestion-button");
+                const step = event.key === "ArrowDown" ? 1 : -1;
+                buttons[(index + step + buttons.length) % buttons.length].focus();
+            });
             container.appendChild(button);
         });
-        container.classList.toggle("is-visible", items.length > 0);
+        setSuggestionsVisible(container, input, items.length > 0);
     }
 
     function addOccupation(occupation = null) {
@@ -713,7 +731,7 @@
         }
         state.selectedOccupation = null;
         occupationInput.value = "";
-        occupationSuggestions.classList.remove("is-visible");
+        setSuggestionsVisible(occupationSuggestions, occupationInput, false);
         render();
     }
 
@@ -728,7 +746,7 @@
         }
         state.selectedLocation = null;
         locationInput.value = "";
-        locationSuggestions.classList.remove("is-visible");
+        setSuggestionsVisible(locationSuggestions, locationInput, false);
         render();
     }
 
@@ -736,18 +754,30 @@
         state.selectedOccupation = null;
         clearTimeout(occupationTimer);
         if (occupationInput.value.trim().length < 2) {
-            occupationSuggestions.classList.remove("is-visible");
+            setSuggestionsVisible(occupationSuggestions, occupationInput, false);
             return;
         }
         occupationTimer = setTimeout(async () => {
             const items = await getSuggestions("{{ url_for('occupation_suggestions') }}", occupationInput.value);
-            showSuggestions(occupationSuggestions, items, (item) => {
+            showSuggestions(occupationSuggestions, occupationInput, items, (item) => {
                 addOccupation(item);
             });
         }, 180);
     });
 
     occupationInput.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            setSuggestionsVisible(occupationSuggestions, occupationInput, false);
+            return;
+        }
+        if (event.key === "ArrowDown") {
+            const firstSuggestion = occupationSuggestions.querySelector(".suggestion-button");
+            if (occupationSuggestions.classList.contains("is-visible") && firstSuggestion) {
+                event.preventDefault();
+                firstSuggestion.focus();
+            }
+            return;
+        }
         if (event.key !== "Enter") return;
         event.preventDefault();
         const firstSuggestion = occupationSuggestions.querySelector(".suggestion-button");
@@ -763,16 +793,28 @@
         render();
         clearTimeout(locationTimer);
         if (locationInput.value.trim().length < 2) {
-            locationSuggestions.classList.remove("is-visible");
+            setSuggestionsVisible(locationSuggestions, locationInput, false);
             return;
         }
         locationTimer = setTimeout(async () => {
             const items = await getSuggestions("{{ url_for('location_suggestions') }}", locationInput.value);
-            showSuggestions(locationSuggestions, items, (item) => addLocation(item));
+            showSuggestions(locationSuggestions, locationInput, items, (item) => addLocation(item));
         }, 180);
     });
 
     locationInput.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            setSuggestionsVisible(locationSuggestions, locationInput, false);
+            return;
+        }
+        if (event.key === "ArrowDown") {
+            const firstSuggestion = locationSuggestions.querySelector(".suggestion-button");
+            if (locationSuggestions.classList.contains("is-visible") && firstSuggestion) {
+                event.preventDefault();
+                firstSuggestion.focus();
+            }
+            return;
+        }
         if (event.key !== "Enter") return;
         event.preventDefault();
         const firstSuggestion = locationSuggestions.querySelector(".suggestion-button");
@@ -783,8 +825,8 @@
 
     document.addEventListener("click", (event) => {
         if (!event.target.closest(".search-box")) {
-            occupationSuggestions.classList.remove("is-visible");
-            locationSuggestions.classList.remove("is-visible");
+            setSuggestionsVisible(occupationSuggestions, occupationInput, false);
+            setSuggestionsVisible(locationSuggestions, locationInput, false);
         }
         if (!event.target.closest(".checklist-select")) {
             checklistSelects.forEach((checklist) => {
