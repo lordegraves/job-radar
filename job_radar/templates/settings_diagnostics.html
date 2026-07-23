@@ -83,6 +83,7 @@
     {% if diagnostic_logs %}
     <p>Open a sanitized Junior log. Only the newest {{ diagnostic_logs|length }} recognized log(s) are listed.</p>
     <table>
+        <caption class="visually-hidden">Available diagnostic logs</caption>
         <thead><tr><th>Log</th><th>Modified</th><th>Size</th></tr></thead>
         <tbody>
             {% for log in diagnostic_logs %}

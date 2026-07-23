@@ -40,7 +40,8 @@
             <form class="review-action" method="post" action="{{ url_for('administration_employer_review_match', request_id=review.request_id) }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <h3>Match an existing employer</h3>
-                <select name="employer_id" required>
+                <label for="existing-employer-{{ review.request_id }}">Existing employer</label>
+                <select id="existing-employer-{{ review.request_id }}" name="employer_id" required>
                     <option value="">Choose an employer</option>
                     {% for employer in employers %}
                     <option value="{{ employer.employer_id }}">{{ employer.name }}</option>

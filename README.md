@@ -123,7 +123,7 @@ Desktop-launched sessions show **Exit Junior** in Settings. The action requests 
 
 The desktop launcher now uses pywebview to place the same local Flask interface inside a normal native window. It does not create a second UI. Windows, Linux, and macOS must share the same pages, controls, layouts, validation, typography, and workflows; only genuinely native window chrome, dialogs, notifications, and keyboard conventions may differ. Use `job-radar-desktop --browser` when deliberate browser-based local use is preferred, or `--no-browser` for an externally managed local server. PySide6/QWebEngineView remains the documented fallback if cross-platform testing proves system webview rendering cannot satisfy that shared-interface requirement.
 
-The shared page shell supports keyboard users with a visible-on-focus skip link, strong focus indicators on interactive controls, and a programmatically identified current navigation page. It also provides a mobile/zoom viewport, narrow-window wrapping, and forced-color control borders. Page-specific accessibility review remains part of the active interface-polish work.
+The shared page shell supports keyboard users with a visible-on-focus skip link, strong focus indicators on interactive controls, and a programmatically identified current navigation page. It also provides a mobile/zoom viewport, narrow-window wrapping, forced-color control borders, and screen-reader captions for application data tables. Page-specific accessibility review remains part of the active interface-polish work.
 
 ## Configuration and private data
 
