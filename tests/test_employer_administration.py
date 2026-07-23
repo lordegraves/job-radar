@@ -241,3 +241,37 @@ def test_admin_post_workflow_uses_csrf_and_keeps_new_employer_disabled(
     )
     assert record is not None
     assert record.employer.enabled is False
+
+
+def test_admin_connection_test_shows_safe_result(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    app = build_test_app(tmp_path)
+    database_path = tmp_path / "data" / "junior.sqlite3"
+    record = create_employer(
+        database_path,
+        name="Example Bakery",
+        source_type="greenhouse",
+        source_config={"source_slug": "example-bakery"},
+        notes="",
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_connection_service.collect_jobs_for_company",
+        lambda config: [],
+    )
+    client = app.test_client()
+    client.post("/administration/unlock", data={"confirmation": "ADMIN"})
+
+    response = client.post(
+        (
+            "/administration/employers/"
+            f"{record.employer.employer_id}/test-connection"
+        ),
+        follow_redirects=True,
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Connection succeeded and returned 0 jobs." in html
+    assert "Source connection</dt><dd>Connected" in html

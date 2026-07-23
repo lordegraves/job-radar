@@ -8,6 +8,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- Administrator-controlled company connection testing that runs the configured collector without importing jobs, records bounded source-health timestamps and returned-job counts, and shows safe configuration, network, source-response, collector, or unexpected-error guidance without retaining raw failures.
+- SQLite migration version 22 for employer connection health, protected by backup-before-migration and atomic rollback behavior.
 - First-run detection that sends only genuinely empty installations to a setup welcome page while leaving existing profiles, employers, jobs, Tracker records, and History records alone.
 - A guided first-run path that reuses validated profile creation, app-owned résumé upload, profile-owned company selection, and setup review services without introducing duplicate save rules.
 - Resumable first-run setup with a durable SQLite checkpoint after profile, résumé, and company steps, plus explicit completion from the review page.

@@ -299,6 +299,13 @@ def update_employer(
                 validation_state = ?, validation_issues_json = '[]',
                 last_validated_at = NULL, normalized_name = ?,
                 normalized_careers_url = ?, source_identifier = ?,
+                last_connection_test_at = NULL,
+                last_connection_success_at = NULL,
+                last_connection_error_at = NULL,
+                last_connection_state = 'not_tested',
+                last_connection_category = NULL,
+                last_connection_message = NULL,
+                last_connection_job_count = NULL,
                 updated_at = CURRENT_TIMESTAMP
             WHERE employer_id = ?
             """,

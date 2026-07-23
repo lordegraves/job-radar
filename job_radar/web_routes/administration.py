@@ -31,6 +31,11 @@ from job_radar.employer_admin_service import (
     update_employer,
     validate_employer,
 )
+from job_radar.employer_connection_service import (
+    EmployerConnectionError,
+    get_employer_connection_health,
+    test_employer_connection,
+)
 from job_radar.employer_review_service import (
     EmployerReviewError,
     PENDING,
@@ -282,6 +287,9 @@ def register_administration_routes(
             "administration/employer_detail.html",
             record=record,
             audit=list_employer_audit(get_database_path(), employer_id),
+            connection_health=get_employer_connection_health(
+                get_database_path(), employer_id
+            ),
         )
 
     @app.get("/administration/employers/<employer_id>/edit")
@@ -346,6 +354,23 @@ def register_administration_routes(
             )
             flash(message, "success" if record.validation_state == "valid" else "error")
         except EmployerAdminError as error:
+            flash(str(error), "error")
+        return redirect(
+            url_for("administration_employer_detail", employer_id=employer_id)
+        )
+
+    @app.post("/administration/employers/<employer_id>/test-connection")
+    @administration_required
+    def administration_employer_test_connection(employer_id: str):
+        try:
+            health = test_employer_connection(
+                get_database_path(), employer_id
+            )
+            flash(
+                health.message or "Connection test completed.",
+                "success" if health.state == "success" else "error",
+            )
+        except EmployerConnectionError as error:
             flash(str(error), "error")
         return redirect(
             url_for("administration_employer_detail", employer_id=employer_id)

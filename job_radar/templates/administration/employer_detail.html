@@ -29,6 +29,10 @@
             <dt>Assigned profiles</dt><dd>{{ record.assigned_profile_count }}</dd>
             <dt>Validation</dt><dd>{{ record.validation_label }}</dd>
             <dt>Last validated</dt><dd>{{ record.last_validated_at or 'Not checked' }}</dd>
+            <dt>Source connection</dt><dd>{{ connection_health.state_label }}</dd>
+            <dt>Last connection test</dt><dd>{{ connection_health.tested_at or 'Not tested' }}</dd>
+            <dt>Last successful connection</dt><dd>{{ connection_health.last_success_at or 'None recorded' }}</dd>
+            <dt>Last connection problem</dt><dd>{{ connection_health.last_error_at or 'None recorded' }}</dd>
             <dt>Created through</dt><dd>{{ record.creation_source }}</dd>
             <dt>Created</dt><dd>{{ record.created_at }}</dd>
             <dt>Last modified</dt><dd>{{ record.updated_at }}</dd>
@@ -48,6 +52,10 @@
             <form method="post" action="{{ url_for('administration_employer_validate', employer_id=record.employer.employer_id) }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <button type="submit">Validate setup</button>
+            </form>
+            <form method="post" action="{{ url_for('administration_employer_test_connection', employer_id=record.employer.employer_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Test connection</button>
             </form>
             {% if record.employer.enabled %}
             <form method="post" action="{{ url_for('administration_employer_disable', employer_id=record.employer.employer_id) }}">
@@ -72,6 +80,19 @@
             Profile assignments are preserved, but this employer is unavailable
             to scans until an administrator enables it again.
         </p>
+        {% endif %}
+        {% if connection_health.message %}
+        <h3>Connection test result</h3>
+        <p>{{ connection_health.message }}</p>
+        {% if connection_health.category == 'configuration' %}
+        <p class="muted">Open Edit, complete the required source settings, and validate setup before testing again.</p>
+        {% elif connection_health.category == 'network' %}
+        <p class="muted">Confirm this computer can reach the internet, then retry the test.</p>
+        {% elif connection_health.category in ('collector', 'source_response') %}
+        <p class="muted">Confirm the employer still uses this career site and that its source type and public address are correct.</p>
+        {% elif connection_health.category == 'unexpected' %}
+        <p class="muted">If retrying does not help, review the safe application log or contact support.</p>
+        {% endif %}
         {% endif %}
     </section>
 

@@ -293,6 +293,11 @@ def _schema_migrations() -> tuple:
             "add profile-owned role discovery",
             _migrate_role_discovery,
         ),
+        (
+            22,
+            "add employer source health",
+            _migrate_employer_source_health,
+        ),
     )
 
 
@@ -763,6 +768,32 @@ def _migrate_employer_catalog_administration(
         ON employer_catalog_audit(employer_id, audit_id DESC)
         """
     )
+
+
+def _migrate_employer_source_health(connection: sqlite3.Connection) -> None:
+    """Store safe connection-test outcomes without raw collector failures."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(employer_sources)"
+        ).fetchall()
+    }
+    required_columns = {
+        "last_connection_test_at": "TEXT",
+        "last_connection_success_at": "TEXT",
+        "last_connection_error_at": "TEXT",
+        "last_connection_state": "TEXT NOT NULL DEFAULT 'not_tested'",
+        "last_connection_category": "TEXT",
+        "last_connection_message": "TEXT",
+        "last_connection_job_count": "INTEGER",
+    }
+    for column_name, definition in required_columns.items():
+        if column_name not in existing_columns:
+            connection.execute(
+                f"ALTER TABLE employer_sources ADD COLUMN "
+                f"{column_name} {definition}"
+            )
 
 
 def _migrate_employer_resolution(connection: sqlite3.Connection) -> None:
