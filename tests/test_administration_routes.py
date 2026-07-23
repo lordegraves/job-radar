@@ -1,5 +1,7 @@
 """Verify the session-scoped Administration shell and navigation boundary."""
 
+from io import BytesIO
+import json
 from pathlib import Path
 
 from job_radar.web_app import create_app
@@ -148,3 +150,55 @@ def test_new_app_process_invalidates_prior_administration_marker(
         b"changeme",
     }
     assert second_client.get("/administration").status_code == 302
+
+
+def test_administration_backup_export_and_restore_workflow(
+    tmp_path: Path,
+) -> None:
+    app = build_test_app(tmp_path)
+    client = app.test_client()
+    client.post("/administration/unlock", data={"confirmation": "ADMIN"})
+
+    page = client.get("/administration/recovery")
+    assert page.status_code == 200
+    assert "Create a restorable backup" in page.get_data(as_text=True)
+    assert "Type RESTORE to confirm" in page.get_data(as_text=True)
+
+    created = client.post(
+        "/administration/recovery/backup",
+        follow_redirects=True,
+    )
+    assert "Backup created with" in created.get_data(as_text=True)
+    backup = next(
+        (tmp_path / "data" / "backups" / "manual").glob("*.jrbackup")
+    )
+
+    exported = client.post("/administration/recovery/export")
+    assert exported.status_code == 200
+    assert exported.mimetype == "application/json"
+    assert json.loads(exported.get_data(as_text=True))["format"] == (
+        "junior-readable-export"
+    )
+
+    rejected = client.post(
+        "/administration/recovery/restore",
+        data={
+            "backup": (BytesIO(backup.read_bytes()), backup.name),
+            "confirmation": "restore",
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+    assert "Type RESTORE to confirm" in rejected.get_data(as_text=True)
+
+    restored = client.post(
+        "/administration/recovery/restore",
+        data={
+            "backup": (BytesIO(backup.read_bytes()), backup.name),
+            "confirmation": "RESTORE",
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+    assert "Restore completed" in restored.get_data(as_text=True)
+    assert "Restart Junior before continuing" in restored.get_data(as_text=True)

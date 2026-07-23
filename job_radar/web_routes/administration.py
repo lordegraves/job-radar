@@ -8,6 +8,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_file,
     url_for,
 )
 
@@ -19,6 +20,14 @@ from job_radar.admin_access import (
     unlock_admin_session,
 )
 from job_radar.config import SUPPORTED_SOURCE_TYPES
+from job_radar.backup_service import (
+    BACKUP_EXTENSION,
+    BackupError,
+    create_backup,
+    create_export,
+    list_backups,
+    restore_backup,
+)
 from job_radar.employer_admin_service import (
     EmployerAdminError,
     create_employer,
@@ -53,6 +62,7 @@ from job_radar.employer_review_service import (
 )
 from job_radar.employer_storage import list_employer_sources
 from job_radar.profile_storage import list_profiles
+from job_radar.runtime_paths import RuntimePaths
 from job_radar.recommendation_admin_service import (
     ELIGIBILITY_OPTIONS,
     RecommendationAdminError,
@@ -69,6 +79,7 @@ def register_administration_routes(
     app: Flask,
     *,
     get_database_path: Callable[[], str],
+    get_runtime_paths: Callable[[], RuntimePaths],
 ) -> None:
     """Register the guarded Administration shell and employer catalog."""
 
@@ -80,6 +91,69 @@ def register_administration_routes(
     @administration_required
     def administration() -> str:
         return render_template("administration/index.html")
+
+    @app.get("/administration/recovery")
+    @administration_required
+    def administration_recovery() -> str:
+        return render_template(
+            "administration/recovery.html",
+            backups=list_backups(get_runtime_paths()),
+        )
+
+    @app.post("/administration/recovery/backup")
+    @administration_required
+    def administration_create_backup():
+        try:
+            result = create_backup(get_runtime_paths())
+        except BackupError as error:
+            flash(str(error), "error")
+        else:
+            flash(
+                f"Backup created with {result.file_count} protected file(s).",
+                "success",
+            )
+        return redirect(url_for("administration_recovery"))
+
+    @app.post("/administration/recovery/export")
+    @administration_required
+    def administration_create_export():
+        try:
+            export_path = create_export(get_runtime_paths())
+        except BackupError as error:
+            flash(str(error), "error")
+            return redirect(url_for("administration_recovery"))
+        return send_file(
+            export_path,
+            as_attachment=True,
+            download_name=export_path.name,
+            mimetype="application/json",
+        )
+
+    @app.post("/administration/recovery/restore")
+    @administration_required
+    def administration_restore_backup():
+        upload = request.files.get("backup")
+        if upload is None or not upload.filename:
+            flash("Choose a Junior backup file to restore.", "error")
+            return redirect(url_for("administration_recovery"))
+        if not upload.filename.casefold().endswith(BACKUP_EXTENSION):
+            flash("Choose a file ending in .jrbackup.", "error")
+            return redirect(url_for("administration_recovery"))
+        try:
+            result = restore_backup(
+                get_runtime_paths(),
+                upload.stream,
+                confirmation=request.form.get("confirmation", ""),
+            )
+        except BackupError as error:
+            flash(str(error), "error")
+        else:
+            flash(
+                "Restore completed and the previous state was preserved as "
+                f"{result.path.name}. Restart Junior before continuing.",
+                "success",
+            )
+        return redirect(url_for("administration_recovery"))
 
     @app.get("/administration/recommendations")
     @administration_required

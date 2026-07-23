@@ -97,6 +97,7 @@ def test_every_current_post_form_renders_a_csrf_token() -> None:
         "administration/employer_form.html",
         "administration/employer_review_detail.html",
         "administration/recommendations.html",
+        "administration/recovery.html",
         "base.html",
         "companies.html",
         "company_add.html",

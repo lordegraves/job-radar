@@ -69,6 +69,7 @@ def create_app(
     register_administration_routes(
         app,
         get_database_path=lambda: _get_database_path(app),
+        get_runtime_paths=lambda: _get_runtime_paths(app),
     )
 
     @app.get("/")

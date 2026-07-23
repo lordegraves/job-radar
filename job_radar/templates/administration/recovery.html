@@ -1,0 +1,97 @@
+{# Provides guarded backup, readable export, and verified restore controls. #}
+{% extends "base.html" %}
+
+{% block title %}Backup and Recovery - Administration - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .recovery-grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+    .recovery-card {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px;
+    }
+    .recovery-card h2 { margin-top: 0; }
+    .danger-card { border-color: #a75b62; }
+    .recovery-card form { display: grid; gap: 12px; }
+    .backup-list { margin-top: 18px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('administration') }}">&larr; Administration</a></p>
+<h1 class="page-title">Backup and recovery</h1>
+
+<div class="page-card">
+    <p>
+        Backups protect Junior profiles, companies, settings, the database,
+        résumés, reports, and sanitized logs. Passwords remain in Windows
+        Credential Manager or their configured environment variable and are
+        never copied into a backup.
+    </p>
+</div>
+
+<div class="recovery-grid">
+    <section class="recovery-card">
+        <h2>Create a restorable backup</h2>
+        <p>Junior creates and verifies a private backup without changing active data.</p>
+        <form method="post" action="{{ url_for('administration_create_backup') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button class="primary-action" type="submit">Create backup</button>
+        </form>
+    </section>
+
+    <section class="recovery-card">
+        <h2>Export readable data</h2>
+        <p>
+            Download a JSON record of Junior's database. This is useful for
+            review or portability, but it cannot replace a restorable backup.
+        </p>
+        <form method="post" action="{{ url_for('administration_create_export') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Download readable export</button>
+        </form>
+    </section>
+
+    <section class="recovery-card danger-card">
+        <h2>Restore a backup</h2>
+        <p>
+            Restoring replaces current Junior data. Junior first creates a
+            separate safety backup of the current state.
+        </p>
+        <form method="post" action="{{ url_for('administration_restore_backup') }}" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <label for="backup">Junior backup file</label>
+            <input id="backup" name="backup" type="file" accept=".jrbackup" required>
+            <label for="confirmation">Type RESTORE to confirm</label>
+            <input id="confirmation" name="confirmation" autocomplete="off" required>
+            <button class="danger" type="submit">Restore backup</button>
+        </form>
+    </section>
+</div>
+
+<div class="page-card backup-list">
+    <h2>Backups stored by Junior</h2>
+    {% if backups %}
+    <table>
+        <thead><tr><th>Backup</th><th>Created</th><th>Size</th></tr></thead>
+        <tbody>
+        {% for backup in backups %}
+            <tr>
+                <td><code>{{ backup.name }}</code></td>
+                <td>{{ backup.created_at }}</td>
+                <td>{{ backup.size_bytes }} bytes</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No manual or pre-restore backups have been created yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -60,7 +60,11 @@ If an upgrade fails:
 3. Preserve the complete junior `data` directory.
 4. Contact Clayton Graves at `claytonmgraves@outlook.com` with the displayed technical details and diagnostic-log location.
 
-Do not send your database, résumé, profile, passwords, access tokens, or other credentials unless an approved secure support process is provided. junior does not currently provide a self-service restore screen, so do not manually replace the active database with a backup.
+Do not send your database, résumé, profile, passwords, access tokens, or other credentials unless an approved secure support process is provided.
+
+Unlocked **Administration → Backup and recovery** can create a private, restorable `.jrbackup` file. It protects the database, profiles, résumés, settings, company/scoring configuration, reports, and sanitized logs. Passwords remain in Windows Credential Manager or their configured environment variable and are not copied. A readable JSON export is also available, but it is not a restore file.
+
+To restore, choose a Junior `.jrbackup` file and type `RESTORE`. Junior validates the bundle and database, creates a separate safety backup of the current state, and only then replaces approved user data. Restart Junior after a successful restore. If validation fails, the current workspace is not changed.
 
 ## Home
 

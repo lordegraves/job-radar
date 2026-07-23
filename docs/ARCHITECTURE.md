@@ -128,6 +128,8 @@ The broader preference model can store target roles, locations, work arrangement
 
 `profile_migration.py` owns the controlled legacy-YAML conversion boundary. Planning validates the source without creating the database, destination, or backup directory. Applying a plan refuses duplicate names, IDs, existing resume destinations, and backup paths outside the user-data root. It completes a private recovery bundle before creating managed files, preserves source files unchanged, and removes only newly created managed files if the database transaction fails. The migration service is internal until a guided migration or setup workflow is approved.
 
+`backup_service.py` owns manual backup, readable export, and restore. Restorable bundles use a manifest with bounded paths, sizes, and SHA-256 checksums; SQLite is copied and restored through its online-backup API. Restore validates the staged database before touching active data and creates an independent pre-restore bundle first. Only known Junior-owned paths are accepted, symlinks and archive traversal are rejected, and credentials are excluded by remaining in the operating-system credential boundary. JSON export serializes database records for portability but deliberately omits résumé documents and is not accepted by restore.
+
 ### Tracker and History
 
 Active Applications and Application History are separate but related workflows.
