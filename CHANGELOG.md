@@ -7,6 +7,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 ## Unreleased
 
 - GUI scan scheduling configuration for enabled state, local start time, weekdays, scheduled email delivery, calculated next run, and safe last-run or failed-run visibility. Operating-system automation remains a separate follow-on milestone.
+- Controlled Windows Task Scheduler integration that manages only Junior's named task, runs the shared scheduled-scan entry point with normal user privileges, stores no Windows password, and supports inspection, update, disable, and removal through Settings.
 
 ### Added
 

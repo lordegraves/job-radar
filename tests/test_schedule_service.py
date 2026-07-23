@@ -16,6 +16,7 @@ from job_radar.schedule_service import (
 )
 from job_radar.storage import complete_scan_run, start_scan_run
 from job_radar.web_app import create_app
+from job_radar.windows_scheduler import WindowsTaskStatus
 
 
 def _write_settings(path: Path) -> None:
@@ -126,9 +127,20 @@ def test_schedule_view_reports_last_scheduled_failure_without_raw_details(
 
 def test_schedule_page_saves_and_discloses_automation_boundary(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     settings_path = tmp_path / "config" / "settings.yaml"
     _write_settings(settings_path)
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.inspect_windows_task",
+        lambda: WindowsTaskStatus(
+            available=True,
+            installed=False,
+            enabled=False,
+            state="Not installed",
+            message="Junior's Windows scheduled task is not installed.",
+        ),
+    )
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
     client = app.test_client()
 
@@ -146,7 +158,8 @@ def test_schedule_page_saves_and_discloses_automation_boundary(
 
     assert page.status_code == 200
     assert "When Junior should scan" in page.get_data(as_text=True)
-    assert "Windows Task Scheduler" in page.get_data(as_text=True)
+    assert "Windows connection" in page.get_data(as_text=True)
+    assert "Apply schedule to Windows" in page.get_data(as_text=True)
     html = saved.get_data(as_text=True)
     assert "Scan schedule saved." in html
     assert 'value="07:15"' in html
@@ -155,6 +168,54 @@ def test_schedule_page_saves_and_discloses_automation_boundary(
         "wednesday",
         "friday",
     )
+
+
+def test_schedule_page_can_apply_disable_and_remove_windows_task(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+    _write_settings(settings_path)
+    calls: list[str] = []
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.inspect_windows_task",
+        lambda: WindowsTaskStatus(
+            available=True,
+            installed=True,
+            enabled=True,
+            state="Installed and enabled",
+            message="Windows is ready.",
+        ),
+    )
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.apply_windows_schedule",
+        lambda schedule: calls.append("apply") or "Windows task updated.",
+    )
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.disable_windows_task",
+        lambda: calls.append("disable") or "Windows task disabled.",
+    )
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.remove_windows_task",
+        lambda: calls.append("remove") or "Windows task removed.",
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    responses = [
+        client.post(path, follow_redirects=True)
+        for path in (
+            "/settings/schedule/windows/apply",
+            "/settings/schedule/windows/disable",
+            "/settings/schedule/windows/remove",
+        )
+    ]
+
+    assert calls == ["apply", "disable", "remove"]
+    assert all(response.status_code == 200 for response in responses)
+    assert "Windows task updated." in responses[0].get_data(as_text=True)
+    assert "Windows task disabled." in responses[1].get_data(as_text=True)
+    assert "Windows task removed." in responses[2].get_data(as_text=True)
 
 
 def test_manual_scan_does_not_appear_as_last_scheduled_run(

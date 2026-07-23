@@ -56,7 +56,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 32 | Completed | Add an email setup flow for SMTP server, port, security mode, sender, recipients, credentials, and clear validation errors. |
 | 33 | Completed | Add a safe test-email workflow that does not accidentally trigger a full scan or send a normal production report. |
 | 34 | Completed | Add scan scheduling configuration for enabled/disabled state, time of day, selected weekdays, email delivery, next scheduled run, last run, and failed-run visibility. |
-| 35 | Planned | Implement Windows scheduling support through a controlled Task Scheduler integration that can be created, inspected, updated, disabled, and removed through the app. |
+| 35 | Completed | Implement Windows scheduling support through a controlled Task Scheduler integration that can be created, inspected, updated, disabled, and removed through the app. |
 | 36 | Planned | Add Linux scheduling support for standalone and server installations using a documented, shared scheduling abstraction rather than separate product logic. |
 | 37 | Planned | Add configurable report and log retention options such as latest only, latest plus previous, or retain the most recent configured number of runs. |
 | 38 | In Progress | Add source-health, scan-health, and application diagnostics that clearly distinguish configuration errors, collector failures, network problems, email failures, and unexpected application errors. |

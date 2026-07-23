@@ -25,6 +25,7 @@ dev = [
 
 [project.scripts]
 job-radar = "job_radar.cli:main"
+job-radar-scheduled = "job_radar.scheduled_scan:main"
 job-radar-web = "job_radar.web_app:main"
 
 [project.gui-scripts]
