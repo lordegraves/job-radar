@@ -27,6 +27,8 @@ These surfaces must share the same service and storage layers rather than becomi
 
 The web application resolves runtime paths, loads settings, initializes or migrates the SQLite database, and then registers feature routes. Startup failures are converted into safe user-facing messages, with sanitized diagnostics written under the user-owned logs directory when possible.
 
+After schema initialization, startup completes any profile explicitly marked for the one-time legacy YAML employer import. This occurs before profile, company, or recommendation workspaces are rendered, so every GUI launch surface observes the same profile-owned company state. New profiles are not marked for this compatibility import.
+
 The desktop launcher ensures the user-owned workspace exists, claims its OS-managed instance lock, creates the Flask application, starts a local server, waits for readiness, and opens the native pywebview window. Browser mode follows the same path and opens the same loopback URL in the default browser instead. A second launch reports the existing native instance or reopens the recorded URL in deliberate browser mode.
 
 One OS-managed file lock under the user-data `runtime` directory owns the desktop process. Its metadata contains only the active loopback URL. A competing launch cannot acquire the lock, so it waits for and opens the recorded instance rather than initializing the same SQLite database on another port. The lock's lifetime is the open process handle; a stale file after a crash does not block startup.

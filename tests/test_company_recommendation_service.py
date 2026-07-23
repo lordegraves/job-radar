@@ -9,12 +9,17 @@ from job_radar.company_recommendation_models import (
 )
 from job_radar.company_recommendation_service import (
     build_company_recommendations,
+    build_company_starter_guidance,
     record_recommendation_feedback,
 )
 from job_radar.database import connect_database
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_storage import upsert_employer_source
-from job_radar.profile_models import ManagedProfile, ProfilePreferences
+from job_radar.profile_models import (
+    LocationPreference,
+    ManagedProfile,
+    ProfilePreferences,
+)
 from job_radar.profile_storage import create_profile, set_active_profile
 
 
@@ -115,6 +120,36 @@ def test_unrelated_company_is_not_recommended_for_desired_role(
     results = build_company_recommendations(database_path)
 
     assert [item.employer_id for item in results] == ["example_bakery"]
+
+
+def test_empty_catalog_gives_profile_specific_starter_guidance(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Cook Profile",
+        preferences=ProfilePreferences(
+            target_roles=("cook", "cake decorator"),
+            work_arrangements=("Remote", "On-site"),
+            location_selections=(
+                LocationPreference(
+                    value="fort-collins-colorado",
+                    label="Fort Collins, Colorado",
+                    radius_miles=25,
+                ),
+            ),
+        ),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+
+    guidance = build_company_starter_guidance(database_path)
+
+    assert "cook, cake decorator" in guidance[0]
+    assert "Fort Collins, Colorado" in guidance[1]
+    assert "legally hire" in guidance[2]
+    assert "careers-page address" in guidance[3]
 
 
 def test_feedback_persists_without_leaking_between_profiles(

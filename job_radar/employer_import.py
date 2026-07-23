@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from job_radar.backup_service import create_database_safety_backup
 from job_radar.config import (
     SUPPORTED_SOURCE_TYPES,
     ConfigError,
@@ -49,6 +50,10 @@ def import_pending_legacy_employers(
 
         employers = _load_legacy_employers(company_config_path)
         profile_id = str(pending_profile[0])
+        create_database_safety_backup(
+            db_path,
+            reason="legacy-company-import",
+        )
 
         for employer in employers:
             connection.execute(

@@ -466,6 +466,13 @@
     </main>
 
     <script>
+        if ("scrollRestoration" in history) {
+            history.scrollRestoration = "manual";
+        }
+        if (!window.location.hash) {
+            window.scrollTo(0, 0);
+        }
+
         function confirmDestructiveAction(message) {
             const confirmation = window.prompt(`${message}\n\nType DELETE to confirm.`);
             return confirmation === "DELETE";

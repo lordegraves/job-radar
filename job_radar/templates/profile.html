@@ -235,7 +235,6 @@
         <a href="#job-fit">Job fit</a>
         {% if active_managed_profile %}<a href="#role-discovery">Role discovery</a>{% endif %}
         {% if profile_management.profiles %}<a href="#manage-profiles">Manage profiles</a>{% endif %}
-        <a href="#technical-details">Troubleshooting</a>
     </nav>
     {% endif %}
     {% if not has_profile %}
@@ -505,13 +504,14 @@
 
 {% if has_profile %}
 <div id="technical-details" class="section">
-    <h2>Technical details</h2>
-    <p class="muted">Runtime paths and file state for troubleshooting.</p>
-
-    <details class="technical-details">
-        <summary>Show configured profile and resume paths</summary>
-
-        <div class="technical-details-content">
+    <details class="profile-collapsible">
+        <summary>
+            <h2>Advanced technical details</h2>
+            <span class="profile-collapsible-summary">
+                File paths and internal status used only for troubleshooting
+            </span>
+        </summary>
+        <div class="profile-collapsible-content technical-details-content">
             <p><span class="label">Settings file:</span> <code>{{ profile.settings_path }}</code></p>
 
             <p>

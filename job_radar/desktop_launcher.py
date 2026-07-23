@@ -206,6 +206,7 @@ def run_native_window(
     webview_module: Any = webview,
 ) -> None:
     """Run the shared Flask UI inside one normal native application window."""
+    set_windows_app_identity()
     server_thread = threading.Thread(
         target=server.serve_forever,
         name="job-radar-local-server",
@@ -244,6 +245,20 @@ def run_native_window(
         shutdown_event.set()
         server.shutdown()
         server_thread.join(timeout=5.0)
+
+
+def set_windows_app_identity() -> None:
+    """Give an unpackaged Windows window Junior's own taskbar identity."""
+
+    if sys.platform != "win32":
+        return
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "Junior.JobRadar"
+        )
+    except (AttributeError, OSError):
+        # Packaged builds receive their identity from the application manifest.
+        return
 
 
 def show_desktop_error(

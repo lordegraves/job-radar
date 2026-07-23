@@ -83,6 +83,34 @@ def test_recommendations_page_explains_adds_and_hides_feedback(
     )
 
 
+def test_empty_recommendations_page_gives_role_specific_starting_point(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    settings_path = tmp_path / "settings.yaml"
+    _write_settings(settings_path, database_path)
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+        preferences=ProfilePreferences(target_roles=("cook",)),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+
+    client = create_app(
+        settings_path=settings_path,
+        base_directory=tmp_path,
+    ).test_client()
+    page = client.get("/companies/recommendations")
+    html = page.get_data(as_text=True)
+
+    assert page.status_code == 200
+    assert "Start building your company list" in html
+    assert "selected work: cook" in html
+    assert "starting directions" in html
+    assert "Add company" in html
+
+
 def test_recommendations_page_reviews_fresh_outside_catalog_company(
     tmp_path: Path,
 ) -> None:

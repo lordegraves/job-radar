@@ -10,6 +10,7 @@ from pathlib import Path
 import job_radar.web_app as web_app_module
 
 from job_radar.config import load_settings
+from job_radar.database import connect_database
 from job_radar.history_models import JobHistoryRecord
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_storage import upsert_employer_source
@@ -4067,8 +4068,8 @@ candidate:
     assert "Experience gaps" in html
     assert "Roles to avoid" in html
     assert "<h2>Résumé</h2>" in html
-    assert "Technical details" in html
-    assert "Show configured profile and resume paths" in html
+    assert "Advanced technical details" in html
+    assert "File paths and internal status used only for troubleshooting" in html
     assert str(settings_file) in html
     assert str(profile_file) in html
     assert str(resume_file) in html
@@ -4662,3 +4663,66 @@ candidate:
     compatibility_response = client.get("/preferences")
     assert compatibility_response.status_code == 302
     assert compatibility_response.headers["Location"] == "/profile"
+
+
+def test_web_startup_imports_pending_legacy_companies(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    company_file = tmp_path / "config" / "target-companies.yaml"
+    company_file.parent.mkdir(parents=True)
+    write_settings_file(settings_file, database_file)
+    company_file.write_text(
+        """
+companies:
+  - company_key: example_bakery
+    name: Example Bakery
+    source_type: html
+    enabled: true
+    source_url: https://example.invalid/careers
+""",
+        encoding="utf-8",
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Example User",
+    )
+    create_profile(database_file, profile)
+    set_active_profile(database_file, profile.profile_id)
+    with connect_database(database_file) as connection:
+        connection.execute(
+            """
+            UPDATE profiles
+            SET legacy_company_import_pending = 1
+            WHERE profile_id = ?
+            """,
+            (profile.profile_id,),
+        )
+
+    app = create_app(
+        settings_path=str(settings_file),
+        base_directory=tmp_path,
+    )
+    response = app.test_client().get("/companies")
+
+    assert response.status_code == 200
+    assert "Example Bakery" in response.get_data(as_text=True)
+    with connect_database(database_file) as connection:
+        pending = connection.execute(
+            """
+            SELECT legacy_company_import_pending
+            FROM profiles
+            WHERE profile_id = ?
+            """,
+            (profile.profile_id,),
+        ).fetchone()
+        employer_count = connection.execute(
+            "SELECT COUNT(*) FROM employer_sources"
+        ).fetchone()
+        association_count = connection.execute(
+            "SELECT COUNT(*) FROM profile_company_associations"
+        ).fetchone()
+    assert pending is not None and pending[0] == 0
+    assert employer_count is not None and employer_count[0] == 1
+    assert association_count is not None and association_count[0] == 1

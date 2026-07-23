@@ -412,6 +412,27 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
     }
 
 
+def test_windows_native_window_sets_junior_taskbar_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identities: list[str] = []
+
+    class FakeShell32:
+        @staticmethod
+        def SetCurrentProcessExplicitAppUserModelID(identity: str) -> None:
+            identities.append(identity)
+
+    class FakeWindll:
+        shell32 = FakeShell32()
+
+    monkeypatch.setattr(desktop_launcher.sys, "platform", "win32")
+    monkeypatch.setattr(desktop_launcher.ctypes, "windll", FakeWindll())
+
+    desktop_launcher.set_windows_app_identity()
+
+    assert identities == ["Junior.JobRadar"]
+
+
 def test_main_shows_graphical_support_error_for_unexpected_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

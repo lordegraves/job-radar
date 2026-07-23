@@ -16,6 +16,7 @@ from job_radar.runtime_paths import RuntimePaths, get_default_user_data_director
 from job_radar.session_secret import load_or_create_session_secret
 from job_radar.profile_storage import get_active_profile
 from job_radar.first_run_service import needs_first_run_setup
+from job_radar.employer_import import import_pending_legacy_employers
 from job_radar.scan_service import handle_scan
 from job_radar.setup_progress_service import incomplete_setup_destination
 from job_radar.storage import initialize_database
@@ -64,6 +65,12 @@ def create_app(
     app.config["JOB_RADAR_ADMIN_SESSION_MARKER"] = secrets.token_urlsafe(32)
 
     initialize_database(runtime_paths.database_path)
+    # Complete the protected one-time employer migration before any profile,
+    # company, or recommendation page builds a profile-owned workspace.
+    import_pending_legacy_employers(
+        runtime_paths.database_path,
+        runtime_paths.company_config_path,
+    )
 
     register_csrf_protection(app)
     register_administration_routes(

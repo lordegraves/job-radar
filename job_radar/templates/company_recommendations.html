@@ -74,9 +74,14 @@
 </div>
 {% else %}
 <div class="page-card">
-    <h2>No new company suggestions right now</h2>
-    <p>Every scan-ready catalog company is already in this profile or has been hidden by your feedback.</p>
-    <p class="muted">You can still add a company by name or careers-page address.</p>
+    <h2>Start building your company list</h2>
+    <p>Junior does not have a new verified company to recommend yet, but your profile provides a practical place to begin.</p>
+    <ul>
+        {% for item in starter_guidance %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    <p class="muted">These are starting directions, not claims that an unverified employer is a good fit. Named recommendations appear only after Junior has grounded evidence.</p>
     <a class="button-link" href="{{ url_for('add_company_page') }}">Add company</a>
 </div>
 {% endif %}

@@ -18,6 +18,7 @@ from job_radar.company_recommendation_models import (
 from job_radar.company_recommendation_service import (
     CompanyRecommendationError,
     build_company_recommendations,
+    build_company_starter_guidance,
     record_recommendation_feedback,
 )
 from job_radar.company_recommendation_storage import mark_added
@@ -236,6 +237,9 @@ def register_company_routes(
             "company_recommendations.html",
             profile=workspace.active_profile,
             recommendations=build_company_recommendations(get_database_path()),
+            starter_guidance=build_company_starter_guidance(
+                get_database_path()
+            ),
             external_candidates=build_external_company_candidates(
                 get_database_path()
             ),

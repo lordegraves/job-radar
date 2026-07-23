@@ -44,6 +44,57 @@ def build_company_recommendations(
     )
 
 
+def build_company_starter_guidance(
+    database_path: str | Path,
+) -> tuple[str, ...]:
+    """Give an empty catalog a useful, profile-specific starting point."""
+
+    profile = get_active_profile(database_path)
+    if profile is None:
+        return ()
+
+    roles = effective_target_roles(database_path, profile=profile)
+    guidance: list[str] = []
+    if roles:
+        guidance.append(
+            "Start with employers that advertise your selected work: "
+            + ", ".join(roles[:4])
+            + "."
+        )
+    else:
+        guidance.append(
+            "Add at least one target role so Junior can explain which "
+            "employers are relevant to this profile."
+        )
+
+    locations = [
+        selection.label
+        for selection in profile.preferences.location_selections
+    ] or list(profile.preferences.preferred_locations)
+    if locations:
+        guidance.append(
+            "For hybrid or on-site work, begin with employers operating near "
+            + ", ".join(locations[:4])
+            + "."
+        )
+
+    arrangements = {
+        value.casefold() for value in profile.preferences.work_arrangements
+    }
+    if "remote" in arrangements:
+        guidance.append(
+            "For remote work, consider employers that can legally hire in "
+            "your selected locations; Junior will still check regional "
+            "residency restrictions."
+        )
+
+    guidance.append(
+        "When you recognize a suitable employer, add its name or public "
+        "careers-page address. Junior will verify the source before scanning."
+    )
+    return tuple(guidance)
+
+
 def build_company_recommendations_for_profile(
     database_path: str | Path,
     profile_id: str,

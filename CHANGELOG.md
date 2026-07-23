@@ -14,6 +14,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Added Junior's native pywebview window with normal window controls, application icon support, safe graphical startup errors, deliberate browser/server launch options, and clean shell-owned shutdown.
 - Verified that native desktop, browser-based local use, developer CLI scans, and scheduled scans share the same Flask application, scan service, storage, and product rules instead of maintaining mode-specific implementations.
 - Kept parent navigation visibly active throughout profile, company, report, Settings, and Administration subpages, and standardized spacing around user-facing status messages.
+- Fixed pending legacy-company imports so profile-owned company pages are populated before rendering, added honest profile-specific starter guidance when no verified named recommendation exists, compacted Profile troubleshooting details, corrected Settings card spacing and page-top restoration, and assigned the unpackaged Windows window a Junior taskbar identity.
 
 - Bounded in-app viewing for allowlisted sanitized Junior logs, a copyable privacy-safe troubleshooting summary, and a CSRF-protected Open Data Directory action using the resolved settings-owned workspace.
 - Read-only Settings diagnostics for application configuration, latest scan, company-source, and email health, with plain-language configuration, collector, network, email, and unexpected-application categories; scan diagnostics no longer persist raw exception text.
