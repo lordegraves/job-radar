@@ -43,3 +43,22 @@ def test_profile_suggestions_expose_and_support_keyboard_navigation() -> None:
     assert 'role="listbox"' not in template
     assert 'event.key === "ArrowDown"' in template
     assert 'event.key === "Escape"' in template
+
+
+def test_destructive_application_actions_use_user_facing_language() -> None:
+    tracker_template = (TEMPLATE_ROOT / "tracker_edit.html").read_text(
+        encoding="utf-8"
+    )
+    history_template = (TEMPLATE_ROOT / "history_edit.html").read_text(
+        encoding="utf-8"
+    )
+
+    assert "tracker row" not in tracker_template
+    assert "terminal quick action" not in tracker_template
+    assert "Permanently delete this application?" in tracker_template
+    assert "Delete application" in tracker_template
+    assert "history row" not in history_template
+    assert "Permanently delete this application history record?" in (
+        history_template
+    )
+    assert "This cannot be undone." in history_template
