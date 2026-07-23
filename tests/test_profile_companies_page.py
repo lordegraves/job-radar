@@ -4,12 +4,13 @@ from pathlib import Path
 
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_storage import (
+    get_employer_source,
     is_profile_employer_enabled,
     set_profile_employer_enabled,
     upsert_employer_source,
 )
 from job_radar.profile_models import ManagedProfile
-from job_radar.profile_storage import create_profile, set_active_profile
+from job_radar.profile_storage import create_profile, get_profile, set_active_profile
 from job_radar.web_app import create_app
 
 
@@ -302,3 +303,63 @@ def test_company_scanning_route_rejects_invalid_state_and_legacy_mode(
     assert is_profile_employer_enabled(
         database_path, profile.profile_id, "example_cafe"
     ) is True
+
+
+def test_companies_page_removes_only_confirmed_active_profile_assignment(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="example_cafe",
+            name="Example Cafe",
+            source_type="html",
+            source_config={"source_url": "https://cafe.invalid/jobs"},
+        ),
+    )
+    active_profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+        company_ids=("example_cafe",),
+    )
+    other_profile = ManagedProfile(
+        profile_id="profile_bbbbbbbb",
+        display_name="Other Profile",
+        company_ids=("example_cafe",),
+    )
+    create_profile(database_path, active_profile)
+    create_profile(database_path, other_profile)
+    set_active_profile(database_path, active_profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    missing_confirmation = client.post(
+        "/companies/example_cafe/remove",
+        data={},
+        follow_redirects=True,
+    )
+    assert "Type REMOVE to confirm" in missing_confirmation.get_data(as_text=True)
+    assert get_profile(
+        database_path, active_profile.profile_id
+    ).company_ids == ("example_cafe",)
+
+    response = client.post(
+        "/companies/example_cafe/remove",
+        data={"confirmation": "REMOVE"},
+        follow_redirects=True,
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Example Cafe was removed from Culinary Profile&#39;s company list" in html
+    assert "Existing jobs and application history were kept." in html
+    assert "No companies have been added to this search yet." in html
+    assert get_profile(database_path, active_profile.profile_id).company_ids == ()
+    assert get_profile(database_path, other_profile.profile_id).company_ids == (
+        "example_cafe",
+    )
+    assert get_employer_source(database_path, "example_cafe") is not None
+    assert client.get("/companies/example_cafe").status_code == 404

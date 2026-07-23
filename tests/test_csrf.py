@@ -125,6 +125,7 @@ def test_mutation_routes_do_not_accept_get_requests(tmp_path: Path) -> None:
         "update_history_record",
         "save_preferences",
         "create_profile_route",
+        "remove_profile_company",
         "set_company_scanning",
         "select_profile_route",
         "edit_profile_route",

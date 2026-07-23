@@ -115,6 +115,13 @@
         margin: 0;
     }
 
+    .company-row-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
     .company-feedback {
         border-left: 4px solid var(--link);
         margin-top: 16px;
@@ -184,7 +191,7 @@
                     <span class="workspace-status status-paused">Paused</span>
                     {% endif %}
                 </td>
-                <td>
+                <td class="company-row-actions">
                     <form class="company-action-form" method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                         {% if company.scanning %}
@@ -194,6 +201,18 @@
                         <input type="hidden" name="state" value="scanning">
                         <button type="submit">Resume</button>
                         {% endif %}
+                    </form>
+                    <form class="company-action-form" method="post" action="{{ url_for('remove_profile_company', company_key=company.company_key) }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <button
+                            class="button-danger"
+                            type="submit"
+                            name="confirmation"
+                            value="REMOVE"
+                            data-company-name="{{ company.name }}"
+                            data-profile-name="{{ workspace.active_profile.display_name }}"
+                            onclick="return confirmCompanyRemoval(this.dataset.companyName, this.dataset.profileName)"
+                        >Remove</button>
                     </form>
                 </td>
             </tr>

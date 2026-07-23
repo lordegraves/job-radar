@@ -4,7 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from job_radar.company_assignment_service import set_company_scanning_state
+from job_radar.company_assignment_service import (
+    remove_company_from_profile,
+    set_company_scanning_state,
+)
+from job_radar.database import connect_database
 from job_radar.domain_errors import (
     EmployerNotAssignedError,
     EmployerNotFoundError,
@@ -17,7 +21,13 @@ from job_radar.employer_storage import (
     upsert_employer_source,
 )
 from job_radar.profile_models import ManagedProfile
-from job_radar.profile_storage import create_profile, set_active_profile
+from job_radar.profile_storage import (
+    create_profile,
+    get_profile,
+    set_active_profile,
+)
+from job_radar.models import JobPosting
+from job_radar.storage import upsert_job_posting
 
 
 def add_employer(database_path: Path, employer_id: str, name: str) -> None:
@@ -152,3 +162,130 @@ def test_scanning_state_rejects_unknown_employer(tmp_path: Path) -> None:
             "missing_market",
             scanning=False,
         )
+
+
+def test_remove_company_preserves_catalog_other_profile_and_history(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    add_employer(database_path, "example_market", "Example Market")
+    active_profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Active Profile",
+        company_ids=("example_market",),
+    )
+    other_profile = ManagedProfile(
+        profile_id="profile_bbbbbbbb",
+        display_name="Other Profile",
+        company_ids=("example_market",),
+    )
+    create_profile(database_path, active_profile)
+    create_profile(database_path, other_profile)
+    set_active_profile(database_path, active_profile.profile_id)
+    posting = JobPosting(
+        company_key="example_market",
+        company_name="Example Market",
+        source_type="html",
+        source_url="https://example.invalid/jobs/1",
+        source_job_id="job-1",
+        title="Test Role",
+        location="Test City",
+        description="Fictional role used to verify historical preservation.",
+        canonical_key="example-market-test-role",
+        content_hash="fictional-content-hash",
+    )
+    upsert_job_posting(database_path, posting)
+
+    with connect_database(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO application_tracker (
+                profile_id, job_radar_id, company_name, role_title
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                active_profile.profile_id,
+                posting.job_radar_id,
+                "Example Market",
+                "Test Role",
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO job_history (
+                profile_id, history_type, company, role, import_key
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                active_profile.profile_id,
+                "application",
+                "Example Market",
+                "Test Role",
+                "test-history-1",
+            ),
+        )
+
+    result = remove_company_from_profile(
+        database_path,
+        active_profile.profile_id,
+        "example_market",
+    )
+
+    assert result.employer_name == "Example Market"
+    assert get_profile(database_path, active_profile.profile_id).company_ids == ()
+    assert get_profile(database_path, other_profile.profile_id).company_ids == (
+        "example_market",
+    )
+    assert get_employer_source(database_path, "example_market") is not None
+
+    with connect_database(database_path) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM job_postings"
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM application_tracker"
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM job_history"
+        ).fetchone()[0] == 1
+
+
+def test_remove_company_rejects_other_profile_and_unassigned_company(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    add_employer(database_path, "assigned_market", "Assigned Market")
+    add_employer(database_path, "other_market", "Other Market")
+    active_profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Active Profile",
+        company_ids=("assigned_market",),
+    )
+    other_profile = ManagedProfile(
+        profile_id="profile_bbbbbbbb",
+        display_name="Other Profile",
+        company_ids=("other_market",),
+    )
+    create_profile(database_path, active_profile)
+    create_profile(database_path, other_profile)
+    set_active_profile(database_path, active_profile.profile_id)
+
+    with pytest.raises(EmployerNotAssignedError):
+        remove_company_from_profile(
+            database_path,
+            other_profile.profile_id,
+            "other_market",
+        )
+
+    with pytest.raises(EmployerNotAssignedError):
+        remove_company_from_profile(
+            database_path,
+            active_profile.profile_id,
+            "other_market",
+        )
+
+    assert get_profile(database_path, other_profile.profile_id).company_ids == (
+        "other_market",
+    )

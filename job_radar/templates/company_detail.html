@@ -82,16 +82,30 @@
     </div>
 </section>
 
-<form method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-    {% if company.scanning %}
-    <input type="hidden" name="state" value="paused">
-    <button class="button-secondary" type="submit">Pause for {{ active_profile.display_name }}</button>
-    {% else %}
-    <input type="hidden" name="state" value="scanning">
-    <button type="submit">Resume for {{ active_profile.display_name }}</button>
-    {% endif %}
-</form>
+<div class="actions">
+    <form method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        {% if company.scanning %}
+        <input type="hidden" name="state" value="paused">
+        <button class="button-secondary" type="submit">Pause for {{ active_profile.display_name }}</button>
+        {% else %}
+        <input type="hidden" name="state" value="scanning">
+        <button type="submit">Resume for {{ active_profile.display_name }}</button>
+        {% endif %}
+    </form>
+    <form method="post" action="{{ url_for('remove_profile_company', company_key=company.company_key) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button
+            class="button-danger"
+            type="submit"
+            name="confirmation"
+            value="REMOVE"
+            data-company-name="{{ company.name }}"
+            data-profile-name="{{ active_profile.display_name }}"
+            onclick="return confirmCompanyRemoval(this.dataset.companyName, this.dataset.profileName)"
+        >Remove from this profile</button>
+    </form>
+</div>
 {% else %}
 <p><a href="{{ url_for('companies') }}">&larr; Back to Companies</a></p>
 

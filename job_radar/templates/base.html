@@ -460,6 +460,14 @@
             return confirmation === "DELETE";
         }
 
+        function confirmCompanyRemoval(companyName, profileName) {
+            const message = `Remove ${companyName} from ${profileName}'s company list? `
+                + "This stops future scans for this profile. It does not delete "
+                + "the company from junior or affect other profiles.";
+            const confirmation = window.prompt(`${message}\n\nType REMOVE to confirm.`);
+            return confirmation === "REMOVE";
+        }
+
         (() => {
             const statusUrl = "{{ url_for('scan_status') }}";
             const reportsUrl = "{{ url_for('reports') }}";

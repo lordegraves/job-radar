@@ -4,7 +4,10 @@ from collections.abc import Callable
 
 from flask import Flask, abort, redirect, render_template, request, url_for
 
-from job_radar.company_assignment_service import set_company_scanning_state
+from job_radar.company_assignment_service import (
+    remove_company_from_profile,
+    set_company_scanning_state,
+)
 from job_radar.company_config_service import (
     build_company_source_summaries,
     filter_company_config_views,
@@ -176,6 +179,53 @@ def register_company_routes(
                 company_message=(
                     f"{result.employer_name} is now {state_label} for "
                     f"{result.profile_name}'s profile."
+                ),
+            )
+        )
+
+    @app.post("/companies/<company_key>/remove")
+    def remove_profile_company(company_key: str):
+        workspace = build_company_workspace(get_database_path())
+        if workspace.active_profile is None:
+            return redirect(
+                url_for(
+                    "companies",
+                    company_result="error",
+                    company_error=(
+                        "Select a managed profile before removing a company."
+                    ),
+                )
+            )
+
+        try:
+            if request.form.get("confirmation", "").strip() != "REMOVE":
+                raise InvalidCompanyStateError(
+                    "Type REMOVE to confirm removing this company from the "
+                    "active profile."
+                )
+
+            result = remove_company_from_profile(
+                get_database_path(),
+                workspace.active_profile.profile_id,
+                company_key,
+            )
+        except JuniorDomainError as error:
+            return redirect(
+                url_for(
+                    "companies",
+                    company_result="error",
+                    company_error=str(error),
+                )
+            )
+
+        return redirect(
+            url_for(
+                "companies",
+                company_result="updated",
+                company_message=(
+                    f"{result.employer_name} was removed from "
+                    f"{result.profile_name}'s company list. Existing jobs and "
+                    "application history were kept."
                 ),
             )
         )

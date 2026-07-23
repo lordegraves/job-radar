@@ -8,6 +8,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Added
 
+- Guarded profile-company removal that stops future scans for only the active profile while preserving the shared employer, other profiles, collected jobs, applications, and history.
 - Profile-specific Pause and Resume controls in the Company Workspace, with assignment validation that leaves the shared employer catalog and other profiles unchanged.
 - Session-bound CSRF protection for every existing web mutation, including Administration, scans, profiles, résumés, job-fit preferences, Tracker, and History, with safe HTML and JSON failure responses.
 - Shared domain-error types for upcoming profile-company assignment, employer catalog, Administration, and recommendation services.

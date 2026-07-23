@@ -12,6 +12,7 @@ from job_radar.employer_storage import (
     get_employer_source,
     list_profile_employer_assignments,
     set_profile_employer_enabled,
+    unassign_employer_from_profile,
 )
 from job_radar.profile_storage import get_active_profile
 from job_radar.storage import initialize_database
@@ -26,6 +27,16 @@ class CompanyScanningStateResult:
     employer_id: str
     employer_name: str
     scanning: bool
+
+
+@dataclass(frozen=True)
+class CompanyRemovalResult:
+    """Describe the profile assignment removed without deleting history."""
+
+    profile_id: str
+    profile_name: str
+    employer_id: str
+    employer_name: str
 
 
 def set_company_scanning_state(
@@ -90,4 +101,46 @@ def set_company_scanning_state(
         employer_id=employer.employer_id,
         employer_name=employer.name,
         scanning=scanning,
+    )
+
+
+def remove_company_from_profile(
+    database_path: str | Path,
+    profile_id: str,
+    employer_id: str,
+) -> CompanyRemovalResult:
+    """Remove one employer from the active profile's future scans."""
+
+    db_path = initialize_database(database_path)
+    active_profile = get_active_profile(db_path)
+
+    if active_profile is None:
+        raise NoActiveProfileError(
+            "Select a managed profile before removing a company."
+        )
+
+    if active_profile.profile_id != profile_id:
+        raise EmployerNotAssignedError(
+            "This company does not belong to the active profile."
+        )
+
+    employer = get_employer_source(db_path, employer_id)
+    if employer is None:
+        raise EmployerNotFoundError("The requested company no longer exists.")
+
+    removed = unassign_employer_from_profile(
+        db_path,
+        profile_id,
+        employer_id,
+    )
+    if not removed:
+        raise EmployerNotAssignedError(
+            "This company does not belong to the active profile."
+        )
+
+    return CompanyRemovalResult(
+        profile_id=active_profile.profile_id,
+        profile_name=active_profile.display_name,
+        employer_id=employer.employer_id,
+        employer_name=employer.name,
     )
