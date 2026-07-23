@@ -288,6 +288,11 @@ def _schema_migrations() -> tuple:
             "add resumable first-run setup",
             _migrate_resumable_setup,
         ),
+        (
+            21,
+            "add profile-owned role discovery",
+            _migrate_role_discovery,
+        ),
     )
 
 
@@ -1025,6 +1030,49 @@ def _migrate_resumable_setup(connection: sqlite3.Connection) -> None:
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             completed_at TEXT
         )
+        """
+    )
+
+
+def _migrate_role_discovery(connection: sqlite3.Connection) -> None:
+    """Store explained title suggestions and profile-specific feedback."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS role_discovery_suggestions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            profile_id TEXT NOT NULL,
+            suggested_title TEXT NOT NULL,
+            normalized_title TEXT NOT NULL,
+            occupation_code TEXT,
+            employer_context TEXT,
+            context_key TEXT NOT NULL,
+            source_type TEXT NOT NULL CHECK (
+                source_type IN ('occupation_catalog', 'observed_posting')
+            ),
+            explanation TEXT NOT NULL,
+            evidence_json TEXT NOT NULL DEFAULT '[]',
+            feedback_state TEXT NOT NULL DEFAULT 'pending' CHECK (
+                feedback_state IN (
+                    'pending',
+                    'relevant',
+                    'not_relevant',
+                    'different_discipline'
+                )
+            ),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at TEXT,
+            UNIQUE (profile_id, normalized_title, context_key),
+            FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+                ON DELETE CASCADE
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_role_discovery_profile_feedback
+        ON role_discovery_suggestions(profile_id, feedback_state, updated_at)
         """
     )
 

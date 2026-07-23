@@ -162,6 +162,20 @@ Resume replacement is written to the active user-data area. For a managed profil
 
 Managed profiles store target roles, locations, work arrangements, employment types, schedules, compensation minimums, travel tolerance, and related job-fit preferences. Current scans use the implemented workplace, location, employment, schedule, on-call, compensation, and practical-eligibility rules. Recommendation actions and risks are occupation-neutral: junior does not globally favor or penalize a particular industry, employer, job title, skill, or region. Profile-owned fit terms, resume evidence and gaps, exclusions, compensation, location eligibility, and that profile's application history supply the relevant context. Some broader scoring configuration still uses the established scoring boundary, so the application continues to explain recommendations in plain language rather than treating every saved field as an independent score boost.
 
+### Related roles
+
+Open **Profile / Resume**, then select **Review related-role suggestions** for the active managed profile. Select **Find related roles** to refresh the list from the résumé and profile-owned scan evidence currently available.
+
+Junior does not use dictionary synonyms to decide that two roles are equivalent. A packaged suggestion must share concrete résumé evidence with an O*NET occupation description. A suggestion from a previously observed job must share concrete résumé and job-description evidence and retains the employer where that meaning was observed. Weak evidence produces no suggestion.
+
+Each suggestion explains why it appeared and requires one decision:
+
+- **Relevant** approves that mapping for the profile's existing target-role recommendation boundaries.
+- **Not relevant** records that the role does not belong in this profile.
+- **Different discipline** records that the title sounds related but represents different work in that context.
+
+Viewing or refreshing suggestions never approves them. The feature does not change the established numerical scoring formula.
+
 Existing YAML profiles are not migrated automatically. junior now has an internal backup-first migration service, but it is not yet a normal GUI action. Do not manually move, rename, delete, or rewrite your working profile, resume, or database in an attempt to migrate it. Migration of real data should occur only after a rehearsal on copies and an explicit backup confirmation.
 
 ## Companies

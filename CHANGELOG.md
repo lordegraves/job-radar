@@ -14,6 +14,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - SQLite migration version 20 for first-run setup progress, protected by backup-before-migration and atomic rollback behavior.
 - A complete first-run review showing the selected profile, résumé, preferences, locations, companies, user-data location, and plain-language scan behavior before setup is finished.
 - Profile-owned work exclusions in profile creation and editing, with one responsibility or role per line, duplicate normalization, bounded input, and résumé/context-aware evaluation instead of title-synonym expansion.
+- Profile-owned Role Discovery that suggests adjacent job titles only from résumé-backed O*NET responsibilities or jobs observed in that profile's scans, explains matched evidence, preserves employer-specific title context, and requires Relevant, Not relevant, or Different discipline feedback before approved mappings affect target-role recommendation boundaries.
+- SQLite migration version 21 for durable role suggestions and per-profile, per-context feedback, protected by backup-before-migration and atomic rollback behavior.
 - Guarded Recommendation Administration for global employer metadata and eligibility, profile/employer diagnostics, profile-specific feedback reset, bounded rebuilds, and a sanitized audit.
 - SQLite migration version 19 for recommendation-administration metadata and audit records, protected by backup-before-migration and atomic rollback behavior.
 - An Administration-only Employer Review Queue for matching unresolved submissions, prefilled new-employer setup, guarded profile assignment, unsupported/rejected/duplicate decisions, and a sanitized decision audit.

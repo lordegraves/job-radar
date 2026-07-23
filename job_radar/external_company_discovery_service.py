@@ -17,6 +17,7 @@ from job_radar.employer_resolution_service import (
 )
 from job_radar.employer_storage import list_employer_sources
 from job_radar.profile_storage import get_active_profile
+from job_radar.role_discovery_service import effective_target_roles
 from job_radar.storage import initialize_database
 
 
@@ -58,16 +59,13 @@ def build_external_company_candidates(
     profile = get_active_profile(db_path)
     if profile is None:
         return ()
-    target_tokens = {
+    base_target_tokens = {
         token
-        for value in (
-            *profile.preferences.target_roles,
-            *(item.label for item in profile.preferences.occupation_selections),
-        )
+        for value in effective_target_roles(db_path, profile=profile)
         for token in _tokens(value)
         if len(token) >= 3
     }
-    if not target_tokens:
+    if not base_target_tokens:
         return ()
     with connect_database(db_path) as connection:
         connection.row_factory = sqlite3.Row
@@ -103,6 +101,16 @@ def build_external_company_candidates(
 
     candidates = []
     for row in rows:
+        target_tokens = {
+            token
+            for value in effective_target_roles(
+                db_path,
+                profile=profile,
+                employer_context=str(row["company_key"]),
+            )
+            for token in _tokens(value)
+            if len(token) >= 3
+        }
         titles = tuple(
             title.strip()
             for title in str(row["titles"] or "").split(",")

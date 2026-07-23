@@ -10,6 +10,7 @@ from job_radar.compensation import evaluate_compensation
 from job_radar.eligibility import evaluate_workplace_eligibility
 from job_radar.models import JobPosting
 from job_radar.profile_models import ManagedProfile
+from job_radar.role_discovery_service import effective_target_roles
 from job_radar.storage import initialize_database
 
 
@@ -73,7 +74,11 @@ def aggregate_employer_job_evidence(
             (profile.profile_id, employer_id, recency_days, max_postings),
         ).fetchall()
 
-    target_phrases = _target_phrases(profile)
+    target_phrases = effective_target_roles(
+        db_path,
+        profile=profile,
+        employer_context=employer_id,
+    )
     target_tokens = {
         token
         for phrase in target_phrases
@@ -191,17 +196,6 @@ def format_job_evidence(
                 + ("seen today." if age == 0 else f"seen {age} days ago.")
             )
     return score, tuple(reasons)
-
-
-def _target_phrases(profile: ManagedProfile) -> tuple[str, ...]:
-    return tuple(
-        value.strip()
-        for value in (
-            *profile.preferences.target_roles,
-            *(item.label for item in profile.preferences.occupation_selections),
-        )
-        if value.strip()
-    )
 
 
 def _tokens(value: str) -> set[str]:

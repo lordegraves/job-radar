@@ -20,6 +20,11 @@ from job_radar.profile_fit_service import (
     save_profile_fit_board,
 )
 from job_radar.profile_storage import ProfileStorageError
+from job_radar.role_discovery_service import (
+    list_role_suggestions,
+    record_role_feedback,
+    refresh_role_suggestions,
+)
 from job_radar.preference_reference import (
     cities_within_radius,
     suggest_locations,
@@ -198,6 +203,107 @@ def register_profile_routes(
             managed_profile=managed_profile,
             fit_signals=fit_signals,
             fit_error=request.args.get("fit_error", "").strip(),
+        )
+
+    @app.get("/profile/<profile_id>/roles")
+    def role_discovery_page(profile_id: str):
+        management = build_profile_management_view(
+            settings_path,
+            base_directory=base_directory,
+        )
+        if management.active_profile_id != profile_id:
+            return _profile_redirect(
+                "error",
+                "Select this profile before reviewing its role suggestions.",
+            )
+        selected = next(
+            (
+                profile
+                for profile in management.profiles
+                if profile.profile_id == profile_id and not profile.archived
+            ),
+            None,
+        )
+        if selected is None:
+            return _profile_redirect(
+                "error", "The selected profile is not available."
+            )
+        return render_template(
+            "role_discovery.html",
+            managed_profile=selected,
+            suggestions=list_role_suggestions(
+                database_path,
+                profile_id=profile_id,
+            ),
+            role_result=request.args.get("role_result", "").strip(),
+            role_error=request.args.get("role_error", "").strip(),
+        )
+
+    @app.post("/profile/<profile_id>/roles/refresh")
+    def refresh_role_discovery(profile_id: str):
+        management = build_profile_management_view(
+            settings_path,
+            base_directory=base_directory,
+        )
+        if management.active_profile_id != profile_id:
+            return _profile_redirect(
+                "error",
+                "Select this profile before refreshing role suggestions.",
+            )
+        try:
+            refresh_role_suggestions(
+                database_path,
+                profile_id=profile_id,
+                base_directory=base_directory,
+            )
+        except (ConfigError, ProfileStorageError, ValueError) as error:
+            return redirect(
+                url_for(
+                    "role_discovery_page",
+                    profile_id=profile_id,
+                    role_error=str(error),
+                )
+            )
+        return redirect(
+            url_for(
+                "role_discovery_page",
+                profile_id=profile_id,
+                role_result="refreshed",
+            )
+        )
+
+    @app.post("/profile/<profile_id>/roles/<int:suggestion_id>/feedback")
+    def save_role_discovery_feedback(profile_id: str, suggestion_id: int):
+        management = build_profile_management_view(
+            settings_path,
+            base_directory=base_directory,
+        )
+        if management.active_profile_id != profile_id:
+            return _profile_redirect(
+                "error",
+                "Select this profile before changing role suggestions.",
+            )
+        try:
+            record_role_feedback(
+                database_path,
+                profile_id=profile_id,
+                suggestion_id=suggestion_id,
+                feedback_state=request.form.get("feedback_state", ""),
+            )
+        except (ConfigError, ProfileStorageError, ValueError) as error:
+            return redirect(
+                url_for(
+                    "role_discovery_page",
+                    profile_id=profile_id,
+                    role_error=str(error),
+                )
+            )
+        return redirect(
+            url_for(
+                "role_discovery_page",
+                profile_id=profile_id,
+                role_result="feedback_saved",
+            )
         )
 
     @app.get("/profile/legacy/edit")

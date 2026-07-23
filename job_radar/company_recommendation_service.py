@@ -23,6 +23,7 @@ from job_radar.employer_storage import (
 )
 from job_radar.profile_storage import get_active_profile
 from job_radar.profile_storage import get_profile
+from job_radar.role_discovery_service import effective_target_roles
 
 
 class CompanyRecommendationError(ValueError):
@@ -60,7 +61,9 @@ def build_company_recommendations_for_profile(
             database_path, profile.profile_id
         )
     }
-    profile_terms = _profile_terms(profile)
+    profile_terms = _profile_terms(
+        effective_target_roles(database_path, profile=profile)
+    )
     if not profile_terms:
         return ()
     qualified_employer_ids: set[str] = set()
@@ -151,11 +154,7 @@ def record_recommendation_feedback(
         )
 
 
-def _profile_terms(profile) -> set[str]:
-    values = [
-        *profile.preferences.target_roles,
-        *(item.label for item in profile.preferences.occupation_selections),
-    ]
+def _profile_terms(values: tuple[str, ...]) -> set[str]:
     return {
         token
         for value in values

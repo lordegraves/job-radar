@@ -108,6 +108,7 @@ def test_every_current_post_form_renders_a_csrf_token() -> None:
         "profile.html",
         "profile_fit_board.html",
         "profile_form.html",
+        "role_discovery.html",
         "scan.html",
         "setup_resume.html",
         "setup_welcome.html",

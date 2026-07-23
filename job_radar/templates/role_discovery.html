@@ -1,0 +1,106 @@
+{# Lets one profile approve or reject evidence-grounded adjacent role titles. #}
+{% extends "base.html" %}
+
+{% block title %}Related roles - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .role-intro {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+    }
+    .role-list { display: grid; gap: 14px; margin-top: 18px; }
+    .role-card {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 18px;
+    }
+    .role-card h3 { margin-top: 0; }
+    .role-context { color: var(--muted); margin-top: -4px; }
+    .role-evidence { display: flex; flex-wrap: wrap; gap: 7px; padding: 0; }
+    .role-evidence li {
+        background: rgba(96, 205, 255, 0.08);
+        border: 1px solid rgba(96, 205, 255, 0.28);
+        border-radius: 999px;
+        list-style: none;
+        padding: 5px 9px;
+    }
+    .feedback-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+    }
+    .feedback-current {
+        color: #7ee787;
+        font-weight: 700;
+    }
+    @media (max-width: 720px) {
+        .role-intro { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-card">
+    <div class="role-intro">
+        <div>
+            <h1 class="page-title">Related roles</h1>
+            <p>Junior looks for adjacent titles supported by demonstrated skills, tools, responsibilities, and domain evidence—not dictionary synonyms.</p>
+            <p class="muted">Suggestions from a specific employer keep that company context because the same title can mean different work elsewhere. Nothing is approved automatically.</p>
+        </div>
+        <form method="post" action="{{ url_for('refresh_role_discovery', profile_id=managed_profile.profile_id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Find related roles</button>
+        </form>
+    </div>
+    <div class="actions">
+        <a class="button-link button-secondary" href="{{ url_for('profile') }}">Back to Profile / Resume</a>
+    </div>
+    {% if role_result == "refreshed" %}<div class="success">Suggestions refreshed from the evidence currently available to this profile.</div>{% endif %}
+    {% if role_result == "feedback_saved" %}<div class="success">Your role feedback was saved to this profile.</div>{% endif %}
+    {% if role_error %}<div class="error"><strong>Role suggestions were not changed.</strong> {{ role_error }}</div>{% endif %}
+</div>
+
+<div class="section">
+    <h2>Suggestions for {{ managed_profile.display_name }}</h2>
+    {% if suggestions %}
+    <div class="role-list">
+        {% for suggestion in suggestions %}
+        <article class="role-card">
+            <h3>{{ suggestion.suggested_title }}</h3>
+            <p class="role-context">
+                {% if suggestion.employer_context %}
+                Observed at {{ suggestion.employer_context }}
+                {% else %}
+                Packaged occupation reference
+                {% endif %}
+            </p>
+            <p>{{ suggestion.explanation }}</p>
+            {% if suggestion.evidence %}
+            <p><strong>Matched evidence</strong></p>
+            <ul class="role-evidence">{% for item in suggestion.evidence %}<li>{{ item }}</li>{% endfor %}</ul>
+            {% endif %}
+            {% if suggestion.feedback_state != "pending" %}
+            <p class="feedback-current">Current decision: {{ suggestion.feedback_state | replace('_', ' ') | title }}</p>
+            {% endif %}
+            <form class="feedback-options" method="post" action="{{ url_for('save_role_discovery_feedback', profile_id=managed_profile.profile_id, suggestion_id=suggestion.suggestion_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" name="feedback_state" value="relevant">Relevant</button>
+                <button class="button-secondary" type="submit" name="feedback_state" value="not_relevant">Not relevant</button>
+                <button class="button-secondary" type="submit" name="feedback_state" value="different_discipline">Different discipline</button>
+            </form>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <h3>No suggestions yet</h3>
+        <p>Select <strong>Find related roles</strong> after adding a résumé. Junior will keep the list empty when the available evidence is too weak.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
