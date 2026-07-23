@@ -29,6 +29,8 @@ The web application resolves runtime paths, loads settings, initializes or migra
 
 The desktop launcher first checks whether junior already responds at its configured local address. If so, it opens the existing interface. Otherwise, it ensures the user-owned workspace exists, creates the Flask application, starts a local server, waits for readiness, and opens the browser.
 
+One OS-managed file lock under the user-data `runtime` directory owns the desktop process. Its metadata contains only the active loopback URL. A competing launch cannot acquire the lock, so it waits for and opens the recorded instance rather than initializing the same SQLite database on another port. The lock's lifetime is the open process handle; a stale file after a crash does not block startup.
+
 The current launcher stops its server when its process exits or startup fails, but it does not yet provide a native application window, a GUI Exit command, focus an existing native window, or manage an unattended background service. Complete shutdown controls and service lifecycle integration remain future product work.
 
 ## Major layers

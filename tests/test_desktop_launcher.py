@@ -73,9 +73,11 @@ def test_build_local_url_uses_browser_safe_host(
 
 
 def test_main_reuses_running_job_radar(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     opened_urls: list[str] = []
+    settings_path = tmp_path / "config" / "settings.yaml"
 
     monkeypatch.setattr(
         sys,
@@ -95,12 +97,58 @@ def test_main_reuses_running_job_radar(
     monkeypatch.setattr(
         desktop_launcher,
         "ensure_desktop_workspace",
-        lambda: pytest.fail("workspace should not be bootstrapped"),
+        lambda: settings_path,
     )
 
     desktop_launcher.launch_desktop()
 
     assert opened_urls == ["http://127.0.0.1:5000/"]
+
+
+def test_second_launcher_uses_locked_workspace_instance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+    lock_path = tmp_path / "runtime" / desktop_launcher.INSTANCE_LOCK_NAME
+    opened_urls: list[str] = []
+    readiness_urls: list[str] = []
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["job-radar-desktop", "--port", "5999"],
+    )
+    monkeypatch.setattr(
+        desktop_launcher,
+        "ensure_desktop_workspace",
+        lambda: settings_path,
+    )
+    monkeypatch.setattr(
+        desktop_launcher,
+        "wait_until_ready",
+        lambda url: readiness_urls.append(url),
+    )
+    monkeypatch.setattr(
+        desktop_launcher.webbrowser,
+        "open",
+        lambda url: opened_urls.append(url),
+    )
+    monkeypatch.setattr(
+        desktop_launcher,
+        "is_job_radar_running",
+        lambda _url: pytest.fail("second instance must not probe another port"),
+    )
+
+    with desktop_launcher.DesktopInstanceLock(
+        lock_path,
+        "http://127.0.0.1:5019/",
+    ) as first_instance:
+        assert first_instance.acquired
+        desktop_launcher.launch_desktop()
+
+    assert readiness_urls == ["http://127.0.0.1:5019/"]
+    assert opened_urls == ["http://127.0.0.1:5019/"]
 
 
 def test_main_bootstraps_starts_and_opens_job_radar(

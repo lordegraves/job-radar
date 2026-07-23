@@ -33,6 +33,8 @@ job-radar-desktop
 
 It creates the user-owned workspace when needed, starts junior locally, waits for the interface to become ready, and opens the default browser. If junior is already running on the selected local address, the launcher reuses that instance instead of starting another server.
 
+Launching Junior again does not start another copy against the same data, even if the second shortcut or command requests a different local port. The second launch waits for the first copy when it is still starting, then opens the first copy's interface. If Junior previously stopped unexpectedly, the operating system releases the instance lock automatically.
+
 This is a browser-opening launcher, not the final native desktop window or Windows installer. Those remain future productization work.
 
 From an activated development environment:
