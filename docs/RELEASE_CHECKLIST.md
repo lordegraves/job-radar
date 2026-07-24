@@ -43,6 +43,10 @@ python -m pytest -q tests\test_packaging.py
 - [ ] Optional migration rejects settings containing literal credentials and allows credential references.
 - [ ] Installed web application renders using temporary user-owned data.
 - [ ] Installed desktop launcher starts, waits for readiness, opens or reuses the local interface, and reports startup failures safely.
+- [ ] `scripts\build_windows.ps1` creates `artifacts\windows\Junior\Junior.exe`.
+- [ ] Packaged `Junior.exe` starts without Python, a virtual environment, or a repository checkout.
+- [ ] Packaged first run creates only safe starter data under an isolated `JOB_RADAR_DATA_DIR`.
+- [ ] Windows bundle contains no profile, resume, database, credential, report, log, or private configuration.
 - [ ] Release artifacts do not depend on the source tree.
 
 ## Database and upgrade safety

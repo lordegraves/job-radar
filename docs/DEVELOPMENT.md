@@ -88,7 +88,24 @@ Run:
 python -m pytest -q tests\test_packaging.py
 ```
 
-Installer creation is a later milestone. Wheel correctness and clean installed execution are current release-readiness requirements.
+Build the unsigned Windows desktop bundle:
+
+```powershell
+.\scripts\build_windows.ps1
+```
+
+The script uses `packaging/windows/junior.spec`, the repository-local
+interpreter, and ignored `build/` and `artifacts/` directories. The expected
+entry point is `artifacts/windows/Junior/Junior.exe`. The bundle includes
+packaged templates, static assets, bootstrap defaults, reference data,
+pywebview, and keyring backends. It must never include repository configuration,
+profiles, resumes, databases, logs, reports, credentials, or another user's
+runtime data.
+
+The packaged executable has been smoke-tested outside Python by using a new
+temporary `JOB_RADAR_DATA_DIR`, confirming an HTTP 200 response from the local
+interface, and confirming safe starter settings were created. Installer
+creation remains a later milestone.
 
 ## Runtime data during development
 

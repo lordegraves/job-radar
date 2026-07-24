@@ -6,6 +6,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a reproducible PyInstaller Windows desktop build that produces an unsigned `Junior.exe` bundle with Junior's native icon, packaged resources, webview runtime, and secure-credential backends without including user-owned data.
 - Added a guarded developer tool that creates an isolated, deterministic fictional Junior workspace for documentation, demonstrations, and release validation; it refuses existing destinations and includes no real profile, resume, company, or job-search data.
 - Added documentation screenshots generated only from the fictional demo workspace.
 - Added guarded Administration workflows for verified private backups, pre-restore safety copies, readable JSON exports, and validated user-data recovery without copying credential values.

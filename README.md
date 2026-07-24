@@ -13,7 +13,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-The current release is a functional local application with up to five independent managed profiles. Python wheel and source-package validation are complete. A genuinely empty installation now opens a guided first-run path through profile creation, résumé upload, profile-owned work exclusions, company selection, and a final review. The setup checkpoint is stored safely in SQLite, so closing junior during setup returns the user to the last completed step instead of starting over. The review shows the profile, résumé, preferences, locations, companies, user-data location, and scan behavior. Finish setup remains unavailable until Junior verifies minimum usable profile rules and confirms at least one selected company collector can connect. This validation imports, scores, recommends, reports, and emails no jobs, and it explains corrections in plain language. Standalone executable, installer, fully editable configuration, and broader release-readiness work are still in progress.
+The current release is a functional local application with up to five independent managed profiles. Python wheel, source-package, and reproducible Windows executable validation are complete. A genuinely empty installation now opens a guided first-run path through profile creation, résumé upload, profile-owned work exclusions, company selection, and a final review. The setup checkpoint is stored safely in SQLite, so closing junior during setup returns the user to the last completed step instead of starting over. The review shows the profile, résumé, preferences, locations, companies, user-data location, and scan behavior. Finish setup remains unavailable until Junior verifies minimum usable profile rules and confirms at least one selected company collector can connect. This validation imports, scores, recommends, reports, and emails no jobs, and it explains corrections in plain language. The Windows installer, fully editable configuration, and broader release-readiness work are still in progress.
 
 See [CHANGELOG.md](CHANGELOG.md) for released and unreleased changes.
 
@@ -116,6 +116,18 @@ python -m pytest -q tests
 ```
 
 Packaging validation is covered by `tests/test_packaging.py`, including clean-wheel installation, installed desktop-launcher startup, and installed web rendering outside the source tree.
+
+Build the unsigned Windows desktop bundle:
+
+```powershell
+.\scripts\build_windows.ps1
+```
+
+The reproducible PyInstaller recipe creates
+`artifacts\windows\Junior\Junior.exe` plus its required private runtime files.
+This is a development build artifact, not the finished installer. It does not
+contain profiles, resumes, databases, credentials, reports, logs, or other
+user-owned data.
 
 ### Fictional demo workspace
 
