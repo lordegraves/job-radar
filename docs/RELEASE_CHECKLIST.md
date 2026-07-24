@@ -52,6 +52,10 @@ python -m pytest -q tests\test_packaging.py
 - [ ] Linux archive starts in a clean Linux environment without Python or the source tree.
 - [ ] Linux install/uninstall validation preserves synthetic user data byte for byte.
 - [ ] Docker build context excludes configuration, profiles, resumes, databases, reports, logs, and credentials.
+- [ ] Container runs as a non-root user and becomes healthy through `/health`.
+- [ ] Container recreation or image replacement preserves the mounted synthetic user-data volume.
+- [ ] Container stops gracefully and does not expose a development server.
+- [ ] Compose binds to localhost unless a separately secured network boundary is documented.
 - [ ] Release artifacts do not depend on the source tree.
 
 ## Database and upgrade safety

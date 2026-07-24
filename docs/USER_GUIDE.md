@@ -24,6 +24,22 @@ To remove the application while keeping all user data:
 sh Junior/uninstall.sh
 ```
 
+## Container/server operation
+
+Container mode is intended for an operator who deliberately manages Docker:
+
+```powershell
+docker compose -f packaging\container\compose.yaml up --build
+```
+
+Open `http://127.0.0.1:8000`. The supplied configuration stores Junior data in
+a named persistent volume, so replacing the container does not replace the
+profiles, résumés, settings, companies, database, reports, or logs.
+
+Junior does not currently ask for a username or password before displaying the
+web interface. Keep this mode on the same computer or behind a separately
+secured private network. Do not expose it directly to the internet.
+
 ## First-time setup
 
 Create a user-owned junior workspace:

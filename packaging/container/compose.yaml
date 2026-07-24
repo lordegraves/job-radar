@@ -1,0 +1,15 @@
+services:
+  junior:
+    build:
+      context: ../..
+      dockerfile: packaging/container/Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      JOB_RADAR_DATA_DIR: /var/lib/junior
+    volumes:
+      - junior-data:/var/lib/junior
+    restart: unless-stopped
+
+volumes:
+  junior-data:

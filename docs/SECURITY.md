@@ -44,6 +44,11 @@ Future desktop setup should use native operating-system credential storage by de
 
 Environment variables remain supported for containers, servers, automation, CI, existing configurations, and compatibility use.
 
+Container mode has no built-in network authentication. The supported Compose
+example binds only to localhost. A deployment on another interface requires a
+separately secured private network or authenticated reverse proxy; the Junior
+port must not be exposed directly to the public internet.
+
 junior configuration should store only a credential reference, never the credential value.
 
 Upgrades must preserve references and must not expose, migrate, overwrite, or delete stored credentials automatically.

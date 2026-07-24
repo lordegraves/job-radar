@@ -226,3 +226,15 @@ paths. The build exports only `Junior-linux-x86_64.tar.gz`. Release validation
 must extract that archive in a disposable Linux environment, run
 `Junior/junior --help`, exercise install and uninstall with a synthetic home
 directory, and verify its user-data sentinels remain unchanged.
+
+Container/server validation uses:
+
+```powershell
+docker compose -f packaging\container\compose.yaml up --build
+```
+
+The image runs as UID/GID 10001 and expects `/var/lib/junior` to be writable by
+that identity. The Compose example uses a named volume and binds only to
+localhost. Validate `/health`, first-run bootstrap, container recreation with
+the same volume, graceful stop, and preservation of a synthetic sentinel before
+publishing an image. Never use a live Junior data directory for this test.

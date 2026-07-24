@@ -7,3 +7,5 @@
 !packaging/
 !packaging/linux/
 !packaging/linux/**
+!packaging/container/
+!packaging/container/**

@@ -173,6 +173,30 @@ The launcher checks for Linux and a WebKit GTK desktop library before opening
 Junior. Uninstall with `sh Junior/uninstall.sh` from the extracted archive, or
 the installed copy, to remove application files while preserving user data.
 
+### Container/server mode
+
+Run Junior with its included Compose definition:
+
+```powershell
+docker compose -f packaging\container\compose.yaml up --build
+```
+
+The example exposes Junior only at `http://127.0.0.1:8000`, runs as a non-root
+user, and stores all durable state in the `junior-data` volume mounted at
+`/var/lib/junior`. Recreating or upgrading the application container preserves
+that volume. Startup creates only missing safe defaults and then uses Junior's
+normal database migrations and shared Flask/service code.
+
+`GET /health` returns only the application name, readiness state, and installed
+version. Container logs go to standard output/error while Junior-owned logs
+remain under the mounted data root. Credential values must be injected through
+approved environment-variable references or an external secrets mechanism;
+never bake them into an image or Compose file.
+
+Junior's web interface does not currently provide user authentication. Keep
+container mode bound to localhost or behind a separately secured private
+network boundary. Do not publish port 8000 directly to the public internet.
+
 ### Fictional demo workspace
 
 Documentation, demonstrations, and release checks must never use a real

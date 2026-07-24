@@ -7,7 +7,7 @@ import traceback
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from flask import Flask, redirect, render_template, url_for
+from flask import Flask, jsonify, redirect, render_template, url_for
 
 from job_radar import __version__
 from job_radar.config import ConfigError
@@ -78,6 +78,18 @@ def create_app(
         get_database_path=lambda: _get_database_path(app),
         get_runtime_paths=lambda: _get_runtime_paths(app),
     )
+
+    @app.get("/health")
+    def health():
+        """Give orchestrators a bounded readiness signal without user data."""
+
+        return jsonify(
+            {
+                "application": "junior",
+                "status": "ready",
+                "version": __version__,
+            }
+        )
 
     @app.get("/")
     def index() -> str:
