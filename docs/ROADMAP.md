@@ -120,8 +120,9 @@ These corrections must be implemented and verified before RC5 is accepted:
 - Company discovery must use a broad but bounded tool chest: known ATS URL
   patterns, redirects and canonical links, career-page links, scripts and
   structured data, sitemaps where appropriate, custom ATS domains, multiple
-  compatible collector probes, and a privacy-safe public lookup when the
-  submitted corporate page is separated from the real careers system.
+  compatible collector probes, and the consent-controlled external
+  company-source lookup defined below when the submitted corporate page is
+  separated from the real careers system.
 - Junior must show understandable progress while discovery runs, verify that
   the selected collector returns credible public jobs before saving the
   employer, and retain only the final working source and safe health summary.
@@ -137,6 +138,46 @@ These corrections must be implemented and verified before RC5 is accepted:
   leave no half-configured employer, explain what it tried in normal language,
   and provide safe retry, removal, and support paths without exposing raw
   network or collector failures.
+
+### External company-source lookup (Release Requirement)
+
+Junior remains local-first. It must exhaust local source detection and its
+packaged collector catalog before contacting an external search provider.
+
+| Requirement | Status Planned/Completed | Release behavior |
+| --- | --- | --- |
+| Local-first trigger | In Progress | An external lookup may run only after local source detection and packaged collector probes cannot identify a working source. |
+| Service disclosure | Planned | Junior must identify the specific external service before sending a request and must document any future provider change. |
+| Exact payload disclosure | Planned | Junior must disclose the exact request payload, including every transmitted field, and the network metadata the provider may observe, including the user's IP address. |
+| Data minimization | In Progress | Only the minimum public company identity may be sent: company name and public domain. Profile information, résumé contents, desired roles, locations, application history, contact details, database contents, URL paths, query parameters, and fragments must not be sent. |
+| User consent and control | Planned | The default must be **Ask before external lookup**. The choices must be **Search once**, **Always allow**, **Skip this lookup**, and **Never allow external lookup**. Persistent choices must be reviewable and reversible in Settings. |
+| Bounded timing | In Progress | The search request, candidate validation, and overall operation must have documented time limits and must not leave the interface appearing frozen. |
+| Offline and unavailable-service behavior | Planned | Junior must explain that local discovery completed but the optional external lookup could not run. It must not silently retry later, create an unfinished company, or imply that the source works. |
+| Independent validation | Completed | External lookup results are never authoritative. They may propose candidate career sources, but Junior independently validates every suggested source using its normal collector validation before saving anything. |
+| Transient working data | Completed | Candidate sources, failed probes, intermediate search results, and external-search responses are transient. They do not become durable application data unless a final company source has been independently validated and accepted. |
+| Visible lookup outcome | Planned | Junior must tell the user when an external lookup was used and whether it found a source, without exposing raw search responses or unsafe diagnostics. |
+
+### Current implementation (RC5 observations)
+
+- RC5 currently uses Bing automatically when the submitted public page, local
+  source detection, packaged collector probes, and generic HTML collection do
+  not produce a working source.
+- The Bing request currently sends a search phrase derived from the submitted
+  company name and public hostname plus the words `official careers jobs`, and
+  requests an RSS response.
+- The search request currently has a 20-second timeout. Failed requests return
+  no candidates and do not create a company.
+- Junior independently runs normal collector validation against candidate
+  sources and saves only a source that returns a credible public job.
+- Candidate URLs, rejected search results, failed configurations, probe
+  responses, and the external-search response remain temporary and are
+  discarded after the request.
+- RC5 does not yet ask for consent, provide an opt-out setting, identify Bing
+  in the interface, disclose the exact request before sending it, or clearly
+  explain offline and unavailable-service behavior. The lookup therefore must
+  not be described as privacy-safe until the planned requirements above are
+  implemented and verified.
+
 - Scan collectors and practical-eligibility evaluation must retain and inspect
   explicit posting facts such as work location, remote or on-site requirements,
   employment type, temporary or contract duration, work schedule, compensation,
