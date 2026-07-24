@@ -6,6 +6,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added one automated Windows release gate that runs the full suite, lint and whitespace checks, builds the current installer, and validates disposable install, repair/upgrade, uninstall, and user-data preservation across the tested first-run, setup, scan, restart, migration, backup, and restore lifecycle.
 - Completed the Linux standalone, Linux systemd user-service, Docker/Compose, and Kubernetes operations guide, including persistence, scheduling, health, security, backup, upgrade, shutdown, and data-preserving removal boundaries.
 - Completed the normal-user Windows guide for per-user installation, guided setup, profile and résumé management, companies, email, scheduling, backup and restore, troubleshooting, safe upgrades, and data-preserving uninstall.
 - Added an operator-ready Kubernetes baseline with single-writer SQLite safety, persistent storage, non-root execution, private networking, privacy-safe health probes, externally supplied Secrets, disabled-by-default scheduled scans, verified scheduled backups, bounded scheduled-backup retention, and restart-preservation validation.

@@ -86,7 +86,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 62 | Completed | Support Kubernetes deployment with persistent storage, Secrets, configuration, health checks, scheduled scans, backups, retention, and safe upgrade procedures. |
 | 63 | Completed | Write complete installation, guided setup, profile management, company management, email, scheduling, backup, restore, troubleshooting, upgrade, and uninstall documentation for Windows users. |
 | 64 | Completed | Write complete installation and operations documentation for Linux standalone mode, Linux service mode, container mode, and Kubernetes mode. |
-| 65 | In Progress | Add automated release validation for clean installation, first launch, guided setup, initial scan, application restart, upgrade, migration, backup, restore, and uninstall behavior. |
+| 65 | Completed | Add automated release validation for clean installation, first launch, guided setup, initial scan, application restart, upgrade, migration, backup, restore, and uninstall behavior. |
 | 66 | Planned | Test packaged builds on clean Windows and Linux environments that do not contain the development repository, Python virtual environment, existing settings, or developer tools. |
 | 67 | Planned | Add release-candidate acceptance testing using a new-user workflow from installer download through first report, application tracking, restart, update, backup, restore, and uninstall. |
 | 68 | Planned | Resolve all release-blocking defects, incomplete setup paths, unexplained errors, broken migrations, packaging failures, data-loss risks, accessibility blockers, and documentation gaps found during release-candidate testing. |

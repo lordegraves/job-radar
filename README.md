@@ -115,6 +115,16 @@ Run the full test suite:
 .\.venv\Scripts\python.exe -m pytest -q tests
 ```
 
+Run the complete automated Windows release gate:
+
+```powershell
+.\scripts\validate_release.ps1
+```
+
+This runs the full suite and lint checks, builds a fresh unsigned installer,
+and validates install, repair/upgrade, uninstall, and synthetic user-data
+preservation without using the active Junior workspace.
+
 Packaging validation is covered by `tests/test_packaging.py`, including clean-wheel installation, installed desktop-launcher startup, and installed web rendering outside the source tree.
 
 Build the unsigned Windows desktop bundle:

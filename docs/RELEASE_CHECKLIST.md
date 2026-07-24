@@ -1,5 +1,17 @@
 # Release Checklist
 
+Run the automated Windows release gate from the repository root:
+
+```powershell
+.\scripts\validate_release.ps1
+```
+
+It runs the full test suite, Ruff, whitespace validation, a fresh installer
+build, and disposable silent install, repair/upgrade, and uninstall
+preservation checks. It never uses the active Junior workspace. A previously
+built or separately supplied installer may be checked with
+`-SkipInstallerBuild` and optional `-InstallerPath`.
+
 Use this checklist for every tagged junior release.
 
 ## Release scope
