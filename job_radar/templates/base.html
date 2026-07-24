@@ -37,6 +37,30 @@
             margin: 0;
         }
 
+        html {
+            scrollbar-color: var(--border-strong) var(--background-elevated);
+            scrollbar-width: thin;
+        }
+
+        *::-webkit-scrollbar {
+            height: 11px;
+            width: 11px;
+        }
+
+        *::-webkit-scrollbar-track {
+            background: var(--background-elevated);
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border: 2px solid var(--background-elevated);
+            border-radius: 999px;
+        }
+
+        *::-webkit-scrollbar-thumb:hover {
+            background: var(--link);
+        }
+
         .skip-link {
             background: var(--text);
             border-radius: 0 0 6px 6px;
@@ -148,6 +172,23 @@
 
         .page-title {
             margin-top: 0;
+        }
+
+        .admin-return {
+            margin: 0 0 18px;
+        }
+
+        .admin-return a {
+            display: inline-flex;
+            font-weight: 650;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .page > .page-card + .table-wrap,
+        .page > .page-card + .page-card,
+        .page > .table-wrap + .page-card {
+            margin-top: 18px;
         }
 
         .flash-message {
@@ -528,6 +569,11 @@
     </aside>
 
     <main id="main-content" class="page" tabindex="-1">
+{% if admin_mode_active and request.endpoint and request.endpoint.startswith('administration') and request.endpoint != 'administration' %}
+        <nav class="admin-return" aria-label="Administration navigation">
+            <a href="{{ url_for('administration') }}">&larr; Back to Administration</a>
+        </nav>
+{% endif %}
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% for category, message in messages %}
         <div class="page-card flash-message{% if category == 'error' %} validation-message{% endif %}" role="{% if category == 'error' %}alert{% else %}status{% endif %}">

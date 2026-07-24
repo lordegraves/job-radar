@@ -42,6 +42,22 @@
         flex-wrap: wrap;
         gap: 10px;
     }
+
+    .technical-scan-details {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        margin: 18px 0;
+        padding: 14px 18px;
+    }
+
+    .technical-scan-details > summary {
+        font-weight: 650;
+    }
+
+    .technical-scan-details pre {
+        max-width: 100%;
+    }
 </style>
 {% endblock %}
 
@@ -58,37 +74,39 @@
     {% endif %}
 </div>
 
-<h2>Manual scan command</h2>
+<details class="technical-scan-details">
+    <summary>Show technical scan details</summary>
 
-<pre><code>{{ scan_command }}</code></pre>
+    <h2>Manual scan command</h2>
+    <pre><code>{{ scan_command }}</code></pre>
 
-<h2>Command paths</h2>
-
-<table>
-    <caption class="visually-hidden">Junior command paths</caption>
-    <tbody>
-        <tr>
-            <th>Company config</th>
-            <td><code>{{ scan_config_path }}</code></td>
-        </tr>
-        <tr>
-            <th>Settings</th>
-            <td><code>{{ scan_settings_path }}</code></td>
-        </tr>
-        <tr>
-            <th>Scoring config</th>
-            <td><code>{{ scan_scoring_path }}</code></td>
-        </tr>
-        <tr>
-            <th>HTML report</th>
-            <td><code>{{ scan_report_path }}</code></td>
-        </tr>
-        <tr>
-            <th>Email preview</th>
-            <td><code>{{ scan_email_preview_path }}</code></td>
-        </tr>
-    </tbody>
-</table>
+    <h2>Command paths</h2>
+    <table>
+        <caption class="visually-hidden">Junior command paths</caption>
+        <tbody>
+            <tr>
+                <th>Company config</th>
+                <td><code>{{ scan_config_path }}</code></td>
+            </tr>
+            <tr>
+                <th>Settings</th>
+                <td><code>{{ scan_settings_path }}</code></td>
+            </tr>
+            <tr>
+                <th>Scoring config</th>
+                <td><code>{{ scan_scoring_path }}</code></td>
+            </tr>
+            <tr>
+                <th>HTML report</th>
+                <td><code>{{ scan_report_path }}</code></td>
+            </tr>
+            <tr>
+                <th>Email preview</th>
+                <td><code>{{ scan_email_preview_path }}</code></td>
+            </tr>
+        </tbody>
+    </table>
+</details>
 
 <h2>Run scan</h2>
 

@@ -160,9 +160,11 @@ def test_administration_backup_export_and_restore_workflow(
     client.post("/administration/unlock", data={"confirmation": "ADMIN"})
 
     page = client.get("/administration/recovery")
+    page_html = page.get_data(as_text=True)
     assert page.status_code == 200
-    assert "Create and download a backup" in page.get_data(as_text=True)
-    assert "Type RESTORE to confirm" in page.get_data(as_text=True)
+    assert 'href="/administration">&larr; Back to Administration</a>' in page_html
+    assert "Create and download a backup" in page_html
+    assert "Type RESTORE to confirm" in page_html
 
     created = client.post("/administration/recovery/backup")
     assert created.status_code == 200

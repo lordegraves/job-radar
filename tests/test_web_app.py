@@ -2156,6 +2156,7 @@ def test_scan_page_shows_manual_scan_command(
 
     assert "Scan" in html
     assert "Review the current scan settings or start a manual scan." in normalized_html
+    assert "<summary>Show technical scan details</summary>" in normalized_html
     assert "<h2>Run scan</h2>" in normalized_html
     assert "Email sending is disabled for manual scans started here." in normalized_html
     assert 'id="scan-submit-button"' in html

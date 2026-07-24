@@ -64,8 +64,10 @@ def test_admin_routes_require_unlock_and_render_catalog(tmp_path: Path) -> None:
     assert locked.status_code == 302
     assert "/administration/unlock" in locked.headers["Location"]
     assert unlocked.status_code == 200
-    assert "Employer Catalog" in unlocked.get_data(as_text=True)
-    assert "Add employer" in unlocked.get_data(as_text=True)
+    unlocked_html = unlocked.get_data(as_text=True)
+    assert 'href="/administration">&larr; Back to Administration</a>' in unlocked_html
+    assert "Employer Catalog" in unlocked_html
+    assert "Add employer" in unlocked_html
 
 
 def test_create_validate_enable_and_filter_employer(tmp_path: Path) -> None:
