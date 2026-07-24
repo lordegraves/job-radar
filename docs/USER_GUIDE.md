@@ -396,10 +396,13 @@ the underlying compatibility ID will remain managed by Junior.
 
 RC4 also does not yet provide a separate Saved Jobs workspace. RC5 is planned
 to let users select **Save for later** directly from a report without recording
-an application. A saved job can later be moved into Active Applications after
-the user applies, or marked **Reviewed / pass** so the same posting is omitted
-from future reports. This user bookmark will be separate from Junior's
-recommendation label **Hold**.
+an application. A saved job can later be moved into Active Applications with
+**I applied — track application**, or moved into a separate Reviewed Jobs view
+with **Pass** so the same posting is omitted from future reports. Active
+Applications and Application History will remain limited to jobs the user
+actually applied for. Saved Jobs and Reviewed Jobs will preserve profile-owned
+job decisions without becoming a second application tracker. The user bookmark
+will remain separate from Junior's recommendation label **Hold**.
 
 Scan results use **Review Needed** whenever Junior cannot confirm a practical
 requirement such as workplace arrangement, employment type, schedule, or

@@ -155,11 +155,19 @@ These corrections must be implemented and verified before RC5 is accepted:
   that the user applied. Saved jobs must have a profile-owned workspace of
   their own and must not inflate Active Applications, application-history
   counts, or applied-job metrics.
-- From Saved Jobs, the user must be able to open the posting, add notes, move
-  the job into Active Applications after deciding to apply, or mark it
-  **Reviewed / pass** so it no longer appears in future reports. Moving it into
-  Active Applications must preserve the scan-owned job ID and source evidence
-  rather than create a duplicate.
+- Saved Jobs and Reviewed Jobs must remain job-decision records, not application
+  records. They may share one compact workspace with separate **Saved for
+  later** and **Reviewed / passed** views, but neither view may be counted as
+  Active Applications or Application History.
+- From Saved Jobs, the user must be able to open the posting, add notes, select
+  **I applied — track application** to move the job into Active Applications,
+  or select **Pass** to move it into Reviewed Jobs. Each transition must
+  preserve the scan-owned job ID and source evidence rather than create a
+  duplicate.
+- Active Applications must contain only jobs the user says they applied for.
+  Application History must contain only completed applications, such as
+  rejected, withdrawn, or closed applications. Passing on a job before applying
+  must not create an application or application-history record.
 - Junior's recommendation label **Hold** must remain separate from the user's
   saved state. Hold means Junior recommends more review; Save for later means
   the user deliberately bookmarked the job. The interface must explain the
@@ -172,13 +180,28 @@ These corrections must be implemented and verified before RC5 is accepted:
   titles. Matching should prefer the source job ID and use Junior's durable
   canonical identity only when the source does not supply an ID.
 - The action must explain what will happen, allow cancellation before saving,
-  and remain reviewable through the profile's history so an accidental pass can
-  be corrected.
+  and remain reviewable through the profile's Reviewed Jobs view so an
+  accidental pass can be corrected.
+- Reviewed Jobs may retain a bounded profile-owned reason such as location,
+  compensation, contract duration, responsibilities, experience level, lack of
+  interest, duplicate or stale posting, or Other. RC5 may store this feedback,
+  but it must not silently change scoring or recommendation rules until that
+  learning behavior is separately designed, explained, tested, and approved.
+- Before adding storage or migrations, implementation must inventory existing
+  Tracker, Application History, report, scan-history, and profile-decision
+  services and reuse their ownership and identity boundaries. It must not
+  create overlapping job copies or a second application tracker.
+- Any existing Passed record must be classified from verified evidence before
+  migration. A record with no evidence that the user applied may move to
+  Reviewed Jobs; a completed real application remains in Application History.
+  Migration must be backed up, reversible, idempotent, and preserve uncertain
+  records for review instead of guessing or deleting them.
 - Focused tests must cover explicit foreign location, short contract duration,
   profile isolation, repeat scans, saved-to-applied transitions, saved-to-pass
-  transitions, duplicate prevention, bulk actions, changed postings, missing
-  source IDs, cancellation, and restoration. Full release validation and a
-  normal-user visual check remain required.
+  transitions, application-history boundaries, duplicate prevention, bulk
+  actions, changed postings, missing source IDs, cancellation, migration, and
+  restoration. Full release validation and a normal-user visual check remain
+  required.
 
 ## Protected wording notes
 

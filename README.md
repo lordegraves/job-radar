@@ -70,10 +70,12 @@ when the user selects Save. Normal users must never invent or maintain it.
 
 RC5 must also separate bookmarked jobs from applications. **Save for later**
 will keep a profile-owned job for later review without claiming the user
-applied. The user can later move it into Active Applications or mark it
-reviewed and prevent that exact posting from returning in future reports.
-Junior's recommendation label **Hold** is not the same as the user's saved
-state.
+applied. **Pass** will move a job into a separate profile-owned Reviewed Jobs
+view and prevent that exact posting from returning in future reports. **I
+applied — track application** will move the same job into Active Applications
+without duplicating it. Active Applications and Application History will remain
+limited to jobs the user actually applied for. Junior's recommendation label
+**Hold** is not the same as the user's saved state.
 
 ## Quick start for development
 
