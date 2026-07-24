@@ -6,6 +6,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a manual, read-only stable-release check on About that verifies Junior's official GitHub release link, explains whether an update is available, and never downloads, installs, migrates, or changes user data.
 - Added repeatable Windows install, repair/upgrade, and uninstall validation that compares user-owned files byte for byte and confirms application removal never deletes settings, profiles, resumes, companies, databases, reports, backups, schedules, or credential references.
 - Added a per-user Windows installer with Junior branding, Start Menu launch, optional desktop shortcut, silent test support, and uninstall behavior that removes application files while preserving user-owned data.
 - Added a reproducible PyInstaller Windows desktop build that produces an unsigned `Junior.exe` bundle with Junior's native icon, packaged resources, webview runtime, and secure-credential backends without including user-owned data.

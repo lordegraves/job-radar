@@ -15,6 +15,7 @@ from flask import (
     url_for,
 )
 
+from job_radar import __version__
 from job_radar.application_info_service import build_application_info
 from job_radar.config import load_settings
 from job_radar.diagnostic_service import build_diagnostics_view
@@ -56,6 +57,7 @@ from job_radar.scheduler_integration import (
     inspect_scheduler,
     remove_scheduler,
 )
+from job_radar.update_check_service import check_for_stable_update
 
 
 @dataclass(frozen=True)
@@ -119,7 +121,15 @@ def register_settings_routes(
                 database_path=runtime_paths.database_path,
                 user_data_location=runtime_paths.user_data_directory,
             ),
+            update_check=session.pop("update_check", None),
         )
+
+    @app.post("/settings/about/check-updates")
+    def settings_about_check_updates():
+        session["update_check"] = check_for_stable_update(
+            __version__
+        ).as_session_value()
+        return redirect(url_for("settings_about"))
 
     @app.get("/settings/diagnostics")
     def settings_diagnostics() -> str:

@@ -2,10 +2,23 @@
 
 from pathlib import Path
 
+import job_radar.web_routes.settings as settings_routes
 from job_radar import __version__
 from job_radar.application_info_service import build_application_info
 from job_radar.storage import initialize_database
 from job_radar.web_app import create_app
+from job_radar.update_check_service import check_for_stable_update
+
+
+class _ReleaseResponse:
+    def __init__(self, payload: dict[str, str]) -> None:
+        self.payload = payload
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, str]:
+        return self.payload
 
 
 def _write_settings(path: Path, database_path: Path) -> None:
@@ -54,3 +67,78 @@ def test_about_page_shows_safe_support_and_version_details(tmp_path: Path) -> No
     assert "Profile/configuration schema version" in html
     assert "claytonmgraves@outlook.com" in html
     assert "Do not include passwords" in html
+    assert "Check for updates" in html
+    assert "never downloads or installs" in html
+
+
+def test_update_check_reports_newer_verified_stable_release() -> None:
+    result = check_for_stable_update(
+        "0.1.0",
+        request_get=lambda *args, **kwargs: _ReleaseResponse(
+            {
+                "tag_name": "v0.2.0",
+                "html_url": (
+                    "https://github.com/lordegraves/job-radar/releases/tag/v0.2.0"
+                ),
+            }
+        ),
+    )
+
+    assert result.status == "available"
+    assert result.available_version == "0.2.0"
+    assert "will not download or install" in result.message
+
+
+def test_update_check_rejects_unverified_release_link() -> None:
+    result = check_for_stable_update(
+        "0.1.0",
+        request_get=lambda *args, **kwargs: _ReleaseResponse(
+            {
+                "tag_name": "v9.9.9",
+                "html_url": "https://example.com/download.exe",
+            }
+        ),
+    )
+
+    assert result.status == "unavailable"
+    assert result.release_url is None
+    assert "not changed" in result.message
+
+
+def test_about_update_check_is_manual_and_displays_safe_result(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+    database_path = tmp_path / "data" / "junior.sqlite3"
+    _write_settings(settings_path, database_path)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    monkeypatch.setattr(
+        settings_routes,
+        "check_for_stable_update",
+        lambda version: check_for_stable_update(
+            version,
+            request_get=lambda *args, **kwargs: _ReleaseResponse(
+                {
+                    "tag_name": "v0.2.0",
+                    "html_url": (
+                        "https://github.com/lordegraves/job-radar/"
+                        "releases/tag/v0.2.0"
+                    ),
+                }
+            ),
+        ),
+    )
+
+    client = app.test_client()
+    before_check = client.get("/settings/about").get_data(as_text=True)
+    response = client.post(
+        "/settings/about/check-updates",
+        follow_redirects=True,
+    )
+    after_check = response.get_data(as_text=True)
+
+    assert "Junior 0.2.0 is available" not in before_check
+    assert response.status_code == 200
+    assert "Junior 0.2.0 is available" in after_check
+    assert "will not download or install it automatically" in after_check

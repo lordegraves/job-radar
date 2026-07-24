@@ -78,7 +78,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 54 | Completed | Create a Windows installer with application icon, Start Menu entry, optional desktop shortcut, guided installation, clear install location, user-data preservation, and clean uninstall support. |
 | 55 | Completed | Ensure Windows upgrades preserve profiles, resumes, settings, companies, tracker/history data, reports, credentials, backups, and schedules while updating only application-owned files. |
 | 56 | Completed | Add Windows installer repair, upgrade, and uninstall validation, including confirmation that uninstalling the application does not delete user data without explicit approval. |
-| 57 | Planned | Add optional update checking that reports available stable releases without silently replacing the application or changing user data. |
+| 57 | Completed | Add optional update checking that reports available stable releases without silently replacing the application or changing user data. |
 | 58 | Planned | Package the application for Linux using a supported tarball-based distribution with launch scripts, dependency checks, user-data paths, migrations, logs, and clear install/uninstall instructions. |
 | 59 | In Progress | Support standalone local PC operation on Windows and Linux for users who want Job Radar to run only when they launch it. |
 | 60 | Planned | Support unattended service-style operation on Windows and Linux for users who want scheduled scans without keeping the desktop application open. |

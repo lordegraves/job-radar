@@ -206,3 +206,10 @@ git push origin feature/productization-foundation
 ## Release development
 
 See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before tagging or publishing a release.
+
+Junior's update check is intentionally a manual, read-only operation on the
+About page. It uses GitHub's latest stable release endpoint, accepts only a
+semantic-version tag and an HTTPS link under this repository's release path,
+and reports connection or validation problems without raw exceptions. It does
+not download an installer, replace application files, run migrations, or write
+user data.
