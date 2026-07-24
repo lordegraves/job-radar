@@ -4,11 +4,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from flask import Flask, abort, redirect, render_template, request, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, url_for
 
 from job_radar.tracker.tracker_ids import build_manual_job_radar_id
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import (
+    bulk_move_tracker_applications_to_history,
     delete_tracker_application,
     get_application_workflow_state,
     update_tracker_application_workflow,
@@ -88,6 +89,13 @@ TRACKER_TERMINAL_OUTCOME_OPTIONS = (
     "Rejected - No Interview",
     "Rejected - After Interview",
     "Withdrawn",
+)
+
+TRACKER_BULK_OUTCOME_OPTIONS = (
+    "Rejected - No Interview",
+    "Rejected - After Interview",
+    "Withdrawn",
+    "Closed Before Application",
 )
 
 TRACKER_WORKFLOW_PRIORITY = {
@@ -267,9 +275,40 @@ def register_tracker_routes(
             active_outcome_filter=outcome_filter,
             status_filter_options=CANONICAL_DECISION_FILTER_OPTIONS,
             outcome_filter_options=TRACKER_OUTCOME_FILTER_OPTIONS,
+            bulk_outcome_options=TRACKER_BULK_OUTCOME_OPTIONS,
             filters=TRACKER_FILTERS,
             sort_options=TRACKER_SORT_OPTIONS,
         )
+
+    @app.post("/tracker/bulk-update")
+    def bulk_update_tracker_applications():
+        selected_ids = request.form.getlist("job_radar_id")
+        outcome = request.form.get("bulk_outcome", "").strip()
+        return_filter = request.form.get("return_filter", "all").strip()
+
+        if return_filter not in TRACKER_FILTERS:
+            return_filter = "all"
+        if outcome not in TRACKER_BULK_OUTCOME_OPTIONS:
+            abort(400)
+
+        try:
+            updated_count = bulk_move_tracker_applications_to_history(
+                get_database_path(),
+                job_radar_ids=selected_ids,
+                outcome=outcome,
+                profile_id=get_profile_id(),
+            )
+        except ValueError:
+            abort(400)
+        except LookupError:
+            abort(404)
+
+        noun = "application" if updated_count == 1 else "applications"
+        flash(
+            f"Moved {updated_count} {noun} to History as {outcome}.",
+            "success",
+        )
+        return redirect(url_for("tracker", filter=return_filter))
 
     @app.get("/tracker/add")
     def add_tracker_application() -> str:

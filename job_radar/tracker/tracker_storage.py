@@ -335,28 +335,42 @@ def get_application(
 
     with connect_database(db_path) as connection:
         _repair_url_backed_tracker_ids(connection)
-        connection.row_factory = sqlite3.Row
+        return get_application_with_connection(
+            connection,
+            job_radar_id,
+            profile_id=profile_id,
+        )
 
-        row = connection.execute(
-            """
-            SELECT
-                job_radar_id,
-                company_name,
-                role_title,
-                source_url,
-                status,
-                follow_up_on,
-                outcome,
-                notes,
-                applied_on,
-                last_activity_on,
-                created_at,
-                updated_at
-            FROM application_tracker
-            WHERE job_radar_id = ? AND profile_id IS ?
-            """,
-            (job_radar_id, profile_id),
-        ).fetchone()
+
+def get_application_with_connection(
+    connection: sqlite3.Connection,
+    job_radar_id: str,
+    *,
+    profile_id: str | None = None,
+) -> ApplicationRecord | None:
+    """Load one profile-owned application inside an existing transaction."""
+
+    connection.row_factory = sqlite3.Row
+    row = connection.execute(
+        """
+        SELECT
+            job_radar_id,
+            company_name,
+            role_title,
+            source_url,
+            status,
+            follow_up_on,
+            outcome,
+            notes,
+            applied_on,
+            last_activity_on,
+            created_at,
+            updated_at
+        FROM application_tracker
+        WHERE job_radar_id = ? AND profile_id IS ?
+        """,
+        (job_radar_id, profile_id),
+    ).fetchone()
 
     if row is None:
         return None

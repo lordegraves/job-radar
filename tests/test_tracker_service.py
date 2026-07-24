@@ -8,9 +8,16 @@ import pytest
 
 from job_radar.history_models import JobHistoryRecord
 from job_radar.models import JobPosting
-from job_radar.storage import initialize_database, upsert_job_history_record
+from job_radar.profile_models import ManagedProfile
+from job_radar.profile_storage import create_profile
+from job_radar.storage import (
+    fetch_included_job_history_records,
+    initialize_database,
+    upsert_job_history_record,
+)
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import (
+    bulk_move_tracker_applications_to_history,
     build_application_record_from_history_record,
     build_application_record_from_posting,
     get_application_workflow_state,
@@ -753,6 +760,122 @@ def test_update_tracker_application_workflow_rolls_back_failed_move(
 
     assert tracker_count == 1
     assert history_count == 0
+
+
+def test_bulk_move_tracker_applications_to_history_is_atomic_and_profile_owned(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+    create_profile(
+        database_path,
+        ManagedProfile(profile_id="profile_aaaaaaaa", display_name="Test User A"),
+    )
+    create_profile(
+        database_path,
+        ManagedProfile(profile_id="profile_bbbbbbbb", display_name="Test User B"),
+    )
+    first = make_posting()
+    second = JobPosting(
+        **{
+            **first.__dict__,
+            "source_job_id": "456",
+            "source_url": "https://example.com/jobs/platform-engineer",
+            "title": "Platform Engineer",
+            "canonical_key": "example-mobility:platform-engineer:remote",
+            "content_hash": "hash-platform",
+        }
+    )
+
+    for posting in (first, second):
+        track_application_from_posting(
+            str(database_path),
+            posting,
+            status="Applied",
+            outcome="Dormant",
+            notes=f"Notes for {posting.title}.",
+            profile_id="profile_aaaaaaaa",
+        )
+    track_application_from_posting(
+        str(database_path),
+        first,
+        status="Applied",
+        outcome="Dormant",
+        profile_id="profile_bbbbbbbb",
+    )
+
+    moved = bulk_move_tracker_applications_to_history(
+        str(database_path),
+        job_radar_ids=[first.job_radar_id, second.job_radar_id],
+        outcome="Rejected - No Interview",
+        profile_id="profile_aaaaaaaa",
+    )
+
+    assert moved == 2
+    assert get_application(
+        database_path,
+        first.job_radar_id,
+        profile_id="profile_aaaaaaaa",
+    ) is None
+    assert get_application(
+        database_path,
+        second.job_radar_id,
+        profile_id="profile_aaaaaaaa",
+    ) is None
+    assert get_application(
+        database_path,
+        first.job_radar_id,
+        profile_id="profile_bbbbbbbb",
+    ) is not None
+    history = fetch_included_job_history_records(
+        database_path,
+        profile_id="profile_aaaaaaaa",
+    )
+    assert len(history) == 2
+    assert {record.outcome_category for record in history} == {
+        "Rejected - No Interview"
+    }
+    assert {record.notes for record in history} == {
+        "Notes for Senior Site Reliability Engineer.",
+        "Notes for Platform Engineer.",
+    }
+
+
+def test_bulk_move_rolls_back_when_any_selected_application_is_missing(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+    create_profile(
+        database_path,
+        ManagedProfile(profile_id="profile_aaaaaaaa", display_name="Test User"),
+    )
+    posting = make_posting()
+    track_application_from_posting(
+        str(database_path),
+        posting,
+        status="Applied",
+        outcome="Dormant",
+        profile_id="profile_aaaaaaaa",
+    )
+
+    with pytest.raises(LookupError):
+        bulk_move_tracker_applications_to_history(
+            str(database_path),
+            job_radar_ids=[posting.job_radar_id, "jr-missing-12345678"],
+            outcome="Rejected - No Interview",
+            profile_id="profile_aaaaaaaa",
+        )
+
+    assert get_application(
+        database_path,
+        posting.job_radar_id,
+        profile_id="profile_aaaaaaaa",
+    ) is not None
+    assert fetch_included_job_history_records(
+        database_path,
+        profile_id="profile_aaaaaaaa",
+    ) == []
 
 
 def test_update_history_record_workflow_moves_record_to_tracker(

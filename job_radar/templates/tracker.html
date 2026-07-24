@@ -159,6 +159,29 @@
         overflow-x: auto;
     }
 
+    .bulk-action-bar {
+        align-items: end;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .bulk-action-bar label {
+        margin: 0;
+    }
+
+    .bulk-action-bar select {
+        margin-top: 6px;
+        min-width: 240px;
+    }
+
+    .row-action {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+    }
+
     .table-wrap table {
         table-layout: fixed;
         width: 100%;
@@ -172,7 +195,7 @@
 
     .table-wrap th:nth-child(1),
     .table-wrap td:nth-child(1) {
-        width: 7%;
+        width: 10%;
         white-space: nowrap;
     }
 
@@ -339,11 +362,31 @@
 </div>
 {% else %}
 <div class="table-wrap">
-    <table>
-        <caption class="visually-hidden">Active applications</caption>
-        <thead>
-            <tr>
-                <th>Action</th>
+    <form id="bulk-application-form" method="post" action="{{ url_for('bulk_update_tracker_applications') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="return_filter" value="{{ active_filter }}">
+        <div class="bulk-action-bar">
+            <label for="bulk-outcome">
+                Move selected applications to History as
+                <select id="bulk-outcome" name="bulk_outcome">
+                    {% for bulk_outcome in bulk_outcome_options %}
+                    <option value="{{ bulk_outcome }}">{{ bulk_outcome }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button id="bulk-update-button" type="submit" disabled>Update selected</button>
+        </div>
+
+        <table>
+            <caption class="visually-hidden">Active applications</caption>
+            <thead>
+                <tr>
+                    <th>
+                        <span class="row-action">
+                            <input id="select-all-applications" type="checkbox">
+                            <label for="select-all-applications">Select all</label>
+                        </span>
+                    </th>
                 <th>Company</th>
                 <th>Role</th>
                 <th>Status</th>
@@ -352,14 +395,24 @@
                 <th>Last activity</th>
                 <th>Follow-up</th>
                 <th>Outcome</th>
-            </tr>
-        </thead>
-        <tbody>
+                </tr>
+            </thead>
+            <tbody>
             {% for row in applications %}
             <tr class="workflow-row workflow-{{ row.workflow_state }}">
                 <td>
-                    <a
-                        href="{{ url_for('edit_tracker_application', job_radar_id=row.application.job_radar_id, filter=active_filter) }}">{% if active_filter == "needs_review" %}Review{% else %}Open{% endif %}</a>
+                    <span class="row-action">
+                        <input
+                            class="application-selector"
+                            id="select-{{ loop.index }}"
+                            name="job_radar_id"
+                            type="checkbox"
+                            value="{{ row.application.job_radar_id }}"
+                            aria-label="Select {{ row.application.company_name }} — {{ row.application.role_title }}"
+                        >
+                        <a
+                            href="{{ url_for('edit_tracker_application', job_radar_id=row.application.job_radar_id, filter=active_filter) }}">{% if active_filter == "needs_review" %}Review{% else %}Open{% endif %}</a>
+                    </span>
                 </td>
                 <td>{{ row.application.company_name }}</td>
                 <td>{{ row.application.role_title }}</td>
@@ -370,9 +423,49 @@
                 <td class="date-cell">{{ row.application.follow_up_on or "" }}</td>
                 <td class="outcome-cell">{{ row.application.outcome or "" }}</td>
             </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
 </div>
+
+<script>
+    (() => {
+        const form = document.getElementById("bulk-application-form");
+        const selectAll = document.getElementById("select-all-applications");
+        const selectors = [...document.querySelectorAll(".application-selector")];
+        const updateButton = document.getElementById("bulk-update-button");
+        const outcome = document.getElementById("bulk-outcome");
+
+        function refreshSelectionState() {
+            const selectedCount = selectors.filter((selector) => selector.checked).length;
+            updateButton.disabled = selectedCount === 0;
+            selectAll.checked = selectedCount > 0 && selectedCount === selectors.length;
+            selectAll.indeterminate = selectedCount > 0 && selectedCount < selectors.length;
+        }
+
+        selectAll.addEventListener("change", () => {
+            selectors.forEach((selector) => {
+                selector.checked = selectAll.checked;
+            });
+            refreshSelectionState();
+        });
+        selectors.forEach((selector) => {
+            selector.addEventListener("change", refreshSelectionState);
+        });
+        form.addEventListener("submit", (event) => {
+            const selectedCount = selectors.filter((selector) => selector.checked).length;
+            if (
+                selectedCount === 0
+                || !window.confirm(
+                    `Move ${selectedCount} selected application${selectedCount === 1 ? "" : "s"} `
+                    + `to History as ${outcome.value}?`
+                )
+            ) {
+                event.preventDefault();
+            }
+        });
+    })();
+</script>
 {% endif %}
 {% endblock %}

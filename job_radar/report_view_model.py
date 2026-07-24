@@ -228,10 +228,10 @@ def is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
         and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
     )
 
-    return scored_posting.review_needed_eligible or (
-        eligibility_needs_review
-        and scored_posting.top_match_eligible
-    )
+    # Practical unknowns belong in Review Needed even when the legacy keyword
+    # score is weak. Calling the job "not recommended" while its own action says
+    # "Needs review" hides exactly the uncertainty the user must resolve.
+    return scored_posting.review_needed_eligible or eligibility_needs_review
 
 
 def is_email_top_match_posting(scored_posting: ScoredPosting) -> bool:
@@ -264,7 +264,4 @@ def is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
     ):
         return False
 
-    return scored_posting.review_needed_eligible or (
-        eligibility_needs_review
-        and scored_posting.top_match_eligible
-    )
+    return scored_posting.review_needed_eligible or eligibility_needs_review

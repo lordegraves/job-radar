@@ -8,6 +8,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## 0.2.0 - 2026-07-24
 
+- Corrected report grouping so jobs with unresolved practical details appear
+  under Review Needed instead of being contradicted by a "not recommended"
+  category. Top Matches still require both strong role fit and confirmed
+  practical eligibility.
+- Added a guarded bulk action for moving selected Active Applications to
+  History with a rejected, withdrawn, or closed outcome in one atomic,
+  profile-owned operation.
 - Prevented a newly requested scan from replaying the previous scan's
   completion notification before the new scan actually starts, and suppressed
   the redundant completion popup while the user is already on the Scan page.

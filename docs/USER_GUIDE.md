@@ -379,10 +379,18 @@ Typical actions include:
 - update status, outcome, and dates
 - record follow-up dates and notes
 - use workflow-aware quick actions
+- select several applications and move them to History with one terminal
+  outcome; the entire selection succeeds or nothing changes
 - move terminal applications to Application History
 - delete a record through explicit confirmation
 
 junior assigns app-owned IDs to manual records. Posting URLs remain source evidence, not primary identity.
+
+Scan results use **Review Needed** whenever Junior cannot confirm a practical
+requirement such as workplace arrangement, employment type, schedule, or
+compensation. This does not mean the role is a poor fit. **Top Match** remains
+reserved for roles that have both strong role evidence and enough confirmed
+practical information to support applying.
 
 ## Application History
 

@@ -262,6 +262,29 @@ def test_needs_review_role_moves_from_top_match_to_review_needed() -> None:
     assert view.email_review_needed == [posting]
 
 
+def test_practical_unknown_is_review_needed_even_below_legacy_score_gate() -> None:
+    posting = make_scored_posting(
+        title="Unfamiliar but potentially relevant role",
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="work_arrangement_unknown",
+                    message="The posting does not clearly identify a workplace arrangement.",
+                ),
+            ),
+        ),
+    )
+
+    view = build_report_view_model(scored_postings=[posting])
+
+    assert view.top_matches == []
+    assert view.review_needed == [posting]
+    assert view.email_top_matches == []
+    assert view.email_review_needed == [posting]
+    assert _is_storage_relevant_posting(posting)
+
+
 def test_tracked_role_preserves_track_status_when_not_eligible() -> None:
     tracked = make_scored_posting(
         title="Tracked Infrastructure Engineer",

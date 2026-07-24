@@ -30,7 +30,8 @@ junior currently provides:
 - GUI-managed profile creation, editing, selection, guarded deletion, and app-owned resume storage
 - profile-owned related-role discovery with evidence explanations and explicit user approval
 - unified Profile / Resume workflow for profile creation, résumé management, profile-owned role, location, workplace, schedule, compensation, and travel selections, and occupation-neutral scoring ownership for newly created managed profiles
-- tracker workflow states, follow-up dates, quick actions, archive/restore workflows, and guarded deletion
+- tracker workflow states, follow-up dates, quick actions, bulk terminal updates,
+  archive/restore workflows, and guarded deletion
 - an unobtrusive Home dashboard option to share a Junior story or make an
   entirely voluntary Venmo donation that does not affect application behavior
 - scan lifecycle records, progress state, cross-process locking, stage-specific failures, and bounded pagination

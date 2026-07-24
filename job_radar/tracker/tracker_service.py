@@ -18,6 +18,7 @@ from job_radar.tracker.tracker_storage import (
     delete_application,
     delete_application_with_connection,
     get_application,
+    get_application_with_connection,
     update_application_status,
     upsert_application,
     upsert_application_with_connection,
@@ -305,6 +306,58 @@ def update_tracker_application_workflow(
         return "missing"
 
     return "updated"
+
+
+def bulk_move_tracker_applications_to_history(
+    database_path: str,
+    *,
+    job_radar_ids: list[str],
+    outcome: str,
+    profile_id: str | None = None,
+) -> int:
+    """Move selected active applications to History in one transaction."""
+
+    if outcome not in APPLIED_HISTORY_OUTCOMES:
+        raise ValueError("Unsupported bulk application outcome.")
+
+    selected_ids = list(dict.fromkeys(item.strip() for item in job_radar_ids if item.strip()))
+    if not selected_ids:
+        raise ValueError("Select at least one application.")
+
+    with connect_database(database_path) as connection:
+        for job_radar_id in selected_ids:
+            application = get_application_with_connection(
+                connection,
+                job_radar_id,
+                profile_id=profile_id,
+            )
+            if application is None:
+                raise LookupError(
+                    "A selected application is no longer available in this profile."
+                )
+
+            history_record = build_history_record_from_application_record(
+                application,
+                status="Applied",
+                outcome=outcome,
+                notes=application.notes,
+            )
+            upsert_job_history_record_with_connection(
+                connection,
+                history_record,
+                profile_id=profile_id,
+            )
+            deleted = delete_application_with_connection(
+                connection,
+                job_radar_id,
+                profile_id=profile_id,
+            )
+            if not deleted:
+                raise RuntimeError(
+                    "A selected application disappeared during the history move."
+                )
+
+    return len(selected_ids)
 
 
 def delete_tracker_application(

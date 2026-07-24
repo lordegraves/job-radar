@@ -3079,9 +3079,13 @@ def test_tracker_page_filters_by_status_and_outcome(tmp_path: Path) -> None:
     assert '<option value="Withdrawn"' in html
     assert '<option value="Revisit"' in html
     assert '<option value="N/A"' in html
-    assert '<option value="Rejected - No Interview"' not in html
-    assert '<option value="Rejected - After Interview"' not in html
-    assert '<option value="Closed Before Application"' not in html
+    outcome_filter = html.split(
+        '<select id="tracker-outcome-filter"',
+        maxsplit=1,
+    )[1].split("</select>", maxsplit=1)[0]
+    assert '<option value="Rejected - No Interview"' not in outcome_filter
+    assert '<option value="Rejected - After Interview"' not in outcome_filter
+    assert '<option value="Closed Before Application"' not in outcome_filter
     assert "Alive Until Declared Dead" not in html
     assert "Clear search/field filters/sort" in html
 
@@ -3456,6 +3460,67 @@ def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
     assert history_record.applied_on == "2026-07-03"
     assert history_record.last_activity_on == "2026-07-12"
     assert history_record.follow_up_on == "2026-07-20"
+
+
+def test_tracker_bulk_update_moves_selected_applications_to_history(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    for suffix, company in (
+        ("11111111", "Example Bakery"),
+        ("22222222", "Example Hotel"),
+    ):
+        upsert_application(
+            database_file,
+            ApplicationRecord(
+                job_radar_id=f"jr-bulk-{suffix}",
+                company_name=company,
+                role_title="Cook",
+                status="Applied",
+                outcome="Dormant",
+            ),
+        )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    page_html = client.get("/tracker").get_data(as_text=True)
+    assert 'id="select-all-applications"' in page_html
+    assert 'id="bulk-outcome"' in page_html
+    assert 'id="bulk-update-button"' in page_html
+
+    response = client.post(
+        "/tracker/bulk-update",
+        data={
+            "return_filter": "needs_review",
+            "job_radar_id": [
+                "jr-bulk-11111111",
+                "jr-bulk-22222222",
+            ],
+            "bulk_outcome": "Rejected - No Interview",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert (
+        "Moved 2 applications to History as Rejected - No Interview."
+        in response.get_data(as_text=True)
+    )
+    assert list_applications(database_file) == []
+    history = fetch_included_job_history_records(database_file)
+    assert len(history) == 2
+    assert {record.company for record in history} == {
+        "Example Bakery",
+        "Example Hotel",
+    }
+    assert {record.outcome_category for record in history} == {
+        "Rejected - No Interview"
+    }
 
 
 def test_tracker_edit_quick_action_marks_application_dormant(
