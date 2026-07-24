@@ -193,6 +193,26 @@
 
         .flash-message {
             margin-bottom: 16px;
+            padding-right: 58px;
+            position: relative;
+        }
+
+        .flash-dismiss {
+            background: transparent;
+            border-color: transparent;
+            color: var(--muted);
+            font-size: 1.25rem;
+            line-height: 1;
+            padding: 8px 10px;
+            position: absolute;
+            right: 12px;
+            top: 10px;
+        }
+
+        .flash-dismiss:hover {
+            background: var(--surface-muted);
+            border-color: var(--border);
+            color: var(--text);
         }
 
         .muted {
@@ -578,6 +598,7 @@
 {% for category, message in messages %}
         <div class="page-card flash-message{% if category == 'error' %} validation-message{% endif %}" role="{% if category == 'error' %}alert{% else %}status{% endif %}">
             {{ message }}
+            <button class="flash-dismiss" type="button" aria-label="Dismiss message">&times;</button>
         </div>
 {% endfor %}
 {% endwith %}
@@ -591,6 +612,12 @@
         if (!window.location.hash) {
             window.scrollTo(0, 0);
         }
+
+        document.querySelectorAll(".flash-dismiss").forEach((button) => {
+            button.addEventListener("click", () => {
+                button.closest(".flash-message")?.remove();
+            });
+        });
 
         function confirmDestructiveAction(message) {
             const confirmation = window.prompt(`${message}\n\nType DELETE to confirm.`);

@@ -237,6 +237,10 @@ def test_companies_page_can_pause_and_resume_active_profile_company(
     assert "Example Cafe is now paused for Culinary Profile&#39;s profile." in (
         paused_html
     )
+    assert 'class="flash-dismiss"' in paused_html
+    assert "Example Cafe is now paused" not in client.get(
+        "/companies"
+    ).get_data(as_text=True)
     assert "Resume" in paused_html
     assert is_profile_employer_enabled(
         database_path, profile.profile_id, "example_cafe"
@@ -298,8 +302,7 @@ def test_company_scanning_route_rejects_invalid_state_and_legacy_mode(
         data={"state": "paused"},
     )
     assert legacy_response.status_code == 302
-    assert "company_result=error" in legacy_response.headers["Location"]
-    assert "Select+a+managed+profile" in legacy_response.headers["Location"]
+    assert legacy_response.headers["Location"] == "/companies"
     assert is_profile_employer_enabled(
         database_path, profile.profile_id, "example_cafe"
     ) is True
@@ -494,7 +497,12 @@ def test_add_company_page_blocks_incomplete_and_duplicate_employers(
 
 def test_add_company_by_careers_url_requires_detected_source_confirmation(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
     settings_path = tmp_path / "settings.yaml"
     database_path = tmp_path / "job_radar.sqlite3"
     write_settings_file(settings_path, database_path)
@@ -532,7 +540,7 @@ def test_add_company_by_careers_url_requires_detected_source_confirmation(
         },
     )
     assert confirmed.status_code == 302
-    assert confirmed.headers["Location"].startswith("/companies?")
+    assert confirmed.headers["Location"] == "/companies"
     assert get_profile(database_path, profile.profile_id).company_ids == (
         "example-kitchens",
     )
@@ -540,7 +548,12 @@ def test_add_company_by_careers_url_requires_detected_source_confirmation(
 
 def test_add_company_by_complete_adp_url_requests_name_and_adds_source(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object(), object()],
+    )
     settings_path = tmp_path / "settings.yaml"
     database_path = tmp_path / "job_radar.sqlite3"
     write_settings_file(settings_path, database_path)
@@ -579,13 +592,64 @@ def test_add_company_by_complete_adp_url_requests_name_and_adds_source(
         },
     )
     assert confirmed.status_code == 302
-    assert confirmed.headers["Location"].startswith("/companies?")
+    assert confirmed.headers["Location"] == "/companies"
     employer = get_employer_source(database_path, "example-hospitality")
     assert employer is not None
     assert employer.source_type == "adp"
     assert get_profile(database_path, profile.profile_id).company_ids == (
         "example-hospitality",
     )
+
+
+def test_company_detail_shows_and_refreshes_safe_source_health(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="example_company",
+            name="Example Company",
+            source_type="workday",
+            source_config={
+                "source_url": "https://example.invalid/api/jobs",
+                "source_base_url": "https://example.invalid/jobs",
+            },
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+        company_ids=("example_company",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    monkeypatch.setattr(
+        "job_radar.employer_connection_service.collect_jobs_for_company",
+        lambda config: [object()] * 12,
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    initial_html = client.get(
+        "/companies/example_company"
+    ).get_data(as_text=True)
+    tested = client.post(
+        "/companies/example_company/test-source",
+        follow_redirects=True,
+    )
+    tested_html = tested.get_data(as_text=True)
+
+    assert "Not tested" in initial_html
+    assert "Workday" in initial_html
+    assert "Test job source" in initial_html
+    assert "Connection succeeded and returned 12 jobs." in tested_html
+    assert "Connected" in tested_html
+    assert "Jobs found during last check" in tested_html
+    assert 'class="flash-dismiss"' in tested_html
 
 
 def test_profile_can_correct_company_name_without_changing_source(

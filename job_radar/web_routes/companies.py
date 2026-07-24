@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from flask import Flask, abort, redirect, render_template, request, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, url_for
 
 from job_radar.company_assignment_service import (
     add_existing_company_to_profile,
@@ -17,6 +17,10 @@ from job_radar.domain_errors import (
     JuniorDomainError,
 )
 from job_radar.employer_admin_service import EmployerAdminError, rename_employer
+from job_radar.employer_connection_service import (
+    EmployerConnectionError,
+    test_employer_connection,
+)
 from job_radar.employer_resolution_service import (
     ALREADY_ASSIGNED,
     CREATED_SCAN_READY,
@@ -36,7 +40,7 @@ def register_company_routes(
     *,
     get_database_path: Callable[[], str],
 ) -> None:
-    """Register profile-aware read-only company configuration pages."""
+    """Register profile-aware company management and safe source testing."""
 
     @app.get("/companies")
     def companies() -> str:
@@ -48,9 +52,6 @@ def register_company_routes(
                 workspace=workspace,
                 active_profile=workspace.active_profile,
                 uses_legacy_yaml=False,
-                company_result=request.args.get("company_result", "").strip(),
-                company_message=request.args.get("company_message", "").strip(),
-                company_error=request.args.get("company_error", "").strip(),
                 review_states=list_profile_review_states(
                     get_database_path(),
                     workspace.active_profile.profile_id,
@@ -61,9 +62,6 @@ def register_company_routes(
             "companies.html",
             workspace=workspace,
             profile_required=True,
-            company_result=request.args.get("company_result", "").strip(),
-            company_message=request.args.get("company_message", "").strip(),
-            company_error=request.args.get("company_error", "").strip(),
         )
 
     @app.get("/companies/<company_key>")
@@ -87,26 +85,40 @@ def register_company_routes(
                 company=company,
                 active_profile=workspace.active_profile,
                 uses_legacy_yaml=False,
-                company_result=request.args.get("company_result", "").strip(),
-                company_message=request.args.get("company_message", "").strip(),
-                company_error=request.args.get("company_error", "").strip(),
             )
 
         abort(404)
+
+    @app.post("/companies/<company_key>/test-source")
+    def test_company_source(company_key: str):
+        workspace = build_company_workspace(get_database_path())
+        if workspace.active_profile is None or not any(
+            item.company_key == company_key for item in workspace.companies
+        ):
+            abort(404)
+        try:
+            health = test_employer_connection(
+                get_database_path(),
+                company_key,
+            )
+        except EmployerConnectionError as error:
+            flash(str(error), "error")
+        else:
+            flash(
+                health.message or "The job-source test finished.",
+                "success" if health.state == "success" else "error",
+            )
+        return redirect(url_for("company_detail", company_key=company_key))
 
     @app.post("/companies/<company_key>/scanning")
     def set_company_scanning(company_key: str):
         workspace = build_company_workspace(get_database_path())
         if workspace.active_profile is None:
-            return redirect(
-                url_for(
-                    "companies",
-                    company_result="error",
-                    company_error=(
-                        "Select a managed profile before changing a company."
-                    ),
-                )
+            flash(
+                "Select a managed profile before changing a company.",
+                "error",
             )
+            return redirect(url_for("companies"))
 
         requested_state = request.form.get("state", "").strip().casefold()
         try:
@@ -122,39 +134,26 @@ def register_company_routes(
                 scanning=requested_state == "scanning",
             )
         except JuniorDomainError as error:
-            return redirect(
-                url_for(
-                    "companies",
-                    company_result="error",
-                    company_error=str(error),
-                )
-            )
+            flash(str(error), "error")
+            return redirect(url_for("companies"))
 
         state_label = "scanning" if result.scanning else "paused"
-        return redirect(
-            url_for(
-                "companies",
-                company_result="updated",
-                company_message=(
-                    f"{result.employer_name} is now {state_label} for "
-                    f"{result.profile_name}'s profile."
-                ),
-            )
+        flash(
+            f"{result.employer_name} is now {state_label} for "
+            f"{result.profile_name}'s profile.",
+            "success",
         )
+        return redirect(url_for("companies"))
 
     @app.post("/companies/<company_key>/remove")
     def remove_profile_company(company_key: str):
         workspace = build_company_workspace(get_database_path())
         if workspace.active_profile is None:
-            return redirect(
-                url_for(
-                    "companies",
-                    company_result="error",
-                    company_error=(
-                        "Select a managed profile before removing a company."
-                    ),
-                )
+            flash(
+                "Select a managed profile before removing a company.",
+                "error",
             )
+            return redirect(url_for("companies"))
 
         try:
             if request.form.get("confirmation", "").strip() != "REMOVE":
@@ -169,25 +168,16 @@ def register_company_routes(
                 company_key,
             )
         except JuniorDomainError as error:
-            return redirect(
-                url_for(
-                    "companies",
-                    company_result="error",
-                    company_error=str(error),
-                )
-            )
+            flash(str(error), "error")
+            return redirect(url_for("companies"))
 
-        return redirect(
-            url_for(
-                "companies",
-                company_result="updated",
-                company_message=(
-                    f"{result.employer_name} was removed from "
-                    f"{result.profile_name}'s company list. Existing jobs and "
-                    "application history were kept."
-                ),
-            )
+        flash(
+            f"{result.employer_name} was removed from "
+            f"{result.profile_name}'s company list. Existing jobs and "
+            "application history were kept.",
+            "success",
         )
+        return redirect(url_for("companies"))
 
     @app.post("/companies/<company_key>/name")
     def correct_company_name(company_key: str):
@@ -205,24 +195,13 @@ def register_company_routes(
                 name=request.form.get("company_name", ""),
             )
         except EmployerAdminError as error:
-            return redirect(
-                url_for(
-                    "company_detail",
-                    company_key=company_key,
-                    company_result="error",
-                    company_error=str(error),
-                )
-            )
-        return redirect(
-            url_for(
-                "company_detail",
-                company_key=company_key,
-                company_result="updated",
-                company_message=(
-                    f"The shared company name is now {renamed.employer.name}."
-                ),
-            )
+            flash(str(error), "error")
+            return redirect(url_for("company_detail", company_key=company_key))
+        flash(
+            f"The shared company name is now {renamed.employer.name}.",
+            "success",
         )
+        return redirect(url_for("company_detail", company_key=company_key))
 
     @app.post("/companies/setup-requests/<request_id>/remove")
     def remove_company_setup_request(request_id: str):
@@ -237,23 +216,14 @@ def register_company_routes(
                 confirmation=request.form.get("confirmation", ""),
             )
         except EmployerReviewError as error:
-            return redirect(
-                url_for(
-                    "companies",
-                    company_result="error",
-                    company_error=str(error),
-                )
-            )
-        return redirect(
-            url_for(
-                "companies",
-                company_result="updated",
-                company_message=(
-                    "The unfinished setup attempt was removed. Working "
-                    "companies, jobs, applications, and history were not changed."
-                ),
-            )
+            flash(str(error), "error")
+            return redirect(url_for("companies"))
+        flash(
+            "The unfinished setup attempt was removed. Working companies, "
+            "jobs, applications, and history were not changed.",
+            "success",
         )
+        return redirect(url_for("companies"))
 
     @app.get("/companies/add")
     def add_company_page() -> str:
@@ -268,15 +238,11 @@ def register_company_routes(
             search_query=request.args.get("q", ""),
         )
         if catalog.active_profile is None:
-            return redirect(
-                url_for(
-                    "companies",
-                    company_result="error",
-                    company_error=(
-                        "Select a managed profile before adding a company."
-                    ),
-                )
+            flash(
+                "Select a managed profile before adding a company.",
+                "error",
             )
+            return redirect(url_for("companies"))
         if (
             retry_request is not None
             and retry_request.requesting_profile_id
@@ -304,15 +270,11 @@ def register_company_routes(
     def resolve_company_submission():
         workspace = build_company_workspace(get_database_path())
         if workspace.active_profile is None:
-            return redirect(
-                url_for(
-                    "companies",
-                    company_result="error",
-                    company_error=(
-                        "Select a managed profile before adding a company."
-                    ),
-                )
+            flash(
+                "Select a managed profile before adding a company.",
+                "error",
             )
+            return redirect(url_for("companies"))
 
         submission = request.form.get("company", "").strip()
         retry_request_id = request.form.get("retry_request_id", "").strip()
@@ -370,13 +332,8 @@ def register_company_routes(
                         retry_request_id,
                         resolution.employer_id,
                     )
-            return redirect(
-                url_for(
-                    "companies",
-                    company_result="updated",
-                    company_message=resolution.message,
-                )
-            )
+            flash(resolution.message, "success")
+            return redirect(url_for("companies"))
         catalog = build_company_catalog_view(get_database_path())
         return render_template(
             "company_add.html",
@@ -391,15 +348,11 @@ def register_company_routes(
     def add_existing_company():
         catalog = build_company_catalog_view(get_database_path())
         if catalog.active_profile is None:
-            return redirect(
-                url_for(
-                    "companies",
-                    company_result="error",
-                    company_error=(
-                        "Select a managed profile before adding a company."
-                    ),
-                )
+            flash(
+                "Select a managed profile before adding a company.",
+                "error",
             )
+            return redirect(url_for("companies"))
 
         employer_id = request.form.get("employer_id", "").strip()
         retry_request_id = request.form.get("retry_request_id", "").strip()
@@ -428,20 +381,12 @@ def register_company_routes(
                         employer_id,
                     )
         except JuniorDomainError as error:
-            return redirect(
-                url_for(
-                    "add_company_page",
-                    company_error=str(error),
-                )
-            )
+            flash(str(error), "error")
+            return redirect(url_for("add_company_page"))
 
-        return redirect(
-            url_for(
-                "companies",
-                company_result="updated",
-                company_message=(
-                    f"{result.employer_name} was added to "
-                    f"{result.profile_name}'s company list and will be scanned."
-                ),
-            )
+        flash(
+            f"{result.employer_name} was added to "
+            f"{result.profile_name}'s company list and will be scanned.",
+            "success",
         )
+        return redirect(url_for("companies"))

@@ -1,8 +1,13 @@
 """Build the profile-owned company workspace shown to normal users."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
+from job_radar.employer_connection_service import (
+    EmployerConnectionHealth,
+    get_employer_connection_health,
+)
 from job_radar.employer_storage import (
     get_employer_source,
     list_profile_employer_assignments,
@@ -19,6 +24,39 @@ class CompanyWorkspaceItem:
     company_key: str
     name: str
     scanning: bool
+    source_type: str
+    connection_health: EmployerConnectionHealth
+
+    @property
+    def source_label(self) -> str:
+        """Return a readable collector name without exposing its settings."""
+
+        return {
+            "adp": "ADP Workforce Now",
+            "eightfold": "Eightfold",
+            "html": "Public careers page",
+            "oracle_hcm": "Oracle Recruiting",
+        }.get(
+            self.source_type,
+            self.source_type.replace("_", " ").title(),
+        )
+
+    @property
+    def last_checked_label(self) -> str:
+        """Format SQLite's UTC timestamp for the local desktop user."""
+
+        value = self.connection_health.tested_at
+        if not value:
+            return "Not tested yet"
+        try:
+            parsed = datetime.fromisoformat(value).replace(tzinfo=UTC)
+        except ValueError:
+            return value
+        return (
+            parsed.astimezone()
+            .strftime("%b %d, %Y at %I:%M %p")
+            .replace(" 0", " ")
+        )
 
 
 @dataclass(frozen=True)
@@ -61,6 +99,11 @@ def build_company_workspace(
                 company_key=employer.employer_id,
                 name=employer.name,
                 scanning=assignment.enabled,
+                source_type=employer.source_type,
+                connection_health=get_employer_connection_health(
+                    db_path,
+                    employer.employer_id,
+                ),
             )
         )
 

@@ -8,7 +8,14 @@ import unicodedata
 from dataclasses import dataclass
 from html import unescape
 from pathlib import Path
-from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+from urllib.parse import (
+    parse_qsl,
+    unquote,
+    urlencode,
+    urljoin,
+    urlsplit,
+    urlunsplit,
+)
 from uuid import uuid4
 
 import requests
@@ -37,6 +44,33 @@ _TRACKING_QUERY_KEYS = {
     "gclid",
     "mc_cid",
     "mc_eid",
+}
+_PUBLIC_SOURCE_SEARCH_URL = "https://www.bing.com/search"
+_GENERIC_COMPANY_WORDS = {
+    "careers",
+    "com",
+    "company",
+    "corp",
+    "corporation",
+    "edu",
+    "employment",
+    "gov",
+    "group",
+    "holdings",
+    "invalid",
+    "jobs",
+    "net",
+    "org",
+}
+_EXCLUDED_DISCOVERY_DOMAINS = {
+    "bing.com",
+    "britannica.com",
+    "facebook.com",
+    "glassdoor.com",
+    "indeed.com",
+    "linkedin.com",
+    "mapquest.com",
+    "wikipedia.org",
 }
 
 
@@ -158,6 +192,16 @@ def resolve_employer_submission(
             return _invalid(
                 "Enter the company name before adding this ADP career site."
             )
+        tested_source = _first_working_source(
+            [detection],
+            display_name=(
+                display_name
+                or _display_name_from_detection(normalized_url, detection)
+            ),
+        )
+        if tested_source is None:
+            return _source_test_failed()
+        detection, job_count = tested_source
         return _create_and_assign_scan_ready(
             db_path,
             profile_id=profile_id,
@@ -165,6 +209,7 @@ def resolve_employer_submission(
             normalized_name=normalized_name,
             normalized_url=normalized_url,
             detection=detection,
+            connection_job_count=job_count,
         )
 
     if normalized_url and not confirm_detected:
@@ -339,6 +384,20 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
                 "domain": "microsoft.com",
                 "careers_url": careers_url,
                 "display_name": "Microsoft",
+            },
+            scan_ready=True,
+        )
+    if host in {"lockheedmartin.com", "www.lockheedmartin.com"}:
+        return DetectedEmployerSource(
+            source_type="html",
+            source_identifier="www.lockheedmartinjobs.com",
+            source_config={
+                # The corporate landing page blocks automated access, while
+                # this official public search page exposes the real job list.
+                "source_url": "https://www.lockheedmartinjobs.com/search-jobs",
+                "careers_url": careers_url,
+                "job_link_patterns": ["/job/"],
+                "display_name": "Lockheed Martin",
             },
             scan_ready=True,
         )
@@ -536,6 +595,7 @@ def _create_and_assign_scan_ready(
     normalized_name: str,
     normalized_url: str,
     detection: DetectedEmployerSource,
+    connection_job_count: int,
 ) -> EmployerResolutionResult:
     name = display_name or _display_name_from_detection(
         normalized_url,
@@ -590,8 +650,15 @@ def _create_and_assign_scan_ready(
                     employer_id, name, normalized_name, source_type, enabled,
                     source_config_json, normalized_careers_url,
                     source_identifier, resolution_status, submitted_name,
-                    submitted_url, validation_state, creation_source
-                ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, 'scan_ready', ?, ?, ?, 'user')
+                    submitted_url, validation_state, creation_source,
+                    last_connection_test_at, last_connection_success_at,
+                    last_connection_state, last_connection_category,
+                    last_connection_message, last_connection_job_count
+                ) VALUES (
+                    ?, ?, ?, ?, 1, ?, ?, ?, 'scan_ready', ?, ?, ?, 'user',
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'success', 'connected',
+                    ?, ?
+                )
                 """,
                 (
                     employer_id,
@@ -604,6 +671,12 @@ def _create_and_assign_scan_ready(
                     display_name or None,
                     normalized_url,
                     "valid",
+                    (
+                        "Connection succeeded and returned "
+                        f"{connection_job_count} "
+                        f"{'job' if connection_job_count == 1 else 'jobs'}."
+                    ),
+                    connection_job_count,
                 ),
             )
             connection.execute(
@@ -646,18 +719,24 @@ def _create_and_assign_generic(
             scan_ready=True,
         )
     )
-    discovered = _first_working_source(
+    tested_source = _first_working_source(
         discoveries,
         display_name=display_name,
     )
-    if discovered is None:
-        return _invalid(
-            "Junior could not find a reliable public job feed or job list at that "
-            "address. Check that this is the employer's main public careers page. "
-            "If the address is correct, contact Clayton Graves at "
-            "claytonmgraves@outlook.com and include the public careers URL. "
-            "Do not send passwords, access tokens, résumés, or other private data."
+    if tested_source is None:
+        # A corporate landing page may block automated access or live on a
+        # different domain from the real job search. The fallback sends only
+        # the public company identity, then validates every candidate locally.
+        tested_source = _first_working_source(
+            _discover_public_job_sources(
+                display_name=display_name,
+                careers_url=normalized_url,
+            ),
+            display_name=display_name,
         )
+    if tested_source is None:
+        return _source_test_failed()
+    discovered, job_count = tested_source
     return _create_and_assign_scan_ready(
         database_path,
         profile_id=profile_id,
@@ -665,6 +744,7 @@ def _create_and_assign_generic(
         normalized_name=normalized_name,
         normalized_url=normalized_url,
         detection=discovered,
+        connection_job_count=job_count,
     )
 
 
@@ -672,7 +752,7 @@ def _first_working_source(
     discoveries: list[DetectedEmployerSource],
     *,
     display_name: str,
-) -> DetectedEmployerSource | None:
+) -> tuple[DetectedEmployerSource, int] | None:
     """Probe derived collector configurations and keep the first real job feed."""
 
     seen: set[tuple[str | None, str]] = set()
@@ -698,8 +778,18 @@ def _first_working_source(
         except (CollectorError, OSError, ValueError, requests.RequestException):
             continue
         if postings:
-            return discovery
+            return discovery, len(postings)
     return None
+
+
+def _source_test_failed() -> EmployerResolutionResult:
+    return _invalid(
+        "Junior could not find a reliable public job feed or job list at that "
+        "address. Check that this is the employer's main public careers page. "
+        "If the address is correct, contact Clayton Graves at "
+        "claytonmgraves@outlook.com and include the public careers URL. "
+        "Do not send passwords, access tokens, résumés, or other private data."
+    )
 
 
 def _discover_branded_sources(
@@ -747,6 +837,38 @@ def _discover_branded_sources(
                     scan_ready=True,
                 )
             )
+    custom_eightfold = _eightfold_detection_from_html(
+        source_url=response.url,
+        careers_url=careers_url,
+        html=html,
+    )
+    if custom_eightfold is not None:
+        discoveries.append(custom_eightfold)
+    identity_tokens = _company_identity_tokens("", careers_url)
+    custom_platform_candidates: list[str] = []
+    for advertised_url in advertised_urls:
+        try:
+            normalized_advertised_url = normalize_careers_url(advertised_url)
+        except ValueError:
+            continue
+        detected = detect_employer_source(normalized_advertised_url)
+        if (
+            not detected.scan_ready
+            and detected.source_type == "html"
+            and _candidate_matches_company(
+                normalized_advertised_url,
+                identity_tokens,
+            )
+            and normalized_advertised_url != response.url
+        ):
+            custom_platform_candidates.append(normalized_advertised_url)
+    for candidate_url in list(dict.fromkeys(custom_platform_candidates))[:4]:
+        discovered = _discover_custom_platform(
+            candidate_url,
+            careers_url=careers_url,
+        )
+        if discovered is not None:
+            discoveries.append(discovered)
     workday_links = re.findall(
         r'https://[^"\'<>\s]+\.myworkdayjobs\.com/[^"\'<>\s?&]+',
         unescape(html),
@@ -790,6 +912,188 @@ def _discover_branded_sources(
                 )
             )
     return discoveries
+
+
+def _discover_custom_platform(
+    source_url: str,
+    *,
+    careers_url: str,
+) -> DetectedEmployerSource | None:
+    """Recognize a supported platform hosted on an employer-owned domain."""
+
+    try:
+        response = get_response(
+            source_url,
+            headers={
+                "Accept": "text/html,application/xhtml+xml",
+                "User-Agent": "Junior/0.2 local career-source discovery",
+            },
+            timeout=20,
+        )
+    except requests.RequestException:
+        return None
+    return _eightfold_detection_from_html(
+        source_url=response.url,
+        careers_url=careers_url,
+        html=response.text,
+    )
+
+
+def _eightfold_detection_from_html(
+    *,
+    source_url: str,
+    careers_url: str,
+    html: str,
+) -> DetectedEmployerSource | None:
+    """Build Eightfold settings from its public custom-domain page markers."""
+
+    if "eightfold" not in html.casefold() and "vscdn.net" not in html.casefold():
+        return None
+    domain_match = re.search(
+        r'window\._EF_GROUP_ID\s*=\s*["\']([^"\']+)["\']',
+        html,
+        flags=re.IGNORECASE,
+    )
+    if domain_match is None:
+        return None
+    parsed = urlsplit(source_url)
+    if not parsed.hostname:
+        return None
+    source_root = urlunsplit((parsed.scheme, parsed.netloc, "", "", ""))
+    domain = domain_match.group(1).strip()
+    return DetectedEmployerSource(
+        source_type="eightfold",
+        source_identifier=f"{parsed.hostname.casefold()}:{domain.casefold()}",
+        source_config={
+            "source_url": source_root,
+            "domain": domain,
+            "careers_url": careers_url,
+        },
+        scan_ready=True,
+    )
+
+
+def _discover_public_job_sources(
+    *,
+    display_name: str,
+    careers_url: str,
+) -> list[DetectedEmployerSource]:
+    """Find a separated official job site without sending private user data."""
+
+    parsed = urlsplit(careers_url)
+    public_identity = " ".join(
+        part for part in (display_name, parsed.hostname or "") if part
+    )
+    try:
+        response = get_response(
+            _PUBLIC_SOURCE_SEARCH_URL,
+            params={
+                "q": f"{public_identity} official careers jobs",
+                "format": "rss",
+            },
+            headers={
+                "Accept": "text/html,application/xhtml+xml",
+                "User-Agent": "Junior/0.2 local career-source discovery",
+            },
+            timeout=20,
+        )
+    except requests.RequestException:
+        return []
+
+    identity_tokens = _company_identity_tokens(display_name, careers_url)
+    discoveries: list[DetectedEmployerSource] = []
+    seen_urls: set[str] = set()
+    advertised_results = re.findall(
+        r'href=["\']([^"\']+)["\']',
+        response.text,
+        flags=re.IGNORECASE,
+    )
+    advertised_results.extend(
+        re.findall(
+            r"<link>(https?://[^<]+)</link>",
+            response.text,
+            flags=re.IGNORECASE,
+        )
+    )
+    for raw_href in advertised_results:
+        candidate_url = _public_search_result_url(raw_href)
+        if candidate_url is None or candidate_url in seen_urls:
+            continue
+        seen_urls.add(candidate_url)
+        if not _candidate_matches_company(candidate_url, identity_tokens):
+            continue
+        detected = detect_employer_source(candidate_url)
+        if detected.scan_ready:
+            discoveries.append(
+                DetectedEmployerSource(
+                    source_type=detected.source_type,
+                    source_identifier=detected.source_identifier,
+                    source_config={
+                        **detected.source_config,
+                        "careers_url": careers_url,
+                    },
+                    scan_ready=True,
+                )
+            )
+        else:
+            discoveries.append(
+                DetectedEmployerSource(
+                    source_type="html",
+                    source_identifier=None,
+                    source_config={
+                        "source_url": candidate_url,
+                        "careers_url": careers_url,
+                    },
+                    scan_ready=True,
+                )
+            )
+        if len(discoveries) >= 6:
+            break
+    return discoveries
+
+
+def _public_search_result_url(raw_href: str) -> str | None:
+    """Extract and validate one public HTTP result from a search page."""
+
+    href = unescape(raw_href)
+    parsed = urlsplit(href)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    if "uddg" in query:
+        href = unquote(query["uddg"])
+    try:
+        return normalize_careers_url(href)
+    except ValueError:
+        return None
+
+
+def _company_identity_tokens(display_name: str, careers_url: str) -> set[str]:
+    """Return distinctive public words used to reject unrelated search results."""
+
+    host = urlsplit(careers_url).hostname or ""
+    words = re.findall(r"[a-z0-9]+", f"{display_name} {host}".casefold())
+    return {
+        word
+        for word in words
+        if len(word) >= 4 and word not in _GENERIC_COMPANY_WORDS
+    }
+
+
+def _candidate_matches_company(
+    candidate_url: str,
+    identity_tokens: set[str],
+) -> bool:
+    """Require a visible company-identity overlap before probing a result."""
+
+    host = (urlsplit(candidate_url).hostname or "").casefold()
+    if any(
+        host == domain or host.endswith(f".{domain}")
+        for domain in _EXCLUDED_DISCOVERY_DOMAINS
+    ):
+        return False
+    searchable = re.sub(r"[^a-z0-9]+", "", candidate_url.casefold())
+    return bool(identity_tokens) and any(
+        token in searchable for token in identity_tokens
+    )
 
 
 def _create_pending_review(

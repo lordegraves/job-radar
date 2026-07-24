@@ -43,14 +43,6 @@
         font-weight: 650;
     }
 
-    .company-feedback {
-        border-left: 4px solid var(--link);
-        margin-top: 16px;
-    }
-
-    .company-feedback-error {
-        border-left-color: #ff7b72;
-    }
 </style>
 {% endblock %}
 
@@ -59,12 +51,6 @@
 <p><a href="{{ url_for('companies') }}">&larr; Back to Your Companies</a></p>
 
 <h1 class="page-title">{{ company.name }}</h1>
-
-{% if company_result == "updated" and company_message %}
-<div class="page-card company-feedback" role="status">{{ company_message }}</div>
-{% elif company_result == "error" and company_error %}
-<div class="page-card company-feedback company-feedback-error" role="alert">{{ company_error }}</div>
-{% endif %}
 
 <section class="company-detail-grid" aria-label="Company summary">
     <div class="company-detail-card">
@@ -80,9 +66,41 @@
         <strong>{{ active_profile.display_name }}</strong>
         <span class="muted">Included in profile</span>
     </div>
+
+    <div class="company-detail-card">
+        <strong class="{% if company.connection_health.state == 'success' %}status-enabled{% elif company.connection_health.state == 'error' %}status-disabled{% endif %}">
+            {{ company.connection_health.state_label }}
+        </strong>
+        <span class="muted">Job source status</span>
+    </div>
+
+    <div class="company-detail-card">
+        <strong>{{ company.source_label }}</strong>
+        <span class="muted">Recruiting platform</span>
+    </div>
+
+    <div class="company-detail-card">
+        <strong>{{ company.last_checked_label }}</strong>
+        <span class="muted">Last checked</span>
+    </div>
+
+    <div class="company-detail-card">
+        <strong>
+            {% if company.connection_health.job_count is not none %}
+            {{ company.connection_health.job_count }}
+            {% else %}
+            Not available
+            {% endif %}
+        </strong>
+        <span class="muted">Jobs found during last check</span>
+    </div>
 </section>
 
 <div class="actions">
+    <form method="post" action="{{ url_for('test_company_source', company_key=company.company_key) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Test job source</button>
+    </form>
     <form method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         {% if company.scanning %}
@@ -106,6 +124,13 @@
         >Remove from this profile</button>
     </form>
 </div>
+
+{% if company.connection_health.message %}
+<div class="page-card">
+    <h2>Latest source check</h2>
+    <p>{{ company.connection_health.message }}</p>
+</div>
+{% endif %}
 
 <section class="page-card">
     <h2>Correct the company name</h2>

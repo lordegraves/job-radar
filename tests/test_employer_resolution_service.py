@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from job_radar.employer_connection_service import get_employer_connection_health
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_resolution_service import (
     ALREADY_ASSIGNED,
@@ -16,6 +17,7 @@ from job_radar.employer_resolution_service import (
     INVALID_INPUT,
     MATCHED_EXISTING,
     PENDING_REVIEW,
+    _eightfold_detection_from_html,
     detect_employer_source,
     normalize_careers_url,
     normalize_company_name,
@@ -117,6 +119,12 @@ def test_name_and_url_normalization_is_safe_and_stable() -> None:
             "example.wd5.myworkdayjobs.com:jobs",
             True,
         ),
+        (
+            "https://www.lockheedmartin.com/en-us/careers/index.html",
+            "html",
+            "www.lockheedmartinjobs.com",
+            True,
+        ),
         ("https://example.icims.com/jobs", "icims", None, False),
         ("https://jobs.smartrecruiters.com/Example", "smartrecruiters", None, False),
         ("https://example.invalid/careers", "html", None, False),
@@ -133,6 +141,28 @@ def test_supported_source_detection_is_centralized(
     assert detected.source_type == source_type
     assert detected.source_identifier == identifier
     assert detected.scan_ready is scan_ready
+
+
+def test_custom_domain_eightfold_markers_build_a_scan_ready_source() -> None:
+    detected = _eightfold_detection_from_html(
+        source_url="https://jobs.example-systems.invalid/careers",
+        careers_url="https://www.example-systems.invalid/careers",
+        html=(
+            '<link href="https://static.vscdn.net/example.css">'
+            '<script>window._EF_GROUP_ID = "example.com";</script>'
+        ),
+    )
+
+    assert detected is not None
+    assert detected.source_type == "eightfold"
+    assert detected.source_identifier == (
+        "jobs.example-systems.invalid:example.com"
+    )
+    assert detected.source_config == {
+        "source_url": "https://jobs.example-systems.invalid",
+        "domain": "example.com",
+        "careers_url": "https://www.example-systems.invalid/careers",
+    }
 
 
 def test_exact_name_url_alias_and_already_assigned_resolution(
@@ -204,7 +234,12 @@ def test_similar_name_requires_confirmation_without_merging(
 
 def test_recognized_scan_ready_url_requires_confirmation_before_creation(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
     database_path = tmp_path / "junior.sqlite3"
     profile = create_test_profile(database_path)
 
@@ -237,12 +272,24 @@ def test_recognized_scan_ready_url_requires_confirmation_before_creation(
     assert employer is not None
     assert employer.source_type == "lever"
     assert employer.source_config["source_slug"] == "example-kitchens"
+    health = get_employer_connection_health(
+        database_path,
+        employer.employer_id,
+    )
+    assert health.state == "success"
+    assert health.job_count == 1
+    assert health.tested_at is not None
     assert [item.employer_id for item in assignments] == [result.employer_id]
 
 
 def test_complete_adp_url_requires_name_then_creates_scan_ready_employer(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object(), object()],
+    )
     database_path = tmp_path / "junior.sqlite3"
     profile = create_test_profile(database_path)
     careers_url = (
@@ -340,7 +387,12 @@ def test_assignments_remain_profile_specific(tmp_path: Path) -> None:
 
 def test_recruitee_url_is_configured_without_administrator(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
     database_path = tmp_path / "junior.sqlite3"
     profile = create_test_profile(database_path)
     url = "https://example-bakery.recruitee.com/o/head-baker"
@@ -418,6 +470,10 @@ def test_unknown_site_failure_directs_user_to_safe_support(
         lambda url: [],
     )
     monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_public_job_sources",
+        lambda **kwargs: [],
+    )
+    monkeypatch.setattr(
         "job_radar.employer_resolution_service.collect_jobs_for_company",
         lambda config: [],
     )
@@ -436,9 +492,75 @@ def test_unknown_site_failure_directs_user_to_safe_support(
     assert list_profile_employer_assignments(database_path, profile.profile_id) == []
 
 
+def test_blocked_landing_page_can_find_and_verify_separate_official_job_site(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    landing_url = "https://example-kitchens.invalid/careers"
+    job_url = "https://jobs.example-kitchens.invalid/search-jobs"
+
+    class SearchResponse:
+        text = (
+            '<a href="/l/?uddg=https%3A%2F%2Funrelated.invalid%2Fjobs">Bad</a>'
+            '<a href="/l/?uddg=https%3A%2F%2Fjobs.example-kitchens.invalid'
+            '%2Fsearch-jobs">Official careers</a>'
+        )
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda url: [],
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.get_response",
+        lambda *args, **kwargs: SearchResponse(),
+    )
+
+    attempted_sources: list[str] = []
+
+    def collect(config):
+        source_url = str(config["source_url"])
+        attempted_sources.append(source_url)
+        return [object()] if source_url == job_url else []
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        collect,
+    )
+
+    created = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name="Example Kitchens",
+        careers_url=landing_url,
+        confirm_detected=True,
+    )
+
+    assert created.status == CREATED_SCAN_READY
+    employer = get_employer_source(database_path, "example-kitchens")
+    assert employer is not None
+    assert employer.source_config["source_url"] == job_url
+    assert "https://unrelated.invalid/jobs" not in attempted_sources
+    with sqlite3.connect(database_path) as connection:
+        stored_employers = connection.execute(
+            "SELECT employer_id FROM employer_sources"
+        ).fetchall()
+        review_requests = connection.execute(
+            "SELECT request_id FROM employer_review_requests"
+        ).fetchall()
+    assert stored_employers == [("example-kitchens",)]
+    assert review_requests == []
+
+
 def test_concurrent_submission_cannot_duplicate_scan_ready_employer(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
     database_path = tmp_path / "junior.sqlite3"
     first = create_test_profile(database_path, "profile_1111aaaa")
     second = create_test_profile(database_path, "profile_2222bbbb")
@@ -472,7 +594,12 @@ def test_concurrent_submission_cannot_duplicate_scan_ready_employer(
 
 def test_transaction_rolls_back_employer_when_assignment_fails(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
     database_path = tmp_path / "junior.sqlite3"
     profile = create_test_profile(database_path)
     original_connect = sqlite3.connect

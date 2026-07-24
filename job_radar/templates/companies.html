@@ -122,14 +122,6 @@
         gap: 8px;
     }
 
-    .company-feedback {
-        border-left: 4px solid var(--link);
-        margin-top: 16px;
-    }
-
-    .company-feedback-error {
-        border-left-color: #ff7b72;
-    }
 </style>
 {% endblock %}
 
@@ -166,12 +158,6 @@
 <div class="actions">
     <a class="button-link" href="{{ url_for('add_company_page') }}">Add company</a>
 </div>
-
-{% if company_result == "updated" and company_message %}
-<div class="page-card company-feedback" role="status">{{ company_message }}</div>
-{% elif company_result == "error" and company_error %}
-<div class="page-card company-feedback company-feedback-error" role="alert">{{ company_error }}</div>
-{% endif %}
 
 <section class="company-summary-grid" aria-label="Company workspace summary">
     <div class="company-summary-card">
@@ -268,7 +254,7 @@
                             data-company-name="{{ company.name }}"
                             data-profile-name="{{ workspace.active_profile.display_name }}"
                             onclick="return confirmCompanyRemoval(this.dataset.companyName, this.dataset.profileName)"
-                        >Remove</button>
+                        >Remove from this profile</button>
                     </form>
                 </td>
             </tr>
