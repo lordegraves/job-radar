@@ -87,6 +87,47 @@ def test_parse_html_jobs_reads_schema_org_job_posting() -> None:
     assert jobs[0].source_job_id == "baker-42"
     assert jobs[0].source_url == "https://careers.example.invalid/jobs/head-baker"
 
+
+def test_parse_html_jobs_supports_configured_nintendo_job_cards() -> None:
+    html = """
+    <a class="job-card" href="/jobs/4130435009/">
+      <h3 class="job-card-title">Sr Engineer, IT Security (NTD)</h3>
+      <div><span>Redmond, WA</span><span>Software Development</span></div>
+    </a>
+    """
+    config = _company_config()
+    config["job_link_patterns"] = ["/jobs/"]
+
+    jobs = _parse_html_jobs(
+        config,
+        html,
+        "https://careers.nintendo.com/jobs/",
+    )
+
+    assert len(jobs) == 1
+    assert jobs[0].title == "Sr Engineer, IT Security (NTD)"
+    assert jobs[0].source_job_id == "4130435009"
+
+
+def test_parse_html_jobs_supports_configured_valve_query_links() -> None:
+    html = """
+    <a href="https://www.valvesoftware.com/en/jobs?job_id=27">
+      <h5 class="job_title">Software Engineer</h5>
+    </a>
+    """
+    config = _company_config()
+    config["job_link_patterns"] = ["?job_id="]
+
+    jobs = _parse_html_jobs(
+        config,
+        html,
+        "https://www.valvesoftware.com/en/jobs",
+    )
+
+    assert len(jobs) == 1
+    assert jobs[0].title == "Software Engineer"
+    assert jobs[0].source_job_id == "27"
+
 def test_extract_source_job_id_from_successfactors_url() -> None:
     assert (
         _extract_source_job_id(

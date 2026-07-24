@@ -531,10 +531,8 @@ def test_add_company_by_careers_url_requires_detected_source_confirmation(
             "careers_url": "https://jobs.lever.co/example-kitchens",
         },
     )
-    confirmed_html = confirmed.get_data(as_text=True)
-
-    assert confirmed.status_code == 200
-    assert "was added and will be included in future scans" in confirmed_html
+    assert confirmed.status_code == 302
+    assert confirmed.headers["Location"].startswith("/companies?")
     assert get_profile(database_path, profile.profile_id).company_ids == (
         "example-kitchens",
     )
@@ -580,13 +578,53 @@ def test_add_company_by_complete_adp_url_requests_name_and_adds_source(
             "careers_url": careers_url,
         },
     )
-    confirmed_html = confirmed.get_data(as_text=True)
-
-    assert confirmed.status_code == 200
-    assert "was added and will be included in future scans" in confirmed_html
+    assert confirmed.status_code == 302
+    assert confirmed.headers["Location"].startswith("/companies?")
     employer = get_employer_source(database_path, "example-hospitality")
     assert employer is not None
     assert employer.source_type == "adp"
     assert get_profile(database_path, profile.profile_id).company_ids == (
         "example-hospitality",
     )
+
+
+def test_profile_can_correct_company_name_without_changing_source(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="example_company",
+            name="Exampel Company",
+            source_type="lever",
+            source_config={"source_slug": "example-company"},
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+        company_ids=("example_company",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    response = client.post(
+        "/companies/example_company/name",
+        data={"company_name": "Example Company"},
+        follow_redirects=True,
+    )
+    employer = get_employer_source(database_path, "example_company")
+
+    assert response.status_code == 200
+    assert "shared company name is now Example Company" in response.get_data(
+        as_text=True
+    )
+    assert employer is not None
+    assert employer.name == "Example Company"
+    assert employer.source_type == "lever"
+    assert employer.source_config == {"source_slug": "example-company"}

@@ -6,13 +6,17 @@ import re
 import sqlite3
 import unicodedata
 from dataclasses import dataclass
+from html import unescape
 from pathlib import Path
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 from uuid import uuid4
 
+import requests
+
+from job_radar.collectors.collector_http import get_response
 from job_radar.database import connect_database
 from job_radar.collectors.greenhouse import CollectorError
-from job_radar.collectors.html import collect_html_jobs
+from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.employer_storage import list_profile_employer_assignments
 from job_radar.profile_storage import get_profile
 from job_radar.storage import initialize_database
@@ -256,6 +260,10 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
         return _slug_detection("lever", slug, careers_url)
     if host == "jobs.ashbyhq.com" and slug:
         return _slug_detection("ashby", slug, careers_url)
+    if host.endswith(".myworkdayjobs.com"):
+        workday_detection = _workday_detection(careers_url, careers_url)
+        if workday_detection is not None:
+            return workday_detection
     if host == "workforcenow.adp.com":
         adp_detection = _adp_detection(careers_url)
         if adp_detection is not None:
@@ -268,6 +276,69 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
             source_config={
                 "source_url": f"https://{host}/api/offers/",
                 "careers_url": careers_url,
+            },
+            scan_ready=True,
+        )
+    if host == "careers.nintendo.com":
+        return DetectedEmployerSource(
+            source_type="html",
+            source_identifier="careers.nintendo.com",
+            source_config={
+                "source_url": "https://careers.nintendo.com/jobs/",
+                "careers_url": careers_url,
+                "job_link_patterns": ["/jobs/"],
+                "display_name": "Nintendo",
+            },
+            scan_ready=True,
+        )
+    if host in {"valvesoftware.com", "www.valvesoftware.com"}:
+        return DetectedEmployerSource(
+            source_type="html",
+            source_identifier="www.valvesoftware.com",
+            source_config={
+                "source_url": "https://www.valvesoftware.com/en/jobs",
+                "careers_url": careers_url,
+                "job_link_patterns": ["?job_id="],
+                "display_name": "Valve",
+            },
+            scan_ready=True,
+        )
+    if host == "careers.blizzard.com":
+        return DetectedEmployerSource(
+            source_type="phenom",
+            source_identifier="careers.blizzard.com",
+            source_config={
+                "source_url": (
+                    "https://careers.blizzard.com/global/en/search-results"
+                ),
+                "job_base_url": "https://careers.blizzard.com/global/en",
+                "careers_url": careers_url,
+                "display_name": "Blizzard",
+            },
+            scan_ready=True,
+        )
+    if host in {"broadcom.com", "www.broadcom.com"}:
+        workday_url = (
+            "https://broadcom.wd1.myworkdayjobs.com/External_Career"
+        )
+        detection = _workday_detection(workday_url, careers_url)
+        if detection is None:
+            return DetectedEmployerSource(None, None, {}, False)
+        return DetectedEmployerSource(
+            source_type=detection.source_type,
+            source_identifier=detection.source_identifier,
+            source_config={**detection.source_config, "display_name": "Broadcom"},
+            scan_ready=True,
+        )
+    if host in {"careers.microsoft.com", "apply.careers.microsoft.com"}:
+        return DetectedEmployerSource(
+            source_type="eightfold",
+            source_identifier="apply.careers.microsoft.com:microsoft.com",
+            source_config={
+                "source_url": "https://apply.careers.microsoft.com",
+                "domain": "microsoft.com",
+                "careers_url": careers_url,
+                "display_name": "Microsoft",
             },
             scan_ready=True,
         )
@@ -301,6 +372,36 @@ def _adp_detection(careers_url: str) -> DetectedEmployerSource | None:
     )
 
 
+def _workday_detection(
+    workday_url: str,
+    careers_url: str,
+) -> DetectedEmployerSource | None:
+    """Build Workday's public JSON endpoint from a public board address."""
+
+    parsed = urlsplit(workday_url)
+    host = parsed.hostname or ""
+    if not host.endswith(".myworkdayjobs.com"):
+        return None
+    path_parts = [part for part in parsed.path.split("/") if part]
+    if not path_parts:
+        return None
+    tenant = host.split(".", 1)[0]
+    board = path_parts[0]
+    source_base_url = f"https://{host}/{board}"
+    return DetectedEmployerSource(
+        source_type="workday",
+        source_identifier=f"{host.casefold()}:{board.casefold()}",
+        source_config={
+            "source_url": (
+                f"https://{host}/wday/cxs/{tenant}/{board}/jobs"
+            ),
+            "source_base_url": source_base_url,
+            "careers_url": careers_url,
+        },
+        scan_ready=True,
+    )
+
+
 def _detect_supported_family(host: str, path: str) -> str | None:
     patterns = (
         ("myworkdayjobs.com", "workday"),
@@ -311,6 +412,7 @@ def _detect_supported_family(host: str, path: str) -> str | None:
         ("phenompeople.com", "phenom"),
         ("dayforcehcm.com", "dayforce"),
         ("adp.com", "adp"),
+        ("eightfold.ai", "eightfold"),
         ("rippling.com", "rippling"),
         ("schoolspring.com", "schoolspring"),
         ("jibeapply.com", "jibe"),
@@ -535,17 +637,20 @@ def _create_and_assign_generic(
 ) -> EmployerResolutionResult:
     """Enable an unfamiliar public careers page only after extracting real jobs."""
 
-    candidate_config = {
-        "company_key": _employer_id(display_name),
-        "name": display_name,
-        "source_type": "html",
-        "source_url": normalized_url,
-    }
-    try:
-        postings = collect_html_jobs(candidate_config)
-    except (CollectorError, OSError, ValueError):
-        postings = []
-    if not postings:
+    discoveries = _discover_branded_sources(normalized_url)
+    discoveries.append(
+        DetectedEmployerSource(
+            source_type="html",
+            source_identifier=None,
+            source_config={"source_url": normalized_url},
+            scan_ready=True,
+        )
+    )
+    discovered = _first_working_source(
+        discoveries,
+        display_name=display_name,
+    )
+    if discovered is None:
         return _invalid(
             "Junior could not find a reliable public job feed or job list at that "
             "address. Check that this is the employer's main public careers page. "
@@ -559,13 +664,132 @@ def _create_and_assign_generic(
         display_name=display_name,
         normalized_name=normalized_name,
         normalized_url=normalized_url,
-        detection=DetectedEmployerSource(
-            source_type="html",
-            source_identifier=None,
-            source_config={"source_url": normalized_url},
-            scan_ready=True,
-        ),
+        detection=discovered,
     )
+
+
+def _first_working_source(
+    discoveries: list[DetectedEmployerSource],
+    *,
+    display_name: str,
+) -> DetectedEmployerSource | None:
+    """Probe derived collector configurations and keep the first real job feed."""
+
+    seen: set[tuple[str | None, str]] = set()
+    for discovery in discoveries:
+        config_key = (
+            discovery.source_type,
+            json.dumps(discovery.source_config, sort_keys=True),
+        )
+        if config_key in seen:
+            continue
+        seen.add(config_key)
+        candidate_config: dict[str, object] = {
+            "company_key": _employer_id(display_name),
+            "name": display_name,
+            "source_type": discovery.source_type,
+            **discovery.source_config,
+            # Setup confirmation validates one page instead of running a full scan.
+            "max_pages": 1,
+            "page_size": 10,
+        }
+        try:
+            postings = collect_jobs_for_company(candidate_config)
+        except (CollectorError, OSError, ValueError, requests.RequestException):
+            continue
+        if postings:
+            return discovery
+    return None
+
+
+def _discover_branded_sources(
+    careers_url: str,
+) -> list[DetectedEmployerSource]:
+    """Derive credible collector configurations advertised by a public page."""
+
+    try:
+        response = get_response(
+            careers_url,
+            headers={
+                "Accept": "text/html,application/xhtml+xml",
+                "User-Agent": "JobRadar/0.1 local career-source scanner",
+            },
+            timeout=30,
+        )
+    except requests.RequestException:
+        return []
+    html = response.text
+    discoveries: list[DetectedEmployerSource] = []
+    advertised_urls = [response.url]
+    advertised_urls.extend(
+        urljoin(response.url, unescape(match))
+        for match in re.findall(
+            r'href=["\']([^"\']+)["\']',
+            html,
+            flags=re.IGNORECASE,
+        )
+    )
+    for advertised_url in advertised_urls:
+        try:
+            normalized_advertised_url = normalize_careers_url(advertised_url)
+        except ValueError:
+            continue
+        detected = detect_employer_source(normalized_advertised_url)
+        if detected.scan_ready:
+            discoveries.append(
+                DetectedEmployerSource(
+                    source_type=detected.source_type,
+                    source_identifier=detected.source_identifier,
+                    source_config={
+                        **detected.source_config,
+                        "careers_url": careers_url,
+                    },
+                    scan_ready=True,
+                )
+            )
+    workday_links = re.findall(
+        r'https://[^"\'<>\s]+\.myworkdayjobs\.com/[^"\'<>\s?&]+',
+        unescape(html),
+        flags=re.IGNORECASE,
+    )
+    for workday_link in workday_links:
+        detected = _workday_detection(workday_link, careers_url)
+        if detected is not None:
+            discoveries.append(detected)
+    base_tag = re.search(r"<base\b[^>]*>", html, flags=re.IGNORECASE)
+    if base_tag is not None:
+        api_match = re.search(
+            r'data-apibaseurl=["\']([^"\']+)["\']',
+            base_tag.group(0),
+            flags=re.IGNORECASE,
+        )
+        site_match = re.search(
+            r'data-sitenumber=["\']([^"\']+)["\']',
+            base_tag.group(0),
+            flags=re.IGNORECASE,
+        )
+        if api_match and site_match:
+            api_base = api_match.group(1).rstrip("/")
+            site_number = site_match.group(1)
+            discoveries.append(
+                DetectedEmployerSource(
+                    source_type="oracle_hcm",
+                    source_identifier=(
+                        f"{api_base.casefold()}:{site_number.casefold()}"
+                    ),
+                    source_config={
+                        "source_url": (
+                            f"{api_base}/hcmRestApi/resources/latest/"
+                            "recruitingCEJobRequisitions"
+                        ),
+                        "site_number": site_number,
+                        "referer_url": careers_url,
+                        "careers_url": careers_url,
+                    },
+                    scan_ready=True,
+                )
+            )
+    return discoveries
 
 
 def _create_pending_review(
@@ -674,6 +898,7 @@ def _source_label(source_type: str | None) -> str:
         "ashby": "Ashby",
         "adp": "ADP",
         "recruitee": "Recruitee",
+        "eightfold": "Eightfold",
     }.get(source_type or "", "supported")
 
 
@@ -720,6 +945,9 @@ def _display_name_from_detection(
     value: str,
     detection: DetectedEmployerSource,
 ) -> str:
+    configured_name = detection.source_config.get("display_name")
+    if configured_name:
+        return configured_name
     if detection.source_identifier:
         return detection.source_identifier.replace("-", " ").replace("_", " ").title()
     return _display_name_from_url(value)

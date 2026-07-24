@@ -68,9 +68,11 @@ class EmployerReviewRequest:
 class ProfileReviewState:
     """Show a normal user only the safe state of their own submission."""
 
+    request_id: str
     company_label: str
     state_label: str
     explanation: str
+    can_retry: bool
 
 
 class EmployerReviewError(ValueError):
@@ -119,17 +121,21 @@ def list_profile_review_states(
         if review.status == PENDING:
             states.append(
                 ProfileReviewState(
+                    review.request_id,
                     review.company_label,
                     "Setup pending",
-                    "An administrator still needs to configure this company.",
+                    "Junior has not finished configuring this company.",
+                    True,
                 )
             )
         elif review.status == UNSUPPORTED:
             states.append(
                 ProfileReviewState(
+                    review.request_id,
                     review.company_label,
                     "Unsupported",
                     "Junior cannot currently scan this company site.",
+                    True,
                 )
             )
         elif (
@@ -143,9 +149,11 @@ def list_profile_review_states(
             if employer and evaluate_employer_availability(employer).can_assign:
                 states.append(
                     ProfileReviewState(
+                        review.request_id,
                         review.company_label,
                         "Ready to add",
                         "The company is configured and can now be added.",
+                        False,
                     )
                 )
     return tuple(states)
@@ -243,6 +251,39 @@ def mark_review_status(
             assignment_completed=False,
         )
     return get_review_request(db_path, request_id)  # type: ignore[return-value]
+
+
+def cancel_profile_review_request(
+    database_path: str | Path,
+    request_id: str,
+    *,
+    profile_id: str,
+    confirmation: str,
+) -> None:
+    """Hide one unresolved attempt without touching employers or job history."""
+
+    if confirmation.strip() != "REMOVE":
+        raise EmployerReviewError(
+            "Type REMOVE to confirm removing this setup attempt."
+        )
+    db_path = initialize_database(database_path)
+    request = get_review_request(db_path, request_id)
+    if request is None or request.requesting_profile_id != profile_id:
+        raise EmployerReviewError("That setup attempt is not available.")
+    if request.status not in {PENDING, UNSUPPORTED}:
+        raise EmployerReviewError(
+            "That setup attempt has already been completed or removed."
+        )
+    with connect_database(db_path) as connection:
+        _finish_request(
+            connection,
+            request=request,
+            status=CANCELLED,
+            employer_id=request.resolved_employer_id,
+            operation="cancel_profile_request",
+            assignment_requested=False,
+            assignment_completed=False,
+        )
 
 
 def mark_configured_new(

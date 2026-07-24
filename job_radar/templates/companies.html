@@ -194,7 +194,7 @@
     <table>
         <caption class="visually-hidden">Company setup requests</caption>
         <thead>
-            <tr><th>Company</th><th>Status</th><th>What this means</th></tr>
+            <tr><th>Company</th><th>Status</th><th>What this means</th><th>Action</th></tr>
         </thead>
         <tbody>
             {% for state in review_states %}
@@ -202,6 +202,21 @@
                 <td>{{ state.company_label }}</td>
                 <td>{{ state.state_label }}</td>
                 <td>{{ state.explanation }}</td>
+                <td class="company-row-actions">
+                    {% if state.can_retry %}
+                    <a class="button-link" href="{{ url_for('add_company_page', retry=state.request_id) }}">Retry setup</a>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('remove_company_setup_request', request_id=state.request_id) }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <button
+                            class="button-danger"
+                            type="submit"
+                            name="confirmation"
+                            value="REMOVE"
+                            onclick="return window.confirm('Remove this unfinished setup attempt? Working companies, jobs, applications, and history will be kept.')"
+                        >Remove attempt</button>
+                    </form>
+                </td>
             </tr>
             {% endfor %}
         </tbody>

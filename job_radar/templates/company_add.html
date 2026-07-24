@@ -25,6 +25,24 @@
         margin-top: 16px;
     }
     .resolution-card { border-left: 4px solid var(--accent); margin: 18px 0; }
+    .company-checking[hidden] { display: none; }
+    .company-checking {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        margin: 12px 0;
+    }
+    .company-checking-dot {
+        animation: company-checking-pulse 1s ease-in-out infinite alternate;
+        background: var(--accent);
+        border-radius: 50%;
+        height: 10px;
+        width: 10px;
+    }
+    @keyframes company-checking-pulse {
+        from { opacity: 0.35; transform: scale(0.8); }
+        to { opacity: 1; transform: scale(1.15); }
+    }
     @media (max-width: 640px) {
         .catalog-search { grid-template-columns: 1fr; }
     }
@@ -43,8 +61,8 @@
         <strong>{{ catalog.active_profile.display_name }}'s</strong> profile.
     </p>
     <p class="muted">
-        Adding a company affects only this profile. Technical setup remains
-        hidden and uncertain sites are sent for administrator review.
+        Adding a company affects only this profile. Junior checks the public
+        page and its recruiting platform before saving anything.
     </p>
 </div>
 
@@ -52,8 +70,9 @@
 <div class="page-card company-feedback" role="alert">{{ company_error }}</div>
 {% endif %}
 
-<form class="catalog-search" method="post" action="{{ url_for('resolve_company_submission') }}">
+<form id="company-source-form" class="catalog-search" method="post" action="{{ url_for('resolve_company_submission') }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="retry_request_id" value="{{ retry_request_id or '' }}">
     <label for="company-search">
         <span>Company name or careers URL</span>
         <input
@@ -67,6 +86,10 @@
     </label>
     <button type="submit">Continue</button>
 </form>
+<div id="company-checking" class="company-checking" role="status" hidden>
+    <span class="company-checking-dot" aria-hidden="true"></span>
+    <span>Junior is checking this careers site and its job source. This may take a moment.</span>
+</div>
 
 {% if resolution %}
 <section class="page-card resolution-card" role="status">
@@ -76,6 +99,7 @@
     <form method="post" action="{{ url_for('add_existing_company') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="employer_id" value="{{ resolution.employer_id }}">
+        <input type="hidden" name="retry_request_id" value="{{ retry_request_id or '' }}">
         <button type="submit">Add {{ resolution.employer_name }} to this profile</button>
     </form>
     {% elif resolution.status in ['DETECTED_SCAN_READY', 'DETECTED_SETUP_REQUIRED'] %}
@@ -98,6 +122,7 @@
     <form method="post" action="{{ url_for('confirm_detected_company') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="careers_url" value="{{ resolution.careers_url }}">
+        <input type="hidden" name="retry_request_id" value="{{ retry_request_id or '' }}">
         <label for="detected-company-name">
             <span>Company name</span>
             <input
@@ -135,6 +160,7 @@
         <form class="catalog-action-form" method="post" action="{{ url_for('add_existing_company') }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="employer_id" value="{{ employer_id }}">
+            <input type="hidden" name="retry_request_id" value="{{ retry_request_id or '' }}">
             <button type="submit">Choose {{ employer_name }}</button>
         </form>
         {% endfor %}
@@ -172,6 +198,7 @@
                 <form class="catalog-action-form" method="post" action="{{ url_for('add_existing_company') }}">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="employer_id" value="{{ company.employer_id }}">
+                    <input type="hidden" name="retry_request_id" value="{{ retry_request_id or '' }}">
                     <button type="submit">Add</button>
                 </form>
                 {% else %}
@@ -187,4 +214,28 @@
     <p>Enter a company above to begin.</p>
 </div>
 {% endif %}
+<script>
+document.getElementById("company-source-form")?.addEventListener("submit", (event) => {
+    const form = event.currentTarget;
+    const button = form.querySelector("button[type='submit']");
+    const status = document.getElementById("company-checking");
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Checking...";
+    }
+    if (status) status.hidden = false;
+});
+
+document.querySelectorAll("form[action$='/confirm-detected']").forEach((form) => {
+    form.addEventListener("submit", () => {
+        const button = form.querySelector("button[type='submit']");
+        const status = document.getElementById("company-checking");
+        if (button) {
+            button.disabled = true;
+            button.textContent = "Testing job source...";
+        }
+        if (status) status.hidden = false;
+    });
+});
+</script>
 {% endblock %}

@@ -106,6 +106,23 @@
         >Remove from this profile</button>
     </form>
 </div>
+
+<section class="page-card">
+    <h2>Correct the company name</h2>
+    <p class="muted">
+        Use this only to fix spelling or wording. The corrected name is shared
+        by every profile on this Junior installation. The working job source
+        and existing history will not change.
+    </p>
+    <form method="post" action="{{ url_for('correct_company_name', company_key=company.company_key) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <label for="company-name">
+            <span>Company name</span>
+            <input id="company-name" name="company_name" value="{{ company.name }}" required>
+        </label>
+        <button type="submit">Save corrected name</button>
+    </form>
+</section>
 {% else %}
 <p><a href="{{ url_for('companies') }}">&larr; Back to Companies</a></p>
 

@@ -37,9 +37,9 @@ junior currently provides:
 - scan lifecycle records, progress state, cross-process locking, stage-specific failures, and bounded pagination
 - non-blocking GUI scans with app-wide progress and completion notifications
 - an installation-wide employer/source catalog with independent profile assignments and per-profile enable/disable control
-- a global Collector Catalog shipped on every installation, automatic ADP and
-  Recruitee source setup, and a validated structured-data fallback for
-  unfamiliar public careers pages
+- a global Collector Catalog shipped on every installation, automatic setup
+  for supported ATS platforms including ADP, Recruitee, Workday, Oracle,
+  Phenom, and Eightfold, and a validated public-page fallback
 - user-owned runtime paths and non-destructive configuration/database bootstrap
 - versioned SQLite migrations, foreign-key enforcement, atomic tracker/history moves, and backup-before-migration protection
 - clean wheel installation and installed-package rendering tests

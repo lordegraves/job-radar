@@ -16,8 +16,19 @@ from job_radar.domain_errors import (
     InvalidCompanyStateError,
     JuniorDomainError,
 )
-from job_radar.employer_resolution_service import resolve_employer_submission
-from job_radar.employer_review_service import list_profile_review_states
+from job_radar.employer_admin_service import EmployerAdminError, rename_employer
+from job_radar.employer_resolution_service import (
+    ALREADY_ASSIGNED,
+    CREATED_SCAN_READY,
+    resolve_employer_submission,
+)
+from job_radar.employer_review_service import (
+    EmployerReviewError,
+    cancel_profile_review_request,
+    get_review_request,
+    list_profile_review_states,
+    mark_configured_new,
+)
 
 
 def register_company_routes(
@@ -178,8 +189,80 @@ def register_company_routes(
             )
         )
 
+    @app.post("/companies/<company_key>/name")
+    def correct_company_name(company_key: str):
+        workspace = build_company_workspace(get_database_path())
+        if workspace.active_profile is None:
+            abort(404)
+        if not any(
+            item.company_key == company_key for item in workspace.companies
+        ):
+            abort(404)
+        try:
+            renamed = rename_employer(
+                get_database_path(),
+                company_key,
+                name=request.form.get("company_name", ""),
+            )
+        except EmployerAdminError as error:
+            return redirect(
+                url_for(
+                    "company_detail",
+                    company_key=company_key,
+                    company_result="error",
+                    company_error=str(error),
+                )
+            )
+        return redirect(
+            url_for(
+                "company_detail",
+                company_key=company_key,
+                company_result="updated",
+                company_message=(
+                    f"The shared company name is now {renamed.employer.name}."
+                ),
+            )
+        )
+
+    @app.post("/companies/setup-requests/<request_id>/remove")
+    def remove_company_setup_request(request_id: str):
+        workspace = build_company_workspace(get_database_path())
+        if workspace.active_profile is None:
+            abort(404)
+        try:
+            cancel_profile_review_request(
+                get_database_path(),
+                request_id,
+                profile_id=workspace.active_profile.profile_id,
+                confirmation=request.form.get("confirmation", ""),
+            )
+        except EmployerReviewError as error:
+            return redirect(
+                url_for(
+                    "companies",
+                    company_result="error",
+                    company_error=str(error),
+                )
+            )
+        return redirect(
+            url_for(
+                "companies",
+                company_result="updated",
+                company_message=(
+                    "The unfinished setup attempt was removed. Working "
+                    "companies, jobs, applications, and history were not changed."
+                ),
+            )
+        )
+
     @app.get("/companies/add")
     def add_company_page() -> str:
+        retry_request_id = request.args.get("retry", "").strip()
+        retry_request = (
+            get_review_request(get_database_path(), retry_request_id)
+            if retry_request_id
+            else None
+        )
         catalog = build_company_catalog_view(
             get_database_path(),
             search_query=request.args.get("q", ""),
@@ -194,13 +277,27 @@ def register_company_routes(
                     ),
                 )
             )
+        if (
+            retry_request is not None
+            and retry_request.requesting_profile_id
+            != catalog.active_profile.profile_id
+        ):
+            retry_request = None
 
         return render_template(
             "company_add.html",
             catalog=catalog,
             company_error=request.args.get("company_error", "").strip(),
             resolution=None,
-            submission=request.args.get("q", "").strip(),
+            submission=(
+                retry_request.submitted_careers_url
+                or retry_request.submitted_company_name
+                if retry_request is not None
+                else request.args.get("q", "").strip()
+            ),
+            retry_request_id=(
+                retry_request.request_id if retry_request is not None else ""
+            ),
         )
 
     @app.post("/companies/add/resolve")
@@ -218,6 +315,7 @@ def register_company_routes(
             )
 
         submission = request.form.get("company", "").strip()
+        retry_request_id = request.form.get("retry_request_id", "").strip()
         looks_like_url = (
             "://" in submission
             or ("." in submission and " " not in submission)
@@ -238,6 +336,7 @@ def register_company_routes(
             company_error="",
             resolution=resolution,
             submission=submission,
+            retry_request_id=retry_request_id,
         )
 
     @app.post("/companies/add/confirm-detected")
@@ -247,6 +346,7 @@ def register_company_routes(
             return redirect(url_for("companies"))
         company_name = request.form.get("company_name", "").strip()
         careers_url = request.form.get("careers_url", "").strip()
+        retry_request_id = request.form.get("retry_request_id", "").strip()
         resolution = resolve_employer_submission(
             get_database_path(),
             profile_id=workspace.active_profile.profile_id,
@@ -254,6 +354,29 @@ def register_company_routes(
             careers_url=careers_url,
             confirm_detected=True,
         )
+        if resolution.status in {CREATED_SCAN_READY, ALREADY_ASSIGNED}:
+            if retry_request_id and resolution.employer_id:
+                retry_request = get_review_request(
+                    get_database_path(), retry_request_id
+                )
+                if (
+                    retry_request is not None
+                    and retry_request.requesting_profile_id
+                    == workspace.active_profile.profile_id
+                    and retry_request.status == "PENDING"
+                ):
+                    mark_configured_new(
+                        get_database_path(),
+                        retry_request_id,
+                        resolution.employer_id,
+                    )
+            return redirect(
+                url_for(
+                    "companies",
+                    company_result="updated",
+                    company_message=resolution.message,
+                )
+            )
         catalog = build_company_catalog_view(get_database_path())
         return render_template(
             "company_add.html",
@@ -261,6 +384,7 @@ def register_company_routes(
             company_error="",
             resolution=resolution,
             submission=careers_url or company_name,
+            retry_request_id=retry_request_id,
         )
 
     @app.post("/companies/add")
@@ -278,6 +402,7 @@ def register_company_routes(
             )
 
         employer_id = request.form.get("employer_id", "").strip()
+        retry_request_id = request.form.get("retry_request_id", "").strip()
         try:
             if not employer_id:
                 raise EmployerNotFoundError("Choose a company to add.")
@@ -287,6 +412,21 @@ def register_company_routes(
                 catalog.active_profile.profile_id,
                 employer_id,
             )
+            if retry_request_id:
+                retry_request = get_review_request(
+                    get_database_path(), retry_request_id
+                )
+                if (
+                    retry_request is not None
+                    and retry_request.requesting_profile_id
+                    == catalog.active_profile.profile_id
+                    and retry_request.status == "PENDING"
+                ):
+                    mark_configured_new(
+                        get_database_path(),
+                        retry_request_id,
+                        employer_id,
+                    )
         except JuniorDomainError as error:
             return redirect(
                 url_for(

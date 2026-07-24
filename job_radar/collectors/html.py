@@ -8,7 +8,7 @@ import json
 from html import unescape
 from html.parser import HTMLParser
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse
 
 from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
@@ -35,11 +35,19 @@ def _get_timeout_seconds(company_config: dict[str, Any]) -> int:
 
 
 class HTMLJobLinkParser(HTMLParser):
-    def __init__(self, base_url: str) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        job_link_patterns: tuple[str, ...] = (),
+    ) -> None:
         super().__init__()
         self.base_url = base_url
+        self.job_link_patterns = job_link_patterns
         self._current_href: str | None = None
         self._current_text_parts: list[str] = []
+        self._current_title_parts: list[str] = []
+        self._title_depth = 0
         self.job_links: list[tuple[str, str]] = []
         self.structured_jobs: list[dict[str, Any]] = []
         self._in_job_json = False
@@ -55,6 +63,10 @@ class HTMLJobLinkParser(HTMLParser):
             if (attrs_dict.get("type") or "").casefold() == "application/ld+json":
                 self._in_job_json = True
                 self._json_parts = []
+            return
+        if tag.lower() in {"h1", "h2", "h3", "h4", "h5", "h6"}:
+            if self._current_href is not None:
+                self._title_depth += 1
             return
         if tag.lower() != "a":
             return
@@ -77,20 +89,29 @@ class HTMLJobLinkParser(HTMLParser):
         has_supported_class = not classes.isdisjoint(supported_link_classes)
         has_supported_id = element_id.startswith("link_job_title_")
 
-        if not has_supported_class and not has_supported_id:
-            return
-
         supported_path_parts = {
             "/job/",
             "/job-opening/",
             "/jobs/",
         }
 
-        if not any(path_part in href for path_part in supported_path_parts):
+        has_supported_pattern = any(
+            pattern and pattern in href for pattern in self.job_link_patterns
+        )
+        if (
+            not has_supported_class
+            and not has_supported_id
+            and not has_supported_pattern
+        ):
+            return
+        if not has_supported_pattern and not any(
+            path_part in href for path_part in supported_path_parts
+        ):
             return
 
         self._current_href = href
         self._current_text_parts = []
+        self._current_title_parts = []
 
     def handle_data(self, data: str) -> None:
         if self._in_job_json:
@@ -102,6 +123,8 @@ class HTMLJobLinkParser(HTMLParser):
         text = data.strip()
         if text:
             self._current_text_parts.append(text)
+            if self._title_depth:
+                self._current_title_parts.append(text)
 
     def handle_endtag(self, tag: str) -> None:
         if tag.lower() == "script" and self._in_job_json:
@@ -112,17 +135,25 @@ class HTMLJobLinkParser(HTMLParser):
                 return
             self.structured_jobs.extend(_find_job_postings(payload))
             return
+        if tag.lower() in {"h1", "h2", "h3", "h4", "h5", "h6"}:
+            if self._title_depth:
+                self._title_depth -= 1
+            return
         if tag.lower() != "a":
             return
 
         if self._current_href is None:
             return
 
-        title = " ".join(self._current_text_parts).strip()
+        title = " ".join(
+            self._current_title_parts or self._current_text_parts
+        ).strip()
         href = self._current_href
 
         self._current_href = None
         self._current_text_parts = []
+        self._current_title_parts = []
+        self._title_depth = 0
 
         if not title:
             return
@@ -140,6 +171,10 @@ def _build_headers() -> dict[str, str]:
 
 def _extract_source_job_id(source_url: str) -> str | None:
     parsed = urlparse(source_url)
+    query = parse_qs(parsed.query)
+    query_job_id = query.get("job_id", [None])[0]
+    if query_job_id and str(query_job_id).isdigit():
+        return str(query_job_id)
     parts = [part for part in parsed.path.split("/") if part]
 
     for part in reversed(parts):
@@ -214,7 +249,16 @@ def _parse_html_jobs(
     html: str,
     source_url: str,
 ) -> list[JobPosting]:
-    parser = HTMLJobLinkParser(base_url=source_url)
+    configured_patterns = company_config.get("job_link_patterns", ())
+    patterns = (
+        tuple(str(item) for item in configured_patterns if str(item))
+        if isinstance(configured_patterns, (list, tuple))
+        else ()
+    )
+    parser = HTMLJobLinkParser(
+        base_url=source_url,
+        job_link_patterns=patterns,
+    )
     parser.feed(html)
 
     postings: list[JobPosting] = [

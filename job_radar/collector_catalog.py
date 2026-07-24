@@ -45,6 +45,12 @@ COLLECTOR_CAPABILITIES = (
         "Scans public Recruitee career sites through their official public API.",
     ),
     CollectorCapability(
+        "eightfold",
+        "Eightfold",
+        "Automatic from supported careers URLs",
+        "Scans public Eightfold PCS career sites.",
+    ),
+    CollectorCapability(
         "workday",
         "Workday",
         "Additional setup may be required",

@@ -20,6 +20,7 @@ from job_radar.employer_review_service import (
     UNSUPPORTED,
     EmployerReviewError,
     assign_resolved_employer,
+    cancel_profile_review_request,
     get_review_request,
     list_review_audit,
     list_review_requests,
@@ -30,7 +31,7 @@ from job_radar.employer_review_service import (
 )
 from job_radar.employer_storage import list_profile_employer_assignments
 from job_radar.profile_models import ManagedProfile
-from job_radar.profile_storage import create_profile
+from job_radar.profile_storage import create_profile, set_active_profile
 from job_radar.web_app import create_app
 
 
@@ -167,6 +168,70 @@ def test_close_review_statuses_are_audited(
     assert list_review_audit(database_path, request_id)[0]["new_status"] == status
     with pytest.raises(EmployerReviewError, match="already"):
         mark_review_status(database_path, request_id, status)
+
+
+def test_profile_can_remove_only_its_own_unfinished_attempt(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "cancel.sqlite3"
+    owner = create_test_profile(database_path, "profile_1111aaaa", "Owner")
+    other = create_test_profile(database_path, "profile_2222bbbb", "Other")
+    request_id = create_pending_request(database_path, owner.profile_id)
+
+    with pytest.raises(EmployerReviewError, match="not available"):
+        cancel_profile_review_request(
+            database_path,
+            request_id,
+            profile_id=other.profile_id,
+            confirmation="REMOVE",
+        )
+    with pytest.raises(EmployerReviewError, match="Type REMOVE"):
+        cancel_profile_review_request(
+            database_path,
+            request_id,
+            profile_id=owner.profile_id,
+            confirmation="",
+        )
+
+    cancel_profile_review_request(
+        database_path,
+        request_id,
+        profile_id=owner.profile_id,
+        confirmation="REMOVE",
+    )
+
+    assert get_review_request(database_path, request_id).status == CANCELLED  # type: ignore[union-attr]
+    assert list_profile_review_states(database_path, owner.profile_id) == ()
+
+
+def test_profile_routes_offer_retry_and_guarded_attempt_removal(
+    tmp_path: Path,
+) -> None:
+    app = build_test_app(tmp_path)
+    database_path = tmp_path / "data" / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    set_active_profile(database_path, profile.profile_id)
+    request_id = create_pending_request(database_path, profile.profile_id)
+    client = app.test_client()
+
+    companies_html = client.get("/companies").get_data(as_text=True)
+    retry_html = client.get(
+        f"/companies/add?retry={request_id}"
+    ).get_data(as_text=True)
+    removed = client.post(
+        f"/companies/setup-requests/{request_id}/remove",
+        data={"confirmation": "REMOVE"},
+        follow_redirects=True,
+    )
+
+    assert "Retry setup" in companies_html
+    assert "Remove attempt" in companies_html
+    assert "Example Kitchens" in retry_html
+    assert f'value="{request_id}"' in retry_html
+    assert "unfinished setup attempt was removed" in removed.get_data(
+        as_text=True
+    )
+    assert get_review_request(database_path, request_id).status == CANCELLED  # type: ignore[union-attr]
 
 
 def test_configured_new_can_be_assigned_after_validation_and_enablement(

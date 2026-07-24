@@ -12,6 +12,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   URLs, plus a validated schema.org JobPosting fallback for unfamiliar public
   careers pages. Unsupported pages are not saved as broken scan sources and
   instead show privacy-safe support guidance.
+- Expanded company setup to probe ATS links and metadata advertised behind
+  branded careers pages, added automatic Workday, Oracle HCM, Phenom, and
+  Eightfold setup, and required a real public job result before an unfamiliar
+  source is saved.
+- Added Retry setup and guarded Remove attempt actions for unfinished company
+  submissions, editable shared company names that preserve source settings and
+  history, a clean redirect after successful setup, and an in-page working
+  indicator while Junior checks a careers source.
 
 ## 0.2.0 - 2026-07-24
 

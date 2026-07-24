@@ -93,7 +93,30 @@ def test_name_and_url_normalization_is_safe_and_stable() -> None:
             "example-tenant:19000101_000001",
             True,
         ),
-        ("https://example.wd5.myworkdayjobs.com/jobs", "workday", None, False),
+        (
+            "https://careers.nintendo.com/jobs/",
+            "html",
+            "careers.nintendo.com",
+            True,
+        ),
+        (
+            "https://www.valvesoftware.com/en",
+            "html",
+            "www.valvesoftware.com",
+            True,
+        ),
+        (
+            "https://careers.blizzard.com/global/en",
+            "phenom",
+            "careers.blizzard.com",
+            True,
+        ),
+        (
+            "https://example.wd5.myworkdayjobs.com/jobs",
+            "workday",
+            "example.wd5.myworkdayjobs.com:jobs",
+            True,
+        ),
         ("https://example.icims.com/jobs", "icims", None, False),
         ("https://jobs.smartrecruiters.com/Example", "smartrecruiters", None, False),
         ("https://example.invalid/careers", "html", None, False),
@@ -362,7 +385,11 @@ def test_unknown_site_must_pass_generic_collector_before_being_added(
     assert detected.status == DETECTED_SETUP_REQUIRED
 
     monkeypatch.setattr(
-        "job_radar.employer_resolution_service.collect_html_jobs",
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda url: [],
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
         lambda config: [object()],
     )
     created = resolve_employer_submission(
@@ -387,7 +414,11 @@ def test_unknown_site_failure_directs_user_to_safe_support(
     database_path = tmp_path / "junior.sqlite3"
     profile = create_test_profile(database_path)
     monkeypatch.setattr(
-        "job_radar.employer_resolution_service.collect_html_jobs",
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda url: [],
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
         lambda config: [],
     )
 

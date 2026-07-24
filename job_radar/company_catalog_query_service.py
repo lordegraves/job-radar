@@ -22,6 +22,7 @@ UNAVAILABLE = "unavailable"
 _SLUG_SOURCE_TYPES = {"ashby", "greenhouse", "lever", "rippling"}
 _URL_SOURCE_TYPES = {
     "dayforce",
+    "eightfold",
     "html",
     "icims",
     "jibe",
@@ -161,6 +162,10 @@ def _has_complete_source_config(employer: EmployerSource) -> bool:
     if source_type in _SLUG_SOURCE_TYPES:
         return _has_text(config.get("source_slug"))
 
+    if source_type == "eightfold":
+        return _has_http_url(config.get("source_url")) and bool(
+            str(config.get("domain") or "").strip()
+        )
     if source_type in _URL_SOURCE_TYPES:
         return _has_http_url(config.get("source_url"))
 

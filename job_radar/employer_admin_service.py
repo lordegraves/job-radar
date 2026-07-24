@@ -120,6 +120,19 @@ def source_fields(source_type: str) -> tuple[SourceField, ...]:
                 "The employer identifier used in the public career-site address.",
             ),
         )
+    elif source_type == "eightfold":
+        fields = (
+            SourceField(
+                "source_url",
+                "Eightfold site URL",
+                "The public base address hosting the Eightfold career site.",
+            ),
+            SourceField(
+                "domain",
+                "Eightfold employer domain",
+                "The public employer domain used by Eightfold job search.",
+            ),
+        )
     elif source_type in _URL_SOURCES:
         fields = (
             SourceField(
@@ -342,6 +355,53 @@ def update_employer(
         )
         _record_audit(
             connection, employer_id, "edit", previous, employer, previous.retired
+        )
+    return get_admin_employer(db_path, employer_id)  # type: ignore[return-value]
+
+
+def rename_employer(
+    database_path: str | Path,
+    employer_id: str,
+    *,
+    name: str,
+) -> EmployerAdminRecord:
+    """Correct a shared display name without disturbing its working collector."""
+
+    previous = get_admin_employer(database_path, employer_id)
+    if previous is None:
+        raise EmployerAdminError("That employer no longer exists.")
+    normalized_name = " ".join(name.strip().split())
+    if not normalized_name:
+        raise EmployerAdminError("Enter the corrected company name.")
+    employer = EmployerSource(
+        employer_id=previous.employer.employer_id,
+        name=normalized_name,
+        source_type=previous.employer.source_type,
+        enabled=previous.employer.enabled,
+        source_config=previous.employer.source_config,
+        notes=previous.employer.notes,
+    )
+    db_path = initialize_database(database_path)
+    with connect_database(db_path) as connection:
+        connection.execute(
+            """
+            UPDATE employer_sources
+            SET name = ?, normalized_name = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE employer_id = ?
+            """,
+            (
+                employer.name,
+                normalize_company_name(employer.name),
+                employer_id,
+            ),
+        )
+        _record_audit(
+            connection,
+            employer_id,
+            "rename",
+            previous,
+            employer,
+            previous.retired,
         )
     return get_admin_employer(db_path, employer_id)  # type: ignore[return-value]
 
