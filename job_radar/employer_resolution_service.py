@@ -38,6 +38,7 @@ AMBIGUOUS_MATCH = "AMBIGUOUS_MATCH"
 UNSUPPORTED_SITE = "UNSUPPORTED_SITE"
 INVALID_INPUT = "INVALID_INPUT"
 ALREADY_ASSIGNED = "ALREADY_ASSIGNED"
+EXTERNAL_LOOKUP_DISABLED = "EXTERNAL_LOOKUP_DISABLED"
 
 _TRACKING_QUERY_KEYS = {
     "fbclid",
@@ -97,6 +98,8 @@ class EmployerResolutionResult:
     possible_employers: tuple[tuple[str, str], ...] = ()
     detected_source_label: str | None = None
     requires_company_name: bool = False
+    external_lookup_provider: str | None = None
+    external_lookup_fields: tuple[tuple[str, str], ...] = ()
 
 
 def resolve_employer_submission(
@@ -106,6 +109,7 @@ def resolve_employer_submission(
     company_name: str = "",
     careers_url: str = "",
     confirm_detected: bool = False,
+    allow_external_lookup: bool = False,
 ) -> EmployerResolutionResult:
     """Resolve, safely create, or queue one company for a managed profile."""
 
@@ -231,6 +235,7 @@ def resolve_employer_submission(
             display_name=display_name,
             normalized_name=normalized_name,
             normalized_url=normalized_url,
+            allow_external_lookup=allow_external_lookup,
         )
     return _create_pending_review(
         db_path,
@@ -707,6 +712,7 @@ def _create_and_assign_generic(
     display_name: str,
     normalized_name: str,
     normalized_url: str,
+    allow_external_lookup: bool,
 ) -> EmployerResolutionResult:
     """Enable an unfamiliar public careers page only after extracting real jobs."""
 
@@ -724,6 +730,23 @@ def _create_and_assign_generic(
         display_name=display_name,
     )
     if tested_source is None:
+        lookup_fields = _public_lookup_request_fields(
+            display_name=display_name,
+            careers_url=normalized_url,
+        )
+        if not allow_external_lookup:
+            return EmployerResolutionResult(
+                status=EXTERNAL_LOOKUP_DISABLED,
+                message=(
+                    "Junior completed its local checks but could not locate a "
+                    "working job source. Optional Bing lookup is disabled. No "
+                    "company was added."
+                ),
+                employer_name=display_name,
+                careers_url=normalized_url,
+                external_lookup_provider="Bing",
+                external_lookup_fields=lookup_fields,
+            )
         # A corporate landing page may block automated access or live on a
         # different domain from the real job search. The fallback sends only
         # the public company identity, then validates every candidate locally.
@@ -980,17 +1003,16 @@ def _discover_public_job_sources(
 ) -> list[DetectedEmployerSource]:
     """Find a separated official job site without sending private user data."""
 
-    parsed = urlsplit(careers_url)
-    public_identity = " ".join(
-        part for part in (display_name, parsed.hostname or "") if part
+    request_fields = dict(
+        _public_lookup_request_fields(
+            display_name=display_name,
+            careers_url=careers_url,
+        )
     )
     try:
         response = get_response(
             _PUBLIC_SOURCE_SEARCH_URL,
-            params={
-                "q": f"{public_identity} official careers jobs",
-                "format": "rss",
-            },
+            params=request_fields,
             headers={
                 "Accept": "text/html,application/xhtml+xml",
                 "User-Agent": "Junior/0.2 local career-source discovery",
@@ -1050,6 +1072,23 @@ def _discover_public_job_sources(
         if len(discoveries) >= 6:
             break
     return discoveries
+
+
+def _public_lookup_request_fields(
+    *,
+    display_name: str,
+    careers_url: str,
+) -> tuple[tuple[str, str], ...]:
+    """Build the complete, displayable payload sent to the search provider."""
+
+    hostname = urlsplit(careers_url).hostname or ""
+    public_identity = " ".join(
+        part for part in (display_name, hostname) if part
+    )
+    return (
+        ("q", f"{public_identity} official careers jobs"),
+        ("format", "rss"),
+    )
 
 
 def _public_search_result_url(raw_href: str) -> str | None:

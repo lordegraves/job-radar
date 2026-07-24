@@ -18,6 +18,11 @@ from flask import (
 from job_radar import __version__
 from job_radar.application_info_service import build_application_info
 from job_radar.collector_catalog import list_collector_capabilities
+from job_radar.company_discovery_settings_service import (
+    CompanyDiscoverySettingsError,
+    load_company_discovery_settings_form,
+    save_company_discovery_settings,
+)
 from job_radar.config import load_settings
 from job_radar.diagnostic_service import build_diagnostics_view
 from job_radar.diagnostic_log_service import (
@@ -131,6 +136,28 @@ def register_settings_routes(
             "settings_job_platforms.html",
             capabilities=list_collector_capabilities(),
         )
+
+    @app.get("/settings/company-discovery")
+    def settings_company_discovery() -> str:
+        return render_template(
+            "settings_company_discovery.html",
+            discovery_form=load_company_discovery_settings_form(settings_path),
+        )
+
+    @app.post("/settings/company-discovery")
+    def settings_company_discovery_save():
+        try:
+            save_company_discovery_settings(
+                settings_path,
+                external_lookup_enabled=(
+                    request.form.get("external_lookup") == "enabled"
+                ),
+            )
+        except CompanyDiscoverySettingsError as error:
+            flash(str(error), "error")
+        else:
+            flash("External company lookup preference saved.", "success")
+        return redirect(url_for("settings_company_discovery"))
 
     @app.post("/settings/about/check-updates")
     def settings_about_check_updates():

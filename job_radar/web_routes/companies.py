@@ -11,6 +11,7 @@ from job_radar.company_assignment_service import (
 )
 from job_radar.company_catalog_query_service import build_company_catalog_view
 from job_radar.company_workspace_service import build_company_workspace
+from job_radar.config import load_settings
 from job_radar.domain_errors import (
     EmployerNotFoundError,
     InvalidCompanyStateError,
@@ -39,6 +40,7 @@ def register_company_routes(
     app: Flask,
     *,
     get_database_path: Callable[[], str],
+    settings_path: str,
 ) -> None:
     """Register profile-aware company management and safe source testing."""
 
@@ -309,12 +311,16 @@ def register_company_routes(
         company_name = request.form.get("company_name", "").strip()
         careers_url = request.form.get("careers_url", "").strip()
         retry_request_id = request.form.get("retry_request_id", "").strip()
+        allow_external_lookup = load_settings(
+            settings_path
+        ).company_discovery.external_lookup_enabled
         resolution = resolve_employer_submission(
             get_database_path(),
             profile_id=workspace.active_profile.profile_id,
             company_name=company_name,
             careers_url=careers_url,
             confirm_detected=True,
+            allow_external_lookup=allow_external_lookup,
         )
         if resolution.status in {CREATED_SCAN_READY, ALREADY_ASSIGNED}:
             if retry_request_id and resolution.employer_id:

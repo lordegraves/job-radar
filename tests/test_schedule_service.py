@@ -161,6 +161,9 @@ def test_schedule_page_saves_and_discloses_automation_boundary(
     assert "When Junior should scan" in page.get_data(as_text=True)
     assert "Windows connection" in page.get_data(as_text=True)
     assert "Apply schedule to Windows" in page.get_data(as_text=True)
+    assert "Junior does not need to be open." in page.get_data(as_text=True)
+    assert "computer is locked" in page.get_data(as_text=True)
+    assert "signed in" in page.get_data(as_text=True)
     html = saved.get_data(as_text=True)
     assert "Scan schedule saved." in html
     assert 'value="07:15"' in html

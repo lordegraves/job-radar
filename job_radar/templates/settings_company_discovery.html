@@ -1,0 +1,67 @@
+{# Lets a user review and change external company-source lookup consent. #}
+{% extends "base.html" %}
+
+{% block title %}External Company Lookup - junior{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('settings') }}">&larr; Back to Settings</a></p>
+<h1 class="page-title">External company lookup</h1>
+
+<div class="page-card">
+    <h2>What this optional setting does</h2>
+    <p>
+        Junior first checks the public careers address you provide, follows its
+        public links, and tries its built-in collectors. When this setting is
+        enabled, Junior may ask Bing for possible official careers sites only
+        after all of those local checks fail.
+    </p>
+    <p>
+        Bing receives a search phrase containing only the submitted company
+        name, its public domain, and the words <code>official careers
+        jobs</code>, plus <code>format=rss</code>. Bing can also observe your
+        IP address and ordinary connection details.
+    </p>
+    <p class="muted">
+        Junior does not send profile or résumé information, desired roles,
+        locations, application history, contact details, database contents, or
+        submitted URL paths and query parameters. Search results are not
+        trusted: Junior validates every candidate with its normal collector
+        before saving a company. Failed candidates and search responses are
+        discarded.
+    </p>
+    <h2>Advantages</h2>
+    <ul>
+        <li>May locate a job system that is separated from the company's public careers page.</li>
+        <li>Can reduce the need to find and paste a more specific job-search address.</li>
+    </ul>
+    <h2>Privacy and reliability tradeoffs</h2>
+    <ul>
+        <li>Bing can observe your IP address, the public company name and domain, and ordinary connection details.</li>
+        <li>Bing is an external service that Junior does not control and it may change or become unavailable.</li>
+        <li>External results are never trusted until Junior validates the source independently.</li>
+    </ul>
+    <p>
+        This setting affects company setup only. It is never used during normal
+        scans, and Junior remains fully usable while it is disabled.
+    </p>
+</div>
+
+<form class="page-card" method="post">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <label for="external-lookup">
+        <input
+            id="external-lookup"
+            name="external_lookup"
+            type="checkbox"
+            value="enabled"
+            {% if discovery_form.external_lookup_enabled %}checked{% endif %}
+        >
+        <span>Allow optional Bing company lookup</span>
+    </label>
+    <p class="muted">
+        Off is the recommended default. Changing this does not alter existing
+        companies or previously collected jobs.
+    </p>
+    <p><button type="submit">Save preference</button></p>
+</form>
+{% endblock %}

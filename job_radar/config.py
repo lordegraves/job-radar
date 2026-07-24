@@ -86,6 +86,13 @@ class RetentionSettings:
 
 
 @dataclass(frozen=True)
+class CompanyDiscoverySettings:
+    """Control whether Junior may use an external company-source lookup."""
+
+    external_lookup_enabled: bool
+
+
+@dataclass(frozen=True)
 class ApplicationSettings(Mapping[str, Any]):
     """Application-owned settings loaded from the current settings YAML file.
 
@@ -101,6 +108,7 @@ class ApplicationSettings(Mapping[str, Any]):
     active_profile: ActiveProfileSettings
     email: EmailSettings
     retention: RetentionSettings
+    company_discovery: CompanyDiscoverySettings
     _data: dict[str, Any] = field(repr=False, compare=False)
 
     @property
@@ -209,6 +217,9 @@ def load_settings(
     )
     email = _validate_email_settings(data.get("email", {}))
     retention = _validate_retention_settings(data.get("retention", {}))
+    company_discovery = _validate_company_discovery_settings(
+        data.get("company_discovery", {})
+    )
 
     # Preserve the original mapping shape during the compatibility migration.
     # Existing CLI and GUI callers can keep using [] and .get() until each
@@ -229,7 +240,28 @@ def load_settings(
         active_profile=active_profile,
         email=email,
         retention=retention,
+        company_discovery=company_discovery,
         _data=normalized_data,
+    )
+
+
+def _validate_company_discovery_settings(
+    raw_company_discovery: Any,
+) -> CompanyDiscoverySettings:
+    if raw_company_discovery is None:
+        raw_company_discovery = {}
+    if not isinstance(raw_company_discovery, dict):
+        raise ConfigError(
+            "settings.yaml company_discovery section must be a mapping"
+        )
+    external_lookup = raw_company_discovery.get("external_lookup", False)
+    if not isinstance(external_lookup, bool):
+        raise ConfigError(
+            "settings.yaml company_discovery external_lookup must be "
+            "true or false"
+        )
+    return CompanyDiscoverySettings(
+        external_lookup_enabled=external_lookup
     )
 
 

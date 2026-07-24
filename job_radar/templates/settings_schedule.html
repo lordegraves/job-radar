@@ -72,6 +72,16 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <h2>When Junior should scan</h2>
         <p class="muted">This schedule uses the computer's local time and the active profile at the time the scan starts.</p>
+        {% if scheduler_integration.platform_name == "Windows" %}
+        <div class="schedule-status">
+            <strong>Junior does not need to be open.</strong>
+            <p>
+                Windows can start the scheduled scan while Junior's window is
+                closed or the computer is locked. This Windows user must still
+                be signed in, and the computer must be awake and powered on.
+            </p>
+        </div>
+        {% endif %}
 
         <label>
             <input type="checkbox" name="enabled" value="yes" {% if schedule_view.schedule.enabled %}checked{% endif %}>
@@ -153,8 +163,8 @@
         </div>
         {% if scheduler_integration.platform_name == "Windows" %}
         <p class="muted">
-            The task runs only while this Windows user is signed in. It uses
-            normal user permissions and does not store a Windows password.
+            The task uses normal user permissions and does not store a Windows
+            password.
         </p>
         {% else %}
         <p class="muted">

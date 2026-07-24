@@ -155,6 +155,18 @@
     </form>
     {% elif resolution.status == 'CREATED_SCAN_READY' %}
     <p><a href="{{ url_for('companies') }}">Return to Your Companies</a></p>
+    {% elif resolution.status == 'EXTERNAL_LOOKUP_DISABLED' %}
+    <p>
+        Bing is not required for Junior to operate. It is an optional fallback
+        for employers whose public careers page does not reveal where its job
+        system is hosted.
+    </p>
+    <p class="muted">
+        You can enter a more direct careers URL or enable optional Bing lookup
+        in Settings after reviewing exactly what it sends and the privacy
+        tradeoffs. Existing companies and normal scans do not use Bing.
+    </p>
+    <p><a href="{{ url_for('settings_company_discovery') }}">Review external lookup privacy</a></p>
     {% elif resolution.status in ['PENDING_REVIEW', 'UNSUPPORTED_SITE'] %}
     <p class="muted">
         The company is now in this profile as <strong>Setup needed</strong>.

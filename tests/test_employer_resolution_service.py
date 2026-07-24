@@ -14,6 +14,7 @@ from job_radar.employer_resolution_service import (
     CREATED_SCAN_READY,
     DETECTED_SCAN_READY,
     DETECTED_SETUP_REQUIRED,
+    EXTERNAL_LOOKUP_DISABLED,
     INVALID_INPUT,
     MATCHED_EXISTING,
     PENDING_REVIEW,
@@ -484,6 +485,7 @@ def test_unknown_site_failure_directs_user_to_safe_support(
         company_name="Example Kitchens",
         careers_url="https://careers.example.invalid/jobs",
         confirm_detected=True,
+        allow_external_lookup=True,
     )
 
     assert result.status == INVALID_INPUT
@@ -535,6 +537,7 @@ def test_blocked_landing_page_can_find_and_verify_separate_official_job_site(
         company_name="Example Kitchens",
         careers_url=landing_url,
         confirm_detected=True,
+        allow_external_lookup=True,
     )
 
     assert created.status == CREATED_SCAN_READY
@@ -551,6 +554,58 @@ def test_blocked_landing_page_can_find_and_verify_separate_official_job_site(
         ).fetchall()
     assert stored_employers == [("example-kitchens",)]
     assert review_requests == []
+
+
+def test_unknown_site_requires_consent_and_discloses_complete_lookup_payload(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    external_lookup_called = False
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda url: [],
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [],
+    )
+
+    def discover(**kwargs):
+        nonlocal external_lookup_called
+        external_lookup_called = True
+        return []
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_public_job_sources",
+        discover,
+    )
+
+    result = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name="Example Kitchens",
+        careers_url=(
+            "https://careers.example.invalid/jobs"
+            "?tenant=private-path-value"
+        ),
+        confirm_detected=True,
+    )
+
+    assert result.status == EXTERNAL_LOOKUP_DISABLED
+    assert result.external_lookup_provider == "Bing"
+    assert result.external_lookup_fields == (
+        (
+            "q",
+            "Example Kitchens careers.example.invalid official careers jobs",
+        ),
+        ("format", "rss"),
+    )
+    assert "private-path-value" not in str(result.external_lookup_fields)
+    assert external_lookup_called is False
+    assert list_profile_employer_assignments(database_path, profile.profile_id) == []
 
 
 def test_concurrent_submission_cannot_duplicate_scan_ready_employer(

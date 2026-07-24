@@ -170,6 +170,13 @@
         <p class="muted">This global list is available even when the Employer Catalog is empty.</p>
     </section>
 
+    <section class="settings-card">
+        <h2>External company lookup</h2>
+        <p>Control whether Junior may ask Bing to locate a separate public careers system after local checks fail.</p>
+        <p><a href="{{ url_for('settings_company_discovery') }}">Manage external lookup privacy</a></p>
+        <p class="muted">The default is Off. Bing is never required for normal scans.</p>
+    </section>
+
     {% if desktop_shutdown_available %}
     <section class="settings-card">
         <h2>Exit Junior</h2>

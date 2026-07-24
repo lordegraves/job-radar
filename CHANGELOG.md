@@ -6,6 +6,12 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a global, default-off Bing company-lookup setting with plain-language
+  disclosure of its limited advantage, complete search payload, IP-address
+  exposure, reliability risk, and strict separation from normal scans.
+- Clarified directly on Windows Scan Schedule setup that Junior's window may be
+  closed while the scheduled task runs, but the user must remain signed in and
+  the computer must be awake and powered on.
 - Added a Credits section to About Junior recognizing beta tester Dawn Peacock.
 - Added a global, read-only Collector Catalog that is populated on fresh
   installations without adding employers to the global Employer Catalog.
@@ -25,10 +31,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   records the initial safe source-health result, and shows the recruiting
   platform, latest check, and returned-job count on the normal company page.
   Users can rerun that non-destructive test without Administration access.
-- Blocked or separated employer landing pages can use a bounded public lookup
-  containing only the submitted company name and domain. Junior probes only
-  identity-related results, stores only a verified working source, and
-  discards rejected candidates without creating database clutter.
+- When explicitly enabled in Settings, blocked or separated employer landing
+  pages can use an optional bounded Bing lookup containing only the submitted
+  company name and domain. Junior probes only identity-related results, stores
+  only a verified working source, and discards rejected candidates without
+  creating database clutter.
 - Replaced persistent company-result query strings with one-use, dismissible
   notifications and clarified that profile removal does not delete the shared
   employer.

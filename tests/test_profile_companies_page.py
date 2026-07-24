@@ -601,6 +601,86 @@ def test_add_company_by_complete_adp_url_requests_name_and_adds_source(
     )
 
 
+def test_unknown_company_source_explains_disabled_external_lookup(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda url: [],
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [],
+    )
+
+    def unexpected_external_lookup(**kwargs):
+        raise AssertionError("External lookup ran without consent.")
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_public_job_sources",
+        unexpected_external_lookup,
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    response = client.post(
+        "/companies/add/confirm-detected",
+        data={
+            "company_name": "Example Kitchens",
+            "careers_url": (
+                "https://careers.example.invalid/jobs?tenant=hidden"
+            ),
+        },
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Optional Bing lookup is disabled" in html
+    assert "Bing is not required for Junior to operate" in html
+    assert "Review external lookup privacy" in html
+    assert get_profile(database_path, profile.profile_id).company_ids == ()
+
+
+def test_external_lookup_preference_is_visible_and_editable_in_settings(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    settings_page = client.get("/settings").get_data(as_text=True)
+    privacy_page = client.get(
+        "/settings/company-discovery"
+    ).get_data(as_text=True)
+
+    assert "Manage external lookup privacy" in settings_page
+    assert "Allow optional Bing company lookup" in privacy_page
+    assert "Bing receives a search phrase" in privacy_page
+
+    saved = client.post(
+        "/settings/company-discovery",
+        data={"external_lookup": "enabled"},
+        follow_redirects=True,
+    )
+    saved_html = saved.get_data(as_text=True)
+
+    assert "External company lookup preference saved." in saved_html
+    assert 'value="enabled"' in saved_html
+    assert "checked" in saved_html
+
+
 def test_company_detail_shows_and_refreshes_safe_source_health(
     tmp_path: Path,
     monkeypatch,

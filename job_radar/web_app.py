@@ -141,6 +141,7 @@ def create_app(
     register_company_routes(
         app,
         get_database_path=lambda: _get_database_path(app),
+        settings_path=app.config["JOB_RADAR_SETTINGS_PATH"],
     )
 
     register_profile_routes(

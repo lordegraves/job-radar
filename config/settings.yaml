@@ -8,6 +8,9 @@ retention:
   log_policy: latest_only
   log_count: 1
 
+company_discovery:
+  external_lookup: false
+
 email:
   enabled: false
   sender: ""
