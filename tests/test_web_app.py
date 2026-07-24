@@ -4265,6 +4265,7 @@ def test_search_preferences_creates_profile_and_guides_resume_upload(
             "workplace-arrangement": ["On-site"],
             "schedule_preference": "Day shift",
             "on_call_preference": "Not willing to participate",
+            "clearance_preference": "Review each job",
             "compensation_floor_usd": "60000",
             "travel_percentage": "10",
         },
@@ -4277,6 +4278,7 @@ def test_search_preferences_creates_profile_and_guides_resume_upload(
     assert profile.display_name == "Colorado Kitchen Work"
     assert profile.preferences.target_roles == ("Cooks, Restaurant",)
     assert profile.preferences.on_call_preference == "Not willing to participate"
+    assert profile.preferences.clearance_preference == "Review each job"
 
     handoff_page = client.get(response.headers["Location"]).get_data(as_text=True)
     assert "Profile created." in handoff_page
@@ -4346,6 +4348,7 @@ def test_search_preferences_save_normalized_profile_data(tmp_path: Path) -> None
             "workplace-arrangement": ["Hybrid", "On-site"],
             "schedule_preference": "Day shift",
             "on_call_preference": "Not willing to participate",
+            "clearance_preference": "Review each job",
             "compensation_floor_usd": "60000",
             "travel_percentage": "10",
         },

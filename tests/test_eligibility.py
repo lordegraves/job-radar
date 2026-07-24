@@ -584,6 +584,72 @@ def test_on_call_preference_controls_eligibility(
 
 
 @pytest.mark.parametrize(
+    ("clearance_preference", "expected_status", "expected_code"),
+    [
+        (
+            "I hold an active clearance",
+            ELIGIBILITY_ELIGIBLE,
+            "active_clearance_requirement_accepted",
+        ),
+        (
+            "Exclude jobs requiring an existing active clearance",
+            ELIGIBILITY_NOT_ELIGIBLE,
+            "active_clearance_requirement_excluded",
+        ),
+        (
+            "Review each job",
+            ELIGIBILITY_NEEDS_REVIEW,
+            "active_clearance_requirement_needs_review",
+        ),
+    ],
+)
+def test_active_clearance_preference_controls_eligibility(
+    clearance_preference: str,
+    expected_status: str,
+    expected_code: str,
+) -> None:
+    posting = make_posting(
+        description="An active security clearance required before starting.",
+    )
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        clearance_preference=clearance_preference,
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == expected_status
+    assert result.reasons[-1].code == expected_code
+
+
+def test_ambiguous_clearance_wording_needs_review() -> None:
+    posting = make_posting(
+        description="Candidates must have the ability to obtain a clearance.",
+    )
+    preferences = ProfilePreferences(
+        work_arrangements=("Remote",),
+        clearance_preference=(
+            "Exclude jobs requiring an existing active clearance"
+        ),
+    )
+
+    result = evaluate_practical_eligibility(
+        posting=posting,
+        preferences=preferences,
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NEEDS_REVIEW
+    assert result.reasons[-1].code == "clearance_wording_needs_review"
+
+
+@pytest.mark.parametrize(
     ("description", "travel_limit", "expected_status", "expected_code"),
     [
         (

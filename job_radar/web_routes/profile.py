@@ -351,6 +351,9 @@ def register_profile_routes(
                 on_call_preference=request.form.get(
                     "on_call_preference", "Review each job"
                 ),
+                clearance_preference=request.form.get(
+                    "clearance_preference", "Review each job"
+                ),
                 compensation_floor_usd=request.form.get(
                     "compensation_floor_usd", ""
                 ),

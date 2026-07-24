@@ -396,64 +396,76 @@ def _replace_profile_preferences(
         "DELETE FROM profile_preferences WHERE profile_id = ?",
         (profile.profile_id,),
     )
-    connection.execute(
-        """
-        INSERT INTO profile_preferences (
-            profile_id,
-            target_roles_json,
-            seniority_levels_json,
-            core_strengths_json,
-            credible_adjacent_json,
-            learning_or_gap_json,
-            exclusions_json,
-            preferred_locations_json,
-            work_arrangements_json,
-            employment_types_json,
-            compensation_floor_usd,
-            compensation_target_usd,
-            travel_tolerance,
-            schedule_preference,
-            on_call_preference,
-            occupation_selections_json,
-            location_selections_json
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            profile.profile_id,
-            _dump_json(preferences.target_roles),
-            _dump_json(preferences.seniority_levels),
-            _dump_json(preferences.core_strengths),
-            _dump_json(preferences.credible_adjacent),
-            _dump_json(preferences.learning_or_gap),
-            _dump_json(preferences.exclusions),
-            _dump_json(preferences.preferred_locations),
-            _dump_json(preferences.work_arrangements),
-            _dump_json(preferences.employment_types),
-            preferences.compensation_floor_usd,
-            preferences.compensation_target_usd,
-            preferences.travel_tolerance,
-            preferences.schedule_preference,
-            preferences.on_call_preference,
-            _dump_json(
-                [
-                    {"value": item.value, "label": item.label}
-                    for item in preferences.occupation_selections
-                ]
-            ),
-            _dump_json(
-                [
-                    {
-                        "value": item.value,
-                        "label": item.label,
-                        "latitude": item.latitude,
-                        "longitude": item.longitude,
-                        "radius_miles": item.radius_miles,
-                    }
-                    for item in preferences.location_selections
-                ]
-            ),
+    columns = [
+        "profile_id",
+        "target_roles_json",
+        "seniority_levels_json",
+        "core_strengths_json",
+        "credible_adjacent_json",
+        "learning_or_gap_json",
+        "exclusions_json",
+        "preferred_locations_json",
+        "work_arrangements_json",
+        "employment_types_json",
+        "compensation_floor_usd",
+        "compensation_target_usd",
+        "travel_tolerance",
+        "schedule_preference",
+        "on_call_preference",
+        "occupation_selections_json",
+        "location_selections_json",
+    ]
+    values: list[object] = [
+        profile.profile_id,
+        _dump_json(preferences.target_roles),
+        _dump_json(preferences.seniority_levels),
+        _dump_json(preferences.core_strengths),
+        _dump_json(preferences.credible_adjacent),
+        _dump_json(preferences.learning_or_gap),
+        _dump_json(preferences.exclusions),
+        _dump_json(preferences.preferred_locations),
+        _dump_json(preferences.work_arrangements),
+        _dump_json(preferences.employment_types),
+        preferences.compensation_floor_usd,
+        preferences.compensation_target_usd,
+        preferences.travel_tolerance,
+        preferences.schedule_preference,
+        preferences.on_call_preference,
+        _dump_json(
+            [
+                {"value": item.value, "label": item.label}
+                for item in preferences.occupation_selections
+            ]
         ),
+        _dump_json(
+            [
+                {
+                    "value": item.value,
+                    "label": item.label,
+                    "latitude": item.latitude,
+                    "longitude": item.longitude,
+                    "radius_miles": item.radius_miles,
+                }
+                for item in preferences.location_selections
+            ]
+        ),
+    ]
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(profile_preferences)"
+        ).fetchall()
+    }
+    if "clearance_preference" in existing_columns:
+        insertion_index = columns.index("occupation_selections_json")
+        columns.insert(insertion_index, "clearance_preference")
+        values.insert(insertion_index, preferences.clearance_preference)
+
+    placeholders = ", ".join("?" for _ in columns)
+    connection.execute(
+        f"INSERT INTO profile_preferences ({', '.join(columns)}) "
+        f"VALUES ({placeholders})",
+        values,
     )
 
 
@@ -558,6 +570,7 @@ def _row_to_profile(
             travel_tolerance=preference_row["travel_tolerance"],
             schedule_preference=preference_row["schedule_preference"],
             on_call_preference=preference_row["on_call_preference"],
+            clearance_preference=preference_row["clearance_preference"],
             occupation_selections=_load_occupation_preferences(
                 preference_row["occupation_selections_json"]
             ),

@@ -65,6 +65,9 @@ def make_profile(
             compensation_target_usd=145000,
             travel_tolerance="limited",
             on_call_preference="Not willing to participate",
+            clearance_preference=(
+                "Exclude jobs requiring an existing active clearance"
+            ),
         ),
         resume=build_managed_resume(".pdf"),
         company_ids=("example_company", "second_company"),

@@ -80,6 +80,7 @@ def test_complete_profile_creation_owns_neutral_scoring(tmp_path: Path) -> None:
         work_arrangements=["On-site"],
         schedule_preference="Day shift",
         on_call_preference="Not willing to participate",
+        clearance_preference="Review each job",
         compensation_floor_usd="50000",
         travel_percentage="0",
         exclusions="Commission-only sales\ncommission-only sales\nFront counter work",
@@ -98,6 +99,7 @@ def test_complete_profile_creation_owns_neutral_scoring(tmp_path: Path) -> None:
         "Commission-only sales",
         "Front counter work",
     )
+    assert profile.preferences.clearance_preference == "Review each job"
 
 
 def test_create_edit_select_archive_and_restore_profile(tmp_path: Path) -> None:

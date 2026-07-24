@@ -69,6 +69,11 @@ ON_CALL_PREFERENCES = {
     "Not willing to participate",
     "Review each job",
 }
+CLEARANCE_PREFERENCES = {
+    "I hold an active clearance",
+    "Exclude jobs requiring an existing active clearance",
+    "Review each job",
+}
 MAX_MANAGED_PROFILES = 5
 
 
@@ -220,6 +225,7 @@ def save_managed_search_profile(
     work_arrangements: list[str],
     schedule_preference: str,
     on_call_preference: str,
+    clearance_preference: str,
     compensation_floor_usd: str,
     travel_percentage: str,
     exclusions: str = "",
@@ -257,6 +263,7 @@ def save_managed_search_profile(
         work_arrangements=work_arrangements,
         schedule_preference=schedule_preference,
         on_call_preference=on_call_preference,
+        clearance_preference=clearance_preference,
         compensation_floor_usd=compensation_floor_usd,
         travel_percentage=travel_percentage,
         exclusions=exclusions,
@@ -297,6 +304,7 @@ def _validated_search_preferences(
     work_arrangements: list[str],
     schedule_preference: str,
     on_call_preference: str,
+    clearance_preference: str,
     compensation_floor_usd: str,
     travel_percentage: str,
     exclusions: str,
@@ -318,6 +326,10 @@ def _validated_search_preferences(
     if on_call not in ON_CALL_PREFERENCES:
         raise ConfigError("Choose a valid on-call preference.")
 
+    clearance = clearance_preference.strip()
+    if clearance not in CLEARANCE_PREFERENCES:
+        raise ConfigError("Choose a valid security-clearance preference.")
+
     travel = _percentage(travel_percentage, "Maximum travel")
     exclusion_values = _profile_exclusions(exclusions)
 
@@ -334,6 +346,7 @@ def _validated_search_preferences(
         travel_tolerance=str(travel),
         schedule_preference=schedule,
         on_call_preference=on_call,
+        clearance_preference=clearance,
         occupation_selections=occupations,
         location_selections=locations,
         exclusions=exclusion_values,

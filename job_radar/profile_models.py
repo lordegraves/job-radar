@@ -126,6 +126,7 @@ class ProfilePreferences:
     compensation_target_usd: int | None = None
     travel_tolerance: str | None = None
     on_call_preference: str = "Review each job"
+    clearance_preference: str = "Review each job"
 
     def __post_init__(self) -> None:
         list_fields = (
@@ -175,6 +176,13 @@ class ProfilePreferences:
             "Review each job",
         }:
             raise ValueError("unsupported on_call_preference")
+
+        if self.clearance_preference not in {
+            "I hold an active clearance",
+            "Exclude jobs requiring an existing active clearance",
+            "Review each job",
+        }:
+            raise ValueError("unsupported clearance_preference")
 
 
 @dataclass(frozen=True)

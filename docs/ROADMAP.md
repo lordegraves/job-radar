@@ -48,11 +48,11 @@ Junior is guided by these principles:
 | 11 | Completed | Create a generic profile domain model with stable profile IDs, display names, resume ownership, preferences, company associations, scoring configuration, report settings, and active-profile selection. |
 | 12 | Completed | Add profile creation, editing, switching, guarded deletion, validation, and a five-profile limit through the GUI without requiring user accounts or authentication. |
 | 13 | Completed | Preserve and migrate the existing MVP profile as a working managed profile without changing its current scoring or search behavior. |
-| 14 | In Progress | Build user-friendly profile and preference configuration for target roles, seniority, skills, compensation floor and target, locations, remote/hybrid rules, exclusions, travel tolerance, employment type, clearance rules, and recommendation behavior. |
+| 14 | Completed | Build user-friendly profile and preference configuration for target roles, seniority, resume-derived skills, minimum compensation, locations, remote/hybrid rules, exclusions, travel tolerance, employment type, schedule, on-call, security-clearance handling, and plain-language recommendation behavior. |
 | 15 | Completed | Generalize scoring configuration so profiles unrelated to infrastructure, HPC, or SRE do not inherit another user's role, skill, location, or blocker assumptions. |
-| 16 | Planned | Add optional profile templates that provide editable starting points for common job-search types without locking users into fixed scoring behavior. |
+| 16 | Completed | Provide occupation-neutral guided profile creation that starts blank and lets each user define their own work, location, employment, and eligibility preferences without fixed scoring assumptions. |
 | 17 | Completed | Decide and document the final role of the spreadsheet bridge: one-time migration, optional bulk import, export-only compatibility path, or full retirement from normal use. |
-| 18 | In Progress | Add safe import tools for bringing existing applications, history, resumes, profiles, and company lists into the app without duplicating or overwriting existing records. |
+| 18 | Completed | Provide verified backup and restore tools for transferring complete Junior workspaces between development and installed environments without modifying the source or risking the destination's prior state. |
 | 19 | Completed | Create a user-owned company persistence model that does not directly rewrite or risk corrupting the released grouped `target-companies.yaml` configuration. |
 | 20 | Completed | Add GUI company management for creating, editing, enabling, disabling, deleting, validating, and assigning companies to one or more profiles. |
 | 21 | Completed | Add guided company-source detection from a company name or careers URL, with confirmation of detected ATS/source type before saving. |
@@ -64,7 +64,7 @@ Junior is guided by these principles:
 | 27 | Completed | Add a first-run review step that clearly shows the generated profile, preferences, companies, data location, and scan behavior before the user saves the setup. |
 | 28 | Completed | Add a first-run validation scan that tests configuration, confirms at least one working company source, and explains any setup problems in plain language. |
 | 29 | Completed | Add resumable setup so an interrupted or incomplete first-run wizard can continue safely without starting over or leaving broken partial configuration. |
-| 30 | In Progress | Build editable Settings pages for application paths, report behavior, scan behavior, retention, profile defaults, company defaults, logs, backups, and application version information. |
+| 30 | Completed | Provide editable Settings workflows for email, scheduling, retention, backups, scan behavior, logs, and diagnostics; keep application paths and version information read-only; keep profile preferences under Profile / Resume and employer defaults under Administration. |
 | 31 | Completed | Add safe credential storage using OS-appropriate secret handling so SMTP passwords, API keys, and tokens are never stored in committed files or plain-text application settings. |
 | 32 | Completed | Add an email setup flow for SMTP server, port, security mode, sender, recipients, credentials, and clear validation errors. |
 | 33 | Completed | Add a safe test-email workflow that does not accidentally trigger a full scan or send a normal production report. |

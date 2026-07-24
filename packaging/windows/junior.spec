@@ -33,6 +33,7 @@ executable = EXE(
     upx=False,
     console=False,
     icon=str(project_root / "job_radar" / "static" / "junior.ico"),
+    version=str(project_root / "packaging" / "windows" / "junior-version-info.txt"),
 )
 
 bundle = COLLECT(

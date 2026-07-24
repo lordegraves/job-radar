@@ -498,6 +498,16 @@
                     </select>
                 </div>
                 <div class="control-field">
+                    <label for="clearance-preference">Security clearance</label>
+                    <span class="field-help">Choose how junior should handle jobs that may require an existing active clearance.</span>
+                    <select id="clearance-preference" name="clearance_preference">
+                        {% set selected_clearance = saved_preferences.clearance_preference if saved_preferences else "Review each job" %}
+                        {% for option in ["Review each job", "I hold an active clearance", "Exclude jobs requiring an existing active clearance"] %}
+                        <option value="{{ option }}"{% if option == selected_clearance %} selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="control-field">
                     <label for="compensation-floor">Minimum acceptable annual compensation</label>
                     <span class="field-help">Higher compensation will not make an unsuitable job a better fit.</span>
                     <input id="compensation-floor" name="compensation_floor_usd" type="number" min="0" step="1000" value="{{ saved_preferences.compensation_floor_usd if saved_preferences and saved_preferences.compensation_floor_usd is not none else '' }}" placeholder="Example: 75000">
@@ -945,6 +955,7 @@
             `Employment types you will consider: ${employmentTypes.join(", ") || "None selected"}`,
             `Preferred schedule: ${document.getElementById("schedule-preference").value}`,
             `On-call availability: ${document.getElementById("on-call-preference").value}`,
+            `Security clearance: ${document.getElementById("clearance-preference").value}`,
             floor ? `Jobs must pay at least $${Number(floor).toLocaleString()} per year.` : "No minimum annual compensation selected yet.",
         ]);
 

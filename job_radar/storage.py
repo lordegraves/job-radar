@@ -314,6 +314,11 @@ def _schema_migrations() -> tuple:
             "add long-term scale indexes",
             _migrate_long_term_scale_indexes,
         ),
+        (
+            26,
+            "add security-clearance profile preference",
+            _migrate_clearance_profile_preference,
+        ),
     )
 
 
@@ -1324,6 +1329,34 @@ def _migrate_on_call_profile_preference(
             "ALTER TABLE profile_preferences "
             "ADD COLUMN on_call_preference TEXT NOT NULL "
             "DEFAULT 'Review each job'"
+        )
+
+
+def _migrate_clearance_profile_preference(
+    connection: sqlite3.Connection,
+) -> None:
+    """Make clearance handling explicit without weakening legacy exclusions."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(profile_preferences)"
+        ).fetchall()
+    }
+    if "clearance_preference" not in existing_columns:
+        connection.execute(
+            "ALTER TABLE profile_preferences "
+            "ADD COLUMN clearance_preference TEXT NOT NULL "
+            "DEFAULT 'Review each job'"
+        )
+        # Profiles that already excluded clearance-only roles retain that
+        # behavior after the preference becomes visible in the GUI.
+        connection.execute(
+            "UPDATE profile_preferences "
+            "SET clearance_preference = "
+            "'Exclude jobs requiring an existing active clearance' "
+            "WHERE replace(lower(exclusions_json), '-', ' ') "
+            "LIKE '%cleared only roles%'"
         )
 
 

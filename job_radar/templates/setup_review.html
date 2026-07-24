@@ -20,6 +20,7 @@
         <p><strong>Employment types:</strong> {{ profile.preferences.employment_types|join(', ') or 'None selected' }}</p>
         <p><strong>Schedule:</strong> {{ profile.preferences.schedule_preference or 'Any schedule' }}</p>
         <p><strong>On-call:</strong> {{ profile.preferences.on_call_preference }}</p>
+        <p><strong>Security clearance:</strong> {{ profile.preferences.clearance_preference }}</p>
         <p><strong>Workplace arrangements:</strong> {{ profile.preferences.work_arrangements|join(', ') or 'None selected' }}</p>
         <p><strong>Minimum compensation:</strong> {% if profile.preferences.compensation_floor_usd is not none %}${{ "{:,}".format(profile.preferences.compensation_floor_usd) }}{% else %}Not set{% endif %}</p>
         <p><strong>Maximum travel:</strong> {{ (profile.preferences.travel_tolerance ~ '%') if profile.preferences.travel_tolerance else '0%' }}</p>

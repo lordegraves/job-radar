@@ -8,6 +8,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## 0.2.0 - 2026-07-24
 
+- Added an explicit profile-owned security-clearance choice. Clear existing-active-clearance requirements now follow that choice, while ambiguous wording is sent to Needs Review.
 - Added a direct portable backup download and verified cross-workspace restore
   path for safely moving development data into an installed Junior copy.
 - Added unobtrusive Home dashboard actions for sharing a Junior story and

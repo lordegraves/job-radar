@@ -40,6 +40,10 @@ SCHEDULE_FLEXIBLE = "Flexible schedule"
 
 ON_CALL_WILLING = "Willing to participate"
 ON_CALL_NOT_WILLING = "Not willing to participate"
+CLEARANCE_HOLDS_ACTIVE = "I hold an active clearance"
+CLEARANCE_EXCLUDE_ACTIVE_REQUIRED = (
+    "Exclude jobs requiring an existing active clearance"
+)
 
 
 @dataclass(frozen=True)
@@ -93,6 +97,10 @@ def evaluate_practical_eligibility(
             posting=posting,
             preferences=preferences,
         ),
+        _evaluate_clearance_eligibility(
+            posting=posting,
+            preferences=preferences,
+        ),
         _evaluate_travel_eligibility(
             posting=posting,
             preferences=preferences,
@@ -124,6 +132,91 @@ def evaluate_practical_eligibility(
             for reason in result.reasons
         ),
     )
+
+
+def _evaluate_clearance_eligibility(
+    *,
+    posting: JobPosting,
+    preferences: ProfilePreferences,
+) -> EligibilityResult | None:
+    text = _posting_text(posting)
+    active_required_markers = (
+        "active security clearance required",
+        "active clearance required",
+        "must hold an active clearance",
+        "current security clearance required",
+        "active secret clearance",
+        "active top secret clearance",
+        "active ts/sci",
+    )
+    general_markers = (
+        "security clearance",
+        "secret clearance",
+        "top secret",
+        "ts/sci",
+        "clearance required",
+        "ability to obtain a clearance",
+        "eligible to obtain a clearance",
+    )
+
+    if any(marker in text for marker in active_required_markers):
+        if preferences.clearance_preference == CLEARANCE_HOLDS_ACTIVE:
+            return EligibilityResult(
+                status=ELIGIBILITY_ELIGIBLE,
+                reasons=(
+                    EligibilityReason(
+                        code="active_clearance_requirement_accepted",
+                        message=(
+                            "The posting clearly requires an existing active "
+                            "security clearance, and this profile says one is held."
+                        ),
+                    ),
+                ),
+            )
+        if (
+            preferences.clearance_preference
+            == CLEARANCE_EXCLUDE_ACTIVE_REQUIRED
+        ):
+            return EligibilityResult(
+                status=ELIGIBILITY_NOT_ELIGIBLE,
+                reasons=(
+                    EligibilityReason(
+                        code="active_clearance_requirement_excluded",
+                        message=(
+                            "The posting clearly requires an existing active "
+                            "security clearance, which this profile excludes."
+                        ),
+                    ),
+                ),
+            )
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="active_clearance_requirement_needs_review",
+                    message=(
+                        "The posting clearly requires an existing active security "
+                        "clearance, and this profile reviews those jobs individually."
+                    ),
+                ),
+            ),
+        )
+
+    if any(marker in text for marker in general_markers):
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="clearance_wording_needs_review",
+                    message=(
+                        "The posting mentions a security clearance, but does not "
+                        "clearly say whether one must already be active."
+                    ),
+                ),
+            ),
+        )
+
+    return None
 
 
 def evaluate_workplace_eligibility(

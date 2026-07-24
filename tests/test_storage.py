@@ -27,8 +27,8 @@ from job_radar.storage import (
     upsert_job_posting,
 )
 from job_radar.models import JobPosting
-from job_radar.profile_models import ManagedProfile
-from job_radar.profile_storage import create_profile, set_active_profile
+from job_radar.profile_models import ManagedProfile, ProfilePreferences
+from job_radar.profile_storage import create_profile, get_profile, set_active_profile
 
 
 def table_exists(database_path: Path, table_name: str) -> bool:
@@ -99,7 +99,38 @@ def test_profile_activity_migration_assigns_legacy_rows_to_active_profile(
     assert tracker_row == (profile.profile_id, "Preserve tracker data")
     assert history_row == (profile.profile_id, "Preserve history data")
     assert foreign_key_errors == []
-    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v25-*.bak"))) == 1
+    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v26-*.bak"))) == 1
+
+
+def test_clearance_migration_preserves_legacy_exclusion_behavior(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = tmp_path / "synthetic-v25.sqlite3"
+    all_migrations = storage._schema_migrations()
+    monkeypatch.setattr(
+        storage,
+        "_schema_migrations",
+        lambda: tuple(item for item in all_migrations if item[0] <= 25),
+    )
+    initialize_database(database_path)
+    profile = ManagedProfile(
+        profile_id="profile_clearance",
+        display_name="Synthetic clearance migration",
+        preferences=ProfilePreferences(exclusions=("cleared-only roles",)),
+    )
+    create_profile(database_path, profile)
+
+    monkeypatch.setattr(storage, "_schema_migrations", lambda: all_migrations)
+    initialize_database(database_path)
+
+    migrated = get_profile(database_path, profile.profile_id)
+
+    assert migrated is not None
+    assert migrated.preferences.clearance_preference == (
+        "Exclude jobs requiring an existing active clearance"
+    )
+    assert migrated.preferences.exclusions == ("cleared-only roles",)
 
 
 def create_v010_database(database_path: Path) -> None:
@@ -224,7 +255,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     backup_directory = tmp_path / "backups"
     backup_paths = list(
         backup_directory.glob(
-                "job_radar.sqlite3.pre-migration-v1-v25-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v26-*.bak"
         )
     )
 
@@ -250,7 +281,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
 
     backup_paths_after_second_initialization = list(
         backup_directory.glob(
-                "job_radar.sqlite3.pre-migration-v1-v25-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v26-*.bak"
         )
     )
 
@@ -331,6 +362,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
         (23,),
         (24,),
         (25,),
+        (26,),
     ]
     with connect_database(database_path) as connection:
         profile_columns = {
@@ -358,7 +390,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-                "synthetic-v0.1.0.sqlite3.pre-migration-v1-v25-*.bak"
+            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v26-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -401,7 +433,7 @@ def test_initialize_database_rolls_back_failed_migration(
         "_schema_migrations",
         lambda: (
             *existing_migrations,
-            (26, "synthetic failing migration", fail_after_temporary_change),
+            (27, "synthetic failing migration", fail_after_temporary_change),
         ),
     )
 
@@ -418,7 +450,7 @@ def test_initialize_database_rolls_back_failed_migration(
             """
         ).fetchone()
         migration_version = connection.execute(
-                "SELECT version FROM schema_migrations WHERE version = 26"
+            "SELECT version FROM schema_migrations WHERE version = 27"
         ).fetchone()
         foreign_key_errors = connection.execute(
             "PRAGMA foreign_key_check"
@@ -430,7 +462,7 @@ def test_initialize_database_rolls_back_failed_migration(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-                    "synthetic-current.sqlite3.pre-migration-v26-v26-*.bak"
+            "synthetic-current.sqlite3.pre-migration-v27-v27-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -466,6 +498,7 @@ def test_initialize_database_rolls_back_failed_migration(
         (23,),
         (24,),
         (25,),
+        (26,),
     ]
 
 
@@ -538,19 +571,20 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
         (11, "add profile-owned tracker and history"),
         (12, "add profile employer assignment state"),
         (13, "add employer catalog administration state"),
-            (14, "add employer identity resolution and review requests"),
-            (15, "add employer review audit"),
-            (16, "add profile company recommendations"),
-            (17, "add profile ownership to scan runs"),
-            (18, "add external employer discovery candidates"),
-            (19, "add recommendation administration metadata"),
-            (20, "add resumable first-run setup"),
-            (21, "add profile-owned role discovery"),
-            (22, "add employer source health"),
-            (23, "add first-run validation result"),
-            (24, "add scan scheduling configuration"),
-            (25, "add long-term scale indexes"),
-        ]
+        (14, "add employer identity resolution and review requests"),
+        (15, "add employer review audit"),
+        (16, "add profile company recommendations"),
+        (17, "add profile ownership to scan runs"),
+        (18, "add external employer discovery candidates"),
+        (19, "add recommendation administration metadata"),
+        (20, "add resumable first-run setup"),
+        (21, "add profile-owned role discovery"),
+        (22, "add employer source health"),
+        (23, "add first-run validation result"),
+        (24, "add scan scheduling configuration"),
+        (25, "add long-term scale indexes"),
+        (26, "add security-clearance profile preference"),
+    ]
 
 
 def test_long_term_scale_indexes_cover_profile_and_company_queries(

@@ -226,7 +226,8 @@ The guided workflow:
 
 1. Introduces Junior's local-first storage and targeted-company scan model.
 2. Creates the first profile and records the work, job levels, employment
-   types, schedule, workplace arrangements, locations, compensation floor,
+   types, schedule, on-call availability, security-clearance handling,
+   workplace arrangements, locations, compensation floor,
    travel tolerance, and optional exclusions the user chooses.
 3. Accepts a PDF, DOCX, Markdown, or plain-text résumé, or allows that step to
    be skipped and completed later.
@@ -411,7 +412,7 @@ Supported resume formats:
 
 Resume replacement is written to the active user-data area. For a managed profile, junior copies the upload under `resumes/<profile-id>/` using an app-owned filename such as `resume.pdf`; moving or renaming the original uploaded file cannot break the profile. To use a revised resume, upload it again through the Profile / Resume page. Private resumes and profiles must not be committed to the repository.
 
-Managed profiles store target roles, locations, work arrangements, employment types, schedules, compensation minimums, travel tolerance, and related job-fit preferences. Current scans use the implemented workplace, location, employment, schedule, on-call, compensation, and practical-eligibility rules. Recommendation actions and risks are occupation-neutral: junior does not globally favor or penalize a particular industry, employer, job title, skill, or region. Profile-owned fit terms, resume evidence and gaps, exclusions, compensation, location eligibility, and that profile's application history supply the relevant context. Some broader scoring configuration still uses the established scoring boundary, so the application continues to explain recommendations in plain language rather than treating every saved field as an independent score boost.
+Managed profiles store target roles, locations, work arrangements, employment types, schedules, on-call and security-clearance choices, compensation minimums, travel tolerance, and related job-fit preferences. Current scans use the implemented workplace, location, employment, schedule, on-call, clearance, compensation, and practical-eligibility rules. A clearly stated requirement for an existing active clearance follows the profile's choice; unclear clearance language goes to Needs Review. Recommendation actions and risks are occupation-neutral: junior does not globally favor or penalize a particular industry, employer, job title, skill, or region. Profile-owned fit terms, resume evidence and gaps, exclusions, compensation, location eligibility, and that profile's application history supply the relevant context. Some broader scoring configuration still uses the established scoring boundary, so the application continues to explain recommendations in plain language rather than treating every saved field as an independent score boost.
 
 ### Related roles
 
