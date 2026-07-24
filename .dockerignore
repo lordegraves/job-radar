@@ -1,0 +1,9 @@
+# Linux release builds receive only application-owned source and packaging files.
+*
+!pyproject.toml
+!README.md
+!job_radar/
+!job_radar/**
+!packaging/
+!packaging/linux/
+!packaging/linux/**

@@ -150,6 +150,29 @@ disposable data:
 The validation hashes representative user-owned files before and after each
 operation. It fails if any file is added, removed, or changed.
 
+Build the Linux x86-64 tarball from Windows using Docker Desktop's Linux
+engine:
+
+```powershell
+.\scripts\build_linux_tarball.ps1
+```
+
+The resulting `artifacts\linux\Junior-linux-x86_64.tar.gz` contains Junior's
+portable application bundle plus `launch-junior.sh`, `install.sh`, and
+`uninstall.sh`. The Docker context explicitly excludes configuration,
+databases, profiles, résumés, reports, logs, and other user-owned data.
+
+On Linux, extract the archive and run:
+
+```sh
+sh Junior/install.sh
+~/.local/bin/junior
+```
+
+The launcher checks for Linux and a WebKit GTK desktop library before opening
+Junior. Uninstall with `sh Junior/uninstall.sh` from the extracted archive, or
+the installed copy, to remove application files while preserving user data.
+
 ### Fictional demo workspace
 
 Documentation, demonstrations, and release checks must never use a real

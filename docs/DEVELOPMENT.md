@@ -213,3 +213,16 @@ semantic-version tag and an HTTPS link under this repository's release path,
 and reports connection or validation problems without raw exceptions. It does
 not download an installer, replace application files, run migrations, or write
 user data.
+
+The Linux x86-64 package is built natively inside Docker with:
+
+```powershell
+.\scripts\build_linux_tarball.ps1
+```
+
+`.dockerignore` is an allowlist for this build context. Do not broaden it to
+include `config`, `data`, `profiles`, `reports`, `logs`, or other user-owned
+paths. The build exports only `Junior-linux-x86_64.tar.gz`. Release validation
+must extract that archive in a disposable Linux environment, run
+`Junior/junior --help`, exercise install and uninstall with a synthetic home
+directory, and verify its user-data sentinels remain unchanged.

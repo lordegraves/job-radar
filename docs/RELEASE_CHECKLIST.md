@@ -48,6 +48,10 @@ python -m pytest -q tests\test_packaging.py
 - [ ] Packaged first run creates only safe starter data under an isolated `JOB_RADAR_DATA_DIR`.
 - [ ] Windows bundle contains no profile, resume, database, credential, report, log, or private configuration.
 - [ ] `scripts\validate_windows_upgrade.ps1` passes against the release installer.
+- [ ] `scripts\build_linux_tarball.ps1` creates `artifacts\linux\Junior-linux-x86_64.tar.gz`.
+- [ ] Linux archive starts in a clean Linux environment without Python or the source tree.
+- [ ] Linux install/uninstall validation preserves synthetic user data byte for byte.
+- [ ] Docker build context excludes configuration, profiles, resumes, databases, reports, logs, and credentials.
 - [ ] Release artifacts do not depend on the source tree.
 
 ## Database and upgrade safety

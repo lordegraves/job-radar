@@ -1,6 +1,28 @@
 # junior User Guide
 
-This guide describes the current local application. It does not assume that installer or all first-run onboarding work is complete.
+This guide describes the current local application and its supported Windows
+and Linux packaging paths.
+
+## Linux installation
+
+Extract `Junior-linux-x86_64.tar.gz`, then run:
+
+```sh
+sh Junior/install.sh
+~/.local/bin/junior
+```
+
+Junior checks for a supported WebKit GTK desktop library and explains when the
+distribution package is missing. Application files install under the current
+user's local application area. Profiles, résumés, settings, databases,
+reports, logs, backups, schedules, and credentials remain in Junior's separate
+user-data directories.
+
+To remove the application while keeping all user data:
+
+```sh
+sh Junior/uninstall.sh
+```
 
 ## First-time setup
 
