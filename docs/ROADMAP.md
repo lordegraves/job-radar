@@ -151,6 +151,22 @@ These corrections must be implemented and verified before RC5 is accepted:
 - Every visible scan result must offer a clear **Pass / don't show again**
   action. Confirming it must create a durable, profile-owned decision and omit
   that exact source job from future reports and notifications.
+- Every visible scan result must also offer **Save for later** without implying
+  that the user applied. Saved jobs must have a profile-owned workspace of
+  their own and must not inflate Active Applications, application-history
+  counts, or applied-job metrics.
+- From Saved Jobs, the user must be able to open the posting, add notes, move
+  the job into Active Applications after deciding to apply, or mark it
+  **Reviewed / pass** so it no longer appears in future reports. Moving it into
+  Active Applications must preserve the scan-owned job ID and source evidence
+  rather than create a duplicate.
+- Junior's recommendation label **Hold** must remain separate from the user's
+  saved state. Hold means Junior recommends more review; Save for later means
+  the user deliberately bookmarked the job. The interface must explain the
+  distinction in plain language.
+- Report groups and Saved Jobs must support practical multi-select actions so a
+  user can save or pass several reviewed jobs without opening each one. The
+  operation must be profile-specific, explicit, and all-or-nothing.
 - Passing a job must not delete the shared collected job, hide it from another
   profile, penalize the employer, or suppress unrelated jobs with similar
   titles. Matching should prefer the source job ID and use Junior's durable
@@ -159,9 +175,10 @@ These corrections must be implemented and verified before RC5 is accepted:
   and remain reviewable through the profile's history so an accidental pass can
   be corrected.
 - Focused tests must cover explicit foreign location, short contract duration,
-  profile isolation, repeat scans, changed postings, missing source IDs,
-  cancellation, and restoration. Full release validation and a normal-user
-  visual check remain required.
+  profile isolation, repeat scans, saved-to-applied transitions, saved-to-pass
+  transitions, duplicate prevention, bulk actions, changed postings, missing
+  source IDs, cancellation, and restoration. Full release validation and a
+  normal-user visual check remain required.
 
 ## Protected wording notes
 

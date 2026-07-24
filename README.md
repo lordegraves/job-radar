@@ -68,6 +68,13 @@ identifier assigned during collection, while an application entered manually
 from LinkedIn or another outside source must receive a new Junior-managed ID
 when the user selects Save. Normal users must never invent or maintain it.
 
+RC5 must also separate bookmarked jobs from applications. **Save for later**
+will keep a profile-owned job for later review without claiming the user
+applied. The user can later move it into Active Applications or mark it
+reviewed and prevent that exact posting from returning in future reports.
+Junior's recommendation label **Hold** is not the same as the user's saved
+state.
+
 ## Quick start for development
 
 ```powershell
