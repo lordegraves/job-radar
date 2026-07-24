@@ -107,6 +107,36 @@ Junior is guided by these principles:
 | 70 | Planned | Publish the first fully productized stable release with installer downloads, checksums, release notes, screenshots, supported-platform details, upgrade instructions, known limitations, and verified documentation. |
 | 71 | In Progress | Finalize the product finish line: a user can download Job Radar, run the installer, launch the application, complete guided setup, add their own profile and companies, run and schedule scans, review reports, manage applications, preserve and back up their data, upgrade safely, and use the product daily without editing code or YAML. |
 
+## RC5 field-test acceptance requirements
+
+These corrections must be implemented and verified before RC5 is accepted:
+
+- Scan collectors and practical-eligibility evaluation must retain and inspect
+  explicit posting facts such as work location, remote or on-site requirements,
+  employment type, temporary or contract duration, work schedule, compensation,
+  and work authorization when the source provides them.
+- A clearly Amsterdam-based role must not be treated as having unknown location.
+  It must be compared with the active profile's allowed workplace arrangements,
+  locations, residency plans, and relocation choices.
+- A stated duration such as **3 months** must be identified and shown in the
+  plain-language explanation. Any decision to reject short-term work must come
+  from an explicit profile-owned preference rather than a global assumption
+  that short contracts are unsuitable for everyone.
+- Every visible scan result must offer a clear **Pass / don't show again**
+  action. Confirming it must create a durable, profile-owned decision and omit
+  that exact source job from future reports and notifications.
+- Passing a job must not delete the shared collected job, hide it from another
+  profile, penalize the employer, or suppress unrelated jobs with similar
+  titles. Matching should prefer the source job ID and use Junior's durable
+  canonical identity only when the source does not supply an ID.
+- The action must explain what will happen, allow cancellation before saving,
+  and remain reviewable through the profile's history so an accidental pass can
+  be corrected.
+- Focused tests must cover explicit foreign location, short contract duration,
+  profile isolation, repeat scans, changed postings, missing source IDs,
+  cancellation, and restoration. Full release validation and a normal-user
+  visual check remain required.
+
 ## Protected wording notes
 
 - Priority 19 uses “user-owned” to mean data stored in the user's application-data area. Employer organizations and source definitions are installation-wide; profiles independently select from that shared catalog.

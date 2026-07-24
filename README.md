@@ -48,6 +48,14 @@ Application History is a permanent app-native feature. It is stored in SQLite an
 
 Managed profiles have separate Active Applications and Application History records. Switching profiles changes which records the GUI, scans, reports, and CLI use. Existing tracker and history records are assigned to the active managed profile during the protected database migration. A profile that owns tracker or history records cannot be deleted, preventing accidental loss of job-search data.
 
+The RC4 field test does not yet provide a report-level **Pass / don't show
+again** action. RC5 is planned to add a profile-specific dismissal that hides
+the same source job from future reports without deleting the shared job,
+changing another profile, or treating a similar title as the same posting.
+RC5 is also planned to strengthen extraction of explicit practical details
+such as work location, temporary or contract duration, employment type, and
+work authorization before eligibility is classified.
+
 ## Quick start for development
 
 ```powershell

@@ -392,6 +392,13 @@ compensation. This does not mean the role is a poor fit. **Top Match** remains
 reserved for roles that have both strong role evidence and enough confirmed
 practical information to support applying.
 
+The RC4 field test does not yet include a report-level **Pass / don't show
+again** control. A durable, profile-specific version of that action and stronger
+extraction of explicit location and short-contract details are RC5 acceptance
+requirements. Until that work is released, treat Review Needed as a request for
+human confirmation rather than proof that Junior extracted every practical
+detail in the posting.
+
 ## Application History
 
 Application History is a permanent SQLite-backed part of junior.
