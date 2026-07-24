@@ -76,8 +76,8 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 52 | Completed | Define packaging architecture, bundled dependencies, application resources, default configuration, user-data creation, migrations, launch behavior, and upgrade behavior before producing installers. |
 | 53 | Completed | Create a reproducible Windows packaged build with an `.exe` entry point that does not require the user to install Python, create a virtual environment, clone the repository, or run terminal commands. |
 | 54 | Completed | Create a Windows installer with application icon, Start Menu entry, optional desktop shortcut, guided installation, clear install location, user-data preservation, and clean uninstall support. |
-| 55 | In Progress | Ensure Windows upgrades preserve profiles, resumes, settings, companies, tracker/history data, reports, credentials, backups, and schedules while updating only application-owned files. |
-| 56 | Planned | Add Windows installer repair, upgrade, and uninstall validation, including confirmation that uninstalling the application does not delete user data without explicit approval. |
+| 55 | Completed | Ensure Windows upgrades preserve profiles, resumes, settings, companies, tracker/history data, reports, credentials, backups, and schedules while updating only application-owned files. |
+| 56 | Completed | Add Windows installer repair, upgrade, and uninstall validation, including confirmation that uninstalling the application does not delete user data without explicit approval. |
 | 57 | Planned | Add optional update checking that reports available stable releases without silently replacing the application or changing user data. |
 | 58 | Planned | Package the application for Linux using a supported tarball-based distribution with launch scripts, dependency checks, user-data paths, migrations, logs, and clear install/uninstall instructions. |
 | 59 | In Progress | Support standalone local PC operation on Windows and Linux for users who want Job Radar to run only when they launch it. |

@@ -140,6 +140,16 @@ an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
 distribution remain later release work.
 
+Validate install, repair/upgrade, and uninstall preservation using only
+disposable data:
+
+```powershell
+.\scripts\validate_windows_upgrade.ps1
+```
+
+The validation hashes representative user-owned files before and after each
+operation. It fails if any file is added, removed, or changed.
+
 ### Fictional demo workspace
 
 Documentation, demonstrations, and release checks must never use a real

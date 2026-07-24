@@ -121,6 +121,17 @@ Installer validation uses disposable install and user-data directories. It
 must verify install, packaged launch, HTTP readiness, uninstall, application
 file removal, and preservation of an independent user-data sentinel.
 
+Run the repeatable preservation gate:
+
+```powershell
+.\scripts\validate_windows_upgrade.ps1
+```
+
+This installs and reinstalls the current setup package, uninstalls it, and
+compares SHA-256 hashes for representative settings, company configuration,
+profile, résumé, database, report, backup, schedule, and credential-reference
+files at every stage.
+
 ## Runtime data during development
 
 Default runtime resolution prefers bootstrapped user settings when present and otherwise falls back to repository configuration during development.

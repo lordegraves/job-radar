@@ -47,6 +47,7 @@ python -m pytest -q tests\test_packaging.py
 - [ ] Packaged `Junior.exe` starts without Python, a virtual environment, or a repository checkout.
 - [ ] Packaged first run creates only safe starter data under an isolated `JOB_RADAR_DATA_DIR`.
 - [ ] Windows bundle contains no profile, resume, database, credential, report, log, or private configuration.
+- [ ] `scripts\validate_windows_upgrade.ps1` passes against the release installer.
 - [ ] Release artifacts do not depend on the source tree.
 
 ## Database and upgrade safety
@@ -60,6 +61,8 @@ python -m pytest -q tests\test_packaging.py
 - [ ] Existing application records migrate to the active non-archived profile without changing row counts or durable identities.
 - [ ] Migration fails atomically when legacy application records exist without an eligible active profile.
 - [ ] User data remains intact after upgrade.
+- [ ] Installer repair/reinstall preserves every representative user-owned file byte for byte.
+- [ ] Uninstall removes application files and preserves every representative user-owned file byte for byte.
 
 ## Functional browser checks
 
