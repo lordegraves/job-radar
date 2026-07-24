@@ -6,6 +6,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a Credits section to About Junior recognizing beta tester Dawn Peacock.
 - Added a global, read-only Collector Catalog that is populated on fresh
   installations without adding employers to the global Employer Catalog.
 - Added automatic setup for complete ADP Workforce Now and Recruitee careers

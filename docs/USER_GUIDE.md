@@ -496,6 +496,9 @@ Administration's Employer Catalog supports global employer creation and editing 
 
 Settings surfaces active runtime paths, the current latest-scan-only report policy, scan defaults, profile paths, and email readiness without displaying secrets. Runtime paths remain read-only, while Email Setup and Scan Schedule have dedicated editing pages.
 
+**Settings > About Junior** includes a Credits section recognizing people who
+help improve Junior through beta testing and product feedback.
+
 ## Scan scheduling
 
 Open **Settings**, then **Set up scan scheduling**. Choose whether scheduling is on, the local start time, at least one weekday, and whether a completed scheduled scan should email its report. Save the schedule before applying it to the operating system.

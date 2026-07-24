@@ -69,6 +69,8 @@ def test_about_page_shows_safe_support_and_version_details(tmp_path: Path) -> No
     assert "Do not include passwords" in html
     assert "Check for updates" in html
     assert "never downloads or installs" in html
+    assert "Beta testers" in html
+    assert "Dawn Peacock" in html
 
 
 def test_update_check_reports_newer_verified_stable_release() -> None:
