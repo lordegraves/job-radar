@@ -6,6 +6,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a guarded developer tool that creates an isolated, deterministic fictional Junior workspace for documentation, demonstrations, and release validation; it refuses existing destinations and includes no real profile, resume, company, or job-search data.
+- Added documentation screenshots generated only from the fictional demo workspace.
 - Added guarded Administration workflows for verified private backups, pre-restore safety copies, readable JSON exports, and validated user-data recovery without copying credential values.
 - Added automatic safety backups inside permanent profile and company deletion services, extending the existing backup-before-migration protection to every currently implemented destructive data operation.
 - Added an operating-system-managed desktop instance lock so repeated launches reuse the same user-data workspace and local interface even when a different port was requested.

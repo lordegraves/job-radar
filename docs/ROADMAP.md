@@ -72,7 +72,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 48 | Completed | Add application About and Version views showing installed version, release channel, data location, database version, configuration version, and support/diagnostic information. |
 | 49 | In Progress | Complete GUI consistency and polish across setup, profiles, companies, tracker, history, reports, scan, settings, dialogs, validation messages, empty states, loading states, and error states. |
 | 50 | Completed | Review keyboard navigation, focus behavior, readable contrast, scaling, text wrapping, form labels, confirmation wording, and other accessibility concerns throughout the application. |
-| 51 | In Progress | Add realistic demo/sample data and screenshots that can be used for documentation, release validation, and demonstrations without exposing private job-search data. |
+| 51 | Completed | Add realistic demo/sample data and screenshots that can be used for documentation, release validation, and demonstrations without exposing private job-search data. |
 | 52 | Completed | Define packaging architecture, bundled dependencies, application resources, default configuration, user-data creation, migrations, launch behavior, and upgrade behavior before producing installers. |
 | 53 | Planned | Create a reproducible Windows packaged build with an `.exe` entry point that does not require the user to install Python, create a virtual environment, clone the repository, or run terminal commands. |
 | 54 | Planned | Create a Windows installer with application icon, Start Menu entry, optional desktop shortcut, guided installation, clear install location, user-data preservation, and clean uninstall support. |

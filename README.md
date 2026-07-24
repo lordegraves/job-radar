@@ -117,6 +117,38 @@ python -m pytest -q tests
 
 Packaging validation is covered by `tests/test_packaging.py`, including clean-wheel installation, installed desktop-launcher startup, and installed web rendering outside the source tree.
 
+### Fictional demo workspace
+
+Documentation, demonstrations, and release checks must never use a real
+profile, resume, employer list, application, or job-search database. From a
+development checkout, create a separate fictional workspace at a new path:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\create_demo_workspace.py C:\temp\junior-demo
+```
+
+The command refuses any destination that already exists. It does not inspect
+or copy the normal Junior user-data directory. The generated workspace contains
+the fictional Jordan Rivera profile, fictional employers, a short fictional
+resume, sample scan records, active applications, and application history.
+
+Run Junior against only that workspace:
+
+```powershell
+cd C:\temp\junior-demo
+C:\dev\job-radar\.venv\Scripts\python.exe -m job_radar.web_app --settings C:\temp\junior-demo\config\settings.yaml
+```
+
+Use a different empty destination for each validation run. Delete only the
+disposable destination after confirming it is the generated fictional
+workspace.
+
+![Junior fictional profile overview](docs/images/junior-demo-profile.png)
+
+![Junior fictional company workspace](docs/images/junior-demo-companies.png)
+
+![Junior fictional active applications](docs/images/junior-demo-tracker.png)
+
 The desktop launcher holds one operating-system lock per Junior user-data workspace. Launching Junior again reads the first process's local-only address, waits for it to become ready when necessary, and opens that interface instead of starting another server against the same database. A crash releases the operating-system lock; the small lock file itself is not treated as proof that Junior is running.
 
 Desktop-launched sessions show **Exit Junior** in Settings. The action requests a clean local-server shutdown and confirms that the window can be closed. If a GUI scan is active, Junior keeps the process and instance lock alive until the scan worker finishes its protected database and report writes. Browser/server mode does not present a process-exit control it cannot safely own.
