@@ -28,18 +28,37 @@ or repository access.
 
 ## Linux installation
 
-Extract `Junior-linux-x86_64.tar.gz`, then run:
+The Linux archive targets x86-64 desktop distributions. Extract
+`Junior-linux-x86_64.tar.gz`, open a terminal in the extracted directory, and
+run:
 
 ```sh
 sh Junior/install.sh
 ~/.local/bin/junior
 ```
 
-Junior checks for a supported WebKit GTK desktop library and explains when the
-distribution package is missing. Application files install under the current
-user's local application area. Profiles, résumés, settings, databases,
-reports, logs, backups, schedules, and credentials remain in Junior's separate
-user-data directories.
+The install does not require root access. It copies application files to
+`${XDG_DATA_HOME:-$HOME/.local/share}/junior/application` and creates the
+launcher `$HOME/.local/bin/junior`. If that directory is not on `PATH`, use the
+full launcher path shown above.
+
+Junior checks for a WebKit GTK desktop library and explains when it is missing.
+Install the `webkit2gtk` package provided by the Linux distribution, then
+launch Junior again. Package names differ by distribution.
+
+Profiles, résumés, settings, databases, reports, logs, backups, schedules, and
+credential references remain separate from application files. The current
+packaged application keeps its complete workspace under
+`${XDG_DATA_HOME:-$HOME/.local/share}/job-radar`.
+
+To upgrade the standalone archive:
+
+1. Create a verified Junior backup and copy it to separate protected storage.
+2. Close Junior.
+3. Extract the newer archive into a new temporary directory.
+4. Run that archive's `Junior/install.sh`. It replaces application files only.
+5. Launch Junior and verify the active profile, companies, Tracker, History,
+   and latest Reports before scanning.
 
 To remove the application while keeping all user data:
 
@@ -47,21 +66,91 @@ To remove the application while keeping all user data:
 sh Junior/uninstall.sh
 ```
 
+The uninstall script removes only the launcher and application directory that
+Junior installed. It preserves both Linux user-data roots and does not remove
+operating-system credential-manager entries.
+
+## Linux unattended scans
+
+Open **Settings > Scan schedule**, save the desired local time and weekdays,
+then choose **Apply schedule to Linux**. Junior creates only these marked
+systemd user units:
+
+```text
+${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/junior-scan.service
+${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/junior-scan.timer
+```
+
+The units call Junior's shared scheduled-scan entry point; they do not contain
+separate scanning or scoring rules. Junior refuses to overwrite unmarked files
+with those names and restores the prior marked files if systemd rejects an
+update.
+
+Useful operator checks are:
+
+```sh
+systemctl --user status junior-scan.timer
+systemctl --user list-timers junior-scan.timer
+journalctl --user-unit junior-scan.service
+```
+
+The user service manager must be available. On many desktops it runs while the
+user is signed in. A server operator who needs scans after logout may enable
+systemd user lingering for a dedicated Junior account according to the
+distribution's security policy. Do not run Junior's desktop workspace
+simultaneously under root and a normal user.
+
+**Disable Linux schedule** stops future runs but keeps Junior's marked unit
+files. **Remove Linux schedule** stops the timer and deletes only those marked
+files. Neither action deletes profiles, companies, jobs, reports, or backups.
+
 ## Container/server operation
 
-Container mode is intended for an operator who deliberately manages Docker:
+Container mode is for an operator who deliberately manages Docker. From the
+repository or release operations directory, build and start it in the
+background:
 
 ```powershell
-docker compose -f packaging\container\compose.yaml up --build
+docker compose -f packaging\container\compose.yaml up --build --detach
 ```
 
 Open `http://127.0.0.1:8000`. The supplied configuration stores Junior data in
 a named persistent volume, so replacing the container does not replace the
 profiles, résumés, settings, companies, database, reports, or logs.
 
+Common operations:
+
+```powershell
+docker compose -f packaging\container\compose.yaml ps
+docker compose -f packaging\container\compose.yaml logs --follow junior
+docker compose -f packaging\container\compose.yaml stop
+docker compose -f packaging\container\compose.yaml up --build --detach
+```
+
+The container runs as UID/GID 10001, uses Gunicorn rather than Flask's
+development server, and reports readiness at `/health`. Startup creates only
+missing safe defaults under `/var/lib/junior`; it does not replace an existing
+workspace.
+
+Before an image upgrade, create a verified Junior backup and export a separate
+protected copy from the `junior-data` volume. Rebuild or pull the exact trusted
+image, then run `docker compose ... up --detach` to recreate the application
+while retaining the named volume. Confirm `/health`, profiles, companies,
+Tracker, and History afterward.
+
 Junior does not currently ask for a username or password before displaying the
 web interface. Keep this mode on the same computer or behind a separately
 secured private network. Do not expose it directly to the internet.
+
+Supply credentials through the deployment environment or another external
+secret mechanism only when settings contain the matching non-secret reference.
+Never put a password in the Dockerfile, Compose file, image, or version
+control.
+
+`docker compose down` removes containers and the private network but normally
+preserves the named volume. Do not add `--volumes` unless a separately verified
+backup exists and permanent deletion of the entire container workspace is
+intentional.
 
 ## Kubernetes operation
 
@@ -70,17 +159,63 @@ in `packaging/kubernetes` run one non-root Junior application pod, keep all
 user-owned data on a persistent volume, expose only a private ClusterIP
 Service, and provide health checks.
 
-Before applying the resources, the operator must pin the exact Junior image,
-create any SMTP Secret outside source control, select a suitable storage class,
-and review backup storage. Scan and backup schedules are included but disabled
-by default. They must be deliberately scheduled and enabled. Scheduled backups
-keep the 14 newest scheduled bundles without deleting manual safety backups.
+Before applying the resources:
+
+1. Build or obtain a trusted Junior image and replace `junior:0.1.0` with an
+   immutable release tag or image digest.
+2. Select a storage class and size appropriate for the installation.
+3. Create SMTP Secret data outside source control if email is enabled. The
+   committed `junior-secrets` manifest intentionally contains no value.
+4. Review the private-network and independent-backup plan.
+5. Render the final resources with `kubectl kustomize packaging/kubernetes`
+   and inspect them before applying.
+
+Create a dedicated namespace, then apply the reviewed resources:
+
+```powershell
+kubectl create namespace junior
+kubectl apply -k packaging\kubernetes -n junior
+kubectl rollout status deployment/junior -n junior
+kubectl get pod,pvc,service,cronjob -n junior
+```
+
+The Deployment uses one replica and `Recreate` upgrades because Junior's SQLite
+database has one application writer. Do not scale it horizontally. The
+ClusterIP Service is private, and readiness/liveness probes use the sanitized
+`/health` response.
+
+Scan and backup CronJobs are included but suspended by default. Review each
+schedule, the active profile, company sources, email behavior, and cluster time
+zone before setting `suspend: false` in maintained deployment configuration.
+The jobs forbid overlap and retain bounded Kubernetes job history. Scheduled
+Junior backups keep the 14 newest scheduler-created bundles without deleting
+manual or pre-change safety backups.
+
+Useful operator checks are:
+
+```powershell
+kubectl logs deployment/junior -n junior
+kubectl get cronjob,job -n junior
+kubectl describe pvc junior-data -n junior
+```
+
+Before an upgrade, create and independently copy a verified Junior backup,
+take a storage-system snapshot when available, and confirm the PVC is healthy.
+Update the maintained image tag or digest, apply the resources, and wait for
+the rollout. The `Recreate` strategy stops the old application pod before the
+new one opens the same SQLite database. If the new pod fails, preserve the PVC
+and logs; do not delete or recreate the database.
 
 Junior does not provide web login protection. Use an authenticated ingress on
 a trusted private network if remote access is needed. Also copy backups to
 protected storage outside Junior's persistent volume; in-volume backups cannot
 recover a lost volume. Upgrades must preserve and independently back up that
 volume.
+
+Deleting the Deployment leaves the PVC unless the operator separately deletes
+it. Deleting the namespace normally deletes the PVC and may permanently remove
+all Junior data, depending on the storage class reclaim policy. Never delete
+the namespace or PVC as a routine upgrade or repair action.
 
 ## First-time setup
 

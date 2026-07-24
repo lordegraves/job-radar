@@ -6,6 +6,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Completed the Linux standalone, Linux systemd user-service, Docker/Compose, and Kubernetes operations guide, including persistence, scheduling, health, security, backup, upgrade, shutdown, and data-preserving removal boundaries.
 - Completed the normal-user Windows guide for per-user installation, guided setup, profile and résumé management, companies, email, scheduling, backup and restore, troubleshooting, safe upgrades, and data-preserving uninstall.
 - Added an operator-ready Kubernetes baseline with single-writer SQLite safety, persistent storage, non-root execution, private networking, privacy-safe health probes, externally supplied Secrets, disabled-by-default scheduled scans, verified scheduled backups, bounded scheduled-backup retention, and restart-preservation validation.
 - Added non-root container/server mode with a persistent user-data volume, idempotent bootstrap, Gunicorn lifecycle handling, a privacy-safe health endpoint, localhost-only Compose defaults, and restart/upgrade preservation validation.
