@@ -18,6 +18,19 @@ junior should become a configurable local-first job-search operations applicatio
 
 junior is a targeted scanner for companies the user deliberately selects. It is not a hosted job board, broad web crawler, automatic application bot, recruiter-outreach system, or LinkedIn scraper.
 
+## Product principles
+
+Junior is guided by these principles:
+
+- **Local-first.** User data belongs to the user.
+- **Targeted, not broad.** Users choose employers; Junior manages and monitors them.
+- **Explain before automating.** Junior explains recommendations and discoveries rather than silently acting.
+- **One implementation.** Browser, desktop, CLI, scheduling, and server modes share the same service layer.
+- **Recoverable changes.** Every migration, destructive action, and upgrade is reversible or backed up.
+- **Cross-platform consistency.** Junior behaves the same on Windows, Linux, and macOS except where operating systems naturally differ.
+- **Privacy by default.** Junior does not require cloud services or centralized user data.
+- **Honest capabilities.** Junior should never imply it knows more than it actually does.
+
 ## Authoritative Product Roadmap / Next Project Steps
 
 | Priority | Status Planned/Completed | Task |
@@ -27,11 +40,11 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 3 | Completed | Make the GUI the source of truth for active applications, archived history, passed roles, rejected applications, dormant roles, and follow-up state. |
 | 4 | Completed | Complete a repository-wide maintainability review and add concise comments where they clarify module purpose, business rules, safety boundaries, compatibility behavior, and non-obvious decisions without making files noisy. |
 | 5 | In Progress | Create and maintain `CHANGELOG.md`, semantic versioning rules, immutable release tags, and release notes for each stable product milestone. |
-| 6 | In Progress | Document the post-MVP application architecture, including entry points, service boundaries, configuration ownership, data ownership, startup flow, shutdown flow, desktop mode, server mode, and developer CLI mode. |
+| 6 | Completed | Document the post-MVP application architecture, including entry points, service boundaries, configuration ownership, data ownership, startup flow, shutdown flow, desktop mode, server mode, and developer CLI mode. |
 | 7 | Completed | Separate user-owned data from application code by storing profiles, resumes, settings, company records, SQLite databases, reports, logs, backups, and runtime files in OS-appropriate user-data directories. |
 | 8 | Completed | Preserve backward compatibility for existing repo-relative configuration and current user data while transitioning to external user-data paths. |
-| 9 | In Progress | Add safe, versioned migrations for SQLite schema, settings, profiles, company records, and other persisted user data so upgrades never silently lose or corrupt data. |
-| 10 | In Progress | Create a reusable application configuration service so GUI, CLI, desktop launcher, server mode, and packaged builds all load and save settings through the same tested interface. |
+| 9 | Completed | Add safe, versioned migrations for SQLite schema, settings, profiles, company records, and other persisted user data so upgrades never silently lose or corrupt data. |
+| 10 | Completed | Create a reusable application configuration service so GUI, CLI, desktop launcher, server mode, and packaged builds all load and save settings through the same tested interface. |
 | 11 | Completed | Create a generic profile domain model with stable profile IDs, display names, resume ownership, preferences, company associations, scoring configuration, report settings, and active-profile selection. |
 | 12 | Completed | Add profile creation, editing, switching, guarded deletion, validation, and a five-profile limit through the GUI without requiring user accounts or authentication. |
 | 13 | Completed | Preserve and migrate the existing MVP profile as a working managed profile without changing its current scoring or search behavior. |
