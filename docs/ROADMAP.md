@@ -83,7 +83,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 59 | Completed | Support standalone local PC operation on Windows and Linux for users who want Job Radar to run only when they launch it. |
 | 60 | Completed | Support unattended service-style operation on Windows and Linux for users who want scheduled scans without keeping the desktop application open. |
 | 61 | Completed | Add container/server mode with persistent user data, configuration injection, logs, health checks, controlled upgrades, and the same service-layer behavior as the desktop application. |
-| 62 | Planned | Support Kubernetes deployment with persistent storage, Secrets, configuration, health checks, scheduled scans, backups, retention, and safe upgrade procedures. |
+| 62 | Completed | Support Kubernetes deployment with persistent storage, Secrets, configuration, health checks, scheduled scans, backups, retention, and safe upgrade procedures. |
 | 63 | In Progress | Write complete installation, guided setup, profile management, company management, email, scheduling, backup, restore, troubleshooting, upgrade, and uninstall documentation for Windows users. |
 | 64 | Planned | Write complete installation and operations documentation for Linux standalone mode, Linux service mode, container mode, and Kubernetes mode. |
 | 65 | In Progress | Add automated release validation for clean installation, first launch, guided setup, initial scan, application restart, upgrade, migration, backup, restore, and uninstall behavior. |

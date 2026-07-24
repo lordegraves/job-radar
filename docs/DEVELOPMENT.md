@@ -238,3 +238,12 @@ that identity. The Compose example uses a named volume and binds only to
 localhost. Validate `/health`, first-run bootstrap, container recreation with
 the same volume, graceful stop, and preservation of a synthetic sentinel before
 publishing an image. Never use a live Junior data directory for this test.
+
+Kubernetes validation renders `packaging\kubernetes` with `kubectl kustomize`
+and deploys it only into a uniquely named disposable namespace. Load the exact
+locally built image into the test cluster, then verify one Ready non-root pod,
+the `/health` response, synthetic sentinel persistence through a rollout
+restart, a completed manual job created from `junior-backup`, and a safe no-op
+job created from `junior-scan` while the saved schedule is disabled. Confirm
+both CronJobs remain suspended, then delete only that verified disposable
+namespace. Never mount or copy a live Junior workspace into this validation.

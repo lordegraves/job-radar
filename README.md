@@ -197,6 +197,34 @@ Junior's web interface does not currently provide user authentication. Keep
 container mode bound to localhost or behind a separately secured private
 network boundary. Do not publish port 8000 directly to the public internet.
 
+### Kubernetes mode
+
+The operator-ready baseline is under `packaging/kubernetes`. Apply it with
+Kustomize only after replacing `junior:0.1.0` with the exact immutable image
+tag or digest being deployed:
+
+```powershell
+kubectl apply -k packaging\kubernetes -n junior
+```
+
+The baseline uses one non-root application replica, a persistent volume,
+private ClusterIP networking, privacy-safe health probes, and suspended scan
+and backup CronJobs. The single replica and `Recreate` upgrade strategy are
+deliberate: Junior uses SQLite and must not have multiple application pods
+writing to the same database. Create secret values outside source control and
+enable each CronJob only after reviewing its schedule.
+
+Scheduled backups retain the 14 newest scheduler-created bundles on the Junior
+volume and never prune manual or pre-change safety backups. Because those
+bundles share the same persistent volume, the cluster operator must also copy
+backups to independent protected storage. A backup on a lost volume is not
+disaster recovery.
+
+Junior has no built-in web authentication. Keep the Service private or place
+it behind an authenticated ingress on a trusted network; never expose it
+directly to the public internet. Preserve and independently back up the
+persistent volume during upgrades.
+
 ### Fictional demo workspace
 
 Documentation, demonstrations, and release checks must never use a real

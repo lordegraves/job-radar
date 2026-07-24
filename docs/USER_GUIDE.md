@@ -40,6 +40,25 @@ Junior does not currently ask for a username or password before displaying the
 web interface. Keep this mode on the same computer or behind a separately
 secured private network. Do not expose it directly to the internet.
 
+## Kubernetes operation
+
+Kubernetes mode is for an experienced cluster operator. The supplied resources
+in `packaging/kubernetes` run one non-root Junior application pod, keep all
+user-owned data on a persistent volume, expose only a private ClusterIP
+Service, and provide health checks.
+
+Before applying the resources, the operator must pin the exact Junior image,
+create any SMTP Secret outside source control, select a suitable storage class,
+and review backup storage. Scan and backup schedules are included but disabled
+by default. They must be deliberately scheduled and enabled. Scheduled backups
+keep the 14 newest scheduled bundles without deleting manual safety backups.
+
+Junior does not provide web login protection. Use an authenticated ingress on
+a trusted private network if remote access is needed. Also copy backups to
+protected storage outside Junior's persistent volume; in-volume backups cannot
+recover a lost volume. Upgrades must preserve and independently back up that
+volume.
+
 ## First-time setup
 
 Create a user-owned junior workspace:

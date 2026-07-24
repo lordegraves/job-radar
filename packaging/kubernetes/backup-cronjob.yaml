@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: junior-backup
+spec:
+  # Deliberately disabled until backup storage and retention are reviewed.
+  suspend: true
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+          containers:
+            - name: backup
+              image: junior:0.1.0
+              command:
+                - job-radar-backup
+                - --user-data-root
+                - /var/lib/junior
+                - --keep
+                - "14"
+              volumeMounts:
+                - name: data
+                  mountPath: /var/lib/junior
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: junior-data

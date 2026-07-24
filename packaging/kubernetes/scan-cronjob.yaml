@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: junior-scan
+spec:
+  # Deliberately disabled until the operator chooses the matching schedule.
+  suspend: true
+  schedule: "0 8 * * 1-5"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+          containers:
+            - name: scan
+              image: junior:0.1.0
+              command:
+                - job-radar-scheduled
+                - --user-data-root
+                - /var/lib/junior
+              env:
+                - name: JOB_RADAR_SMTP_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: junior-secrets
+                      key: smtp-password
+                      optional: true
+              volumeMounts:
+                - name: data
+                  mountPath: /var/lib/junior
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: junior-data

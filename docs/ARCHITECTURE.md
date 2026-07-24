@@ -11,6 +11,7 @@ Native pywebview desktop shell
 Browser-based local mode
 Future packaged installer
 Unattended service and container/server mode
+Kubernetes deployment with shared services and persistent storage
 ```
 
 These surfaces must share the same service and storage layers rather than becoming separate products.
@@ -21,7 +22,10 @@ These surfaces must share the same service and storage layers rather than becomi
 - `job-radar-web` / `job_radar.web_app`: local browser/server mode. An explicit settings path may be supplied; otherwise runtime-path resolution selects bootstrapped user settings when present and falls back to repository settings for development compatibility.
 - `job-radar-desktop` / `job_radar.desktop_launcher`: the native desktop launcher. It prepares packaged user configuration when needed, starts a local Werkzeug server, waits for readiness, and displays the shared interface in pywebview. `--browser` deliberately opens the same interface in the default browser, while `--no-browser` leaves the local server externally managed.
 - `job-radar-scheduled` / `job_radar.scheduled_scan`: the unattended scan entry point. It reads the saved schedule, exits safely when scheduling is off, and calls the same scan service used by GUI and CLI scans.
-- Windows Task Scheduler and Linux systemd user timers invoke the shared scheduled entry point. Container mode runs the shared Flask application under Gunicorn with one externally mounted user-data root. Future Kubernetes mode must call the same scan and storage services.
+- `job-radar-backup` / `job_radar.scheduled_backup`: the orchestrator-safe backup entry point. It creates a verified bundle through the shared backup service and prunes only older scheduler-owned bundles according to explicit retention.
+- Windows Task Scheduler and Linux systemd user timers invoke the shared scheduled entry point. Container mode runs the shared Flask application under Gunicorn with one externally mounted user-data root. Kubernetes uses the same image, services, storage model, scheduled-scan entry point, and verified backup service.
+
+Kubernetes deliberately uses one application replica with a `Recreate` deployment strategy because SQLite is a single-writer local database. The Deployment and suspended CronJobs share one persistent volume. Scan locking protects the shared scan lifecycle; `concurrencyPolicy: Forbid` prevents overlapping jobs of the same scheduled type. The private Service does not add authentication, so network exposure remains an operator-owned security boundary.
 
 ## Startup and shutdown flow
 

@@ -49,6 +49,7 @@ def test_container_uses_persistent_mount_and_shared_web_app() -> None:
     assert "job-radar bootstrap-user-data" in entrypoint
     assert '"job_radar.web_app:create_app()"' in entrypoint
     assert entrypoint.count("bootstrap-user-data") == 1
+    assert 'exec "$@"' in entrypoint
 
 
 def test_compose_binds_to_localhost_and_uses_named_volume() -> None:

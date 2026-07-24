@@ -6,6 +6,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added an operator-ready Kubernetes baseline with single-writer SQLite safety, persistent storage, non-root execution, private networking, privacy-safe health probes, externally supplied Secrets, disabled-by-default scheduled scans, verified scheduled backups, bounded scheduled-backup retention, and restart-preservation validation.
 - Added non-root container/server mode with a persistent user-data volume, idempotent bootstrap, Gunicorn lifecycle handling, a privacy-safe health endpoint, localhost-only Compose defaults, and restart/upgrade preservation validation.
 - Added a Docker-isolated Linux x86-64 tarball build with a portable Junior executable, dependency-aware launcher, per-user installation helper, and uninstall behavior that preserves profiles, résumés, settings, databases, reports, logs, backups, schedules, and credentials.
 - Added a manual, read-only stable-release check on About that verifies Junior's official GitHub release link, explains whether an update is available, and never downloads, installs, migrates, or changes user data.

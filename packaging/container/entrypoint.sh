@@ -2,6 +2,10 @@
 # Bootstrap only missing safe defaults, then hand lifecycle signals to Gunicorn.
 set -eu
 
+if [ "$#" -gt 0 ]; then
+    exec "$@"
+fi
+
 data_root=${JOB_RADAR_DATA_DIR:-/var/lib/junior}
 settings_path="$data_root/config/settings.yaml"
 

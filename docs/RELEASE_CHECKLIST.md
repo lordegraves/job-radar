@@ -56,6 +56,13 @@ python -m pytest -q tests\test_packaging.py
 - [ ] Container recreation or image replacement preserves the mounted synthetic user-data volume.
 - [ ] Container stops gracefully and does not expose a development server.
 - [ ] Compose binds to localhost unless a separately secured network boundary is documented.
+- [ ] Kubernetes manifests render cleanly and use an immutable release image tag or digest.
+- [ ] Kubernetes runs one non-root application replica with `Recreate` upgrades and a bound persistent volume.
+- [ ] Kubernetes restart validation preserves a synthetic sentinel and `/health` remains ready.
+- [ ] Kubernetes scan and backup CronJobs are suspended by default, forbid overlap, and retain bounded job history.
+- [ ] A manual Kubernetes backup job creates a verified bundle and scheduled retention never removes manual or pre-change backups.
+- [ ] Kubernetes Secret manifests contain no values and the Service remains private unless an authenticated ingress is separately configured.
+- [ ] Kubernetes disaster-recovery instructions require backups outside the application persistent volume.
 - [ ] Release artifacts do not depend on the source tree.
 
 ## Database and upgrade safety

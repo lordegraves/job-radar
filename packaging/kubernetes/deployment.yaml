@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junior
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: junior
+  template:
+    metadata:
+      labels:
+        app: junior
+    spec:
+      terminationGracePeriodSeconds: 150
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: junior
+          image: junior:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: JOB_RADAR_DATA_DIR
+              value: /var/lib/junior
+            - name: JUNIOR_PORT
+              value: "8000"
+            - name: JOB_RADAR_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: junior-secrets
+                  key: smtp-password
+                  optional: true
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/junior
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: junior-data

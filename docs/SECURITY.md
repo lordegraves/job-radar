@@ -49,6 +49,14 @@ example binds only to localhost. A deployment on another interface requires a
 separately secured private network or authenticated reverse proxy; the Junior
 port must not be exposed directly to the public internet.
 
+Kubernetes uses the same boundary. The supplied Service is private
+`ClusterIP`, and Junior still has no built-in web authentication. Any ingress
+must provide authentication and a trusted network boundary. The committed
+Secret manifest contains no credential value; operators must create Secret
+data outside source control. Pin deployed images to an immutable release tag
+or digest, and do not place credentials in manifests, images, logs, or the
+persistent volume.
+
 junior configuration should store only a credential reference, never the credential value.
 
 Upgrades must preserve references and must not expose, migrate, overwrite, or delete stored credentials automatically.
