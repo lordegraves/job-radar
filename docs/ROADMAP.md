@@ -111,6 +111,12 @@ Junior is guided by these principles:
 
 These corrections must be implemented and verified before RC5 is accepted:
 
+- Normal users must never be asked to enter or generate Junior's internal job
+  ID. Creating an application from a scan must preserve the scan-owned ID;
+  creating one manually from LinkedIn or any other outside source must generate
+  an app-owned ID when Save is selected. Internal IDs may remain available to
+  CLI diagnostics and compatibility code but must not appear as normal form
+  fields or user-facing report content.
 - Company discovery must use a broad but bounded tool chest: known ATS URL
   patterns, redirects and canonical links, career-page links, scripts and
   structured data, sitemaps where appropriate, custom ATS domains, multiple

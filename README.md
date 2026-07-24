@@ -62,6 +62,12 @@ compatible collector probes, and bounded public lookup rather than depending
 on one generic fallback. It must verify a credible job result before saving an
 employer and discard unsuccessful probe data when the request finishes.
 
+Junior owns application identifiers. RC5 must remove the internal Job Radar ID
+field from normal forms and reports. A scan-linked application must reuse the
+identifier assigned during collection, while an application entered manually
+from LinkedIn or another outside source must receive a new Junior-managed ID
+when the user selects Save. Normal users must never invent or maintain it.
+
 ## Quick start for development
 
 ```powershell

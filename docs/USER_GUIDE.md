@@ -384,7 +384,15 @@ Typical actions include:
 - move terminal applications to Application History
 - delete a record through explicit confirmation
 
-junior assigns app-owned IDs to manual records. Posting URLs remain source evidence, not primary identity.
+Junior assigns internal app-owned IDs automatically. An application created
+from a scan keeps the scan's existing ID, while a manually entered application
+receives a new Junior-managed ID when it is saved. Normal users never need to
+enter, create, or maintain this value. Posting URLs remain source evidence, not
+primary identity.
+
+The RC4 field test still displays the internal value in some normal-user views.
+Removing that field from forms and reports is an RC5 acceptance requirement;
+the underlying compatibility ID will remain managed by Junior.
 
 Scan results use **Review Needed** whenever Junior cannot confirm a practical
 requirement such as workplace arrangement, employment type, schedule, or
