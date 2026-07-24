@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from job_radar.employer_models import EmployerSource
+from job_radar.employer_resolution_service import ExternalLookupAttempt
 from job_radar.employer_storage import (
     get_employer_source,
     is_profile_employer_enabled,
@@ -679,6 +680,54 @@ def test_external_lookup_preference_is_visible_and_editable_in_settings(
     assert "External company lookup preference saved." in saved_html
     assert 'value="enabled"' in saved_html
     assert "checked" in saved_html
+
+
+def test_enabled_external_lookup_unavailable_is_explained_without_saving(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda url: [],
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [],
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_public_job_sources",
+        lambda **kwargs: ExternalLookupAttempt(state="unavailable"),
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+    client.post(
+        "/settings/company-discovery",
+        data={"external_lookup": "enabled"},
+    )
+
+    response = client.post(
+        "/companies/add/confirm-detected",
+        data={
+            "company_name": "Example Kitchens",
+            "careers_url": "https://careers.example.invalid/jobs",
+        },
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Bing could not be reached" in html
+    assert "will not retry later by itself" in html
+    assert "direct company checks still work without Bing" in html
+    assert get_profile(database_path, profile.profile_id).company_ids == ()
 
 
 def test_company_detail_shows_and_refreshes_safe_source_health(

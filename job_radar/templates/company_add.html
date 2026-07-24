@@ -167,6 +167,18 @@
         tradeoffs. Existing companies and normal scans do not use Bing.
     </p>
     <p><a href="{{ url_for('settings_company_discovery') }}">Review external lookup privacy</a></p>
+    {% elif resolution.status == 'EXTERNAL_LOOKUP_UNAVAILABLE' %}
+    <p class="muted">
+        Junior's direct company checks still work without Bing. You can try
+        this company again later or enter a more direct public job-search URL.
+        Existing companies and normal scans are unaffected.
+    </p>
+    {% elif resolution.status == 'EXTERNAL_LOOKUP_NO_SOURCE' %}
+    <p class="muted">
+        Bing results are never accepted as proof. Junior tested the relevant
+        candidates it found and discarded them because none produced a
+        credible public job. You can try a more direct public job-search URL.
+    </p>
     {% elif resolution.status in ['PENDING_REVIEW', 'UNSUPPORTED_SITE'] %}
     <p class="muted">
         The company is now in this profile as <strong>Setup needed</strong>.

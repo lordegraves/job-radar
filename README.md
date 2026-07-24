@@ -61,7 +61,9 @@ patterns, redirects, page metadata and links, structured data, custom domains,
 and compatible collector probes rather than depending on one generic fallback.
 An optional global Bing fallback defaults off and is never required for company
 setup or normal scans. It must verify a credible job result before saving an
-employer and discard unsuccessful probe data when the request finishes.
+employer and discard unsuccessful probe data when the request finishes. The
+setup result distinguishes an unavailable optional service from a completed
+lookup that produced no independently verified source.
 
 Junior owns application identifiers. RC5 must remove the internal Job Radar ID
 field from normal forms and reports. A scan-linked application must reuse the

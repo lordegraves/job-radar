@@ -39,6 +39,8 @@ UNSUPPORTED_SITE = "UNSUPPORTED_SITE"
 INVALID_INPUT = "INVALID_INPUT"
 ALREADY_ASSIGNED = "ALREADY_ASSIGNED"
 EXTERNAL_LOOKUP_DISABLED = "EXTERNAL_LOOKUP_DISABLED"
+EXTERNAL_LOOKUP_UNAVAILABLE = "EXTERNAL_LOOKUP_UNAVAILABLE"
+EXTERNAL_LOOKUP_NO_SOURCE = "EXTERNAL_LOOKUP_NO_SOURCE"
 
 _TRACKING_QUERY_KEYS = {
     "fbclid",
@@ -100,6 +102,14 @@ class EmployerResolutionResult:
     requires_company_name: bool = False
     external_lookup_provider: str | None = None
     external_lookup_fields: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class ExternalLookupAttempt:
+    """Keep one external response and its safe outcome in request memory only."""
+
+    state: str
+    discoveries: tuple[DetectedEmployerSource, ...] = ()
 
 
 def resolve_employer_submission(
@@ -750,13 +760,44 @@ def _create_and_assign_generic(
         # A corporate landing page may block automated access or live on a
         # different domain from the real job search. The fallback sends only
         # the public company identity, then validates every candidate locally.
-        tested_source = _first_working_source(
-            _discover_public_job_sources(
-                display_name=display_name,
+        lookup_attempt = _discover_public_job_sources(
+            display_name=display_name,
+            careers_url=normalized_url,
+        )
+        if lookup_attempt.state == "unavailable":
+            return EmployerResolutionResult(
+                status=EXTERNAL_LOOKUP_UNAVAILABLE,
+                message=(
+                    "Junior completed its direct checks, but Bing could not "
+                    "be reached for the optional lookup. No company was added "
+                    "and Junior will not retry later by itself."
+                ),
+                employer_name=display_name,
                 careers_url=normalized_url,
-            ),
+                external_lookup_provider="Bing",
+                external_lookup_fields=lookup_fields,
+            )
+        tested_source = _first_working_source(
+            list(lookup_attempt.discoveries),
             display_name=display_name,
         )
+        if tested_source is None:
+            return EmployerResolutionResult(
+                status=EXTERNAL_LOOKUP_NO_SOURCE,
+                message=(
+                    "Junior completed the optional Bing lookup but did not "
+                    "find a job source it could independently verify. No "
+                    "company was added. Check that this is the employer's "
+                    "main public careers page. If the address is correct, "
+                    "contact Clayton Graves at claytonmgraves@outlook.com and "
+                    "include the public careers URL. Do not send passwords, "
+                    "access tokens, résumés, or other private data."
+                ),
+                employer_name=display_name,
+                careers_url=normalized_url,
+                external_lookup_provider="Bing",
+                external_lookup_fields=lookup_fields,
+            )
     if tested_source is None:
         return _source_test_failed()
     discovered, job_count = tested_source
@@ -1000,7 +1041,7 @@ def _discover_public_job_sources(
     *,
     display_name: str,
     careers_url: str,
-) -> list[DetectedEmployerSource]:
+) -> ExternalLookupAttempt:
     """Find a separated official job site without sending private user data."""
 
     request_fields = dict(
@@ -1020,7 +1061,7 @@ def _discover_public_job_sources(
             timeout=20,
         )
     except requests.RequestException:
-        return []
+        return ExternalLookupAttempt(state="unavailable")
 
     identity_tokens = _company_identity_tokens(display_name, careers_url)
     discoveries: list[DetectedEmployerSource] = []
@@ -1071,7 +1112,10 @@ def _discover_public_job_sources(
             )
         if len(discoveries) >= 6:
             break
-    return discoveries
+    return ExternalLookupAttempt(
+        state="candidates" if discoveries else "no_match",
+        discoveries=tuple(discoveries),
+    )
 
 
 def _public_lookup_request_fields(

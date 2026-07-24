@@ -9,6 +9,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Added a global, default-off Bing company-lookup setting with plain-language
   disclosure of its limited advantage, complete search payload, IP-address
   exposure, reliability risk, and strict separation from normal scans.
+- Distinguished an unavailable optional lookup from a completed lookup with no
+  independently verified source, without exposing raw failures or scheduling
+  silent retries.
 - Clarified directly on Windows Scan Schedule setup that Junior's window may be
   closed while the scheduled task runs, but the user must remain signed in and
   the computer must be awake and powered on.

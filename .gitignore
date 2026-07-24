@@ -27,6 +27,7 @@ data/*.sqlite3
 data/*.db
 data/*.xlsx
 data/backups/
+data/runtime/
 !data/.gitkeep
 
 # Logs

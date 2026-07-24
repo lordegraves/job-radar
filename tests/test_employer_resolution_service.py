@@ -15,6 +15,9 @@ from job_radar.employer_resolution_service import (
     DETECTED_SCAN_READY,
     DETECTED_SETUP_REQUIRED,
     EXTERNAL_LOOKUP_DISABLED,
+    EXTERNAL_LOOKUP_NO_SOURCE,
+    EXTERNAL_LOOKUP_UNAVAILABLE,
+    ExternalLookupAttempt,
     INVALID_INPUT,
     MATCHED_EXISTING,
     PENDING_REVIEW,
@@ -472,7 +475,7 @@ def test_unknown_site_failure_directs_user_to_safe_support(
     )
     monkeypatch.setattr(
         "job_radar.employer_resolution_service._discover_public_job_sources",
-        lambda **kwargs: [],
+        lambda **kwargs: ExternalLookupAttempt(state="no_match"),
     )
     monkeypatch.setattr(
         "job_radar.employer_resolution_service.collect_jobs_for_company",
@@ -488,7 +491,7 @@ def test_unknown_site_failure_directs_user_to_safe_support(
         allow_external_lookup=True,
     )
 
-    assert result.status == INVALID_INPUT
+    assert result.status == EXTERNAL_LOOKUP_NO_SOURCE
     assert "claytonmgraves@outlook.com" in result.message
     assert "Do not send passwords" in result.message
     assert list_profile_employer_assignments(database_path, profile.profile_id) == []
@@ -605,6 +608,58 @@ def test_unknown_site_requires_consent_and_discloses_complete_lookup_payload(
     )
     assert "private-path-value" not in str(result.external_lookup_fields)
     assert external_lookup_called is False
+    assert list_profile_employer_assignments(database_path, profile.profile_id) == []
+
+
+@pytest.mark.parametrize(
+    ("lookup_attempt", "expected_status", "expected_message"),
+    [
+        (
+            ExternalLookupAttempt(state="unavailable"),
+            EXTERNAL_LOOKUP_UNAVAILABLE,
+            "Bing could not be reached",
+        ),
+        (
+            ExternalLookupAttempt(state="no_match"),
+            EXTERNAL_LOOKUP_NO_SOURCE,
+            "did not find a job source it could independently verify",
+        ),
+    ],
+)
+def test_enabled_external_lookup_reports_safe_distinct_failure_outcomes(
+    tmp_path: Path,
+    monkeypatch,
+    lookup_attempt: ExternalLookupAttempt,
+    expected_status: str,
+    expected_message: str,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda url: [],
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [],
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_public_job_sources",
+        lambda **kwargs: lookup_attempt,
+    )
+
+    result = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name="Example Kitchens",
+        careers_url="https://careers.example.invalid/jobs",
+        confirm_detected=True,
+        allow_external_lookup=True,
+    )
+
+    assert result.status == expected_status
+    assert expected_message in result.message
+    assert result.external_lookup_provider == "Bing"
     assert list_profile_employer_assignments(database_path, profile.profile_id) == []
 
 
