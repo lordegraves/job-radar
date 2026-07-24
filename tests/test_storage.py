@@ -99,7 +99,7 @@ def test_profile_activity_migration_assigns_legacy_rows_to_active_profile(
     assert tracker_row == (profile.profile_id, "Preserve tracker data")
     assert history_row == (profile.profile_id, "Preserve history data")
     assert foreign_key_errors == []
-    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v24-*.bak"))) == 1
+    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v25-*.bak"))) == 1
 
 
 def create_v010_database(database_path: Path) -> None:
@@ -224,7 +224,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     backup_directory = tmp_path / "backups"
     backup_paths = list(
         backup_directory.glob(
-                "job_radar.sqlite3.pre-migration-v1-v24-*.bak"
+                "job_radar.sqlite3.pre-migration-v1-v25-*.bak"
         )
     )
 
@@ -250,7 +250,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
 
     backup_paths_after_second_initialization = list(
         backup_directory.glob(
-                "job_radar.sqlite3.pre-migration-v1-v24-*.bak"
+                "job_radar.sqlite3.pre-migration-v1-v25-*.bak"
         )
     )
 
@@ -330,13 +330,15 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
         (22,),
         (23,),
         (24,),
+        (25,),
     ]
-    profile_columns = {
-        row[1]
-        for row in connection.execute(
-            "PRAGMA table_info(profiles)"
-        ).fetchall()
-    }
+    with connect_database(database_path) as connection:
+        profile_columns = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(profiles)"
+            ).fetchall()
+        }
 
     assert "scoring_config_json" in profile_columns
     assert "legacy_scoring_import_pending" in profile_columns
@@ -356,7 +358,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-                "synthetic-v0.1.0.sqlite3.pre-migration-v1-v24-*.bak"
+                "synthetic-v0.1.0.sqlite3.pre-migration-v1-v25-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -399,7 +401,7 @@ def test_initialize_database_rolls_back_failed_migration(
         "_schema_migrations",
         lambda: (
             *existing_migrations,
-            (25, "synthetic failing migration", fail_after_temporary_change),
+            (26, "synthetic failing migration", fail_after_temporary_change),
         ),
     )
 
@@ -416,7 +418,7 @@ def test_initialize_database_rolls_back_failed_migration(
             """
         ).fetchone()
         migration_version = connection.execute(
-                "SELECT version FROM schema_migrations WHERE version = 25"
+                "SELECT version FROM schema_migrations WHERE version = 26"
         ).fetchone()
         foreign_key_errors = connection.execute(
             "PRAGMA foreign_key_check"
@@ -428,7 +430,7 @@ def test_initialize_database_rolls_back_failed_migration(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-                    "synthetic-current.sqlite3.pre-migration-v25-v25-*.bak"
+                    "synthetic-current.sqlite3.pre-migration-v26-v26-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -463,6 +465,7 @@ def test_initialize_database_rolls_back_failed_migration(
         (22,),
         (23,),
         (24,),
+        (25,),
     ]
 
 
@@ -546,7 +549,33 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
             (22, "add employer source health"),
             (23, "add first-run validation result"),
             (24, "add scan scheduling configuration"),
+            (25, "add long-term scale indexes"),
         ]
+
+
+def test_long_term_scale_indexes_cover_profile_and_company_queries(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+
+    with connect_database(database_path) as connection:
+        indexes = {
+            row[0]
+            for row in connection.execute(
+                """
+                SELECT name
+                FROM sqlite_master
+                WHERE type = 'index'
+                """
+            ).fetchall()
+        }
+
+    assert {
+        "idx_tracker_profile_updated",
+        "idx_history_profile_included_event",
+        "idx_job_postings_company_active_seen",
+    } <= indexes
 
 
 def test_initialize_database_backfills_companies_for_existing_jobs(
@@ -804,9 +833,6 @@ def test_connect_database_enforces_foreign_keys(tmp_path: Path) -> None:
         foreign_keys_enabled = connection.execute(
             "PRAGMA foreign_keys"
         ).fetchone()[0]
-
-        assert foreign_keys_enabled == 1
-
         try:
             connection.execute(
                 """
@@ -824,6 +850,23 @@ def test_connect_database_enforces_foreign_keys(tmp_path: Path) -> None:
             raise AssertionError(
                 "Foreign-key enforcement allowed an orphaned job-status record."
             )
+
+    assert foreign_keys_enabled == 1
+
+
+def test_connect_database_context_releases_database_file(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+
+    with connect_database(database_path) as connection:
+        connection.execute("CREATE TABLE release_test (value TEXT NOT NULL)")
+
+    with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+        connection.execute("SELECT * FROM release_test")
+
+    database_path.unlink()
+    assert not database_path.exists()
 
 
 def test_upsert_job_posting_returns_seen_for_same_content(tmp_path: Path) -> None:

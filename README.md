@@ -134,6 +134,17 @@ Validate the finished Windows and Linux packages in clean environments:
 This launches the installed Windows executable with isolated empty data and
 runs the Linux archive in a Python-free Debian container.
 
+Validate long-term responsiveness with a disposable fictional workspace:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\validate_performance_scale.py
+```
+
+The default gate creates 100 fictional companies, 100,000 jobs, 10,000
+historical applications, 2,500 active applications, and five profiles. It
+checks the database access paths used by normal profile-owned workflows and
+removes the complete temporary workspace afterward.
+
 Before publishing a release candidate, complete the normal-user walkthrough in
 [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). It covers the exact
 installer artifact from checksum verification through guided setup, first

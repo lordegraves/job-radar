@@ -6,6 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a disposable long-term scale gate for 100 companies, 100,000 jobs,
+  10,000 historical applications, 2,500 active applications, and five profiles;
+  added profile-first and active-company database indexes; and corrected the
+  shared SQLite boundary so context-managed operations release their database
+  handles after commit or rollback.
 - Added a repeatable release-candidate acceptance walkthrough for the exact
   publishable installer, covering isolated new-user setup, first report,
   application tracking, restart, update checking, backup, restore,

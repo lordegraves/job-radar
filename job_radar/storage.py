@@ -309,6 +309,11 @@ def _schema_migrations() -> tuple:
             "add scan scheduling configuration",
             _migrate_scan_scheduling,
         ),
+        (
+            25,
+            "add long-term scale indexes",
+            _migrate_long_term_scale_indexes,
+        ),
     )
 
 
@@ -1041,6 +1046,27 @@ def _migrate_scan_scheduling(connection: sqlite3.Connection) -> None:
         VALUES (1, 0, '09:00', '[]', 0)
         """
     )
+
+
+def _migrate_long_term_scale_indexes(connection: sqlite3.Connection) -> None:
+    """Keep profile-owned history and current-job lookups bounded as data grows."""
+
+    statements = (
+        """
+        CREATE INDEX IF NOT EXISTS idx_tracker_profile_updated
+        ON application_tracker(profile_id, updated_at DESC)
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS idx_history_profile_included_event
+        ON job_history(profile_id, include_in_job_radar, event_date DESC)
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS idx_job_postings_company_active_seen
+        ON job_postings(company_key, is_active, last_seen_at DESC)
+        """,
+    )
+    for statement in statements:
+        connection.execute(statement)
 
 
 def _migrate_external_employer_discoveries(

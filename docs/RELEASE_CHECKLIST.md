@@ -95,6 +95,8 @@ git diff --check
 - [ ] Focused tests for changed areas pass.
 - [ ] Full tests pass.
 - [ ] Packaging tests pass.
+- [ ] `scripts\validate_performance_scale.py` passes at its default long-term
+  data volumes.
 - [ ] No whitespace errors remain.
 
 ## Packaging
