@@ -56,6 +56,12 @@ RC5 is also planned to strengthen extraction of explicit practical details
 such as work location, temporary or contract duration, employment type, and
 work authorization before eligibility is classified.
 
+Company discovery is also an RC5 release gate. Junior must combine known ATS
+patterns, redirects, page metadata and links, structured data, custom domains,
+compatible collector probes, and bounded public lookup rather than depending
+on one generic fallback. It must verify a credible job result before saving an
+employer and discard unsuccessful probe data when the request finishes.
+
 ## Quick start for development
 
 ```powershell

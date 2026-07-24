@@ -399,6 +399,11 @@ requirements. Until that work is released, treat Review Needed as a request for
 human confirmation rather than proof that Junior extracted every practical
 detail in the posting.
 
+RC5 also requires broader company-source acceptance testing. A company should
+be saved only after Junior identifies a working public source and receives
+credible jobs from the selected collector. Failed candidate URLs and probe
+results must be discarded rather than left as unfinished company data.
+
 ## Application History
 
 Application History is a permanent SQLite-backed part of junior.

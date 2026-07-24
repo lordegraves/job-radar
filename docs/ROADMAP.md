@@ -111,6 +111,26 @@ Junior is guided by these principles:
 
 These corrections must be implemented and verified before RC5 is accepted:
 
+- Company discovery must use a broad but bounded tool chest: known ATS URL
+  patterns, redirects and canonical links, career-page links, scripts and
+  structured data, sitemaps where appropriate, custom ATS domains, multiple
+  compatible collector probes, and a privacy-safe public lookup when the
+  submitted corporate page is separated from the real careers system.
+- Junior must show understandable progress while discovery runs, verify that
+  the selected collector returns credible public jobs before saving the
+  employer, and retain only the final working source and safe health summary.
+  Rejected URLs, probe responses, failed configurations, and temporary search
+  evidence must not accumulate in SQLite, logs, or company setup requests.
+- Discovery must be tested against a varied acceptance set covering major ATS
+  platforms, branded custom domains, corporate landing pages, client-rendered
+  sites, redirects, blocked pages, empty job boards, malformed URLs, unrelated
+  search results, and genuinely unsupported sources. No single successful
+  employer or collector family is sufficient evidence that discovery is
+  release-ready.
+- When automatic discovery cannot establish a credible job source, Junior must
+  leave no half-configured employer, explain what it tried in normal language,
+  and provide safe retry, removal, and support paths without exposing raw
+  network or collector failures.
 - Scan collectors and practical-eligibility evaluation must retain and inspect
   explicit posting facts such as work location, remote or on-site requirements,
   employment type, temporary or contract duration, work schedule, compensation,
