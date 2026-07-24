@@ -134,6 +134,12 @@ Validate the finished Windows and Linux packages in clean environments:
 This launches the installed Windows executable with isolated empty data and
 runs the Linux archive in a Python-free Debian container.
 
+Before publishing a release candidate, complete the normal-user walkthrough in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). It covers the exact
+installer artifact from checksum verification through guided setup, first
+report, application tracking, restart, update checking, backup, restore,
+repair/update, uninstall, and byte-for-byte preservation of isolated user data.
+
 Packaging validation is covered by `tests/test_packaging.py`, including clean-wheel installation, installed desktop-launcher startup, and installed web rendering outside the source tree.
 
 Build the unsigned Windows desktop bundle:

@@ -6,6 +6,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a repeatable release-candidate acceptance walkthrough for the exact
+  publishable installer, covering isolated new-user setup, first report,
+  application tracking, restart, update checking, backup, restore,
+  repair/update, uninstall, and user-data preservation.
 - Added clean-package validation that launches only a temporary installed Windows executable with isolated empty data and exercises the Linux archive in a Python-free Debian container, then confirms uninstall preserves synthetic user-data sentinels.
 - Added one automated Windows release gate that runs the full suite, lint and whitespace checks, builds the current installer, and validates disposable install, repair/upgrade, uninstall, and user-data preservation across the tested first-run, setup, scan, restart, migration, backup, and restore lifecycle.
 - Completed the Linux standalone, Linux systemd user-service, Docker/Compose, and Kubernetes operations guide, including persistence, scheduling, health, security, backup, upgrade, shutdown, and data-preserving removal boundaries.

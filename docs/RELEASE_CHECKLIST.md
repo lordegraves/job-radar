@@ -25,7 +25,56 @@ Python-free Debian container. Both uninstall and verify synthetic user-data
 sentinels remain intact. The command builds both packages first; use
 `-SkipPackageBuild` only when deliberately validating already-built artifacts.
 
+Finally, perform the release-candidate walkthrough below against the exact
+installer intended for publication. This is a normal-user acceptance test, not
+a substitute for the automated gates.
+
 Use this checklist for every tagged junior release.
+
+## Release-candidate new-user walkthrough
+
+Use a new temporary `JOB_RADAR_DATA_DIR`. Never point this test at a real
+Junior workspace, profile, résumé, database, report directory, or credential
+store.
+
+Record the installer filename, SHA-256 checksum, source download page or local
+release-artifact location, Junior version, Windows version, and test date.
+
+- [ ] Download or copy the exact release-candidate installer from its intended
+  distribution location and verify its published SHA-256 checksum.
+- [ ] Install Junior for the current user and launch it from the installed
+  shortcut or application executable, without repository Python.
+- [ ] Confirm a new empty workspace opens the guided setup welcome page.
+- [ ] Create a fictional profile, choose at least one target role, job level,
+  employment type, and workplace arrangement, and upload a fictional résumé.
+- [ ] Add at least one supported public company source and confirm setup
+  validation connects without importing jobs. A broken second source may be
+  retained only to verify that Junior explains the warning and still accepts a
+  different working source.
+- [ ] Review the final setup summary and finish setup.
+- [ ] Run the first manual scan and confirm the app-wide completion notice
+  reports the job count and any source warnings in plain language.
+- [ ] Open the latest HTML report and plain-text email preview from Reports.
+- [ ] Add a fictional application to Active Applications, reopen it, and
+  verify its company, role, URL, status, outcome, and notes.
+- [ ] Use About to run the manual stable-release check. Confirm Junior reports
+  the installed version as current or links only to a newer verified release;
+  it must not download or install anything automatically.
+- [ ] Create a restorable backup from Administration.
+- [ ] Change the fictional application after the backup, restore the backup,
+  and confirm Junior creates a separate pre-restore safety backup.
+- [ ] Exit Junior through Settings, relaunch the installed executable, and
+  confirm the profile, résumé, companies, report, and original application
+  data survived. The post-backup change must be absent after restore.
+- [ ] Run the release installer again as a repair/update and confirm all
+  fictional user data remains byte-for-byte intact.
+- [ ] Exit Junior cleanly, uninstall it, confirm application files are removed,
+  and confirm the isolated user-data directory remains byte-for-byte intact.
+- [ ] Remove the verified temporary acceptance workspace after recording the
+  result. Never delete a normal Junior user-data directory as cleanup.
+
+Record each step as Pass, Fail, or Not Run. A Fail is a release blocker until
+Priority 68 resolves it and this complete walkthrough passes again.
 
 ## Release scope
 
@@ -37,8 +86,8 @@ Use this checklist for every tagged junior release.
 ## Automated validation
 
 ```powershell
-python -m ruff check job_radar tests
-python -m pytest -q tests
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m pytest -q tests
 git diff --check
 ```
 
@@ -51,7 +100,7 @@ git diff --check
 ## Packaging
 
 ```powershell
-python -m pytest -q tests\test_packaging.py
+.\.venv\Scripts\python.exe -m pytest -q tests\test_packaging.py
 ```
 
 - [ ] Wheel builds from a clean temporary source copy.
