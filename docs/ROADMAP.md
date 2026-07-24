@@ -80,7 +80,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 56 | Completed | Add Windows installer repair, upgrade, and uninstall validation, including confirmation that uninstalling the application does not delete user data without explicit approval. |
 | 57 | Completed | Add optional update checking that reports available stable releases without silently replacing the application or changing user data. |
 | 58 | Completed | Package the application for Linux using a supported tarball-based distribution with launch scripts, dependency checks, user-data paths, migrations, logs, and clear install/uninstall instructions. |
-| 59 | In Progress | Support standalone local PC operation on Windows and Linux for users who want Job Radar to run only when they launch it. |
+| 59 | Completed | Support standalone local PC operation on Windows and Linux for users who want Job Radar to run only when they launch it. |
 | 60 | Planned | Support unattended service-style operation on Windows and Linux for users who want scheduled scans without keeping the desktop application open. |
 | 61 | Planned | Add container/server mode with persistent user data, configuration injection, logs, health checks, controlled upgrades, and the same service-layer behavior as the desktop application. |
 | 62 | Planned | Support Kubernetes deployment with persistent storage, Secrets, configuration, health checks, scheduled scans, backups, retention, and safe upgrade procedures. |
