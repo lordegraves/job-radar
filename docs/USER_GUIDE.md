@@ -3,6 +3,29 @@
 This guide describes the current local application and its supported Windows
 and Linux packaging paths.
 
+## Windows installation
+
+Junior's Windows installer is a per-user installer. Close Junior, run the
+trusted `Junior-Setup-0.1.0.exe` installer, and keep the default installation
+location unless you have a specific reason to change it. Administrator access
+is not required.
+
+The installer:
+
+- installs Junior under `%LOCALAPPDATA%\Programs\Junior`
+- adds **Junior** to the Start Menu
+- optionally creates a desktop shortcut
+- keeps user data separately under `%LOCALAPPDATA%\JobRadar`
+
+The current development installer is unsigned, so Windows may show an
+unrecognized-app warning. Confirm that the installer came from the trusted
+Junior release or build process before continuing. Public code-signed release
+downloads remain future release work.
+
+Launch Junior from the Start Menu or optional desktop shortcut. A normal user
+does not need Python, PowerShell, a virtual environment, a localhost address,
+or repository access.
+
 ## Linux installation
 
 Extract `Junior-linux-x86_64.tar.gz`, then run:
@@ -61,45 +84,52 @@ volume.
 
 ## First-time setup
 
-Create a user-owned junior workspace:
+A new Windows installation creates its user-owned workspace automatically and
+opens guided setup. No command line is required.
 
-```powershell
-python -m job_radar bootstrap-user-data
-```
+The guided workflow:
 
-This creates:
+1. Introduces Junior's local-first storage and targeted-company scan model.
+2. Creates the first profile and records the work, job levels, employment
+   types, schedule, workplace arrangements, locations, compensation floor,
+   travel tolerance, and optional exclusions the user chooses.
+3. Accepts a PDF, DOCX, Markdown, or plain-text résumé, or allows that step to
+   be skipped and completed later.
+4. Adds at least one employer the user wants Junior to monitor.
+5. Shows a plain-language review of the profile, résumé, preferences,
+   locations, employers, data location, and expected scan behavior.
+6. Tests that the minimum profile information and at least one selected
+   employer source are usable before enabling **Finish setup**.
 
-- safe starter settings
-- an empty company list
-- starter scoring rules
-- empty data, profile, report, and log directories
+Junior saves the current setup step. Closing the application during setup does
+not erase completed work; reopening Junior returns to the saved step. The
+validation check does not import, score, recommend, report, or email jobs.
 
-It does not copy a personal profile, résumé, database, credentials, or live company list.
-
-Existing junior data can be brought over deliberately with the optional `--source-settings`, `--source-companies`, `--source-scoring`, `--source-profiles`, and `--source-database` arguments. Existing destination files are always preserved.
-
-After launch, a genuinely empty installation opens the guided setup welcome page. The current guided path creates a profile, accepts optional roles or responsibilities to avoid, accepts or skips a résumé, opens profile-owned company selection, and shows a final review. Junior records the completed step in its SQLite database. If the application closes before setup is finished, reopening it returns to that step without deleting or recreating the partial profile. The review shows the profile, résumé status, saved job preferences, locations, exclusions, companies, local data location, and how targeted scans will behave. Setup is marked complete only when **Finish setup** is selected on the review page.
+For an established installation, Junior opens the existing workspace rather
+than replacing it or restarting setup. Importing repository-era data is an
+advanced migration operation and is never performed silently.
 
 ## Launching the application
 
-The current installed desktop-style entry point is:
-
-```powershell
-job-radar-desktop
-```
-
-It creates the user-owned workspace when needed, starts junior locally, waits for the interface to become ready, and opens Junior in a normal native application window. If junior is already running for that user-owned workspace, the launcher reports the existing instance instead of starting another server against the same data.
+The Start Menu or desktop shortcut creates the user-owned workspace when
+needed, starts Junior locally, waits for the interface to become ready, and
+opens it in a normal application window. If Junior is already running for that
+workspace, the launcher reports the existing instance instead of starting
+another server against the same data.
 
 Launching Junior again does not start another copy against the same data, even if the second shortcut or command requests a different local port. The second launch waits for the first copy when it is still starting, then opens the first copy's interface. If Junior previously stopped unexpectedly, the operating system releases the instance lock automatically.
 
 To close a desktop-launched session, open **Settings** and choose **Exit Junior**. The confirmation page means the local server received the shutdown request. You may close the window. If a scan is running, Junior finishes its protected writes before the process fully exits. This control is intentionally absent in browser/server mode, where another process owns the server lifecycle.
 
-To use the same local interface in the default browser, run `job-radar-desktop --browser`. Developers and externally managed processes may use `job-radar-desktop --no-browser` to start the local server without opening a window. The native shell and unsigned per-user Windows installer are implemented. Publicly signed release downloads remain future productization work. The installer adds Junior to the Start Menu and can optionally create a desktop shortcut. Uninstalling Junior removes the application but deliberately leaves profiles, resumes, companies, application history, settings, and other user-owned data in place.
+Advanced users may deliberately run `job-radar-desktop --browser` to use the
+same local interface in the default browser. Developers and externally managed
+processes may use `job-radar-desktop --no-browser`. These are not required for
+normal Windows use.
 
 From an activated development environment:
 
 ```powershell
-python -m job_radar.web_app --settings config\settings.yaml
+.\.venv\Scripts\python.exe -m job_radar.web_app --settings config\settings.yaml
 ```
 
 Open `http://127.0.0.1:5000/`.
@@ -107,7 +137,7 @@ Open `http://127.0.0.1:5000/`.
 When bootstrapped user settings exist, junior can use them by default:
 
 ```powershell
-python -m job_radar.web_app
+.\.venv\Scripts\python.exe -m job_radar.web_app
 ```
 
 ## Database upgrade recovery
@@ -294,34 +324,129 @@ Disabling an operating-system schedule leaves its definition available for later
 
 Email delivery requires explicit configuration. Open **Settings**, then **Set up email delivery** to choose Gmail, Outlook, or Custom SMTP, store the credential through the operating system, save delivery details, and test the connection without sending a report. The GUI Scan page currently creates the email preview but does not send email; a saved schedule can request email delivery after its scan.
 
+On Windows, a password entered through Email Setup is stored in Windows
+Credential Manager. Junior's settings keep only a non-secret reference.
+**Test Connection** reports Connected, Not configured, Authentication failed,
+Server unreachable, or TLS negotiation failed without displaying raw SMTP
+errors. Gmail or Outlook may require an app password or provider-side SMTP
+permission.
+
 To run a scan and deliberately request configured SMTP delivery:
 
 ```powershell
-python -m job_radar scan --config config\target-companies.yaml --settings config\settings.yaml --report reports\target-scan.html --email-preview reports\target-email-preview.txt --send-email
+.\.venv\Scripts\python.exe -m job_radar scan --config config\target-companies.yaml --settings config\settings.yaml --report reports\target-scan.html --email-preview reports\target-email-preview.txt --send-email
 ```
 
 The application can still launch and perform unrelated work when email is disabled or a credential is unavailable.
 
 SMTP password values must be supplied through a supported credential source. The current implementation supports environment-variable references and must never store the password value in YAML, SQLite, logs, reports, previews, or source control.
 
+## Backup and restore
+
+Open **Settings**, choose **Unlock Administration**, type `ADMIN`, and open
+**Backup and recovery**. The confirmation protects technical controls from
+accidental use; it is not an account password.
+
+- **Create backup** writes a verified private `.jrbackup` bundle.
+- **Create readable export** writes JSON for inspection or portability, but
+  that JSON cannot be restored.
+- **Restore** accepts a `.jrbackup` file only after the user types `RESTORE`.
+
+A restore validates the archive and its database before changing active data.
+Junior creates a separate safety backup of the current workspace first, then
+replaces only recognized Junior-owned data. Restart Junior after a successful
+restore. Credentials remain in Windows Credential Manager or the configured
+environment and are not included in either backup or export.
+
+Store an additional copy of important backups on a different protected disk or
+backup service. A backup kept only on the same computer cannot recover a lost
+or failed computer.
+
+## Windows upgrades
+
+1. Create a Junior backup and copy it to separate protected storage.
+2. Close Junior through **Settings > Exit Junior**.
+3. Run the trusted newer installer. Installing over the existing per-user
+   installation is the supported repair or upgrade path.
+4. Launch Junior and allow its automatic, backup-protected data migrations to
+   finish.
+5. Confirm the active profile, companies, Tracker, History, Settings, and
+   latest Reports before starting a new scan.
+
+Installer repair and upgrade replace application files, not
+`%LOCALAPPDATA%\JobRadar`. Never delete the database or profile as an upgrade
+step. If startup or migration fails, stop and follow **Database upgrade
+recovery** above instead of repeatedly reopening or manually replacing files.
+
+## Windows uninstall
+
+Close Junior, then use **Windows Settings > Apps > Installed apps > Junior >
+Uninstall**.
+
+Uninstall removes the application and its shortcuts. It deliberately preserves
+profiles, résumés, settings, companies, application history, databases,
+reports, logs, backups, schedules, and credential references under
+`%LOCALAPPDATA%\JobRadar`. This allows a later reinstall to recover the same
+workspace.
+
+Junior does not currently provide a normal-user option to erase the complete
+workspace. Do not manually remove it unless you have separately backed it up
+and deliberately intend to permanently delete all Junior data. Windows
+Credential Manager entries are a separate operating-system boundary and are
+not exposed or recovered by the uninstaller.
+
+## Troubleshooting on Windows
+
+Start with **Settings > Diagnostics**. It reports safe application, scan,
+company-source, and email health without exposing résumé or profile contents,
+credentials, or raw exception text. **Open Data Directory** opens the active
+workspace, and **Copy details** copies safe version and health information for
+support.
+
+Common situations:
+
+- **Junior says it is already running:** use the existing window. If no window
+  is visible, wait briefly and launch Junior once more; do not start multiple
+  copies against the same database.
+- **The window does not open:** close any stale Junior process through Task
+  Manager, then try once more. If Windows reports a web-rendering component
+  problem, repair or install Microsoft Edge WebView2 Runtime.
+- **A company source fails:** open Companies or Diagnostics and review the
+  plain-language source status. Other healthy companies can still complete.
+- **A scheduled scan did not run:** confirm scheduling is enabled, at least one
+  weekday is selected, and **Apply schedule to Windows** reports the
+  `\Junior Scheduled Scan` task as installed. The current task runs only while
+  that Windows user is signed in.
+- **Email authentication fails:** verify the provider, username, app password,
+  and provider SMTP policy, then use **Test Connection**. Do not paste a
+  password into logs or support messages.
+- **An upgrade fails:** close Junior, preserve `%LOCALAPPDATA%\JobRadar`, and
+  follow **Database upgrade recovery**. Do not delete or hand-edit the
+  database.
+
+For an unexpected problem that these steps do not resolve, contact Clayton
+Graves at `claytonmgraves@outlook.com` with the copied safe details and the
+diagnostic-log location. Never include passwords, access tokens, or
+credentials.
+
 ## CLI fallbacks
 
 Summarize history:
 
 ```powershell
-python -m job_radar history summary --settings config\settings.yaml
+.\.venv\Scripts\python.exe -m job_radar history summary --settings config\settings.yaml
 ```
 
 List applications:
 
 ```powershell
-python -m job_radar tracker list --settings config\settings.yaml
+.\.venv\Scripts\python.exe -m job_radar tracker list --settings config\settings.yaml
 ```
 
 List records needing action:
 
 ```powershell
-python -m job_radar tracker list --needs-action --settings config\settings.yaml
+.\.venv\Scripts\python.exe -m job_radar tracker list --needs-action --settings config\settings.yaml
 ```
 
 The CLI remains useful for validation, testing, automation, and fallback operation. The GUI is the normal daily interface.

@@ -9,7 +9,7 @@ Developer and automation CLI
 Local Flask web interface
 Native pywebview desktop shell
 Browser-based local mode
-Future packaged installer
+Packaged Windows installer and Linux archive
 Unattended service and container/server mode
 Kubernetes deployment with shared services and persistent storage
 ```

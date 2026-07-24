@@ -13,7 +13,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-The current release is a functional local application with up to five independent managed profiles. Python wheel, source-package, and reproducible Windows executable validation are complete. A genuinely empty installation now opens a guided first-run path through profile creation, résumé upload, profile-owned work exclusions, company selection, and a final review. The setup checkpoint is stored safely in SQLite, so closing junior during setup returns the user to the last completed step instead of starting over. The review shows the profile, résumé, preferences, locations, companies, user-data location, and scan behavior. Finish setup remains unavailable until Junior verifies minimum usable profile rules and confirms at least one selected company collector can connect. This validation imports, scores, recommends, reports, and emails no jobs, and it explains corrections in plain language. The Windows installer, fully editable configuration, and broader release-readiness work are still in progress.
+The current development build is a functional local application with up to five independent managed profiles. Python wheel, source-package, reproducible Windows executable, unsigned per-user Windows installer, Linux archive, container, and Kubernetes baselines are implemented and validated. A genuinely empty installation now opens a guided first-run path through profile creation, résumé upload, profile-owned work exclusions, company selection, and a final review. The setup checkpoint is stored safely in SQLite, so closing junior during setup returns the user to the last completed step instead of starting over. The review shows the profile, résumé, preferences, locations, companies, user-data location, and scan behavior. Finish setup remains unavailable until Junior verifies minimum usable profile rules and confirms at least one selected company collector can connect. This validation imports, scores, recommends, reports, and emails no jobs, and it explains corrections in plain language. Publicly signed release downloads, remaining editable configuration, and broader release-candidate work are still in progress.
 
 See [CHANGELOG.md](CHANGELOG.md) for released and unreleased changes.
 
@@ -47,8 +47,8 @@ Managed profiles have separate Active Applications and Application History recor
 ```powershell
 cd C:\dev\job-radar
 .\.venv\Scripts\Activate.ps1
-python -m pip install -e .
-python -m job_radar.web_app --settings config\settings.yaml
+.\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\python.exe -m job_radar.web_app --settings config\settings.yaml
 ```
 
 Open:
@@ -68,31 +68,31 @@ job-radar-web --settings config\settings.yaml
 Validate configuration:
 
 ```powershell
-python -m job_radar validate --config config\target-companies.yaml --settings config\settings.yaml --scoring config\scoring.yaml
+.\.venv\Scripts\python.exe -m job_radar validate --config config\target-companies.yaml --settings config\settings.yaml --scoring config\scoring.yaml
 ```
 
 Run a scan:
 
 ```powershell
-python -m job_radar scan --config config\target-companies.yaml --settings config\settings.yaml --report reports\target-scan.html --email-preview reports\target-email-preview.txt
+.\.venv\Scripts\python.exe -m job_radar scan --config config\target-companies.yaml --settings config\settings.yaml --report reports\target-scan.html --email-preview reports\target-email-preview.txt
 ```
 
 Summarize application history:
 
 ```powershell
-python -m job_radar history summary --settings config\settings.yaml
+.\.venv\Scripts\python.exe -m job_radar history summary --settings config\settings.yaml
 ```
 
 List active applications:
 
 ```powershell
-python -m job_radar tracker list --settings config\settings.yaml
+.\.venv\Scripts\python.exe -m job_radar tracker list --settings config\settings.yaml
 ```
 
 Create a new user-owned junior workspace:
 
 ```powershell
-python -m job_radar bootstrap-user-data
+.\.venv\Scripts\python.exe -m job_radar bootstrap-user-data
 ```
 
 This creates safe starter settings, an empty company list, and occupation-neutral scoring structure. It does not copy a profile, résumé, database, credentials, another user's occupational scoring rules, or the repository's live company list.
@@ -106,13 +106,13 @@ junior uses bootstrapped user settings by default when they are present. The est
 Run Ruff:
 
 ```powershell
-python -m ruff check job_radar tests
+.\.venv\Scripts\python.exe -m ruff check job_radar tests
 ```
 
 Run the full test suite:
 
 ```powershell
-python -m pytest -q tests
+.\.venv\Scripts\python.exe -m pytest -q tests
 ```
 
 Packaging validation is covered by `tests/test_packaging.py`, including clean-wheel installation, installed desktop-launcher startup, and installed web rendering outside the source tree.
