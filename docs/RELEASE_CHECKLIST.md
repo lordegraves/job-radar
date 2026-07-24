@@ -12,6 +12,19 @@ preservation checks. It never uses the active Junior workspace. A previously
 built or separately supplied installer may be checked with
 `-SkipInstallerBuild` and optional `-InstallerPath`.
 
+Then validate the packaged Windows and Linux applications without repository
+Python, a virtual environment, existing settings, or developer tools:
+
+```powershell
+.\scripts\validate_clean_packages.ps1
+```
+
+The Windows check launches only the temporary installed `Junior.exe` with an
+empty isolated workspace. The Linux check runs only the release archive in a
+Python-free Debian container. Both uninstall and verify synthetic user-data
+sentinels remain intact. The command builds both packages first; use
+`-SkipPackageBuild` only when deliberately validating already-built artifacts.
+
 Use this checklist for every tagged junior release.
 
 ## Release scope

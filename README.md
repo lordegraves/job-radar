@@ -125,6 +125,15 @@ This runs the full suite and lint checks, builds a fresh unsigned installer,
 and validates install, repair/upgrade, uninstall, and synthetic user-data
 preservation without using the active Junior workspace.
 
+Validate the finished Windows and Linux packages in clean environments:
+
+```powershell
+.\scripts\validate_clean_packages.ps1
+```
+
+This launches the installed Windows executable with isolated empty data and
+runs the Linux archive in a Python-free Debian container.
+
 Packaging validation is covered by `tests/test_packaging.py`, including clean-wheel installation, installed desktop-launcher startup, and installed web rendering outside the source tree.
 
 Build the unsigned Windows desktop bundle:
