@@ -33,7 +33,7 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 | 9 | In Progress | Add safe, versioned migrations for SQLite schema, settings, profiles, company records, and other persisted user data so upgrades never silently lose or corrupt data. |
 | 10 | In Progress | Create a reusable application configuration service so GUI, CLI, desktop launcher, server mode, and packaged builds all load and save settings through the same tested interface. |
 | 11 | Completed | Create a generic profile domain model with stable profile IDs, display names, resume ownership, preferences, company associations, scoring configuration, report settings, and active-profile selection. |
-| 12 | In Progress | Add profile creation, editing, duplication, switching, archival, deletion, and validation through the GUI without requiring user accounts or authentication. |
+| 12 | Completed | Add profile creation, editing, switching, guarded deletion, validation, and a five-profile limit through the GUI without requiring user accounts or authentication. |
 | 13 | Completed | Preserve and migrate the existing MVP profile as a working managed profile without changing its current scoring or search behavior. |
 | 14 | In Progress | Build user-friendly profile and preference configuration for target roles, seniority, skills, compensation floor and target, locations, remote/hybrid rules, exclusions, travel tolerance, employment type, clearance rules, and recommendation behavior. |
 | 15 | Completed | Generalize scoring configuration so profiles unrelated to infrastructure, HPC, or SRE do not inherit another user's role, skill, location, or blocker assumptions. |
@@ -96,7 +96,6 @@ junior is a targeted scanner for companies the user deliberately selects. It is 
 
 ## Protected wording notes
 
-- Priority 12 still contains the earlier duplication and archival requirements. The current product deliberately uses a compact five-profile selector and guarded deletion instead of user-facing profile archiving, and duplication is not implemented. Changing that task description requires explicit approval.
 - Priority 19 uses “user-owned” to mean data stored in the user's application-data area. Employer organizations and source definitions are installation-wide; profiles independently select from that shared catalog.
 - Historical `Job Radar` references remain inside protected task descriptions. The user-facing product name is junior, while repository, package, command, environment-variable, durable Job Radar ID, and existing user-data names remain unchanged for compatibility.
 

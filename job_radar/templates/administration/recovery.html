@@ -38,11 +38,15 @@
 
 <div class="recovery-grid">
     <section class="recovery-card">
-        <h2>Create a restorable backup</h2>
-        <p>Junior creates and verifies a private backup without changing active data.</p>
+        <h2>Create and download a backup</h2>
+        <p>
+            Junior creates and verifies a private backup without changing
+            active data, then downloads the portable <code>.jrbackup</code>
+            file.
+        </p>
         <form method="post" action="{{ url_for('administration_create_backup') }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            <button class="primary-action" type="submit">Create backup</button>
+            <button class="primary-action" type="submit">Create and download backup</button>
         </form>
     </section>
 
@@ -76,7 +80,7 @@
 </div>
 
 <div class="page-card backup-list">
-    <h2>Backups stored by Junior</h2>
+    <h2>Backups also stored by Junior</h2>
     {% if backups %}
     <table>
         <caption class="visually-hidden">Junior backups</caption>

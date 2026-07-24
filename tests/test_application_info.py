@@ -120,11 +120,11 @@ def test_about_update_check_is_manual_and_displays_safe_result(
             version,
             request_get=lambda *args, **kwargs: _ReleaseResponse(
                 {
-                    "tag_name": "v0.2.0",
-                    "html_url": (
-                        "https://github.com/lordegraves/job-radar/"
-                        "releases/tag/v0.2.0"
-                    ),
+                        "tag_name": "v0.3.0",
+                        "html_url": (
+                            "https://github.com/lordegraves/job-radar/"
+                            "releases/tag/v0.3.0"
+                        ),
                 }
             ),
         ),
@@ -138,7 +138,7 @@ def test_about_update_check_is_manual_and_displays_safe_result(
     )
     after_check = response.get_data(as_text=True)
 
-    assert "Junior 0.2.0 is available" not in before_check
+    assert "Junior 0.3.0 is available" not in before_check
     assert response.status_code == 200
-    assert "Junior 0.2.0 is available" in after_check
+    assert "Junior 0.3.0 is available" in after_check
     assert "will not download or install it automatically" in after_check

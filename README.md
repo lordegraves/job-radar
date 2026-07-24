@@ -8,7 +8,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 
 ## Status
 
-- Current version: `0.1.0`
+- Current version: `0.2.0`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -31,6 +31,8 @@ junior currently provides:
 - profile-owned related-role discovery with evidence explanations and explicit user approval
 - unified Profile / Resume workflow for profile creation, résumé management, profile-owned role, location, workplace, schedule, compensation, and travel selections, and occupation-neutral scoring ownership for newly created managed profiles
 - tracker workflow states, follow-up dates, quick actions, archive/restore workflows, and guarded deletion
+- an unobtrusive Home dashboard option to share a Junior story or make an
+  entirely voluntary Venmo donation that does not affect application behavior
 - scan lifecycle records, progress state, cross-process locking, stage-specific failures, and bounded pagination
 - non-blocking GUI scans with app-wide progress and completion notifications
 - an installation-wide employer/source catalog with independent profile assignments and per-profile enable/disable control
@@ -170,7 +172,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.1.0.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
@@ -236,7 +238,7 @@ network boundary. Do not publish port 8000 directly to the public internet.
 ### Kubernetes mode
 
 The operator-ready baseline is under `packaging/kubernetes`. Apply it with
-Kustomize only after replacing `junior:0.1.0` with the exact immutable image
+Kustomize only after replacing `junior:0.2.0` with the exact immutable image
 tag or digest being deployed:
 
 ```powershell
@@ -353,7 +355,7 @@ Before changing an existing database structure, junior creates a backup in the `
 
 If junior reports an upgrade failure, close junior and do not delete, rename, replace, or repeatedly reopen the active database or its backups. Preserve the complete `data` directory and contact Clayton Graves at `claytonmgraves@outlook.com`. Include the displayed technical details and diagnostic-log location, but do not send the database, résumé, profile, passwords, access tokens, or other credentials unless an approved secure support process is provided.
 
-Unlocked Administration provides a **Backup and recovery** screen. A restorable `.jrbackup` bundle contains a consistent SQLite copy plus Junior-owned settings, company/scoring configuration, managed profile and résumé files, reports, and sanitized logs. Junior validates the manifest, file paths, sizes, checksums, and database before restoring. It creates a separate pre-restore safety backup first and tells the user to restart after success. Credentials remain in Windows Credential Manager or their configured environment variable and are never included. The same screen can download a readable JSON database export; that export is for review and portability and cannot be used as a restore bundle.
+Unlocked Administration provides a **Backup and recovery** screen. Its backup action creates a verified `.jrbackup` bundle and downloads a portable copy through the application. The bundle contains a consistent SQLite copy plus Junior-owned settings, company/scoring configuration, managed profile and résumé files, reports, and sanitized logs. Junior validates the manifest, file paths, sizes, checksums, and database before restoring into the same or a separate installed workspace. It creates a separate pre-restore safety backup first and tells the user to restart after success. The source workspace remains unchanged. Credentials remain in Windows Credential Manager or their configured environment variable and are never included. The same screen can download a readable JSON database export; that export is for review and portability and cannot be used as a restore bundle.
 
 Junior also creates safety backups automatically immediately before an eligible permanent profile or company deletion. Profile deletion preserves the complete workspace because the profile and managed résumé span SQLite and files; company deletion preserves a verified SQLite copy because the employer catalog is database-owned. Invalid confirmations and in-use records are rejected before a backup or deletion occurs. Existing schema upgrades continue to create their established pre-migration backups.
 

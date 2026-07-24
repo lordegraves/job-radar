@@ -21,7 +21,7 @@ spec:
             fsGroup: 10001
           containers:
             - name: backup
-              image: junior:0.1.0
+              image: junior:0.2.0
               command:
                 - job-radar-backup
                 - --user-data-root

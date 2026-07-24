@@ -22,7 +22,7 @@ spec:
         fsGroup: 10001
       containers:
         - name: junior
-          image: junior:0.1.0
+          image: junior:0.2.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

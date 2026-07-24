@@ -103,6 +103,49 @@ def test_backup_and_restore_preserve_complete_fake_workspace(tmp_path: Path) -> 
     assert len(list_backups(runtime)) == 2
 
 
+def test_backup_migrates_data_into_a_separate_clean_workspace(
+    tmp_path: Path,
+) -> None:
+    development = _runtime(tmp_path / "development")
+    installed = _runtime(tmp_path / "installed")
+    (development.user_data_directory / "resumes" / "test-profile").mkdir(
+        parents=True
+    )
+    development_resume = (
+        development.user_data_directory
+        / "resumes"
+        / "test-profile"
+        / "resume.txt"
+    )
+    development_resume.write_text("Fictional resume", encoding="utf-8")
+    with closing(connect_database(development.database_path)) as connection:
+        connection.execute(
+            "CREATE TABLE backup_test (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO backup_test (key, value) VALUES ('backup-test', 'source')"
+        )
+        connection.commit()
+
+    backup = create_backup(development)
+    restore_backup(
+        installed,
+        BytesIO(backup.path.read_bytes()),
+        confirmation="RESTORE",
+    )
+
+    assert _marker(installed) == "source"
+    installed_resume = (
+        installed.user_data_directory
+        / "resumes"
+        / "test-profile"
+        / "resume.txt"
+    )
+    assert installed_resume.read_text(encoding="utf-8") == "Fictional resume"
+    assert development_resume.read_text(encoding="utf-8") == "Fictional resume"
+    assert backup.path.is_file()
+
+
 def test_restore_rejects_wrong_confirmation_and_tampered_bundle(
     tmp_path: Path,
 ) -> None:

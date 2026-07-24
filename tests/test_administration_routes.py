@@ -161,17 +161,17 @@ def test_administration_backup_export_and_restore_workflow(
 
     page = client.get("/administration/recovery")
     assert page.status_code == 200
-    assert "Create a restorable backup" in page.get_data(as_text=True)
+    assert "Create and download a backup" in page.get_data(as_text=True)
     assert "Type RESTORE to confirm" in page.get_data(as_text=True)
 
-    created = client.post(
-        "/administration/recovery/backup",
-        follow_redirects=True,
-    )
-    assert "Backup created with" in created.get_data(as_text=True)
+    created = client.post("/administration/recovery/backup")
+    assert created.status_code == 200
+    assert created.mimetype == "application/zip"
+    assert ".jrbackup" in created.headers["Content-Disposition"]
     backup = next(
         (tmp_path / "data" / "backups" / "manual").glob("*.jrbackup")
     )
+    assert created.get_data() == backup.read_bytes()
 
     exported = client.post("/administration/recovery/export")
     assert exported.status_code == 200

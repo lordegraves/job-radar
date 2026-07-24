@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "job-radar"
-version = "0.1.0"
+version = "0.2.0"
 description = "junior: local-first job discovery, triage, reporting, and application tracking"
 readme = "README.md"
 requires-python = ">=3.11"

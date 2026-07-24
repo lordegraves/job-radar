@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+## 0.2.0 - 2026-07-24
+
+- Added a direct portable backup download and verified cross-workspace restore
+  path for safely moving development data into an installed Junior copy.
+- Added unobtrusive Home dashboard actions for sharing a Junior story and
+  making an entirely voluntary donation through the maintainer's public Venmo
+  profile.
+
 - Added a disposable long-term scale gate for 100 companies, 100,000 jobs,
   10,000 historical applications, 2,500 active applications, and five profiles;
   added profile-first and active-company database indexes; and corrected the
@@ -176,5 +184,6 @@ Application History itself was not removed. It remains a core SQLite-backed appl
 - SMTP delivery disabled unless explicitly configured and requested.
 - SMTP password values excluded from YAML and source control.
 
-[Unreleased]: https://github.com/lordegraves/job-radar/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/lordegraves/job-radar/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/lordegraves/job-radar/releases/tag/v0.2.0
 [0.1.0]: https://github.com/lordegraves/job-radar/releases/tag/v0.1.0

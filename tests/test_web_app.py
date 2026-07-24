@@ -503,6 +503,14 @@ def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
     assert "Closed" in html
     assert "Latest scan" in html
     assert "Needs attention" in html
+    assert "Support Junior" in html
+    assert "Donations never change" in html
+    assert (
+        'href="mailto:claytonmgraves@outlook.com?subject=My%20Junior%20story"'
+        in html
+    )
+    assert 'href="https://account.venmo.com/u/LordGraves"' in html
+    assert 'rel="noopener noreferrer"' in html
 
 
 def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:

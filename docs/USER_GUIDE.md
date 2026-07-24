@@ -6,7 +6,7 @@ and Linux packaging paths.
 ## Windows installation
 
 Junior's Windows installer is a per-user installer. Close Junior, run the
-trusted `Junior-Setup-0.1.0.exe` installer, and keep the default installation
+trusted `Junior-Setup-0.2.0.exe` installer, and keep the default installation
 location unless you have a specific reason to change it. Administrator access
 is not required.
 
@@ -161,7 +161,7 @@ Service, and provide health checks.
 
 Before applying the resources:
 
-1. Build or obtain a trusted Junior image and replace `junior:0.1.0` with an
+1. Build or obtain a trusted Junior image and replace `junior:0.2.0` with an
    immutable release tag or image digest.
 2. Select a storage class and size appropriate for the installation.
 3. Create SMTP Secret data outside source control if email is enabled. The
@@ -482,7 +482,9 @@ Open **Settings**, choose **Unlock Administration**, type `ADMIN`, and open
 **Backup and recovery**. The confirmation protects technical controls from
 accidental use; it is not an account password.
 
-- **Create backup** writes a verified private `.jrbackup` bundle.
+- **Create and download backup** writes a verified private `.jrbackup` bundle
+  inside Junior's data directory and downloads a portable copy through the
+  application.
 - **Create readable export** writes JSON for inspection or portability, but
   that JSON cannot be restored.
 - **Restore** accepts a `.jrbackup` file only after the user types `RESTORE`.
@@ -496,6 +498,32 @@ environment and are not included in either backup or export.
 Store an additional copy of important backups on a different protected disk or
 backup service. A backup kept only on the same computer cannot recover a lost
 or failed computer.
+
+### Move development data into an installed copy
+
+The repository is a development environment. A normal installed copy runs from
+its installed application directory and owns data under
+`%LOCALAPPDATA%\JobRadar`; it does not need the repository.
+
+To move an existing development workspace into an installed copy:
+
+1. In the development copy, open **Settings**, unlock **Administration**, then
+   open **Backup and recovery**.
+2. Choose **Create and download backup** and keep the downloaded `.jrbackup`
+   file in protected storage.
+3. Install and launch the standalone Junior release.
+4. Before restoring, confirm the installed copy is using the expected data
+   directory on **Settings > About Junior**.
+5. In the installed copy, unlock **Administration**, open **Backup and
+   recovery**, select the downloaded bundle, type `RESTORE`, and restore it.
+6. Restart the installed copy. Confirm the active profile, résumé, companies,
+   applications, history, settings, and reports before running a scan.
+
+Restore validates the bundle before changing the installed workspace and first
+creates a separate backup of the installed copy's prior state. It does not
+modify or delete the source development workspace. Credentials are intentionally
+not transferred; configure them again through the installed copy's secure
+credential workflow.
 
 ## Windows upgrades
 

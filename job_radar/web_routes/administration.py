@@ -107,12 +107,13 @@ def register_administration_routes(
             result = create_backup(get_runtime_paths())
         except BackupError as error:
             flash(str(error), "error")
-        else:
-            flash(
-                f"Backup created with {result.file_count} protected file(s).",
-                "success",
-            )
-        return redirect(url_for("administration_recovery"))
+            return redirect(url_for("administration_recovery"))
+        return send_file(
+            result.path,
+            as_attachment=True,
+            download_name=result.path.name,
+            mimetype="application/zip",
+        )
 
     @app.post("/administration/recovery/export")
     @administration_required

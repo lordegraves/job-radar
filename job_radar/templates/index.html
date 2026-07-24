@@ -136,9 +136,34 @@
         margin-top: 3px;
     }
 
+    .support-panel {
+        align-items: center;
+        display: flex;
+        gap: 20px;
+        justify-content: space-between;
+        margin-top: 16px;
+    }
+
+    .support-panel p {
+        margin-bottom: 0;
+        max-width: 780px;
+    }
+
+    .support-actions {
+        display: flex;
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
     @media (max-width: 980px) {
         .dashboard-layout {
             grid-template-columns: 1fr;
+        }
+
+        .support-panel {
+            align-items: flex-start;
+            flex-direction: column;
         }
     }
 </style>
@@ -249,6 +274,21 @@
         {% else %}
         <p class="muted">No tracker records need attention right now.</p>
         {% endif %}
+    </div>
+</section>
+
+<section class="panel support-panel" aria-labelledby="support-junior-heading">
+    <div>
+        <h2 id="support-junior-heading">Support Junior</h2>
+        <p>
+            Tell us how Junior has helped your job search or support continued
+            development with an optional donation. Donations never change
+            Junior's features or how the application works.
+        </p>
+    </div>
+    <div class="support-actions">
+        <a href="mailto:claytonmgraves@outlook.com?subject=My%20Junior%20story">Share your story</a>
+        <a class="button-link" href="https://account.venmo.com/u/LordGraves" target="_blank" rel="noopener noreferrer">Donate with Venmo</a>
     </div>
 </section>
 
