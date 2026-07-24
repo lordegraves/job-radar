@@ -6,6 +6,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a global, read-only Collector Catalog that is populated on fresh
+  installations without adding employers to the global Employer Catalog.
+- Added automatic setup for complete ADP Workforce Now and Recruitee careers
+  URLs, plus a validated schema.org JobPosting fallback for unfamiliar public
+  careers pages. Unsupported pages are not saved as broken scan sources and
+  instead show privacy-safe support guidance.
+
 ## 0.2.0 - 2026-07-24
 
 - Corrected report grouping so jobs with unresolved practical details appear

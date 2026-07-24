@@ -101,6 +101,7 @@ _URL_SOURCES = {
     "jobsyn",
     "oracle_hcm",
     "phenom",
+    "recruitee",
     "selectminds",
     "smartrecruiters",
     "weka",

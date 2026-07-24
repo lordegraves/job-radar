@@ -538,3 +538,55 @@ def test_add_company_by_careers_url_requires_detected_source_confirmation(
     assert get_profile(database_path, profile.profile_id).company_ids == (
         "example-kitchens",
     )
+
+
+def test_add_company_by_complete_adp_url_requests_name_and_adds_source(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+    careers_url = (
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/"
+        "recruitment.html?cid=example-tenant"
+        "&ccId=19000101_000001&lang=en_US"
+    )
+
+    response = client.post(
+        "/companies/add/resolve",
+        data={"company": careers_url},
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "ADP career site" in html
+    assert "ADP uses a shared careers address" in html
+    assert 'name="company_name"' in html
+    assert 'placeholder="Enter the employer\'s name"' in html
+    assert "needs an administrator" not in html
+
+    confirmed = client.post(
+        "/companies/add/confirm-detected",
+        data={
+            "company_name": "Example Hospitality",
+            "careers_url": careers_url,
+        },
+    )
+    confirmed_html = confirmed.get_data(as_text=True)
+
+    assert confirmed.status_code == 200
+    assert "was added and will be included in future scans" in confirmed_html
+    employer = get_employer_source(database_path, "example-hospitality")
+    assert employer is not None
+    assert employer.source_type == "adp"
+    assert get_profile(database_path, profile.profile_id).company_ids == (
+        "example-hospitality",
+    )

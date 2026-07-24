@@ -17,6 +17,7 @@ from flask import (
 
 from job_radar import __version__
 from job_radar.application_info_service import build_application_info
+from job_radar.collector_catalog import list_collector_capabilities
 from job_radar.config import load_settings
 from job_radar.diagnostic_service import build_diagnostics_view
 from job_radar.diagnostic_log_service import (
@@ -122,6 +123,13 @@ def register_settings_routes(
                 user_data_location=runtime_paths.user_data_directory,
             ),
             update_check=session.pop("update_check", None),
+        )
+
+    @app.get("/settings/job-platforms")
+    def settings_job_platforms() -> str:
+        return render_template(
+            "settings_job_platforms.html",
+            capabilities=list_collector_capabilities(),
         )
 
     @app.post("/settings/about/check-updates")

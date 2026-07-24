@@ -12,10 +12,10 @@ from job_radar.employer_resolution_service import (
     AMBIGUOUS_MATCH,
     CREATED_SCAN_READY,
     DETECTED_SCAN_READY,
+    DETECTED_SETUP_REQUIRED,
     INVALID_INPUT,
     MATCHED_EXISTING,
     PENDING_REVIEW,
-    UNSUPPORTED_SITE,
     detect_employer_source,
     normalize_careers_url,
     normalize_company_name,
@@ -85,6 +85,14 @@ def test_name_and_url_normalization_is_safe_and_stable() -> None:
         ("https://boards.greenhouse.io/example", "greenhouse", "example", True),
         ("https://jobs.lever.co/example", "lever", "example", True),
         ("https://jobs.ashbyhq.com/example", "ashby", "example", True),
+        (
+            "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/"
+            "recruitment.html?cid=example-tenant"
+            "&ccId=19000101_000001&lang=en_US",
+            "adp",
+            "example-tenant:19000101_000001",
+            True,
+        ),
         ("https://example.wd5.myworkdayjobs.com/jobs", "workday", None, False),
         ("https://example.icims.com/jobs", "icims", None, False),
         ("https://jobs.smartrecruiters.com/Example", "smartrecruiters", None, False),
@@ -209,7 +217,56 @@ def test_recognized_scan_ready_url_requires_confirmation_before_creation(
     assert [item.employer_id for item in assignments] == [result.employer_id]
 
 
-def test_unresolved_and_unsupported_submissions_create_one_pending_request(
+def test_complete_adp_url_requires_name_then_creates_scan_ready_employer(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    careers_url = (
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/"
+        "recruitment.html?cid=example-tenant"
+        "&ccId=19000101_000001&lang=en_US"
+    )
+
+    detected = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        careers_url=careers_url,
+    )
+
+    assert detected.status == DETECTED_SCAN_READY
+    assert detected.detected_source_label == "ADP"
+    assert detected.requires_company_name is True
+    assert detected.employer_name == ""
+
+    missing_name = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        careers_url=careers_url,
+        confirm_detected=True,
+    )
+    assert missing_name.status == INVALID_INPUT
+
+    created = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name="Example Hospitality",
+        careers_url=careers_url,
+        confirm_detected=True,
+    )
+
+    employer = get_employer_source(database_path, created.employer_id or "")
+    assert created.status == CREATED_SCAN_READY
+    assert employer is not None
+    assert employer.name == "Example Hospitality"
+    assert employer.source_type == "adp"
+    assert employer.source_config["source_url"] == careers_url
+    assert employer.source_config["cid"] == "example-tenant"
+    assert employer.source_config["ccId"] == "19000101_000001"
+    assert employer.source_config["locale"] == "en_US"
+
+
+def test_name_only_uses_review_but_unknown_url_waits_for_validation(
     tmp_path: Path,
 ) -> None:
     database_path = tmp_path / "junior.sqlite3"
@@ -219,11 +276,6 @@ def test_unresolved_and_unsupported_submissions_create_one_pending_request(
         database_path,
         profile_id=profile.profile_id,
         company_name="Example Catering",
-    )
-    duplicate = resolve_employer_submission(
-        database_path,
-        profile_id=profile.profile_id,
-        company_name="example catering",
     )
     unsupported = resolve_employer_submission(
         database_path,
@@ -240,14 +292,10 @@ def test_unresolved_and_unsupported_submissions_create_one_pending_request(
             """
         ).fetchall()
     assert name_only.status == PENDING_REVIEW
-    assert duplicate.review_request_id == name_only.review_request_id
-    assert unsupported.status == UNSUPPORTED_SITE
-    assert len(requests) == 2
-    assert {row[1] for row in requests} == {
-        PENDING_REVIEW,
-        UNSUPPORTED_SITE,
-    }
-    assert {row[2] for row in requests} == {"PENDING"}
+    assert unsupported.status == DETECTED_SETUP_REQUIRED
+    assert len(requests) == 1
+    assert requests[0][1:] == (PENDING_REVIEW, "PENDING")
+    assert list_profile_employer_assignments(database_path, profile.profile_id) == []
 
 
 def test_assignments_remain_profile_specific(tmp_path: Path) -> None:
@@ -265,6 +313,96 @@ def test_assignments_remain_profile_specific(tmp_path: Path) -> None:
     assert result.status == CREATED_SCAN_READY
     assert len(list_profile_employer_assignments(database_path, first.profile_id)) == 1
     assert list_profile_employer_assignments(database_path, second.profile_id) == []
+
+
+def test_recruitee_url_is_configured_without_administrator(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    url = "https://example-bakery.recruitee.com/o/head-baker"
+
+    detected = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        careers_url=url,
+    )
+    created = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name="Example Bakery",
+        careers_url=url,
+        confirm_detected=True,
+    )
+
+    assert detected.status == DETECTED_SCAN_READY
+    assert detected.detected_source_label == "Recruitee"
+    assert created.status == CREATED_SCAN_READY
+    employer = get_employer_source(database_path, "example-bakery")
+    assert employer is not None
+    assert employer.source_type == "recruitee"
+    assert employer.source_config["source_url"] == (
+        "https://example-bakery.recruitee.com/api/offers/"
+    )
+
+
+def test_unknown_site_must_pass_generic_collector_before_being_added(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    url = "https://careers.example.invalid/jobs"
+
+    detected = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        careers_url=url,
+    )
+    assert detected.status == DETECTED_SETUP_REQUIRED
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_html_jobs",
+        lambda config: [object()],
+    )
+    created = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name="Example Kitchens",
+        careers_url=url,
+        confirm_detected=True,
+    )
+
+    assert created.status == CREATED_SCAN_READY
+    employer = get_employer_source(database_path, "example-kitchens")
+    assert employer is not None
+    assert employer.source_type == "html"
+    assert employer.enabled is True
+
+
+def test_unknown_site_failure_directs_user_to_safe_support(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_html_jobs",
+        lambda config: [],
+    )
+
+    result = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name="Example Kitchens",
+        careers_url="https://careers.example.invalid/jobs",
+        confirm_detected=True,
+    )
+
+    assert result.status == INVALID_INPUT
+    assert "claytonmgraves@outlook.com" in result.message
+    assert "Do not send passwords" in result.message
+    assert list_profile_employer_assignments(database_path, profile.profile_id) == []
 
 
 def test_concurrent_submission_cannot_duplicate_scan_ready_employer(

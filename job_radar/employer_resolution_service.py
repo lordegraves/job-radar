@@ -11,6 +11,8 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
 from job_radar.database import connect_database
+from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.html import collect_html_jobs
 from job_radar.employer_storage import list_profile_employer_assignments
 from job_radar.profile_storage import get_profile
 from job_radar.storage import initialize_database
@@ -18,6 +20,7 @@ from job_radar.storage import initialize_database
 
 MATCHED_EXISTING = "MATCHED_EXISTING"
 DETECTED_SCAN_READY = "DETECTED_SCAN_READY"
+DETECTED_SETUP_REQUIRED = "DETECTED_SETUP_REQUIRED"
 CREATED_SCAN_READY = "CREATED_SCAN_READY"
 PENDING_REVIEW = "PENDING_REVIEW"
 AMBIGUOUS_MATCH = "AMBIGUOUS_MATCH"
@@ -55,6 +58,7 @@ class EmployerResolutionResult:
     review_request_id: str | None = None
     possible_employers: tuple[tuple[str, str], ...] = ()
     detected_source_label: str | None = None
+    requires_company_name: bool = False
 
 
 def resolve_employer_submission(
@@ -123,20 +127,32 @@ def resolve_employer_submission(
     )
     if detection.scan_ready and normalized_url is not None:
         if not confirm_detected:
-            name = display_name or _display_name_from_detection(
-                normalized_url,
-                detection,
+            requires_company_name = (
+                detection.source_type == "adp" and not display_name
+            )
+            name = (
+                display_name
+                or (
+                    ""
+                    if requires_company_name
+                    else _display_name_from_detection(normalized_url, detection)
+                )
             )
             return EmployerResolutionResult(
                 status=DETECTED_SCAN_READY,
                 message=(
-                    f"Junior recognized {name}'s public "
+                    "Junior recognized this public "
                     f"{_source_label(detection.source_type)} career site. "
                     "Confirm this is the company you want before adding it."
                 ),
                 employer_name=name,
                 careers_url=normalized_url,
                 detected_source_label=_source_label(detection.source_type),
+                requires_company_name=requires_company_name,
+            )
+        if detection.source_type == "adp" and not display_name:
+            return _invalid(
+                "Enter the company name before adding this ADP career site."
             )
         return _create_and_assign_scan_ready(
             db_path,
@@ -147,17 +163,33 @@ def resolve_employer_submission(
             detection=detection,
         )
 
-    detection_result = (
-        UNSUPPORTED_SITE if normalized_url and detection.source_type is None
-        else PENDING_REVIEW
-    )
+    if normalized_url and not confirm_detected:
+        return EmployerResolutionResult(
+            status=DETECTED_SETUP_REQUIRED,
+            message=(
+                "Junior will inspect this public careers site and configure the "
+                "appropriate collector. Enter the employer's name to continue."
+            ),
+            careers_url=normalized_url,
+            requires_company_name=True,
+        )
+    if normalized_url:
+        if not display_name:
+            return _invalid("Enter the company name before testing this careers site.")
+        return _create_and_assign_generic(
+            db_path,
+            profile_id=profile_id,
+            display_name=display_name,
+            normalized_name=normalized_name,
+            normalized_url=normalized_url,
+        )
     return _create_pending_review(
         db_path,
         profile_id=profile_id,
         display_name=display_name,
         normalized_name=normalized_name,
-        normalized_url=normalized_url,
-        detection_result=detection_result,
+        normalized_url=None,
+        detection_result=PENDING_REVIEW,
     )
 
 
@@ -224,9 +256,49 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
         return _slug_detection("lever", slug, careers_url)
     if host == "jobs.ashbyhq.com" and slug:
         return _slug_detection("ashby", slug, careers_url)
+    if host == "workforcenow.adp.com":
+        adp_detection = _adp_detection(careers_url)
+        if adp_detection is not None:
+            return adp_detection
+    if host.endswith(".recruitee.com") and host.count(".") >= 2:
+        tenant = host.removesuffix(".recruitee.com")
+        return DetectedEmployerSource(
+            source_type="recruitee",
+            source_identifier=tenant,
+            source_config={
+                "source_url": f"https://{host}/api/offers/",
+                "careers_url": careers_url,
+            },
+            scan_ready=True,
+        )
 
     source_type = _detect_supported_family(host, parsed.path.casefold())
     return DetectedEmployerSource(source_type, None, {}, False)
+
+
+def _adp_detection(careers_url: str) -> DetectedEmployerSource | None:
+    """Build a complete ADP collector configuration from its public URL."""
+
+    parsed = urlsplit(careers_url)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    cid = query.get("cid", "").strip()
+    cc_id = query.get("ccId", "").strip()
+    if not cid or not cc_id:
+        return None
+
+    locale = query.get("lang", "").strip() or "en_US"
+    return DetectedEmployerSource(
+        source_type="adp",
+        source_identifier=f"{cid.casefold()}:{cc_id.casefold()}",
+        source_config={
+            "source_url": careers_url,
+            "cid": cid,
+            "ccId": cc_id,
+            "locale": locale,
+            "careers_url": careers_url,
+        },
+        scan_ready=True,
+    )
 
 
 def _detect_supported_family(host: str, path: str) -> str | None:
@@ -453,6 +525,49 @@ def _create_and_assign_scan_ready(
     )
 
 
+def _create_and_assign_generic(
+    database_path: Path,
+    *,
+    profile_id: str,
+    display_name: str,
+    normalized_name: str,
+    normalized_url: str,
+) -> EmployerResolutionResult:
+    """Enable an unfamiliar public careers page only after extracting real jobs."""
+
+    candidate_config = {
+        "company_key": _employer_id(display_name),
+        "name": display_name,
+        "source_type": "html",
+        "source_url": normalized_url,
+    }
+    try:
+        postings = collect_html_jobs(candidate_config)
+    except (CollectorError, OSError, ValueError):
+        postings = []
+    if not postings:
+        return _invalid(
+            "Junior could not find a reliable public job feed or job list at that "
+            "address. Check that this is the employer's main public careers page. "
+            "If the address is correct, contact Clayton Graves at "
+            "claytonmgraves@outlook.com and include the public careers URL. "
+            "Do not send passwords, access tokens, résumés, or other private data."
+        )
+    return _create_and_assign_scan_ready(
+        database_path,
+        profile_id=profile_id,
+        display_name=display_name,
+        normalized_name=normalized_name,
+        normalized_url=normalized_url,
+        detection=DetectedEmployerSource(
+            source_type="html",
+            source_identifier=None,
+            source_config={"source_url": normalized_url},
+            scan_ready=True,
+        ),
+    )
+
+
 def _create_pending_review(
     database_path: Path,
     *,
@@ -557,6 +672,8 @@ def _source_label(source_type: str | None) -> str:
         "greenhouse": "Greenhouse",
         "lever": "Lever",
         "ashby": "Ashby",
+        "adp": "ADP",
+        "recruitee": "Recruitee",
     }.get(source_type or "", "supported")
 
 

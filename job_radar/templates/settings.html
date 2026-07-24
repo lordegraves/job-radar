@@ -163,6 +163,13 @@
         <p class="muted">Private contents, credentials, and raw exception text are never shown.</p>
     </section>
 
+    <section class="settings-card">
+        <h2>Collector Catalog</h2>
+        <p>Review the global ATS and careers-site collectors built into this Junior installation.</p>
+        <p><a href="{{ url_for('settings_job_platforms') }}">View Collector Catalog</a></p>
+        <p class="muted">This global list is available even when the Employer Catalog is empty.</p>
+    </section>
+
     {% if desktop_shutdown_available %}
     <section class="settings-card">
         <h2>Exit Junior</h2>

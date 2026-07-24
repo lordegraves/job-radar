@@ -12,27 +12,11 @@ from typing import Any
 
 import yaml
 
+from job_radar.collector_catalog import COLLECTOR_CAPABILITIES
+
 
 SUPPORTED_SOURCE_TYPES = {
-    "greenhouse",
-    "lever",
-    "workday",
-    "ashby",
-    "usajobs",
-    "icims",
-    "jibe",
-    "jobsyn",
-    "oracle_hcm",
-    "dayforce",
-    "adp",
-    "activate",
-    "weka",
-    "smartrecruiters",
-    "selectminds",
-    "phenom",
-    "rippling",
-    "schoolspring",
-    "html",
+    capability.source_type for capability in COLLECTOR_CAPABILITIES
 }
 
 

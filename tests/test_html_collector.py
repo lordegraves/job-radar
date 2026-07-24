@@ -47,13 +47,45 @@ def test_get_timeout_seconds_defaults_for_invalid_values() -> None:
     config = _company_config()
 
     assert _get_timeout_seconds(config) == 30
-
     config["timeout_seconds"] = "invalid"
     assert _get_timeout_seconds(config) == 30
 
     config["timeout_seconds"] = 0
     assert _get_timeout_seconds(config) == 30
 
+
+def test_parse_html_jobs_reads_schema_org_job_posting() -> None:
+    html = """
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "JobPosting",
+      "identifier": {"value": "baker-42"},
+      "title": "Head Baker",
+      "description": "<p>Lead the bakery team.</p>",
+      "url": "/jobs/head-baker",
+      "jobLocation": {
+        "@type": "Place",
+        "address": {
+          "addressLocality": "Fort Collins",
+          "addressRegion": "Colorado"
+        }
+      }
+    }
+    </script>
+    """
+
+    jobs = _parse_html_jobs(
+        _company_config(),
+        html,
+        "https://careers.example.invalid/openings",
+    )
+
+    assert len(jobs) == 1
+    assert jobs[0].title == "Head Baker"
+    assert jobs[0].location == "Fort Collins, Colorado"
+    assert jobs[0].source_job_id == "baker-42"
+    assert jobs[0].source_url == "https://careers.example.invalid/jobs/head-baker"
 
 def test_extract_source_job_id_from_successfactors_url() -> None:
     assert (

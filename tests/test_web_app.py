@@ -4795,6 +4795,37 @@ def test_shared_page_shell_supports_keyboard_and_scaled_views(
     assert "@media (forced-colors: active)" in html
 
 
+def test_supported_job_platforms_are_visible_without_employers(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+
+    app = create_app(settings_path=str(settings_file), base_directory=tmp_path)
+    client = app.test_client()
+
+    settings_html = client.get("/settings").get_data(as_text=True)
+    response = client.get("/settings/job-platforms")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "View Collector Catalog" in settings_html
+    assert "Collector Catalog" in html
+    assert "separate from the" in html
+    assert "global Employer Catalog" in html
+    assert "Greenhouse" in html
+    assert "ADP Workforce Now" in html
+    assert "Workday" in html
+    assert "USAJOBS" in html
+    assert "Standard public careers page" in html
+    with connect_database(database_file) as connection:
+        employer_count = connection.execute(
+            "SELECT COUNT(*) FROM employer_sources"
+        ).fetchone()
+    assert employer_count is not None and employer_count[0] == 0
+
+
 def test_web_startup_imports_pending_legacy_companies(
     tmp_path: Path,
 ) -> None:

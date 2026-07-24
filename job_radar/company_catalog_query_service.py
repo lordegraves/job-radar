@@ -28,6 +28,7 @@ _URL_SOURCE_TYPES = {
     "jobsyn",
     "oracle_hcm",
     "phenom",
+    "recruitee",
     "selectminds",
     "smartrecruiters",
     "weka",

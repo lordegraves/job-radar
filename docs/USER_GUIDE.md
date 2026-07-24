@@ -446,9 +446,15 @@ Existing YAML profiles are not migrated automatically. junior now has an interna
 
 Employer organizations and source definitions are shared once per local junior installation, while each managed profile has its own company list. The normal Companies workspace shows the active profile's employers and whether each one is Scanning or Paused. You can pause, resume, or remove a company for that profile without changing another profile.
 
-Junior does not recommend where you should work or claim that its local catalog represents the complete employer market. You choose the employers to monitor. Select **Add company**, enter an ordinary company name or public careers-page URL, and review the match Junior finds locally. When Junior recognizes an existing employer or a supported career platform, it asks you to confirm before adding it. Ambiguous or unsupported sources go to controlled review rather than being guessed. Junior never silently adds or scans a company.
+Junior does not recommend where you should work or claim that its local catalog represents the complete employer market. You choose the employers to monitor. Select **Add company**, enter an ordinary company name or public careers-page URL, and review the match Junior finds locally. When Junior recognizes an existing employer or a supported career platform, it asks you to confirm before adding it. Junior can configure complete ADP Workforce Now and Recruitee addresses automatically and can test standards-based public career pages through its generic collector. Junior never silently adds or scans a company.
 
-To add a company, enter its ordinary name or public careers URL. Junior looks for an exact known company first. If more than one company may match, Junior asks you to choose instead of merging them. Junior can safely configure a limited set of clearly recognizable career sites; other names and sites are sent for administrator review. This check does not visit the submitted website. A company awaiting review is not scanned. Its requesting profile may see Setup pending, Ready to add, or Unsupported; another profile does not see that request.
+To add a company, enter its ordinary name or public careers URL. Junior looks for an exact known company first. If more than one company may match, Junior asks you to choose instead of merging them. For a recognized platform, Junior derives the collector configuration from the public address. For an unfamiliar site, Junior tests the page and saves it only when it can extract credible job postings. If automatic setup fails, verify the main public careers URL and use the displayed support contact. Never send passwords, access tokens, résumés, or other private data with a support request.
+
+The global **Collector Catalog** is available from Settings and Administration
+on every installation, including a fresh installation with no employers. It
+describes the job platforms Junior knows how to scan. This catalog is separate
+from the global **Employer Catalog**, which remains empty on a new installation
+until users add employers.
 
 Technical job-source settings do not appear in the normal Companies workspace. They are managed in the session-guarded Administration area after typing `ADMIN`. This confirmation is a safety boundary, not a password.
 

@@ -21,6 +21,7 @@ from job_radar.collectors.dayforce import collect_dayforce_jobs
 from job_radar.collectors.adp import collect_adp_jobs
 from job_radar.collectors.activate import collect_activate_jobs
 from job_radar.collectors.weka import collect_weka_jobs
+from job_radar.collectors.recruitee import collect_recruitee_jobs
 from job_radar.models import JobPosting
 
 
@@ -83,6 +84,9 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
 
     if source_type == "weka":
         return collect_weka_jobs(company_config)
+
+    if source_type == "recruitee":
+        return collect_recruitee_jobs(company_config)
 
     raise CollectorError(
         f"No collector implemented for source_type={source_type} "

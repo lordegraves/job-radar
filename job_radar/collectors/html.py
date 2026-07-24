@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import json
 
 from html import unescape
 from html.parser import HTMLParser
@@ -40,12 +41,21 @@ class HTMLJobLinkParser(HTMLParser):
         self._current_href: str | None = None
         self._current_text_parts: list[str] = []
         self.job_links: list[tuple[str, str]] = []
+        self.structured_jobs: list[dict[str, Any]] = []
+        self._in_job_json = False
+        self._json_parts: list[str] = []
 
     def handle_starttag(
         self,
         tag: str,
         attrs: list[tuple[str, str | None]],
     ) -> None:
+        if tag.lower() == "script":
+            attrs_dict = dict(attrs)
+            if (attrs_dict.get("type") or "").casefold() == "application/ld+json":
+                self._in_job_json = True
+                self._json_parts = []
+            return
         if tag.lower() != "a":
             return
 
@@ -83,6 +93,9 @@ class HTMLJobLinkParser(HTMLParser):
         self._current_text_parts = []
 
     def handle_data(self, data: str) -> None:
+        if self._in_job_json:
+            self._json_parts.append(data)
+            return
         if self._current_href is None:
             return
 
@@ -91,6 +104,14 @@ class HTMLJobLinkParser(HTMLParser):
             self._current_text_parts.append(text)
 
     def handle_endtag(self, tag: str) -> None:
+        if tag.lower() == "script" and self._in_job_json:
+            self._in_job_json = False
+            try:
+                payload = json.loads("".join(self._json_parts))
+            except (TypeError, json.JSONDecodeError):
+                return
+            self.structured_jobs.extend(_find_job_postings(payload))
+            return
         if tag.lower() != "a":
             return
 
@@ -196,7 +217,12 @@ def _parse_html_jobs(
     parser = HTMLJobLinkParser(base_url=source_url)
     parser.feed(html)
 
-    postings: list[JobPosting] = []
+    postings: list[JobPosting] = [
+        posting
+        for item in parser.structured_jobs
+        if (posting := _structured_posting(company_config, item, source_url))
+        is not None
+    ]
 
     for title, posting_url in _dedupe_links(parser.job_links):
         source_job_id = _extract_source_job_id(posting_url)
@@ -231,6 +257,92 @@ def _parse_html_jobs(
         )
 
     return postings
+
+
+def _find_job_postings(value: object) -> list[dict[str, Any]]:
+    """Find schema.org JobPosting objects inside JSON-LD graphs and lists."""
+
+    found: list[dict[str, Any]] = []
+    if isinstance(value, list):
+        for item in value:
+            found.extend(_find_job_postings(item))
+    elif isinstance(value, dict):
+        item_type = value.get("@type")
+        types = item_type if isinstance(item_type, list) else [item_type]
+        if any(str(candidate).casefold() == "jobposting" for candidate in types):
+            found.append(value)
+        for key, item in value.items():
+            if key != "@type":
+                found.extend(_find_job_postings(item))
+    return found
+
+
+def _structured_posting(
+    company_config: dict[str, Any],
+    item: dict[str, Any],
+    page_url: str,
+) -> JobPosting | None:
+    title = _plain_text(item.get("title"))
+    if not title:
+        return None
+    posting_url = _plain_text(item.get("url")) or page_url
+    identifier = item.get("identifier")
+    source_job_id = (
+        _plain_text(identifier.get("value"))
+        if isinstance(identifier, dict)
+        else _plain_text(identifier)
+    )
+    location = _structured_location(item.get("jobLocation"))
+    description = _plain_text(item.get("description"))
+    return JobPosting(
+        company_key=str(company_config["company_key"]),
+        company_name=str(company_config["name"]),
+        source_type=str(company_config["source_type"]),
+        source_job_id=source_job_id,
+        source_url=urljoin(page_url, posting_url),
+        title=title,
+        location=location,
+        description=description,
+        canonical_key=make_canonical_key(
+            str(company_config["company_key"]), title, location
+        ),
+        content_hash=make_content_hash(title, location, description),
+    )
+
+
+def _structured_location(value: object) -> str | None:
+    locations = value if isinstance(value, list) else [value]
+    labels: list[str] = []
+    for location in locations:
+        if not isinstance(location, dict):
+            continue
+        address = location.get("address")
+        if isinstance(address, str):
+            label = _plain_text(address)
+        elif isinstance(address, dict):
+            label = ", ".join(
+                part
+                for key in (
+                    "addressLocality",
+                    "addressRegion",
+                    "postalCode",
+                    "addressCountry",
+                )
+                if (part := _plain_text(address.get(key)))
+            )
+        else:
+            label = _plain_text(location.get("name"))
+        if label and label not in labels:
+            labels.append(label)
+    return "; ".join(labels) or None
+
+
+def _plain_text(value: object) -> str | None:
+    if value is None:
+        return None
+    cleaned = re.sub(r"<[^>]+>", " ", unescape(str(value)))
+    collapsed = " ".join(cleaned.split())
+    return collapsed or None
 
 
 def collect_html_jobs(company_config: dict[str, Any]) -> list[JobPosting]:

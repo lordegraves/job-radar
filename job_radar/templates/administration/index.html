@@ -47,6 +47,7 @@
 <div class="administration-grid">
     {% for title, description in [
         ("Employer Catalog", "Employer identity, availability, validation, and technical source configuration."),
+        ("Collector Catalog", "Global read-only list of ATS and careers-site collectors included with Junior."),
         ("Employer review queue", "Company submissions that need technical review."),
         ("Recommendation administration", "Employer metadata and recommendation diagnostics."),
         ("Profiles and assignments", "Installation-wide visibility into profile-company assignments."),
@@ -58,6 +59,8 @@
         <p>{{ description }}</p>
         {% if title == "Employer Catalog" %}
         <a class="button-link primary-action" href="{{ url_for('administration_employers') }}">Manage employers</a>
+        {% elif title == "Collector Catalog" %}
+        <a class="button-link primary-action" href="{{ url_for('settings_job_platforms') }}">View collectors</a>
         {% elif title == "Employer review queue" %}
         <a class="button-link primary-action" href="{{ url_for('administration_employer_reviews') }}">Review submissions</a>
         {% elif title == "Recommendation administration" %}

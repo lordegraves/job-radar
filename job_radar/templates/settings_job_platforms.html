@@ -1,0 +1,43 @@
+{# Shows the application-owned collector list without creating employer data. #}
+{% extends "base.html" %}
+
+{% block title %}Collector Catalog - junior{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('settings') }}">&larr; Settings</a></p>
+<h1 class="page-title">Collector Catalog</h1>
+
+<div class="page-card">
+    <p>
+        This global catalog contains the ATS and careers-site collectors
+        included with every Junior installation. It is separate from the
+        global Employer Catalog and does not contain employers.
+    </p>
+    <p class="muted">
+        Some public careers URLs can be configured automatically. Other
+        platforms need additional source details before Junior can scan them.
+    </p>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <caption class="visually-hidden">Job platforms supported by Junior</caption>
+        <thead>
+            <tr>
+                <th>Platform</th>
+                <th>Setup</th>
+                <th>What Junior supports</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for capability in capabilities %}
+            <tr>
+                <td><strong>{{ capability.name }}</strong></td>
+                <td>{{ capability.setup }}</td>
+                <td>{{ capability.description }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

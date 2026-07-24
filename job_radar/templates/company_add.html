@@ -78,7 +78,8 @@
         <input type="hidden" name="employer_id" value="{{ resolution.employer_id }}">
         <button type="submit">Add {{ resolution.employer_name }} to this profile</button>
     </form>
-    {% elif resolution.status == 'DETECTED_SCAN_READY' %}
+    {% elif resolution.status in ['DETECTED_SCAN_READY', 'DETECTED_SETUP_REQUIRED'] %}
+    {% if resolution.status == 'DETECTED_SCAN_READY' %}
     <p>
         <strong>Detected job source:</strong>
         {{ resolution.detected_source_label }} career site
@@ -87,19 +88,48 @@
         Junior has not added or scanned this company yet. Confirm only if the
         company name and public careers address above are correct.
     </p>
+    {% else %}
+    <p class="muted">
+        Junior will test the public careers site before saving anything. The
+        company will be added and scanning enabled only if Junior can extract
+        credible job postings.
+    </p>
+    {% endif %}
     <form method="post" action="{{ url_for('confirm_detected_company') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="company_name" value="{{ resolution.employer_name }}">
         <input type="hidden" name="careers_url" value="{{ resolution.careers_url }}">
-        <button type="submit">Confirm and add {{ resolution.employer_name }}</button>
+        <label for="detected-company-name">
+            <span>Company name</span>
+            <input
+                id="detected-company-name"
+                name="company_name"
+                value="{{ resolution.employer_name or '' }}"
+                placeholder="Enter the employer's name"
+                required
+            >
+        </label>
+        {% if resolution.status == 'DETECTED_SCAN_READY' and resolution.requires_company_name %}
+        <p class="muted">
+            ADP uses a shared careers address, so Junior needs the employer's
+            name from you before saving it.
+        </p>
+        {% endif %}
+        <button type="submit">
+            {% if resolution.status == 'DETECTED_SETUP_REQUIRED' %}
+            Test and add company
+            {% else %}
+            Confirm and add company
+            {% endif %}
+        </button>
     </form>
     {% elif resolution.status == 'CREATED_SCAN_READY' %}
     <p><a href="{{ url_for('companies') }}">Return to Your Companies</a></p>
     {% elif resolution.status in ['PENDING_REVIEW', 'UNSUPPORTED_SITE'] %}
     <p class="muted">
-        Nothing will be scanned until an administrator completes and validates
-        the setup.
+        The company is now in this profile as <strong>Setup needed</strong>.
+        Nothing will be scanned until its collector is completed and validated.
     </p>
+    <p><a href="{{ url_for('companies') }}">Return to Your Companies</a></p>
     {% elif resolution.status == 'AMBIGUOUS_MATCH' %}
         {% for employer_id, employer_name in resolution.possible_employers %}
         <form class="catalog-action-form" method="post" action="{{ url_for('add_existing_company') }}">
