@@ -618,8 +618,25 @@
             let pollTimer = null;
             let watchedScanId = sessionStorage.getItem("juniorWatchedScanId");
             let sawRunningScan = sessionStorage.getItem("juniorSawRunningScan") === "true";
+            let awaitingScanStart =
+                sessionStorage.getItem("juniorAwaitingScanStart") === "true";
+            let latestObservedScanId = null;
+
+            function clearScanWatch() {
+                sawRunningScan = false;
+                awaitingScanStart = false;
+                watchedScanId = null;
+                sessionStorage.removeItem("juniorSawRunningScan");
+                sessionStorage.removeItem("juniorAwaitingScanStart");
+                sessionStorage.removeItem("juniorWatchedScanId");
+            }
 
             function showTerminalNotification(status) {
+                if (window.location.pathname === scanPageUrl) {
+                    notification.hidden = true;
+                    return;
+                }
+
                 const completedWithWarnings = status.status === "completed_with_warnings";
                 const failed = status.status === "failed";
 
@@ -646,30 +663,43 @@
             function renderGlobalScanStatus(status) {
                 statusBox.hidden = !status.is_running;
                 statusText.textContent = status.stage_label || "Scan running";
+                const currentScanId = status.scan_run_id === null
+                    ? null
+                    : String(status.scan_run_id);
 
                 if (status.is_running) {
                     sawRunningScan = true;
+                    awaitingScanStart = false;
                     sessionStorage.setItem("juniorSawRunningScan", "true");
+                    sessionStorage.removeItem("juniorAwaitingScanStart");
 
-                    if (status.scan_run_id !== null) {
-                        watchedScanId = String(status.scan_run_id);
+                    if (currentScanId !== null) {
+                        watchedScanId = currentScanId;
                         sessionStorage.setItem("juniorWatchedScanId", watchedScanId);
                     }
                 } else if (sawRunningScan) {
-                    const terminalScanId = status.scan_run_id === null
-                        ? null
-                        : String(status.scan_run_id);
-
-                    if (terminalScanId === null || watchedScanId === null || terminalScanId === watchedScanId) {
+                    if (
+                        currentScanId === null
+                        || watchedScanId === null
+                        || currentScanId === watchedScanId
+                    ) {
                         showTerminalNotification(status);
                     }
 
-                    sawRunningScan = false;
-                    sessionStorage.removeItem("juniorSawRunningScan");
-                    sessionStorage.removeItem("juniorWatchedScanId");
-                    watchedScanId = null;
+                    clearScanWatch();
+                } else if (
+                    awaitingScanStart
+                    && currentScanId !== null
+                    && watchedScanId !== null
+                    && currentScanId !== watchedScanId
+                ) {
+                    // A very fast scan may finish between status polls. Its new
+                    // durable ID distinguishes it from the prior completed scan.
+                    showTerminalNotification(status);
+                    clearScanWatch();
                 }
 
+                latestObservedScanId = currentScanId;
                 window.dispatchEvent(new CustomEvent("junior:scan-status", {
                     detail: status,
                 }));
@@ -701,8 +731,16 @@
             window.juniorScanMonitor = {
                 refresh,
                 watch: () => {
-                    sawRunningScan = true;
-                    sessionStorage.setItem("juniorSawRunningScan", "true");
+                    notification.hidden = true;
+                    awaitingScanStart = true;
+                    watchedScanId = latestObservedScanId;
+                    sessionStorage.setItem("juniorAwaitingScanStart", "true");
+                    sessionStorage.removeItem("juniorSawRunningScan");
+                    if (watchedScanId === null) {
+                        sessionStorage.removeItem("juniorWatchedScanId");
+                    } else {
+                        sessionStorage.setItem("juniorWatchedScanId", watchedScanId);
+                    }
                     window.clearTimeout(pollTimer);
                     refresh();
                 },

@@ -2455,6 +2455,10 @@ def test_every_page_includes_global_scan_monitor(tmp_path: Path) -> None:
     assert 'url_for(\'scan_status\')' not in html
     assert 'const statusUrl = "/scan/status"' in html
     assert "junior:scan-status" in html
+    assert 'sessionStorage.setItem("juniorAwaitingScanStart", "true")' in html
+    assert "watchedScanId = latestObservedScanId" in html
+    assert "notification.hidden = true" in html
+    assert "window.location.pathname === scanPageUrl" in html
 
 
 def test_index_page_links_to_reports(tmp_path: Path) -> None:

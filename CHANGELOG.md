@@ -8,6 +8,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## 0.2.0 - 2026-07-24
 
+- Prevented a newly requested scan from replaying the previous scan's
+  completion notification before the new scan actually starts, and suppressed
+  the redundant completion popup while the user is already on the Scan page.
 - Polished the field-test interface with consistent page and table spacing,
   themed scrollbars, an obvious Back to Administration link on every guarded
   Administration subpage, and collapsed developer-only scan details.
