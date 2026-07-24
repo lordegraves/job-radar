@@ -125,9 +125,20 @@ Build the unsigned Windows desktop bundle:
 
 The reproducible PyInstaller recipe creates
 `artifacts\windows\Junior\Junior.exe` plus its required private runtime files.
-This is a development build artifact, not the finished installer. It does not
-contain profiles, resumes, databases, credentials, reports, logs, or other
-user-owned data.
+It does not contain profiles, resumes, databases, credentials, reports, logs,
+or other user-owned data.
+
+Build the unsigned per-user Windows installer:
+
+```powershell
+.\scripts\build_windows_installer.ps1
+```
+
+The resulting `artifacts\installer\Junior-Setup-0.1.0.exe` installs under the
+current user's local application area, adds a Start Menu shortcut, and offers
+an optional desktop shortcut. Uninstall removes application files but preserves
+Junior's separate user-data directory. Code signing and public release
+distribution remain later release work.
 
 ### Fictional demo workspace
 

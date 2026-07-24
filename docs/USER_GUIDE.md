@@ -37,7 +37,7 @@ Launching Junior again does not start another copy against the same data, even i
 
 To close a desktop-launched session, open **Settings** and choose **Exit Junior**. The confirmation page means the local server received the shutdown request. You may close the window. If a scan is running, Junior finishes its protected writes before the process fully exits. This control is intentionally absent in browser/server mode, where another process owns the server lifecycle.
 
-To use the same local interface in the default browser, run `job-radar-desktop --browser`. Developers and externally managed processes may use `job-radar-desktop --no-browser` to start the local server without opening a window. The native shell is implemented; the signed Windows installer and final packaged application bundle remain future productization work.
+To use the same local interface in the default browser, run `job-radar-desktop --browser`. Developers and externally managed processes may use `job-radar-desktop --no-browser` to start the local server without opening a window. The native shell and unsigned per-user Windows installer are implemented. Publicly signed release downloads remain future productization work. The installer adds Junior to the Start Menu and can optionally create a desktop shortcut. Uninstalling Junior removes the application but deliberately leaves profiles, resumes, companies, application history, settings, and other user-owned data in place.
 
 From an activated development environment:
 

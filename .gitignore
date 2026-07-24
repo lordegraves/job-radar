@@ -1,5 +1,6 @@
 # Python virtual environments and cache
 .venv/
+.tools/
 __pycache__/
 *.pyc
 .pytest_cache/

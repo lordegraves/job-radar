@@ -105,7 +105,21 @@ runtime data.
 The packaged executable has been smoke-tested outside Python by using a new
 temporary `JOB_RADAR_DATA_DIR`, confirming an HTTP 200 response from the local
 interface, and confirming safe starter settings were created. Installer
-creation remains a later milestone.
+creation uses Inno Setup:
+
+```powershell
+.\scripts\build_windows_installer.ps1
+```
+
+The script rebuilds the application bundle first, then compiles
+`packaging/windows/junior-installer.iss`. It accepts `-CompilerPath` when
+`ISCC.exe` is not in the documented local-tool or standard installation paths.
+The generated installer is written to
+`artifacts/installer/Junior-Setup-0.1.0.exe`.
+
+Installer validation uses disposable install and user-data directories. It
+must verify install, packaged launch, HTTP readiness, uninstall, application
+file removal, and preservation of an independent user-data sentinel.
 
 ## Runtime data during development
 
