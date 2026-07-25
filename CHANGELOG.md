@@ -10,6 +10,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   scan-linked identity and automatic IDs for manually entered applications.
 - Added bounded notes, listed pass reasons, and atomic multi-select Save or Pass
   actions to the profile-owned Saved and Reviewed Jobs workflow.
+- Added a profile-owned Saved / Reviewed Jobs summary and direct workspace link
+  to Home, and corrected spacing between the workspace introduction and lists.
 - Strengthened practical eligibility explanations for explicit foreign
   locations, fixed contract durations, and work-authorization requirements
   without inventing a global preference against short contracts.

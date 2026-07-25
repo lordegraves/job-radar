@@ -16,6 +16,11 @@ from job_radar.runtime_paths import RuntimePaths, get_default_user_data_director
 from job_radar.session_secret import load_or_create_session_secret
 from job_radar.profile_storage import get_active_profile
 from job_radar.first_run_service import needs_first_run_setup
+from job_radar.job_decision_service import (
+    DECISION_PASSED,
+    DECISION_SAVED,
+    list_job_decisions,
+)
 from job_radar.employer_import import import_pending_legacy_employers
 from job_radar.scan_service import handle_scan
 from job_radar.setup_progress_service import incomplete_setup_destination
@@ -119,12 +124,27 @@ def create_app(
         latest_report = build_latest_report_summary(
             _get_runtime_paths(app).reports_path
         )
+        job_decisions = (
+            list_job_decisions(database_path, profile_id=profile_id)
+            if profile_id is not None
+            else []
+        )
+        job_decision_summary = {
+            "saved": sum(
+                item.decision == DECISION_SAVED for item in job_decisions
+            ),
+            "reviewed": sum(
+                item.decision == DECISION_PASSED for item in job_decisions
+            ),
+            "total": len(job_decisions),
+        }
 
         return render_template(
             "index.html",
             tracker_summary=tracker_summary,
             attention_applications=attention_applications,
             latest_report=latest_report,
+            job_decision_summary=job_decision_summary,
         )
 
     register_settings_routes(

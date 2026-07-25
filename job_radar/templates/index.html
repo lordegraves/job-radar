@@ -76,6 +76,12 @@
         margin-bottom: 4px;
     }
 
+    .dashboard-card-meta {
+        display: block;
+        font-size: 0.86rem;
+        margin-top: 4px;
+    }
+
     .dashboard-card.is-action {
         border-color: rgba(96, 205, 255, 0.45);
         box-shadow:
@@ -200,6 +206,15 @@
     <a class="dashboard-card" href="{{ url_for('tracker', filter='closed') }}">
         <strong>{{ tracker_summary.closed }}</strong>
         <span class="muted">Closed</span>
+    </a>
+
+    <a class="dashboard-card" href="{{ url_for('job_decisions') }}">
+        <strong>{{ job_decision_summary.total }}</strong>
+        <span class="muted">Saved / reviewed jobs</span>
+        <span class="muted dashboard-card-meta">
+            {{ job_decision_summary.saved }} saved ·
+            {{ job_decision_summary.reviewed }} reviewed
+        </span>
     </a>
 </section>
 

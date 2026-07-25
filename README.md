@@ -83,6 +83,8 @@ opens the application workflow with Junior's scan-owned ID and source details.
 Active Applications and Application History remain limited to jobs the user
 actually applied for. Junior's recommendation label
 **Hold** is not the same as the user's saved state.
+Home shows the active profile's combined Saved and Reviewed count, breaks it
+down into saved and reviewed totals, and links directly to that workspace.
 
 ## Quick start for development
 

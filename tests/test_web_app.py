@@ -590,6 +590,55 @@ def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:
     assert 'href="/tracker/jr-action-12345678/edit?filter=needs_review"' in html
 
 
+def test_index_page_links_to_profile_owned_saved_and_reviewed_jobs(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    profile = ManagedProfile(
+        profile_id="profile_dashboard",
+        display_name="Dashboard Test",
+    )
+    create_profile(database_file, profile)
+    set_active_profile(database_file, profile.profile_id)
+    save_job_decision(
+        database_file,
+        profile_id=profile.profile_id,
+        job_radar_id="jr-saved-dashboard-12345678",
+        decision=DECISION_SAVED,
+        company="Saved Example",
+        title="Saved Role",
+        source_url="https://example.invalid/jobs/saved",
+        location="Remote",
+    )
+    save_job_decision(
+        database_file,
+        profile_id=profile.profile_id,
+        job_radar_id="jr-reviewed-dashboard-12345678",
+        decision=DECISION_PASSED,
+        company="Reviewed Example",
+        title="Reviewed Role",
+        source_url="https://example.invalid/jobs/reviewed",
+        location="Remote",
+        decision_reason="Not interested",
+    )
+
+    html = create_app(settings_path=str(settings_file)).test_client().get(
+        "/"
+    ).get_data(as_text=True)
+    normalized_html = " ".join(html.split())
+
+    assert '<a class="dashboard-card" href="/job-decisions">' in normalized_html
+    assert (
+        '<strong>2</strong> <span class="muted">Saved / reviewed jobs</span>'
+        in normalized_html
+    )
+    assert "1 saved" in normalized_html
+    assert "1 reviewed" in normalized_html
+
+
 def test_index_page_surfaces_dashboard_follow_up_work(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
