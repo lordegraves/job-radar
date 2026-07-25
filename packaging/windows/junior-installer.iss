@@ -31,6 +31,11 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 [Files]
 Source: "..\..\artifacts\windows\Junior\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\PRIVACY.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\SECURITY.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\THIRD_PARTY_LICENSES.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\dependency-license-report.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\third_party\*"; DestDir: "{app}\third_party"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\Junior"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"

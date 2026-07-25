@@ -1,0 +1,1259 @@
+{
+  "bundled_platform_components": [
+    {
+      "authoritative_license_source": "https://docs.python.org/3/license.html",
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive"
+      ],
+      "direct_or_transitive": "direct bundled component",
+      "gpl_3_only_compatibility": "compatible",
+      "license_spdx": "PSF-2.0",
+      "name": "CPython runtime",
+      "notes": [
+        "Version is pinned to the runtime used for the audited RC5 build."
+      ],
+      "required_attribution_or_notices": "Retain the Python Software Foundation license and notices.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.13.12",
+      "where_used": "Runs Junior's packaged Python application."
+    },
+    {
+      "authoritative_license_source": "https://www.nuget.org/packages/Microsoft.Web.WebView2/",
+      "bundled_into": [
+        "Windows standalone application and installer"
+      ],
+      "direct_or_transitive": "transitive bundled component",
+      "gpl_3_only_compatibility": "compatible as a separately licensed runtime",
+      "license_spdx": "LicenseRef-Microsoft-WebView2",
+      "name": "Microsoft Edge WebView2 loader assemblies",
+      "notes": [
+        "Junior bundles loader assemblies; the installed Microsoft Edge WebView2 Runtime renders the desktop interface."
+      ],
+      "required_attribution_or_notices": "Retain and comply with the Microsoft WebView2 redistribution terms.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "resolved by pywebview 6.2.1",
+      "where_used": "Hosts Junior's local interface in the Windows desktop window."
+    },
+    {
+      "authoritative_license_source": "https://www.openssl.org/source/license.html",
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive"
+      ],
+      "direct_or_transitive": "transitive bundled component",
+      "gpl_3_only_compatibility": "compatible",
+      "license_spdx": "Apache-2.0",
+      "name": "OpenSSL runtime libraries",
+      "notes": [
+        "Version was read from the audited repository-local runtime."
+      ],
+      "required_attribution_or_notices": "Include the Apache 2.0 license and any upstream NOTICE material; identify modifications when applicable.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.0.18",
+      "where_used": "Provides TLS support to the bundled CPython runtime."
+    },
+    {
+      "authoritative_license_source": "https://www.sqlite.org/copyright.html",
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive"
+      ],
+      "direct_or_transitive": "transitive bundled component",
+      "gpl_3_only_compatibility": "compatible",
+      "license_spdx": "LicenseRef-SQLite-Public-Domain",
+      "name": "SQLite",
+      "notes": [
+        "Version was read from the audited repository-local runtime."
+      ],
+      "required_attribution_or_notices": "None required; source is identified.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.50.4",
+      "where_used": "Stores Junior's local application data."
+    }
+  ],
+  "errors": [],
+  "packages": [
+    {
+      "authoritative_license_source": [
+        {
+          "path": "blinker-1.9.0.dist-info/LICENSE.txt",
+          "sha256": "9eb73a1f38597a4aa17025d2ae1be3839624c795e985d4f0e9769ce29faca467",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://discord.gg/pallets",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "blinker-1.9.0.dist-info/LICENSE.txt",
+          "sha256": "9eb73a1f38597a4aa17025d2ae1be3839624c795e985d4f0e9769ce29faca467"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "",
+      "name": "blinker",
+      "normalized_name": "blinker",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "1.9.0",
+      "where_used": "Runtime dependency required by flask."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "bottle-0.13.4.dist-info/licenses/LICENSE",
+          "sha256": "af150257b1f7cce92b6207854f2e8f90ea9ae52d7cac758d13a47bd12e2a2443",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/bottlepy/bottle",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "bottle-0.13.4.dist-info/licenses/LICENSE",
+          "sha256": "af150257b1f7cce92b6207854f2e8f90ea9ae52d7cac758d13a47bd12e2a2443"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "MIT",
+      "name": "bottle",
+      "normalized_name": "bottle",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "0.13.4",
+      "where_used": "Runtime dependency required by pywebview."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "certifi-2026.6.17.dist-info/licenses/LICENSE",
+          "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/certifi/python-certifi",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "certifi-2026.6.17.dist-info/licenses/LICENSE",
+          "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7"
+        }
+      ],
+      "license_spdx": "MPL-2.0",
+      "metadata_license": "MPL-2.0",
+      "name": "certifi",
+      "normalized_name": "certifi",
+      "notes": [],
+      "required_attribution_or_notices": "Retain notices and make source available for any modified MPL-covered files distributed in executable form.",
+      "source_offer_requirement": "File-level source availability applies only if Junior distributes a modified MPL-covered file. Junior currently distributes certifi unmodified.",
+      "status": "compliant",
+      "version": "2026.6.17",
+      "where_used": "Runtime dependency required by requests."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "cffi-2.1.0.dist-info/licenses/LICENSE",
+          "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://cffi.readthedocs.io/",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "cffi-2.1.0.dist-info/licenses/LICENSE",
+          "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63"
+        }
+      ],
+      "license_spdx": "MIT-0",
+      "metadata_license": "MIT-0",
+      "name": "cffi",
+      "normalized_name": "cffi",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "2.1.0",
+      "where_used": "Runtime dependency required by clr-loader."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "charset_normalizer-3.4.7.dist-info/licenses/LICENSE",
+          "sha256": "18577485d3704f1a479ded8e573c0976cfed315fd2fd17983fa988da4c2f70d1",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/jawah/charset_normalizer/blob/master/CHANGELOG.md",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "charset_normalizer-3.4.7.dist-info/licenses/LICENSE",
+          "sha256": "18577485d3704f1a479ded8e573c0976cfed315fd2fd17983fa988da4c2f70d1"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "MIT",
+      "name": "charset-normalizer",
+      "normalized_name": "charset-normalizer",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.4.7",
+      "where_used": "Runtime dependency required by requests."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "click-8.4.2.dist-info/licenses/LICENSE.txt",
+          "sha256": "9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://click.palletsprojects.com/page/changes/",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "click-8.4.2.dist-info/licenses/LICENSE.txt",
+          "sha256": "9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "BSD-3-Clause",
+      "name": "click",
+      "normalized_name": "click",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "8.4.2",
+      "where_used": "Runtime dependency required by flask."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "clr_loader-0.3.1.dist-info/licenses/LICENSE",
+          "sha256": "dd6bdca10cdc3b24c6b0b6cef5fd611b7feb6917f127833283ddcdb310d3b453",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/pythonnet/clr-loader",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "clr_loader-0.3.1.dist-info/licenses/LICENSE",
+          "sha256": "dd6bdca10cdc3b24c6b0b6cef5fd611b7feb6917f127833283ddcdb310d3b453"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "",
+      "name": "clr_loader",
+      "normalized_name": "clr-loader",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "0.3.1",
+      "where_used": "Runtime dependency required by pythonnet."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "colorama-0.4.6.dist-info/licenses/LICENSE.txt",
+          "sha256": "cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/tartley/colorama",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "colorama-0.4.6.dist-info/licenses/LICENSE.txt",
+          "sha256": "cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "",
+      "name": "colorama",
+      "normalized_name": "colorama",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "0.4.6",
+      "where_used": "Runtime dependency required by click."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "flask-3.1.3.dist-info/licenses/LICENSE.txt",
+          "sha256": "489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "direct",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://flask.palletsprojects.com/page/changes/",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "flask-3.1.3.dist-info/licenses/LICENSE.txt",
+          "sha256": "489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "BSD-3-Clause",
+      "name": "Flask",
+      "normalized_name": "flask",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.1.3",
+      "where_used": "Local web interface and HTTP route handling."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "idna-3.18.dist-info/licenses/LICENSE.md",
+          "sha256": "1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/kjd/idna/blob/master/HISTORY.md",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "idna-3.18.dist-info/licenses/LICENSE.md",
+          "sha256": "1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "BSD-3-Clause",
+      "name": "idna",
+      "normalized_name": "idna",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.18",
+      "where_used": "Runtime dependency required by requests."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "itsdangerous-2.2.0.dist-info/LICENSE.txt",
+          "sha256": "63af09891b6be8ad1a4252ed43af0f4efba7fc948e228367bed7f3c5ae0b09d7",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://itsdangerous.palletsprojects.com/changes/",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "itsdangerous-2.2.0.dist-info/LICENSE.txt",
+          "sha256": "63af09891b6be8ad1a4252ed43af0f4efba7fc948e228367bed7f3c5ae0b09d7"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "",
+      "name": "itsdangerous",
+      "normalized_name": "itsdangerous",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "2.2.0",
+      "where_used": "Runtime dependency required by flask."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "jaraco.classes-3.4.0.dist-info/LICENSE",
+          "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/jaraco/jaraco.classes",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "jaraco.classes-3.4.0.dist-info/LICENSE",
+          "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "",
+      "name": "jaraco.classes",
+      "normalized_name": "jaraco-classes",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.4.0",
+      "where_used": "Runtime dependency required by jaraco-functools, keyring."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "jaraco_context-6.1.2.dist-info/licenses/LICENSE",
+          "sha256": "9755a18519666e5f0f4cae3daad3d7012bcae48a600b31237d75e9fe134e6683",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/jaraco/jaraco.context",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "jaraco_context-6.1.2.dist-info/licenses/LICENSE",
+          "sha256": "9755a18519666e5f0f4cae3daad3d7012bcae48a600b31237d75e9fe134e6683"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "MIT",
+      "name": "jaraco.context",
+      "normalized_name": "jaraco-context",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "6.1.2",
+      "where_used": "Runtime dependency required by keyring."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "jaraco_functools-4.6.0.dist-info/licenses/LICENSE",
+          "sha256": "9755a18519666e5f0f4cae3daad3d7012bcae48a600b31237d75e9fe134e6683",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/jaraco/jaraco.functools",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "jaraco_functools-4.6.0.dist-info/licenses/LICENSE",
+          "sha256": "9755a18519666e5f0f4cae3daad3d7012bcae48a600b31237d75e9fe134e6683"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "MIT",
+      "name": "jaraco.functools",
+      "normalized_name": "jaraco-functools",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "4.6.0",
+      "where_used": "Runtime dependency required by keyring."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "jinja2-3.1.6.dist-info/licenses/LICENSE.txt",
+          "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://jinja.palletsprojects.com/changes/",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "jinja2-3.1.6.dist-info/licenses/LICENSE.txt",
+          "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "",
+      "name": "Jinja2",
+      "normalized_name": "jinja2",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.1.6",
+      "where_used": "Runtime dependency required by flask."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "keyring-25.7.0.dist-info/licenses/LICENSE",
+          "sha256": "5a57cb4db85e2a2dd88c290628908add57e3451449e0a9a71fdfb38776fd759d",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "direct",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/jaraco/keyring",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "keyring-25.7.0.dist-info/licenses/LICENSE",
+          "sha256": "5a57cb4db85e2a2dd88c290628908add57e3451449e0a9a71fdfb38776fd759d"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "MIT",
+      "name": "keyring",
+      "normalized_name": "keyring",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "25.7.0",
+      "where_used": "Operating-system credential-manager integration."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "lxml-6.1.1.dist-info/licenses/LICENSE.txt",
+          "sha256": "e7c3ce8d76331b0101cc46790ab43958ea90a364bcf962ed8763d5a818340e69",
+          "type": "installed-distribution"
+        },
+        {
+          "path": "lxml-6.1.1.dist-info/licenses/LICENSES.txt",
+          "sha256": "ce53f508d0cb88bdb4621e236ca34881a3fa1805f97dfccf38960128a4e2ead9",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/lxml/lxml",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "lxml-6.1.1.dist-info/licenses/LICENSE.txt",
+          "sha256": "e7c3ce8d76331b0101cc46790ab43958ea90a364bcf962ed8763d5a818340e69"
+        },
+        {
+          "path": "lxml-6.1.1.dist-info/licenses/LICENSES.txt",
+          "sha256": "ce53f508d0cb88bdb4621e236ca34881a3fa1805f97dfccf38960128a4e2ead9"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "BSD-3-Clause",
+      "name": "lxml",
+      "normalized_name": "lxml",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "6.1.1",
+      "where_used": "Runtime dependency required by python-docx."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "markupsafe-3.0.3.dist-info/licenses/LICENSE.txt",
+          "sha256": "4631ec0db5fd90a547e336817264c6798214338146f8ac94b4a57f96ee8c9ec4",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://palletsprojects.com/donate",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "markupsafe-3.0.3.dist-info/licenses/LICENSE.txt",
+          "sha256": "4631ec0db5fd90a547e336817264c6798214338146f8ac94b4a57f96ee8c9ec4"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "BSD-3-Clause",
+      "name": "MarkupSafe",
+      "normalized_name": "markupsafe",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.0.3",
+      "where_used": "Runtime dependency required by flask, jinja2, werkzeug."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "more_itertools-11.1.0.dist-info/licenses/LICENSE",
+          "sha256": "09f1c8c9e941af3e584d59641ea9b87d83c0cb0fd007eb5ef391a7e2643c1a46",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://more-itertools.readthedocs.io/en/stable/",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "more_itertools-11.1.0.dist-info/licenses/LICENSE",
+          "sha256": "09f1c8c9e941af3e584d59641ea9b87d83c0cb0fd007eb5ef391a7e2643c1a46"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "MIT",
+      "name": "more-itertools",
+      "normalized_name": "more-itertools",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "11.1.0",
+      "where_used": "Runtime dependency required by jaraco-classes, jaraco-functools."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "third_party/proxy_tools_LICENSE.txt",
+          "sha256": "ba1c114cb6b79ad0b880327120edd4e8781b89bcbf7a4c01ff17f9c433d49a55",
+          "type": "supplemental-upstream-copy",
+          "upstream": "https://github.com/jtushman/proxy_tools/blob/master/LICENSE.txt"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "http://github.com/jtushman/proxy_tools",
+      "license_file_present": true,
+      "license_files": [],
+      "license_spdx": "BSD-2-Clause",
+      "metadata_license": "MIT",
+      "name": "proxy_tools",
+      "normalized_name": "proxy-tools",
+      "notes": [
+        "The installed wheel metadata says MIT but the authoritative upstream LICENSE.txt is BSD-2-Clause. Junior distributes the upstream notice and records this metadata discrepancy for review."
+      ],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, and disclaimer.",
+      "source_offer_requirement": "None.",
+      "status": "needs review",
+      "version": "0.1.0",
+      "where_used": "Runtime dependency required by pywebview."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "pycparser-3.0.dist-info/licenses/LICENSE",
+          "sha256": "0c846399369ea76ddd7b5c44fe6d16497415fcf015f5cbb508c24bf98b81c5b1",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/eliben/pycparser",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "pycparser-3.0.dist-info/licenses/LICENSE",
+          "sha256": "0c846399369ea76ddd7b5c44fe6d16497415fcf015f5cbb508c24bf98b81c5b1"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "BSD-3-Clause",
+      "name": "pycparser",
+      "normalized_name": "pycparser",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.0",
+      "where_used": "Runtime dependency required by cffi."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "pypdf-6.14.2.dist-info/licenses/LICENSE",
+          "sha256": "a97ac230e5f33ef10a5367a850eb01f91f1a0b064e34742c7794d2294557f524",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "direct",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/py-pdf/pypdf/issues",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "pypdf-6.14.2.dist-info/licenses/LICENSE",
+          "sha256": "a97ac230e5f33ef10a5367a850eb01f91f1a0b064e34742c7794d2294557f524"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "BSD-3-Clause",
+      "name": "pypdf",
+      "normalized_name": "pypdf",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "6.14.2",
+      "where_used": "PDF résumé text extraction."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "python_docx-1.2.0.dist-info/licenses/LICENSE",
+          "sha256": "7652f271e46d0d533e9dc463f3b5fcbdcacf4d6a9c8d6b554d15efd0f37f6132",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "direct",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/python-openxml/python-docx/blob/master/HISTORY.rst",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "python_docx-1.2.0.dist-info/licenses/LICENSE",
+          "sha256": "7652f271e46d0d533e9dc463f3b5fcbdcacf4d6a9c8d6b554d15efd0f37f6132"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "MIT",
+      "name": "python-docx",
+      "normalized_name": "python-docx",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "1.2.0",
+      "where_used": "Word résumé text extraction."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "pythonnet-3.1.0.dist-info/licenses/AUTHORS.md",
+          "sha256": "65a13631f078bed51e9a4033dea257e57a7f23097f3003b1ce1ba1c8a9136c93",
+          "type": "installed-distribution"
+        },
+        {
+          "path": "pythonnet-3.1.0.dist-info/licenses/LICENSE",
+          "sha256": "e1dc3a6ff017a6800dc27a7220500f512b95fbcd996d38ebbbff85c693245369",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://pythonnet.github.io/",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "pythonnet-3.1.0.dist-info/licenses/AUTHORS.md",
+          "sha256": "65a13631f078bed51e9a4033dea257e57a7f23097f3003b1ce1ba1c8a9136c93"
+        },
+        {
+          "path": "pythonnet-3.1.0.dist-info/licenses/LICENSE",
+          "sha256": "e1dc3a6ff017a6800dc27a7220500f512b95fbcd996d38ebbbff85c693245369"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "MIT",
+      "name": "pythonnet",
+      "normalized_name": "pythonnet",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.1.0",
+      "where_used": "Runtime dependency required by pywebview."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "pywebview-6.2.1.dist-info/licenses/LICENSE",
+          "sha256": "4a988dd3598832cd3653de20dc33cb677d0fb53ab5551c879ca31280ae653675",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "direct",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://pywebview.flowrl.com/",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "pywebview-6.2.1.dist-info/licenses/LICENSE",
+          "sha256": "4a988dd3598832cd3653de20dc33cb677d0fb53ab5551c879ca31280ae653675"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "BSD 3-Clause License\n\nCopyright (c) 2014-2017, Roman Sirokov\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\n* Neither the name of the copyright holder nor the names of its\n  contributors may be used to endorse or promote products derived from\n  this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.",
+      "name": "pywebview",
+      "normalized_name": "pywebview",
+      "notes": [
+        "Installed metadata uses non-SPDX or legacy license wording; the bundled upstream license file was used as authority."
+      ],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "6.2.1",
+      "where_used": "Native desktop window around Junior's shared web interface."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "pywin32_ctypes-0.2.3.dist-info/LICENSE.txt",
+          "sha256": "dfa83b3e2709adfcdb838d9ad55823ca674abb780e60563d9dd9544ccbf785e9",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/enthought/pywin32-ctypes",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "pywin32_ctypes-0.2.3.dist-info/LICENSE.txt",
+          "sha256": "dfa83b3e2709adfcdb838d9ad55823ca674abb780e60563d9dd9544ccbf785e9"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "BSD-3-Clause",
+      "name": "pywin32-ctypes",
+      "normalized_name": "pywin32-ctypes",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "0.2.3",
+      "where_used": "Runtime dependency required by keyring."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "pyyaml-6.0.3.dist-info/licenses/LICENSE",
+          "sha256": "8d3928f9dc4490fd635707cb88eb26bd764102a7282954307d3e5167a577e8a4",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "direct",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/yaml/pyyaml/issues",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "pyyaml-6.0.3.dist-info/licenses/LICENSE",
+          "sha256": "8d3928f9dc4490fd635707cb88eb26bd764102a7282954307d3e5167a577e8a4"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "MIT",
+      "name": "PyYAML",
+      "normalized_name": "pyyaml",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "6.0.3",
+      "where_used": "Configuration and compatibility-file parsing."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "requests-2.34.2.dist-info/licenses/LICENSE",
+          "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b",
+          "type": "installed-distribution"
+        },
+        {
+          "path": "requests-2.34.2.dist-info/licenses/NOTICE",
+          "sha256": "f5110972dedad2b4e9d314518daf3b7d72d6e02e499acd802181de6f74571dcc",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "direct",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://requests.readthedocs.io",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "requests-2.34.2.dist-info/licenses/LICENSE",
+          "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+        },
+        {
+          "path": "requests-2.34.2.dist-info/licenses/NOTICE",
+          "sha256": "f5110972dedad2b4e9d314518daf3b7d72d6e02e499acd802181de6f74571dcc"
+        }
+      ],
+      "license_spdx": "Apache-2.0",
+      "metadata_license": "Apache-2.0",
+      "name": "requests",
+      "normalized_name": "requests",
+      "notes": [],
+      "required_attribution_or_notices": "Include the Apache 2.0 license and any upstream NOTICE material; identify modifications when applicable.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "2.34.2",
+      "where_used": "Employer career-source collection and optional external lookup."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "typing_extensions-4.16.0.dist-info/licenses/LICENSE",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/python/typing_extensions/issues",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "typing_extensions-4.16.0.dist-info/licenses/LICENSE",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "license_spdx": "PSF-2.0",
+      "metadata_license": "PSF-2.0",
+      "name": "typing_extensions",
+      "normalized_name": "typing-extensions",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the Python Software Foundation license and notices.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "4.16.0",
+      "where_used": "Runtime dependency required by pypdf, python-docx, pywebview."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "urllib3-2.7.0.dist-info/licenses/LICENSE.txt",
+          "sha256": "130e3a64d5fdd5d096a752694634a7d9df284469de86e5732100268041e3d686",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://github.com/urllib3/urllib3/blob/main/CHANGES.rst",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "urllib3-2.7.0.dist-info/licenses/LICENSE.txt",
+          "sha256": "130e3a64d5fdd5d096a752694634a7d9df284469de86e5732100268041e3d686"
+        }
+      ],
+      "license_spdx": "MIT",
+      "metadata_license": "MIT",
+      "name": "urllib3",
+      "normalized_name": "urllib3",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright and permission notice.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "2.7.0",
+      "where_used": "Runtime dependency required by requests."
+    },
+    {
+      "authoritative_license_source": [
+        {
+          "path": "werkzeug-3.1.8.dist-info/licenses/LICENSE.txt",
+          "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b",
+          "type": "installed-distribution"
+        }
+      ],
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "transitive",
+      "gpl_3_only_compatibility": "compatible",
+      "homepage": "https://werkzeug.palletsprojects.com/page/changes/",
+      "license_file_present": true,
+      "license_files": [
+        {
+          "path": "werkzeug-3.1.8.dist-info/licenses/LICENSE.txt",
+          "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b"
+        }
+      ],
+      "license_spdx": "BSD-3-Clause",
+      "metadata_license": "BSD-3-Clause",
+      "name": "Werkzeug",
+      "normalized_name": "werkzeug",
+      "notes": [],
+      "required_attribution_or_notices": "Retain the copyright notice, license conditions, disclaimer, and non-endorsement condition.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "3.1.8",
+      "where_used": "Runtime dependency required by flask."
+    }
+  ],
+  "project": {
+    "license": "GPL-3.0-only",
+    "name": "junior",
+    "python_distribution": "job-radar"
+  },
+  "reference_data": [
+    {
+      "authoritative_license_source": "https://www.onetcenter.org/database.html",
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "direct reference asset",
+      "gpl_3_only_compatibility": "compatible",
+      "license_spdx": "CC-BY-4.0",
+      "name": "O*NET 30.3 Database",
+      "notes": [
+        "Junior extracts and repackages only the fields needed for local occupation suggestions and role discovery."
+      ],
+      "required_attribution_or_notices": "Credit the source, link the license, and identify Junior's modifications.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "30.3",
+      "where_used": "Occupation titles and descriptions used for role suggestions."
+    },
+    {
+      "authoritative_license_source": "https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html",
+      "bundled_into": [
+        "Windows standalone application and installer",
+        "Linux standalone archive",
+        "container image",
+        "Python installation"
+      ],
+      "direct_or_transitive": "direct reference asset",
+      "gpl_3_only_compatibility": "compatible",
+      "license_spdx": "LicenseRef-US-Government-Public-Domain",
+      "name": "U.S. Census Bureau Gazetteer Files and population estimates",
+      "notes": [
+        "Junior reduces and repackages the source data for local location normalization and commute-area previews."
+      ],
+      "required_attribution_or_notices": "No copyright notice is required; Junior identifies the Census Bureau source and does not imply endorsement.",
+      "source_offer_requirement": "None.",
+      "status": "compliant",
+      "version": "2025",
+      "where_used": "U.S. place, ZIP-area, radius, and display-prioritization data."
+    }
+  ],
+  "schema_version": 1,
+  "scope": {
+    "excluded": "Developer-only tools are not redistributed and are recorded separately in THIRD_PARTY_LICENSES.md.",
+    "runtime_dependencies": "Resolved Windows runtime dependency closure declared by pyproject.toml and bundled by the desktop build."
+  },
+  "summary": {
+    "audit_passed": true,
+    "blocker_count": 0,
+    "blockers": [],
+    "missing_package_count": 0,
+    "needs_review": [
+      "proxy_tools"
+    ],
+    "needs_review_count": 1,
+    "package_count": 31
+  }
+}

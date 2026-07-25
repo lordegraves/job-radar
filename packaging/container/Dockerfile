@@ -11,7 +11,8 @@ RUN groupadd --gid "${JUNIOR_GID}" junior \
         --home-dir /var/lib/junior --create-home junior
 
 WORKDIR /app
-COPY pyproject.toml README.md LICENSE ./
+COPY pyproject.toml README.md LICENSE PRIVACY.md SECURITY.md THIRD_PARTY_LICENSES.md dependency-license-report.json ./
+COPY third_party ./third_party
 COPY job_radar ./job_radar
 COPY packaging/container/entrypoint.sh /usr/local/bin/junior-container-entrypoint
 

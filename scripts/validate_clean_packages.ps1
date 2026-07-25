@@ -29,7 +29,7 @@ if (-not $SkipPackageBuild) {
 }
 
 & $windowsValidation
-if ($LASTEXITCODE -ne 0) {
+if (-not $?) {
     throw "Clean Windows package validation failed."
 }
 

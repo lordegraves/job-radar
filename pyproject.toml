@@ -8,7 +8,14 @@ version = "0.2.0"
 description = "junior: local-first job discovery, triage, reporting, and application tracking"
 readme = "README.md"
 license = "GPL-3.0-only"
-license-files = ["LICENSE"]
+license-files = [
+    "LICENSE",
+    "PRIVACY.md",
+    "SECURITY.md",
+    "THIRD_PARTY_LICENSES.md",
+    "dependency-license-report.json",
+    "third_party/*.txt",
+]
 requires-python = ">=3.11"
 dependencies = [
     "flask>=3.0.0",

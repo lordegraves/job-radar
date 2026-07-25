@@ -48,7 +48,25 @@ def test_installer_receives_license_from_complete_windows_bundle() -> None:
     assert 'artifacts\\windows\\Junior\\*"; DestDir: "{app}"' in installer_text
     assert "recursesubdirs createallsubdirs" in installer_text
     assert 'Source: "..\\..\\LICENSE"; DestDir: "{app}"' in installer_text
+    assert 'Source: "..\\..\\PRIVACY.md"; DestDir: "{app}"' in installer_text
+    assert 'Source: "..\\..\\SECURITY.md"; DestDir: "{app}"' in installer_text
+    assert (
+        'Source: "..\\..\\THIRD_PARTY_LICENSES.md"; DestDir: "{app}"'
+        in installer_text
+    )
+    assert (
+        'Source: "..\\..\\dependency-license-report.json"; DestDir: "{app}"'
+        in installer_text
+    )
+    assert 'Source: "..\\..\\third_party\\*"' in installer_text
     assert '(str(project_root / "LICENSE"), ".")' in spec_text
+    assert '(str(project_root / "PRIVACY.md"), ".")' in spec_text
+    assert '(str(project_root / "SECURITY.md"), ".")' in spec_text
+    assert '(str(project_root / "THIRD_PARTY_LICENSES.md"), ".")' in spec_text
+    assert (
+        '(str(project_root / "dependency-license-report.json"), ".")'
+        in spec_text
+    )
 
 
 def test_windows_bundle_embeds_product_version_details() -> None:

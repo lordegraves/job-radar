@@ -1,5 +1,10 @@
 # Security and Privacy
 
+The user-facing description of Junior's implemented data and network behavior
+is the repository-root [PRIVACY.md](../PRIVACY.md). Private vulnerability
+reporting and release-authenticity guidance is in
+[SECURITY.md](../SECURITY.md).
+
 ## Local-first model
 
 junior is designed to run under the user's control. It is not a hosted SaaS service.
@@ -30,7 +35,10 @@ SMTP password values must never be stored in:
 - wheel, installer, container, or release artifacts
 - support bundles
 
-The current supported mechanism is an environment-variable reference such as `smtp_password_env`.
+Normal desktop setup stores the password through the operating-system
+credential manager. Environment-variable references such as
+`smtp_password_env` remain supported for automation, containers, servers, and
+compatibility configurations.
 
 A missing credential must not prevent unrelated application startup or local work. Email readiness should report disabled, unavailable, or ready states separately.
 
@@ -109,6 +117,16 @@ Required protections:
 ## Network and source behavior
 
 junior scans only configured sources.
+
+Optional Bing company lookup is disabled by default. When enabled, it runs only
+after direct company-source checks fail and sends the public company name,
+public hostname, the phrase `official careers jobs`, and `format=rss`. Candidate
+results remain transient until Junior independently validates a working source.
+
+The manual update check sends Junior's installed version to GitHub's public
+releases API. It does not download or install software. Junior contains no
+application analytics, advertising tracker, central learning service, or
+automatic crash-report uploader.
 
 It must not:
 

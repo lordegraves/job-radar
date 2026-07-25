@@ -107,7 +107,8 @@ git diff --check
 
 - [ ] Wheel builds from a clean temporary source copy.
 - [ ] Wheel contains all required packages, templates, and safe bootstrap starter files.
-- [ ] Wheel, source distribution, Windows bundle and installation, Linux archive, and container image include the complete root `LICENSE`; package metadata and the container label declare `GPL-3.0-only`.
+- [ ] Wheel, source distribution, Windows bundle and installation, Linux archive, and container image include `LICENSE`, `PRIVACY.md`, `SECURITY.md`, `THIRD_PARTY_LICENSES.md`, `dependency-license-report.json`, and required supplemental notices; package metadata and the container label declare `GPL-3.0-only`.
+- [ ] `.\.venv\Scripts\python.exe scripts\audit_dependency_licenses.py --check` passes with no blockers.
 - [ ] Source distribution builds from a clean temporary source copy.
 - [ ] Source distribution includes safe bootstrap starter files.
 - [ ] Source distribution excludes private runtime data and local inspection artifacts.
@@ -194,6 +195,10 @@ Inspect the repository, build context, wheel, release archive, installer, and co
 - [ ] SMTP password values and other literal secrets are absent from all artifacts.
 - [ ] Packaged company defaults contain no live or private company targets.
 - [ ] Credential limitations are documented accurately.
+- [ ] The privacy notice matches verified current storage, employer requests,
+  optional external lookup, email, logging, telemetry, backup, deletion,
+  uninstall, and update-check behavior.
+- [ ] Private vulnerability reporting is enabled and its link is usable.
 
 ## Documentation and support
 
@@ -211,6 +216,12 @@ Inspect the repository, build context, wheel, release archive, installer, and co
 - [ ] Release commit has been reviewed.
 - [ ] Version has been updated where required.
 - [ ] Tag points to the intended commit.
+- [ ] Published tag is immutable; use a signed annotated tag when the signing
+  key and recovery process are available.
 - [ ] Tag is pushed explicitly.
 - [ ] Release artifacts correspond to the tagged commit.
+- [ ] SHA-256 checksums are generated from the exact published artifacts and
+  uploaded beside them.
+- [ ] Release notes identify the official GitHub release page and do not claim
+  Authenticode signing until a protected signing process exists.
 - [ ] Post-release smoke test passes.

@@ -54,6 +54,26 @@ try {
     ) -PathType Leaf)) {
         throw "The clean Windows installation did not contain LICENSE."
     }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "PRIVACY.md"
+    ) -PathType Leaf)) {
+        throw "The clean Windows installation did not contain the privacy notice."
+    }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "SECURITY.md"
+    ) -PathType Leaf)) {
+        throw "The clean Windows installation did not contain the security policy."
+    }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "THIRD_PARTY_LICENSES.md"
+    ) -PathType Leaf)) {
+        throw "The clean Windows installation did not contain third-party notices."
+    }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "dependency-license-report.json"
+    ) -PathType Leaf)) {
+        throw "The clean Windows installation did not contain the dependency license report."
+    }
 
     $port = Get-AvailablePort
     $env:JOB_RADAR_DATA_DIR = $dataRoot

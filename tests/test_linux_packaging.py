@@ -13,6 +13,11 @@ def test_linux_spec_uses_shared_desktop_entry_and_resources() -> None:
     assert 'collect_all("webview")' in text
     assert 'name="junior"' in text
     assert '(str(project_root / "LICENSE"), ".")' in text
+    assert '(str(project_root / "PRIVACY.md"), ".")' in text
+    assert '(str(project_root / "SECURITY.md"), ".")' in text
+    assert '(str(project_root / "THIRD_PARTY_LICENSES.md"), ".")' in text
+    assert '(str(project_root / "dependency-license-report.json"), ".")' in text
+    assert '(str(project_root / "third_party"), "third_party")' in text
 
 
 def test_linux_build_is_native_and_creates_tarball() -> None:
@@ -28,6 +33,11 @@ def test_docker_build_context_excludes_user_data() -> None:
     assert dockerignore.startswith("# Linux release builds")
     assert dockerignore.splitlines()[1] == "*"
     assert "!LICENSE" in dockerignore
+    assert "!PRIVACY.md" in dockerignore
+    assert "!SECURITY.md" in dockerignore
+    assert "!THIRD_PARTY_LICENSES.md" in dockerignore
+    assert "!dependency-license-report.json" in dockerignore
+    assert "!third_party/**" in dockerignore
     assert "!job_radar/**" in dockerignore
     for private_path in ("data", "profiles", "reports", "logs", "config"):
         assert f"!{private_path}" not in dockerignore

@@ -6,6 +6,12 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a reproducible third-party license audit with machine-readable package,
+  platform-component, and reference-data records; bundled the audit, notices,
+  and required upstream license material in every supported distribution.
+- Added a plain-language privacy notice based on verified current network and
+  storage behavior, plus a private vulnerability-reporting policy and official
+  download, checksum, signed-tag, and future code-signing guidance.
 - Licensed Junior under the GNU General Public License version 3.0 only
   (`GPL-3.0-only`) and included the complete license in Python, Windows, Linux,
   and container distributions.

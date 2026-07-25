@@ -82,6 +82,26 @@ try {
     ) -PathType Leaf)) {
         throw "Initial install did not include LICENSE."
     }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "PRIVACY.md"
+    ) -PathType Leaf)) {
+        throw "Initial install did not include the privacy notice."
+    }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "SECURITY.md"
+    ) -PathType Leaf)) {
+        throw "Initial install did not include the security policy."
+    }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "THIRD_PARTY_LICENSES.md"
+    ) -PathType Leaf)) {
+        throw "Initial install did not include third-party notices."
+    }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "dependency-license-report.json"
+    ) -PathType Leaf)) {
+        throw "Initial install did not include the dependency license report."
+    }
     Assert-HashesEqual -Expected $before -Actual (
         Get-UserDataHashes -Root $dataRoot
     ) -Stage "Initial install"
@@ -91,6 +111,26 @@ try {
         Join-Path $installRoot "LICENSE"
     ) -PathType Leaf)) {
         throw "Repair or upgrade did not preserve LICENSE."
+    }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "PRIVACY.md"
+    ) -PathType Leaf)) {
+        throw "Repair or upgrade did not preserve the privacy notice."
+    }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "SECURITY.md"
+    ) -PathType Leaf)) {
+        throw "Repair or upgrade did not preserve the security policy."
+    }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "THIRD_PARTY_LICENSES.md"
+    ) -PathType Leaf)) {
+        throw "Repair or upgrade did not preserve third-party notices."
+    }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "dependency-license-report.json"
+    ) -PathType Leaf)) {
+        throw "Repair or upgrade did not preserve the dependency license report."
     }
     Assert-HashesEqual -Expected $before -Actual (
         Get-UserDataHashes -Root $dataRoot

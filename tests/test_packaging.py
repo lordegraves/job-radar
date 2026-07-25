@@ -21,6 +21,15 @@ from job_radar import __version__
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+def _copy_license_material(source_directory: Path) -> None:
+    shutil.copy2(PROJECT_ROOT / "LICENSE", source_directory)
+    shutil.copy2(PROJECT_ROOT / "PRIVACY.md", source_directory)
+    shutil.copy2(PROJECT_ROOT / "SECURITY.md", source_directory)
+    shutil.copy2(PROJECT_ROOT / "THIRD_PARTY_LICENSES.md", source_directory)
+    shutil.copy2(PROJECT_ROOT / "dependency-license-report.json", source_directory)
+    shutil.copytree(PROJECT_ROOT / "third_party", source_directory / "third_party")
+
+
 def test_project_declares_complete_gpl_v3_only_license() -> None:
     license_text = (PROJECT_ROOT / "LICENSE").read_text(encoding="utf-8")
     project_metadata = tomllib.loads(
@@ -31,7 +40,14 @@ def test_project_declares_complete_gpl_v3_only_license() -> None:
     assert "Version 3, 29 June 2007" in license_text
     assert "END OF TERMS AND CONDITIONS" in license_text
     assert project_metadata["license"] == "GPL-3.0-only"
-    assert project_metadata["license-files"] == ["LICENSE"]
+    assert project_metadata["license-files"] == [
+        "LICENSE",
+        "PRIVACY.md",
+        "SECURITY.md",
+        "THIRD_PARTY_LICENSES.md",
+        "dependency-license-report.json",
+        "third_party/*.txt",
+    ]
 
 
 def test_package_exposes_installed_version() -> None:
@@ -49,7 +65,7 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
     shutil.copytree(PROJECT_ROOT / "job_radar", source_directory / "job_radar")
     shutil.copy2(PROJECT_ROOT / "pyproject.toml", source_directory)
     shutil.copy2(PROJECT_ROOT / "README.md", source_directory)
-    shutil.copy2(PROJECT_ROOT / "LICENSE", source_directory)
+    _copy_license_material(source_directory)
 
     subprocess.run(
         [
@@ -124,6 +140,28 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
             if name.endswith(".dist-info/licenses/LICENSE")
         )
         packaged_license = wheel_archive.read(license_path).decode("utf-8")
+        assert any(
+            name.endswith(".dist-info/licenses/THIRD_PARTY_LICENSES.md")
+            for name in archive_names
+        )
+        assert any(
+            name.endswith(".dist-info/licenses/PRIVACY.md")
+            for name in archive_names
+        )
+        assert any(
+            name.endswith(".dist-info/licenses/SECURITY.md")
+            for name in archive_names
+        )
+        assert any(
+            name.endswith(".dist-info/licenses/dependency-license-report.json")
+            for name in archive_names
+        )
+        assert any(
+            name.endswith(
+                ".dist-info/licenses/third_party/proxy_tools_LICENSE.txt"
+            )
+            for name in archive_names
+        )
 
     assert "job-radar = job_radar.cli:main" in entry_points
     assert "job-radar-web = job_radar.web_app:main" in entry_points
@@ -158,7 +196,7 @@ def test_built_source_distribution_excludes_private_runtime_data(
     shutil.copytree(PROJECT_ROOT / "tests", source_directory / "tests")
     shutil.copy2(PROJECT_ROOT / "pyproject.toml", source_directory)
     shutil.copy2(PROJECT_ROOT / "README.md", source_directory)
-    shutil.copy2(PROJECT_ROOT / "LICENSE", source_directory)
+    _copy_license_material(source_directory)
 
     synthetic_private_files = {
         "config/local-private-settings.yaml": "smtp_password: private-value\n",
@@ -209,6 +247,11 @@ def test_built_source_distribution_excludes_private_runtime_data(
 
     required_files = {
         "LICENSE",
+        "PRIVACY.md",
+        "SECURITY.md",
+        "THIRD_PARTY_LICENSES.md",
+        "dependency-license-report.json",
+        "third_party/proxy_tools_LICENSE.txt",
         "README.md",
         "pyproject.toml",
         "job_radar/__init__.py",
@@ -283,7 +326,7 @@ def test_installed_wheel_runs_outside_source_checkout(
     shutil.copytree(PROJECT_ROOT / "job_radar", source_directory / "job_radar")
     shutil.copy2(PROJECT_ROOT / "pyproject.toml", source_directory)
     shutil.copy2(PROJECT_ROOT / "README.md", source_directory)
-    shutil.copy2(PROJECT_ROOT / "LICENSE", source_directory)
+    _copy_license_material(source_directory)
     execution_directory.mkdir()
 
     subprocess.run(

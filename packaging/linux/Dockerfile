@@ -5,7 +5,8 @@ WORKDIR /build
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends binutils \
     && rm -rf /var/lib/apt/lists/*
-COPY pyproject.toml README.md LICENSE ./
+COPY pyproject.toml README.md LICENSE PRIVACY.md SECURITY.md THIRD_PARTY_LICENSES.md dependency-license-report.json ./
+COPY third_party ./third_party
 COPY job_radar ./job_radar
 COPY packaging/linux ./packaging/linux
 

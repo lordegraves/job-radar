@@ -16,6 +16,11 @@ analysis = Analysis(
     binaries=webview_binaries,
     datas=[
         (str(project_root / "LICENSE"), "."),
+        (str(project_root / "PRIVACY.md"), "."),
+        (str(project_root / "SECURITY.md"), "."),
+        (str(project_root / "THIRD_PARTY_LICENSES.md"), "."),
+        (str(project_root / "dependency-license-report.json"), "."),
+        (str(project_root / "third_party"), "third_party"),
         *job_radar_data,
         *webview_data,
     ],
