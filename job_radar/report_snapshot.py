@@ -15,7 +15,7 @@ from job_radar.report_view_model import build_job_output_view_model
 from job_radar.scored_posting import ScoredPosting
 
 
-REPORT_SNAPSHOT_SCHEMA_VERSION = 2
+REPORT_SNAPSHOT_SCHEMA_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -53,6 +53,7 @@ class ReportSnapshotCollectorError:
 class ReportSnapshotSummary:
     generated_at: str | None
     top_matches: int
+    potential_top_matches: int
     review_needed: int
     tracked_applications: int
     new_jobs: int
@@ -64,6 +65,7 @@ class ReportSnapshot:
     schema_version: int
     summary: ReportSnapshotSummary
     top_matches: list[ReportSnapshotJob]
+    potential_top_matches: list[ReportSnapshotJob]
     review_needed: list[ReportSnapshotJob]
     tracked_applications: list[ReportSnapshotJob]
     new_jobs: list[ReportSnapshotJob]
@@ -97,12 +99,16 @@ def build_report_snapshot(report: ScanReport) -> ReportSnapshot:
         summary=ReportSnapshotSummary(
             generated_at=report.generated_at,
             top_matches=len(view_model.top_matches),
+            potential_top_matches=len(view_model.potential_top_matches),
             review_needed=len(view_model.review_needed),
             tracked_applications=len(view_model.tracked_applications),
             new_jobs=report.jobs_new,
             collector_errors=len(collector_errors),
         ),
         top_matches=_build_snapshot_jobs(view_model.top_matches),
+        potential_top_matches=_build_snapshot_jobs(
+            view_model.potential_top_matches
+        ),
         review_needed=_build_snapshot_jobs(view_model.review_needed),
         tracked_applications=_build_snapshot_jobs(
             view_model.tracked_applications
@@ -136,8 +142,16 @@ def load_report_snapshot(snapshot_path: str | Path) -> ReportSnapshot:
 
     return ReportSnapshot(
         schema_version=int(raw_snapshot["schema_version"]),
-        summary=ReportSnapshotSummary(**raw_snapshot["summary"]),
+        summary=ReportSnapshotSummary(
+            **{
+                "potential_top_matches": 0,
+                **raw_snapshot["summary"],
+            }
+        ),
         top_matches=_load_snapshot_jobs(raw_snapshot["top_matches"]),
+        potential_top_matches=_load_snapshot_jobs(
+            raw_snapshot.get("potential_top_matches", [])
+        ),
         review_needed=_load_snapshot_jobs(raw_snapshot["review_needed"]),
         tracked_applications=_load_snapshot_jobs(
             raw_snapshot["tracked_applications"]

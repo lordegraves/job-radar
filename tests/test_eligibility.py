@@ -518,6 +518,32 @@ def test_unclear_employment_type_needs_review() -> None:
     assert result.reasons[-1].code == "employment_type_unclear"
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        "This is a fulltime infrastructure engineering position.",
+        "This is a 6-month contract supporting Linux infrastructure.",
+        "This is a fixed-term platform engineering opportunity.",
+    ],
+)
+def test_common_employment_type_variations_are_detected(
+    description: str,
+) -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(description=description),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            employment_types=("Full-time", "Contract"),
+        ),
+        compensation=None,
+    )
+
+    assert result is not None
+    assert "employment_type_selected" in {
+        reason.code for reason in result.reasons
+    }
+
+
 def test_matching_schedule_is_eligible() -> None:
     posting = make_posting(
         description="This position works the day shift.",
@@ -536,6 +562,51 @@ def test_matching_schedule_is_eligible() -> None:
     assert result is not None
     assert result.status == ELIGIBILITY_ELIGIBLE
     assert result.reasons[-1].code == "schedule_matches_preference"
+
+
+def test_missing_schedule_does_not_imply_a_conflict() -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            schedule_preference="Day shift",
+        ),
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert [reason.code for reason in result.reasons] == [
+        "remote_arrangement_selected"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("description", "expected_code"),
+    [
+        ("This role is fully remote.", "remote_arrangement_selected"),
+        ("Workplace type: hybrid.", "no_preferred_locations_configured"),
+        ("This is an on-site position.", "no_preferred_locations_configured"),
+    ],
+)
+def test_explicit_description_workplace_language_is_detected(
+    description: str,
+    expected_code: str,
+) -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(
+            location=None,
+            remote_status=None,
+            description=description,
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote", "Hybrid", "On-site"),
+        ),
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.reasons[0].code == expected_code
 
 
 def test_conflicting_schedule_is_not_eligible() -> None:

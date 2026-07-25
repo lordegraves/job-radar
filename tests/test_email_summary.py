@@ -83,7 +83,7 @@ def test_build_email_subject_summarizes_report() -> None:
 
     assert subject == (
         "junior Report - 2026-06-24 - "
-        "811 jobs - 1 top match - 1 review needed"
+        "811 jobs - 1 top match - 0 potential top matches - 1 review needed"
     )
 
 
@@ -143,7 +143,7 @@ def test_build_email_body_includes_rich_top_match_details() -> None:
     assert "Recommendation summary:" in body
     assert "  - Apply: 1" in body
     assert "  - Tailor Resume: 0" in body
-    assert "  - Hold: 0" in body
+    assert "  - Needs your review: 0" in body
     assert "  - Pass: 0" in body
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:" in body
     assert "1. Data Center Design Execution Lead" in body
@@ -320,7 +320,7 @@ def test_build_email_body_includes_rich_review_needed_details() -> None:
     assert "   Location: Remote" in body
     assert "   Role fit: Strong" in body
     assert "   Hiring probability: Low" in body
-    assert "   Recommended action: Hold" in body
+    assert "   Recommended action: Needs your review" in body
     assert "   Action rationale: Needs review before deciding whether to apply." in body
     assert "   Hiring risks: None" in body
     assert "   URL:" not in body
@@ -369,7 +369,8 @@ def test_build_email_body_does_not_invent_title_or_region_risks() -> None:
 
     body = build_email_body(report, "reports/live-test.md")
 
-    assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" not in body
+    top_section = body.split("Potential Top Matches", maxsplit=1)[0]
+    assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" not in top_section
     assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
     assert "Forward Deployed Engineer APAC" in body
 
@@ -416,7 +417,10 @@ def test_email_summary_excludes_tracked_applications() -> None:
     body = build_email_body(report, "reports/test.md")
     html_body = build_email_html_body(report, "reports/test.html")
 
-    assert subject == "junior Report - 2026-07-08 - 1 jobs - 0 top matches - 0 review needed"
+    assert subject == (
+        "junior Report - 2026-07-08 - 1 jobs - 0 top matches - "
+        "0 potential top matches - 0 review needed"
+    )
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
     assert f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
     assert "Site Reliability Engineer" not in body
@@ -445,7 +449,7 @@ def test_build_email_body_handles_empty_sections() -> None:
 
     assert subject == (
         "junior Report - unknown-date - "
-        "0 jobs - 0 top matches - 0 review needed"
+        "0 jobs - 0 top matches - 0 potential top matches - 0 review needed"
     )
     assert "Generated at: Unknown" in body
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:\n- None" in body
@@ -596,7 +600,7 @@ def test_write_email_preview_writes_subject_and_body(tmp_path) -> None:
     assert written_path == preview_path
     assert preview_text.startswith(
         "Subject: junior Report - 2026-06-24 - "
-        "811 jobs - 1 top match - 0 review needed"
+        "811 jobs - 1 top match - 0 potential top matches - 0 review needed"
     )
     assert "Generated at: 2026-06-24 17:08 UTC" in preview_text
     assert f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}:" in preview_text

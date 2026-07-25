@@ -35,7 +35,13 @@ from job_radar.report_snapshot import (
 from job_radar.retention_service import list_retained_report_runs
 
 REPORT_FILE_EXTENSIONS = {".html", ".htm", ".md", ".txt"}
-JOB_DECISION_SECTIONS = {"top_matches", "review_needed", "new_jobs"}
+JOB_DECISION_SECTIONS = {
+    "top_matches",
+    "potential_top_matches",
+    "review_needed",
+    "new_jobs",
+}
+REPORT_JOBS_PER_PAGE = 20
 
 REPORT_HTML_BODY_PATTERN = re.compile(
     r"<body\b[^>]*>(.*?)</body>",
@@ -49,7 +55,7 @@ REPORT_HTML_STYLE_PATTERN = re.compile(
 
 PRIMARY_REPORT_FILE_DETAILS = {
     "target-scan.html": {
-        "description": "Latest HTML scan report. Open this first.",
+        "description": "Read-only HTML export of the latest scan.",
         "sort_order": 10,
     },
     "target-email-preview.txt": {
@@ -64,6 +70,17 @@ REPORT_SECTION_DETAILS = {
         "page_title": "Top Matches",
         "description": "Cleanest roles from the latest scan. These should be the fastest apply/review decisions.",
         "empty_message": "No Top Matches were found in the latest scan.",
+    },
+    "potential_top_matches": {
+        "title": "Potential Top Matches",
+        "page_title": "Potential Top Matches",
+        "description": (
+            "Strong role fits that may be excellent opportunities once the "
+            "listed practical details are confirmed."
+        ),
+        "empty_message": (
+            "No Potential Top Matches were found in the latest scan."
+        ),
     },
     "review_needed": {
         "title": "Review Needed",
@@ -103,6 +120,7 @@ class LatestReportSummaryView:
     html_report_name: str
     html_report_exists: bool
     top_matches: int
+    potential_top_matches: int
     review_needed: int
     tracked_applications: int
     new_jobs: int
@@ -181,6 +199,11 @@ def register_report_routes(
         job_cards: list[ReportJobCardView] = []
         collector_errors: list[ReportCollectorErrorView] = []
         eligibility_counts: dict[str, int] = {}
+        current_page = 1
+        total_pages = 1
+        total_jobs = 0
+        page_start_index = 0
+        page_end_index = 0
 
         if section_name == "collector_errors":
             collector_errors = [
@@ -193,12 +216,28 @@ def register_report_routes(
                 get_database_path(),
                 profile_id=get_profile_id(),
             )
-            job_cards = [
+            all_job_cards = [
                 _build_report_job_card(job)
                 for job in snapshot_jobs
                 if job.job_radar_id not in decided_job_ids
             ]
-            eligibility_counts = _count_eligibility_labels(job_cards)
+            eligibility_counts = _count_eligibility_labels(all_job_cards)
+            total_jobs = len(all_job_cards)
+            total_pages = max(
+                1,
+                (total_jobs + REPORT_JOBS_PER_PAGE - 1)
+                // REPORT_JOBS_PER_PAGE,
+            )
+            current_page = min(
+                max(request.args.get("page", 1, type=int) or 1, 1),
+                total_pages,
+            )
+            page_start_index = (current_page - 1) * REPORT_JOBS_PER_PAGE
+            page_end_index = min(
+                page_start_index + REPORT_JOBS_PER_PAGE,
+                total_jobs,
+            )
+            job_cards = all_job_cards[page_start_index:page_end_index]
 
         return render_template(
             "report_section.html",
@@ -212,6 +251,11 @@ def register_report_routes(
             html_report_name=html_report_name,
             html_report_exists=html_report_path.is_file(),
             pass_reasons=PASS_REASONS,
+            current_page=current_page,
+            total_pages=total_pages,
+            total_jobs=total_jobs,
+            page_start=page_start_index + 1 if total_jobs else 0,
+            page_end=page_end_index,
         )
 
     @app.get("/reports")
@@ -222,6 +266,7 @@ def register_report_routes(
         return render_template(
             "reports.html",
             reports_path=reports_path,
+            latest_report=build_latest_report_summary(reports_path),
             primary_report_files=primary_report_files,
             retained_report_runs=list_retained_report_runs(reports_path),
         )
@@ -232,6 +277,7 @@ def register_report_routes(
         if profile_id is None:
             abort(400)
         section_name = request.form.get("section_name", "review_needed")
+        return_page = max(request.form.get("page", 1, type=int) or 1, 1)
         if section_name not in JOB_DECISION_SECTIONS:
             abort(400)
         decision = request.form.get("decision", "")
@@ -254,7 +300,12 @@ def register_report_routes(
             title=job.title,
             source_url=job.url,
             location=job.location,
-            decision_reason=request.form.get("decision_reason"),
+            notes=request.form.get("notes"),
+            decision_reason=(
+                request.form.get("decision_reason")
+                if decision == DECISION_PASSED
+                else None
+            ),
         )
         flash(
             (
@@ -264,7 +315,13 @@ def register_report_routes(
             ),
             "success",
         )
-        return redirect(url_for("report_section_view", section_name=section_name))
+        return redirect(
+            url_for(
+                "report_section_view",
+                section_name=section_name,
+                page=return_page,
+            )
+        )
 
     @app.post("/reports/section/<section_name>/bulk-decision")
     def save_bulk_report_job_decisions(section_name: str):
@@ -273,6 +330,7 @@ def register_report_routes(
             abort(400)
         if section_name not in JOB_DECISION_SECTIONS:
             abort(400)
+        return_page = max(request.form.get("page", 1, type=int) or 1, 1)
         decision = request.form.get("decision", "")
         if decision not in {DECISION_SAVED, DECISION_PASSED}:
             abort(400)
@@ -286,7 +344,11 @@ def register_report_routes(
         if not selected_ids:
             flash("Select at least one job first.", "error")
             return redirect(
-                url_for("report_section_view", section_name=section_name)
+                url_for(
+                    "report_section_view",
+                    section_name=section_name,
+                    page=return_page,
+                )
             )
 
         snapshot = _load_latest_snapshot(get_reports_path())
@@ -315,7 +377,13 @@ def register_report_routes(
         )
         action = "saved for later" if decision == DECISION_SAVED else "passed"
         flash(f"{len(verified_jobs)} selected jobs were {action}.", "success")
-        return redirect(url_for("report_section_view", section_name=section_name))
+        return redirect(
+            url_for(
+                "report_section_view",
+                section_name=section_name,
+                page=return_page,
+            )
+        )
 
     @app.get("/job-decisions")
     def job_decisions() -> str:
@@ -439,6 +507,7 @@ def build_latest_report_summary(
             html_report_name=html_report_name,
             html_report_exists=html_report_path.is_file(),
             top_matches=0,
+            potential_top_matches=0,
             review_needed=0,
             tracked_applications=0,
             new_jobs=0,
@@ -454,6 +523,7 @@ def build_latest_report_summary(
         html_report_name=html_report_name,
         html_report_exists=html_report_path.is_file(),
         top_matches=snapshot.summary.top_matches,
+        potential_top_matches=snapshot.summary.potential_top_matches,
         review_needed=snapshot.summary.review_needed,
         tracked_applications=snapshot.summary.tracked_applications,
         new_jobs=snapshot.summary.new_jobs,
@@ -636,7 +706,13 @@ def _build_report_job_card(
         location=job.location,
         compensation=job.compensation,
         hiring_probability=job.hiring_probability,
-        recommended_action=job.recommended_action,
+        # Existing snapshots may retain the retired RC5 label. Translate it
+        # at the GUI boundary so users do not need to rerun a scan.
+        recommended_action=(
+            "Needs your review"
+            if job.recommended_action == "Hold"
+            else job.recommended_action
+        ),
         action_rationale=job.action_rationale,
         why_matched=job.why_matched,
         technical_match=job.technical_match,

@@ -31,6 +31,7 @@ def build_email_subject(report: ScanReport) -> str:
     report_date = _get_report_date(report.generated_at)
     email_scored_postings = _get_email_summary_scored_postings(report)
     top_matches = _get_top_matches(email_scored_postings)
+    potential_top_matches = _get_potential_top_matches(email_scored_postings)
     review_needed = _get_review_needed(email_scored_postings)
 
     return (
@@ -38,6 +39,8 @@ def build_email_subject(report: ScanReport) -> str:
         f"{report.jobs_collected} jobs - "
         f"{len(top_matches)} top match"
         f"{_plural_suffix(len(top_matches))} - "
+        f"{len(potential_top_matches)} potential top match"
+        f"{_plural_suffix(len(potential_top_matches))} - "
         f"{len(review_needed)} review needed"
     )
 
@@ -49,6 +52,7 @@ def build_email_body(
 ) -> str:
     email_scored_postings = _get_email_summary_scored_postings(report)
     top_matches = _get_top_matches(email_scored_postings)
+    potential_top_matches = _get_potential_top_matches(email_scored_postings)
     review_needed = _get_review_needed(email_scored_postings)
 
     lines: list[str] = [
@@ -99,6 +103,18 @@ def build_email_body(
     lines.extend(
         [
             "",
+            f"Potential Top Matches, up to {EMAIL_POSTINGS_LIMIT}:",
+        ]
+    )
+    _append_email_posting_lines(
+        lines=lines,
+        scored_postings=potential_top_matches,
+        section_type="potential_top_match",
+    )
+
+    lines.extend(
+        [
+            "",
             f"Review Needed, up to {EMAIL_POSTINGS_LIMIT}:",
         ]
     )
@@ -130,6 +146,7 @@ def build_email_html_body(
 ) -> str:
     email_scored_postings = _get_email_summary_scored_postings(report)
     top_matches = _get_top_matches(email_scored_postings)
+    potential_top_matches = _get_potential_top_matches(email_scored_postings)
     review_needed = _get_review_needed(email_scored_postings)
 
     lines: list[str] = [
@@ -170,6 +187,13 @@ def build_email_html_body(
         heading=f"Top Matches, up to {EMAIL_POSTINGS_LIMIT}",
         scored_postings=top_matches,
         section_type="top_match",
+    )
+
+    _append_html_posting_section(
+        lines=lines,
+        heading=f"Potential Top Matches, up to {EMAIL_POSTINGS_LIMIT}",
+        scored_postings=potential_top_matches,
+        section_type="potential_top_match",
     )
 
     _append_html_posting_section(
@@ -296,6 +320,15 @@ def _get_review_needed(
     ).email_review_needed
 
 
+def _get_potential_top_matches(
+    scored_postings: list[ScoredPosting] | None,
+) -> list[ScoredPosting]:
+    return build_report_view_model(
+        scored_postings=scored_postings,
+        email_postings_limit=EMAIL_POSTINGS_LIMIT,
+    ).email_potential_top_matches
+
+
 def _append_email_posting_lines(
     lines: list[str],
     scored_postings: list[ScoredPosting],
@@ -354,6 +387,12 @@ def _append_email_posting_detail(
         _append_reason_lines(
             lines=lines,
             heading="Why it needs review:",
+            reasons=_get_review_needed_reasons(scored_posting),
+        )
+    if section_type == "potential_top_match":
+        _append_reason_lines(
+            lines=lines,
+            heading="Waiting on:",
             reasons=_get_review_needed_reasons(scored_posting),
         )
 
@@ -603,6 +642,12 @@ def _append_html_posting_detail(
         _append_html_reason_lines(
             lines=lines,
             heading="Why it needs review",
+            reasons=_get_review_needed_reasons(scored_posting),
+        )
+    if section_type == "potential_top_match":
+        _append_html_reason_lines(
+            lines=lines,
+            heading="Waiting on",
             reasons=_get_review_needed_reasons(scored_posting),
         )
 

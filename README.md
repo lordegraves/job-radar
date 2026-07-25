@@ -26,7 +26,7 @@ junior currently provides:
 - profile-owned scoring, occupation-neutral recommendation policy, compensation checks, and resume/profile matching
 - structured scan snapshots and HTML reports
 - plain-text and HTML email previews with guarded SMTP delivery
-- a local Flask GUI with Home, Scan, Reports, Active Applications, Application History, Profile / Resume, Companies, and Settings pages
+- a local Flask GUI with Home, Scan, Review Jobs, Active Applications, Application History, Profile / Resume, Companies, and Settings pages
 - GUI-managed profile creation, editing, selection, guarded deletion, and app-owned resume storage
 - profile-owned related-role discovery with evidence explanations and explicit user approval
 - unified Profile / Resume workflow for profile creation, résumé management, profile-owned role, location, workplace, schedule, compensation, and travel selections, and occupation-neutral scoring ownership for newly created managed profiles
@@ -53,8 +53,10 @@ The current RC5 work adds **Save for later**, **Pass / don't show again**, and
 passed jobs live in a separate profile-owned workspace; they do not become
 applications or application-history records. Passing or saving hides that exact
 source job from future reports for that profile and can be reversed later.
-The report and Saved Jobs workspace support bounded notes, listed pass reasons,
-and all-or-nothing multi-select Save or Pass actions. Eligibility retains
+Individual review cards accept human-only notes of up to 300 characters and a
+listed pass reason before Save or Pass. The Saved Jobs workspace keeps those
+details editable, and multi-select actions remain all-or-nothing. Notes never
+alter scoring. Eligibility retains
 explicit work location, temporary or contract duration, employment type,
 schedule, compensation, and work-authorization details when the posting
 provides them. Unresolved practical facts remain in Review Needed rather than
@@ -81,10 +83,41 @@ moves a job into the profile's Reviewed Jobs view and prevents that exact
 posting from returning in future reports. **I applied — track application**
 opens the application workflow with Junior's scan-owned ID and source details.
 Active Applications and Application History remain limited to jobs the user
-actually applied for. Junior's recommendation label
-**Hold** is not the same as the user's saved state.
+actually applied for. Junior's recommendation label **Needs your review** is
+not the same as the user's saved state.
 Home shows the active profile's combined Saved and Reviewed count, breaks it
 down into saved and reviewed totals, and links directly to that workspace.
+Scan completion now opens **Review Jobs**, where interactive Top Matches,
+Potential Top Matches, Review Needed, and New Jobs groups are the primary
+workflow. Top Matches retain confirmed practical eligibility. Potential Top
+Matches already satisfy the profile's existing top-match score and strong-signal
+rules but list the practical facts still awaiting confirmation; no threshold is
+lowered and no internal score is shown. Each group loads at most 20 full job
+cards per page and keeps supporting evidence collapsed until requested,
+preventing large scans from overwhelming the desktop window. Explicit workplace,
+employment-type, and annual-pay wording in a description can fill a missing ATS
+field. An omitted schedule does not imply a conflict, while an explicit night,
+evening, weekend, or on-call requirement is still enforced.
+The generated HTML report and email preview remain available as secondary,
+read-only exports.
+
+### Planned RC7 language assistance
+
+RC7 is governed by one product rule:
+
+> **Junior explains. Junior does not decide.**
+
+The first and only planned language-model capability is **Explain this job**.
+It may translate a posting and Junior's existing structured evidence into a
+plain-language explanation for the user. It will not learn preferences, change
+scoring, modify a profile, approve or reject a job, pass or save a job, expand
+a search, or make an application decision.
+
+Local processing is preferred. Any online provider must remain disabled by
+default and require clear, informed user setup before selected information
+leaves the computer. Junior's normal scanning, scoring, review, and application
+workflows must remain fully usable when language assistance is disabled or
+unavailable. This is planned behavior, not part of the current RC5 build.
 
 ## Quick start for development
 
@@ -341,7 +374,7 @@ The desktop launcher holds one operating-system lock per Junior user-data worksp
 
 Desktop-launched sessions show **Exit Junior** in Settings. The action requests a clean local-server shutdown and confirms that the window can be closed. If a GUI scan is active, Junior keeps the process and instance lock alive until the scan worker finishes its protected database and report writes. Browser/server mode does not present a process-exit control it cannot safely own.
 
-The desktop launcher now uses pywebview to place the same local Flask interface inside a normal native window. It does not create a second UI. Windows, Linux, and macOS must share the same pages, controls, layouts, validation, typography, and workflows; only genuinely native window chrome, dialogs, notifications, and keyboard conventions may differ. Use `job-radar-desktop --browser` when deliberate browser-based local use is preferred, or `--no-browser` for an externally managed local server. PySide6/QWebEngineView remains the documented fallback if cross-platform testing proves system webview rendering cannot satisfy that shared-interface requirement.
+The desktop launcher now uses pywebview to place the same local Flask interface inside a normal native window. It does not create a second UI. A first launch opens at the reviewed 1440 by 900 pixel size, with a 960 by 640 minimum. When the user closes the native window, Junior stores only its size and screen position in the user-owned runtime directory and restores that geometry on the next launch. Missing or invalid state returns safely to the reviewed default. Windows, Linux, and macOS must share the same pages, controls, layouts, validation, typography, and workflows; only genuinely native window chrome, dialogs, notifications, and keyboard conventions may differ. Use `job-radar-desktop --browser` when deliberate browser-based local use is preferred, or `--no-browser` for an externally managed local server. PySide6/QWebEngineView remains the documented fallback if cross-platform testing proves system webview rendering cannot satisfy that shared-interface requirement.
 
 The shared page shell supports keyboard users with a visible-on-focus skip link, strong focus indicators on interactive controls, and a programmatically identified current navigation page. It also provides a mobile/zoom viewport, narrow-window wrapping, forced-color control borders, and screen-reader captions for application data tables. Profile occupation and location suggestions expose their expanded state and work with Enter, Escape, arrow keys, Tab, or a pointer. Automated checks require every visible form control to have a programmatic label and protect WCAG AA contrast for shared text, links, statuses, and actions.
 
@@ -365,7 +398,7 @@ The Profile / Resume page is a read-only home for selecting profiles and reviewi
 
 The active managed profile also has a Related Roles workspace. Junior can suggest adjacent titles from packaged O*NET occupation descriptions when the profile's résumé contains supporting work evidence, or from job descriptions previously observed during that profile's own scans. Similar wording alone is not enough. Suggestions tied to an observed employer retain that company context because one title can describe different disciplines at different companies. Every suggestion shows a plain-language explanation and the matched evidence terms. The user must choose **Relevant**, **Not relevant**, or **Different discipline**; only Relevant mappings join the existing target-role boundaries used by company recommendations. No internal score is shown, no suggestion is approved automatically, and the feature does not alter the established job-scoring formula. Junior stores the suggestion, short displayed evidence terms, and feedback in the profile-owned database; it does not store another raw copy of the résumé.
 
-Each profile owns its own company search list. The Companies workspace shows only the active profile's employers and labels each one Scanning or Paused according to that profile's assignment. Existing upgrades complete their pending one-time YAML company import during application startup, before Profile, Companies, or Recommendations can show an empty profile-owned workspace. A user can add a company using its ordinary name or public careers URL. Junior first checks exact catalog names, aliases, normalized careers URLs, and known source identifiers. Exact existing matches require the user to choose the employer. For a confidently recognizable public career site, Junior shows the detected provider and company identity and requires explicit confirmation before creating or assigning anything. Confirmation rechecks the submitted address on the server and runs a bounded real collector test; Junior saves the source only when that test returns a credible public job. Branded pages are inspected for supported recruiting-platform links and metadata before the generic public-page fallback is attempted. If a landing page is blocked or separate from the employer's real job site, Junior may make a bounded public lookup using only the submitted company name and public domain. Candidate URLs and failed probes remain in memory for that request and are discarded; only the verified working source and its current health are stored. The Add Company page shows an animated checking state during this work. Individual public requests remain bounded, and unfamiliar-source discovery stops after two minutes. A timeout saves no employer or profile assignment and gives the user a safe retry message. Ambiguous names require the user to choose an exact match, while unsuccessful setup attempts can be retried or safely removed. The company detail page shows the safe source status, recruiting platform, last check, and returned-job count, and allows a normal user to rerun the non-destructive source test without exposing collector settings or raw failures. The new profile assignment starts as Scanning. Employers that are already assigned, unavailable, or missing required setup cannot be added. A user can pause, resume, or remove an assigned company without changing the shared employer definition or another profile's choice. **Remove from this profile** requires typing `REMOVE`, stops future scans only for the active profile, and preserves collected jobs, applications, history, reports, and other historical records. Global employer deletion remains guarded in Administration. The Profile / Resume summary shows the same company count and links to the workspace. When no managed profile is active, the Companies page directs the user to create or select one and does not display legacy YAML configuration. Released CLI/server YAML scan compatibility remains available.
+Each profile owns its own company search list. The Companies workspace shows only the active profile's employers and labels each one Scanning or Paused according to that profile's assignment. Existing upgrades complete their pending one-time YAML company import during application startup, before Profile, Companies, or Recommendations can show an empty profile-owned workspace. A user can add a company using its ordinary name or public careers URL. Junior first checks exact catalog names, aliases, normalized careers URLs, and known source identifiers. Exact existing matches require the user to choose the employer. For a confidently recognizable public career site, Junior shows the detected provider and company identity and requires explicit confirmation before creating or assigning anything. Confirmation rechecks the submitted address on the server and runs a bounded real collector test; Junior saves the source only when that test returns a credible public job. Branded pages are inspected for supported recruiting-platform links and metadata before the generic public-page fallback is attempted. If a landing page is blocked or separate from the employer's real job site, Junior may make a bounded public lookup using only the submitted company name and public domain. Candidate URLs and failed probes remain in memory for that request and are discarded; only the verified working source and its current health are stored. The Add Company page shows an animated checking state during this work. Individual public requests remain bounded, and unfamiliar-source discovery stops after two minutes. A timeout saves no employer or profile assignment and gives the user a safe retry message. Ambiguous names require the user to choose an exact match, while unsuccessful setup attempts can be retried or safely removed. The company detail page shows the safe source status, recruiting platform, last check, and returned-job count, and allows a normal user to rerun the non-destructive source test without exposing collector settings or raw failures. It can also keep optional shared Website, Careers, LinkedIn, and Glassdoor shortcuts. Junior opens those public links in the normal browser; it does not log in to, query, monitor, or scrape those services, and changing a shortcut does not change the validated job collector. The new profile assignment starts as Scanning. Employers that are already assigned, unavailable, or missing required setup cannot be added. A user can pause, resume, or remove an assigned company without changing the shared employer definition or another profile's choice. **Remove from this profile** requires typing `REMOVE`, stops future scans only for the active profile, and preserves collected jobs, applications, history, reports, and other historical records. Global employer deletion remains guarded in Administration. The Profile / Resume summary shows the same company count and links to the workspace. When no managed profile is active, the Companies page directs the user to create or select one and does not display legacy YAML configuration. Released CLI/server YAML scan compatibility remains available.
 
 Junior does not present its local Employer Catalog as a comprehensive recommendation system. Users choose the employers they want to monitor. The Companies workflow is designed to make that addition easy: enter an ordinary company name or public careers-page URL, review Junior's detected match or supported career platform, confirm it, and begin scanning. Junior does not invent employer names, silently add companies, broadly crawl the public web, or claim to know the full market for a profession or region. Its source-discovery fallback is limited to locating and validating the public job site for the employer the user explicitly submitted. Existing recommendation metadata and Administration services remain available for compatibility and technical maintenance, but they are not part of the normal-user company workflow.
 
@@ -385,7 +418,7 @@ The Settings page keeps runtime paths read-only while providing normal-user cont
 
 Every state-changing web form and background action uses a session-bound CSRF token. Junior rejects missing, invalid, or stale tokens before route business logic runs, so the attempted change is not written. Normal forms receive a plain-language recovery page; background requests receive a bounded JSON error. Refreshing the page creates or loads the current token and allows the user to review and resubmit. GET routes remain read-only.
 
-A successful scan writes fixed-name outputs in the user-owned `reports` directory. The latest HTML report, structured snapshot, and email preview keep stable filenames. Settings can retain only the latest run, the latest plus the previous run, or a chosen total from 1 through 50. Before a successful scan replaces the current files, Junior copies and verifies the prior complete set in its marked `reports/archive` directory; the Reports page lists retained HTML reports and email previews. The same Settings page limits recognized dated Junior logs while preserving the active startup log and unrelated files. Reduced limits are enforced on the next successful scan.
+A successful scan writes fixed-name outputs in the user-owned `reports` directory. The latest HTML report, structured snapshot, and email preview keep stable filenames. Settings can retain only the latest run, the latest plus the previous run, or a chosen total from 1 through 50. Before a successful scan replaces the current files, Junior copies and verifies the prior complete set in its marked `reports/archive` directory; the Review Jobs page lists retained HTML reports and email previews as read-only exports below the interactive job-review workflow. The same Settings page limits recognized dated Junior logs while preserving the active startup log and unrelated files. Reduced limits are enforced on the next successful scan.
 
 Scans started from the GUI run in the background. The rest of junior remains available while a scan is running, and every page monitors the same durable scan status. An app-wide notification reports completion, completion with source warnings, or failure and links to the appropriate results or details.
 
@@ -402,6 +435,14 @@ If junior reports an upgrade failure, close junior and do not delete, rename, re
 Unlocked Administration provides a **Backup and recovery** screen. Its backup action creates a verified `.jrbackup` bundle and downloads a portable copy through the application. The bundle contains a consistent SQLite copy plus Junior-owned settings, company/scoring configuration, managed profile and résumé files, reports, and sanitized logs. Junior validates the manifest, file paths, sizes, checksums, and database before restoring into the same or a separate installed workspace. It creates a separate pre-restore safety backup first and tells the user to restart after success. The source workspace remains unchanged. Credentials remain in Windows Credential Manager or their configured environment variable and are never included. The same screen can download a readable JSON database export; that export is for review and portability and cannot be used as a restore bundle.
 
 Junior also creates safety backups automatically immediately before an eligible permanent profile or company deletion. Profile deletion preserves the complete workspace because the profile and managed résumé span SQLite and files; company deletion preserves a verified SQLite copy because the employer catalog is database-owned. Invalid confirmations and in-use records are rejected before a backup or deletion occurs. Existing schema upgrades continue to create their established pre-migration backups.
+
+## Acknowledgements
+
+### Early Field Testing
+
+Special thanks to Dawn Peacock for extensive early usability testing and
+workflow feedback that directly shaped the RC5 review workflow, job management
+model, and company discovery improvements.
 
 ## Documentation
 

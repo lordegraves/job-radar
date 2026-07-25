@@ -6,7 +6,10 @@ from pathlib import Path
 from job_radar.candidate_profile import CandidateProfile
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
-from job_radar.compensation import evaluate_compensation
+from job_radar.compensation import (
+    evaluate_compensation,
+    extract_annual_compensation_text,
+)
 from job_radar.config import ApplicationSettings, load_settings
 from job_radar.email_sender import send_email_report
 from job_radar.diagnostic_service import (
@@ -37,6 +40,7 @@ from job_radar.html_report import write_html_report
 from job_radar.report_models import ScanError, ScanReport
 from job_radar.report_snapshot import write_report_snapshot
 from job_radar.report_view_model import (
+    is_potential_top_match_report_posting,
     is_review_needed_report_posting,
     is_top_match_report_posting,
 )
@@ -49,6 +53,7 @@ from job_radar.scored_posting import ScoredPosting
 from job_radar.resume_match import match_resume_to_posting
 from job_radar.scan_lock import acquire_scan_lock
 from job_radar.recommendation_policy import (
+    evaluate_potential_top_match_eligibility,
     evaluate_review_needed_eligibility,
     evaluate_top_match_eligibility,
 )
@@ -182,6 +187,7 @@ def _is_storage_relevant_posting(scored_posting: ScoredPosting) -> bool:
 
     return (
         is_top_match_report_posting(scored_posting)
+        or is_potential_top_match_report_posting(scored_posting)
         or is_review_needed_report_posting(scored_posting)
     )
 
@@ -431,9 +437,21 @@ def _handle_scan_unlocked(
                 top_match_eligible=top_match_eligible,
                 scoring_config=scoring_config,
             )
+            potential_top_match_eligible = (
+                evaluate_potential_top_match_eligibility(
+                    posting=posting,
+                    score=score,
+                    score_reasons=reasons,
+                    location_status=location_status,
+                    scoring_config=scoring_config,
+                )
+            )
 
+            compensation_text = posting.salary_text or (
+                extract_annual_compensation_text(posting.description)
+            )
             compensation = evaluate_compensation(
-                salary_text=posting.salary_text,
+                salary_text=compensation_text,
                 compensation_floor_usd=(
                     candidate_profile.compensation_floor_usd
                     if candidate_profile is not None
@@ -463,6 +481,7 @@ def _handle_scan_unlocked(
                     score_evidence=score_evidence,
                     location_status=location_status,
                     top_match_eligible=top_match_eligible,
+                    potential_top_match_eligible=potential_top_match_eligible,
                     review_needed_eligible=review_needed_eligible,
                     top_match_reasons=top_match_reasons,
                     resume_match=match_resume_to_posting(

@@ -147,10 +147,12 @@ def _format_match_summary(score_reasons: list[str]) -> str:
 class ReportViewModel:
     report_scored_postings: list[ScoredPosting]
     top_matches: list[ScoredPosting]
+    potential_top_matches: list[ScoredPosting]
     review_needed: list[ScoredPosting]
     tracked_applications: list[ScoredPosting]
     email_scored_postings: list[ScoredPosting]
     email_top_matches: list[ScoredPosting]
+    email_potential_top_matches: list[ScoredPosting]
     email_review_needed: list[ScoredPosting]
 
 
@@ -167,6 +169,11 @@ def build_report_view_model(
         scored_posting
         for scored_posting in report_scored_postings
         if is_top_match_report_posting(scored_posting)
+    ]
+    potential_top_matches = [
+        scored_posting
+        for scored_posting in report_scored_postings
+        if is_potential_top_match_report_posting(scored_posting)
     ]
     review_needed = [
         scored_posting
@@ -189,6 +196,11 @@ def build_report_view_model(
         for scored_posting in email_scored_postings
         if is_email_top_match_posting(scored_posting)
     ][:email_postings_limit]
+    email_potential_top_matches = [
+        scored_posting
+        for scored_posting in email_scored_postings
+        if is_email_potential_top_match_posting(scored_posting)
+    ][:email_postings_limit]
     email_review_needed = [
         scored_posting
         for scored_posting in email_scored_postings
@@ -198,10 +210,12 @@ def build_report_view_model(
     return ReportViewModel(
         report_scored_postings=report_scored_postings,
         top_matches=top_matches,
+        potential_top_matches=potential_top_matches,
         review_needed=review_needed,
         tracked_applications=tracked_applications,
         email_scored_postings=email_scored_postings,
         email_top_matches=email_top_matches,
+        email_potential_top_matches=email_potential_top_matches,
         email_review_needed=email_review_needed,
     )
 
@@ -213,6 +227,22 @@ def is_top_match_report_posting(scored_posting: ScoredPosting) -> bool:
     return _is_top_match_display_posting(scored_posting)
 
 
+def is_potential_top_match_report_posting(
+    scored_posting: ScoredPosting,
+) -> bool:
+    """Keep strong candidates visible when only practical facts are unresolved."""
+
+    return (
+        _is_actionable_posting(scored_posting)
+        and (
+            scored_posting.top_match_eligible
+            or scored_posting.potential_top_match_eligible
+        )
+        and scored_posting.eligibility is not None
+        and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
+    )
+
+
 def is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
     if not _is_actionable_posting(scored_posting):
         return False
@@ -221,6 +251,8 @@ def is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
         return False
 
     if _is_top_match_display_posting(scored_posting):
+        return False
+    if is_potential_top_match_report_posting(scored_posting):
         return False
 
     eligibility_needs_review = (
@@ -241,6 +273,12 @@ def is_email_top_match_posting(scored_posting: ScoredPosting) -> bool:
     return _is_top_match_display_posting(scored_posting)
 
 
+def is_email_potential_top_match_posting(
+    scored_posting: ScoredPosting,
+) -> bool:
+    return is_potential_top_match_report_posting(scored_posting)
+
+
 def is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
     recommended_action = _get_recommended_action(scored_posting)
     eligibility_needs_review = (
@@ -255,6 +293,8 @@ def is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
         return False
 
     if _is_top_match_display_posting(scored_posting):
+        return False
+    if is_potential_top_match_report_posting(scored_posting):
         return False
 
     if (

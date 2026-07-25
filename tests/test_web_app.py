@@ -277,6 +277,7 @@ def write_report_snapshot_file(
     *,
     generated_at: str,
     top_matches: list[dict[str, object]] | None = None,
+    potential_top_matches: list[dict[str, object]] | None = None,
     review_needed: list[dict[str, object]] | None = None,
     tracked_applications: list[dict[str, object]] | None = None,
     new_jobs: list[dict[str, object]] | None = None,
@@ -285,6 +286,7 @@ def write_report_snapshot_file(
     new_jobs_count: int | None = None,
 ) -> None:
     top_matches = top_matches or []
+    potential_top_matches = potential_top_matches or []
     review_needed = review_needed or []
     tracked_applications = tracked_applications or []
     new_jobs = new_jobs or []
@@ -298,6 +300,7 @@ def write_report_snapshot_file(
                 "summary": {
                     "generated_at": generated_at,
                     "top_matches": len(top_matches),
+                    "potential_top_matches": len(potential_top_matches),
                     "review_needed": len(review_needed),
                     "tracked_applications": len(tracked_applications),
                     "new_jobs": (
@@ -308,6 +311,7 @@ def write_report_snapshot_file(
                     "collector_errors": len(collector_errors),
                 },
                 "top_matches": top_matches,
+                "potential_top_matches": potential_top_matches,
                 "review_needed": review_needed,
                 "tracked_applications": tracked_applications,
                 "new_jobs": new_jobs,
@@ -768,7 +772,7 @@ def test_index_page_summarizes_latest_scan_report(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Generated at 2026-07-11 11:57 UTC" in html
-    assert '<a href="/reports/view/target-scan.html">Open HTML report</a>' in html
+    assert '<a href="/reports">Review jobs</a>' in html
     assert '<a class="scan-card" href="/reports/section/top_matches">' in normalized_html
     assert '<strong>1</strong> <span class="muted">Top Matches</span>' in normalized_html
     assert '<a class="scan-card" href="/reports/section/review_needed">' in normalized_html
@@ -902,6 +906,52 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "Tracked SRE" not in html
 
 
+def test_potential_top_matches_show_evidence_and_unresolved_facts(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(
+        settings_file,
+        database_file,
+        reports_path=reports_path,
+    )
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-25T12:00:00+00:00",
+        potential_top_matches=[
+                make_report_snapshot_job(
+                    title="Senior Platform Reliability Engineer",
+                    url="https://example.invalid/jobs/platform-reliability",
+                    company="ExampleCompute",
+                why_matched="linux, kubernetes, reliability",
+                technical_match="Very Strong",
+                eligibility_status="needs_review",
+                eligibility_reasons=[
+                    "The posting does not provide usable compensation.",
+                    "The workplace arrangement is unclear.",
+                ],
+            )
+        ],
+    )
+
+    html = create_app(
+        settings_path=str(settings_file)
+    ).test_client().get(
+        "/reports/section/potential_top_matches"
+    ).get_data(as_text=True)
+
+    assert "Potential Top Matches" in html
+    assert "Strong evidence" in html
+    assert "linux, kubernetes, reliability" in html
+    assert "Waiting on" in html
+    assert "The posting does not provide usable compensation." in html
+    assert "The workplace arrangement is unclear." in html
+    assert "Score:" not in html
+
+
 def test_review_needed_job_can_be_passed_without_creating_application(
     tmp_path: Path,
 ) -> None:
@@ -941,6 +991,8 @@ def test_review_needed_job_can_be_passed_without_creating_application(
         data={
             "section_name": "review_needed",
             "decision": DECISION_PASSED,
+            "decision_reason": "Contract duration",
+            "notes": "Three-month contract and on-site in California.",
         },
     )
 
@@ -952,6 +1004,10 @@ def test_review_needed_job_can_be_passed_without_creating_application(
     )
     assert len(decisions) == 1
     assert decisions[0].title == "Synthetic Systems Role"
+    assert decisions[0].decision_reason == "Contract duration"
+    assert decisions[0].notes == (
+        "Three-month contract and on-site in California."
+    )
     assert list_applications(
         database_file,
         profile_id=profile.profile_id,
@@ -965,6 +1021,58 @@ def test_review_needed_job_can_be_passed_without_creating_application(
     assert "Reviewed and passed" in workspace_html
     assert "Synthetic Systems Role" in workspace_html
     assert "Allow in future scans" in workspace_html
+
+
+def test_report_section_paginates_large_result_sets(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(
+        settings_file,
+        database_file,
+        reports_path=reports_path,
+    )
+    jobs = [
+        make_report_snapshot_job(
+            title=f"Synthetic Review Role {index:02d}",
+            url=f"https://example.invalid/jobs/{index}",
+            company="Synthetic Company",
+            job_radar_id=f"jr-pagination-{index:08d}",
+        )
+        for index in range(1, 46)
+    ]
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-25T10:00:00+00:00",
+        review_needed=jobs,
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    first_page = client.get("/reports/section/review_needed")
+    first_html = first_page.get_data(as_text=True)
+    last_page = client.get("/reports/section/review_needed?page=3")
+    last_html = last_page.get_data(as_text=True)
+
+    assert first_page.status_code == 200
+    assert "Showing 1–20 of 45 jobs" in first_html
+    assert "Synthetic Review Role 01" in first_html
+    assert "Synthetic Review Role 20" in first_html
+    assert "Synthetic Review Role 21" not in first_html
+    assert 'href="/reports/section/review_needed?page=2">Next</a>' in first_html
+    assert 'class="job-decision-form"' in first_html
+    assert 'name="notes" maxlength="300"' in first_html
+    assert "Notes are for you and do not affect scoring." in first_html
+    assert "Show supporting details" in first_html
+    assert last_page.status_code == 200
+    assert "Showing 41–45 of 45 jobs" in last_html
+    assert "Synthetic Review Role 41" in last_html
+    assert "Synthetic Review Role 45" in last_html
+    assert "Synthetic Review Role 40" not in last_html
 
 
 def test_report_jobs_can_be_passed_together_atomically(
@@ -2762,7 +2870,7 @@ def test_index_page_links_to_reports(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert 'href="/reports"' in html
-    assert ">Reports</a>" in html
+    assert ">Review Jobs</a>" in html
 
 
 def test_reports_page_lists_only_current_scan_outputs(
@@ -2799,23 +2907,21 @@ def test_reports_page_lists_only_current_scan_outputs(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Reports" in html
-    assert f"<code>{reports_path}</code>" in html
-    assert "Latest scan results" in html
+    assert "Review Jobs" in html
+    assert "View or download reports" in html
     assert "target-scan.html" in html
     assert "/reports/view/target-scan.html" in html
-    assert "Latest HTML scan report. Open this first." in html
-    assert "Latest scan result shortcuts" in html
+    assert "Read-only HTML export of the latest scan." in html
+    assert "Report export shortcuts" in html
     assert "primary-output-card" in html
-    assert "Open the latest generated scan report and email preview." in html
-    assert "Older report sets appear below when retention is enabled." in html
+    assert "These are read-only copies" in html
     assert "target-email-preview.txt" in html
     assert "Latest plain-text email preview." in html
     assert "code-audit.md" not in html
     assert "job_radar.sqlite3" not in html
     assert "Additional files" not in html
     assert "Report files shown:" not in html
-    assert "It does not start a scan or send email." in html
+    assert "Review decisions are made in the job groups above." in html
 
 
 def test_reports_page_shows_primary_outputs_in_display_order(
@@ -2880,7 +2986,8 @@ def test_reports_page_handles_missing_reports_directory(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "No scan outputs found yet. Run a scan first." in html
+    assert "No scan results are available yet. Run a scan first." in html
+    assert "No report exports are available yet." in html
     assert "Additional files" not in html
     assert "Report files shown:" not in html
 
@@ -4971,7 +5078,7 @@ candidate:
         assert ">Profile / Resume</a>" in normalized_html
         assert ">Search Preferences</a>" not in normalized_html
         assert 'href="/reports"' in normalized_html
-        assert ">Reports</a>" in normalized_html
+        assert ">Review Jobs</a>" in normalized_html
         assert 'href="/scan"' in normalized_html
         assert ">Scan</a>" in normalized_html
         assert "active-nav" in normalized_html
@@ -5026,7 +5133,7 @@ candidate:
         ),
         "/reports": (
             '<a class="active-nav" href="/reports" '
-            'aria-current="page">Reports</a>'
+            'aria-current="page">Review Jobs</a>'
         ),
         "/scan": (
             '<a class="active-nav" href="/scan" '

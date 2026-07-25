@@ -6,10 +6,35 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added optional shared Website, Careers, LinkedIn, and Glassdoor reference
+  links to company detail pages. Junior opens these public links in the
+  user's browser and never signs in to or scrapes the linked services.
+  Editing links preserves the validated job collector and its health history.
+- Added **Potential Top Matches** for jobs that satisfy the existing top-match
+  score and strong-signal rules but still need practical facts confirmed. Top
+  Matches remain strict, thresholds are unchanged, and normal pages show
+  evidence and unresolved facts without exposing numeric scores.
+- Improved conservative extraction of explicit workplace arrangements, common
+  employment-type wording, and annual compensation embedded in job
+  descriptions when an ATS omits the corresponding structured field. Missing
+  schedule wording no longer implies a conflict; explicit schedule and on-call
+  requirements remain enforced.
+- Set the reviewed 1440 by 900 first-launch window size and added safe
+  user-owned persistence of the native window's last size and screen position.
+  Missing or invalid geometry returns to the reviewed default.
+- Replaced the report-first post-scan path with an interactive Review Jobs
+  workspace. Large result groups now render 20 jobs per page, supporting
+  evidence is expandable, and job-decision controls use a balanced responsive
+  layout. Static HTML and email reports remain available as read-only exports.
+- Renamed the ambiguous recommendation label **Hold** to **Needs your review**
+  without changing its scoring or eligibility behavior, including display
+  compatibility for existing scan snapshots.
 - Hid Junior-managed job IDs from normal forms and reports while preserving
   scan-linked identity and automatic IDs for manually entered applications.
-- Added bounded notes, listed pass reasons, and atomic multi-select Save or Pass
-  actions to the profile-owned Saved and Reviewed Jobs workflow.
+- Added human-only notes of up to 300 characters directly to individual Save
+  and Pass decisions, listed pass reasons, and atomic multi-select actions in
+  the profile-owned Saved and Reviewed Jobs workflow. Notes do not affect
+  scoring.
 - Added a profile-owned Saved / Reviewed Jobs summary and direct workspace link
   to Home, and corrected spacing between the workspace introduction and lists.
 - Strengthened practical eligibility explanations for explicit foreign

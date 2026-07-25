@@ -184,6 +184,10 @@ packaged collector catalog before contacting an external search provider.
   lookup with no independently verified source, creates no unfinished company,
   never schedules a silent retry, and is covered by the same two-minute
   end-to-end limit as local discovery.
+- Company detail pages now accept optional shared Website, Careers, LinkedIn,
+  and Glassdoor reference links. They are browser shortcuts only: Junior does
+  not authenticate to or scrape those services, and link edits preserve the
+  validated collector and its connection-health history.
 
 - Scan collectors and practical-eligibility evaluation must retain and inspect
   explicit posting facts such as work location, remote or on-site requirements,
@@ -216,10 +220,10 @@ packaged collector catalog before contacting an external search provider.
   Application History must contain only completed applications, such as
   rejected, withdrawn, or closed applications. Passing on a job before applying
   must not create an application or application-history record.
-- Junior's recommendation label **Hold** must remain separate from the user's
-  saved state. Hold means Junior recommends more review; Save for later means
-  the user deliberately bookmarked the job. The interface must explain the
-  distinction in plain language.
+- Junior's recommendation label **Needs your review** must remain separate
+  from the user's saved state. It means Junior recommends more review; Save
+  for later means the user deliberately bookmarked the job. The interface
+  must explain the distinction in plain language.
 - Report groups and Saved Jobs must support practical multi-select actions so a
   user can save or pass several reviewed jobs without opening each one. The
   operation must be profile-specific, explicit, and all-or-nothing.
@@ -260,9 +264,33 @@ packaged collector catalog before contacting an external search provider.
 | Exact-job suppression | Completed | Saved and passed job IDs are omitted from later reports for that profile without deleting the shared posting. |
 | Reversible decisions | Completed | A saved bookmark can be removed, a saved job can be passed, and a passed job can be allowed in future scans again. |
 | Scan-owned application identity | Completed | Choosing I applied preserves Junior's scan-owned job ID and source evidence in the application form. |
-| Notes and decision reasons | Completed | Saved Jobs accepts notes up to 2,000 characters. Passing supports a bounded listed reason, stores it per profile, and does not alter scoring. |
+| Notes and decision reasons | Completed | Individual Save and Pass decisions accept human-only notes up to 300 characters. Passing supports a bounded listed reason, stores both per profile, and neither notes nor reasons alter scoring. |
 | Multi-select report actions | Completed | Report groups can save or pass selected jobs in one profile-owned transaction; any invalid selected job rolls back the complete operation. |
-| Practical-detail extraction | Completed | Focused eligibility tests cover explicit foreign location, fixed duration, employment type, schedule, compensation, and work authorization. Unknown facts remain in Review Needed rather than being guessed. |
+| Responsive Review Jobs workflow | Completed | Scan completion leads to interactive job groups; each group renders at most 20 full cards per page, supporting evidence is expandable, and static reports remain secondary read-only exports. |
+| Practical-detail extraction | Completed | Conservative parsing fills missing ATS fields only from explicit workplace, employment-type, and annual-pay wording. Missing schedule wording is neutral while explicit conflicts remain enforced. Jobs meeting existing top-match score and strong-signal rules with unresolved practical facts appear as Potential Top Matches with evidence and waiting-on explanations; thresholds remain unchanged. |
+
+## Planned RC7 language assistance
+
+RC6 remains available for stabilization and corrections discovered during RC5
+field testing. RC7 introduces one deliberately narrow language-model
+capability under this governing product rule:
+
+> **Junior explains. Junior does not decide.**
+
+The first and only RC7 language-model capability is **Explain this job**.
+
+| Requirement | Status | Required behavior |
+| --- | --- | --- |
+| Provider-neutral boundary | Planned | Junior uses one internal language-assistance service so normal workflows never depend directly on a particular model or provider. |
+| Local-first setup | Planned | Local processing is recommended and setup is performed through the GUI without terminal commands, model-server addresses, or manual configuration files. |
+| Online processing default | Planned | Every online provider is disabled by default. Enabling one requires clear disclosure of the provider, exact transmitted fields, purpose, credential storage, retention implications, timeout, and offline behavior. |
+| Explain this job | Planned | On explicit request, Junior explains the current posting using the posting, relevant profile evidence, and Junior's existing structured findings in plain language. |
+| Evidence and uncertainty | Planned | The explanation identifies its supporting evidence, distinguishes known facts from interpretation, and plainly states when information is missing or uncertain. |
+| No decisions | Planned | Language assistance does not change scores, eligibility, recommendations, profiles, preferences, target titles, company selections, saved or passed state, application state, or scan scope. |
+| No learning | Planned | RC7 does not infer or learn preferences from notes, reviewed jobs, application outcomes, or language-model responses. |
+| Optional operation | Planned | Scanning, scoring, review, tracking, reports, and every existing workflow continue to work when language assistance is disabled, offline, unavailable, or removed. |
+| Privacy and storage | Planned | Junior sends only data explicitly required for the requested explanation, stores no provider response as a new source of truth, and never includes credentials, unrelated profiles, unrelated applications, or the complete database. |
+| User control | Planned | The user starts each explanation. Junior does not silently call a model during scans or background work and never acts on an explanation without a separate explicit user action. |
 
 ## Protected wording notes
 

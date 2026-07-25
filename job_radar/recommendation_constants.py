@@ -8,7 +8,7 @@ ACTION_APPLY = "Apply"
 ACTION_TAILOR_RESUME = "Tailor Resume"
 ACTION_TRACK_STATUS = "Track Status"
 ACTION_PREVIOUSLY_REVIEWED = "Previously Reviewed"
-ACTION_HOLD = "Hold"
+ACTION_HOLD = "Needs your review"
 ACTION_PASS = "Pass"
 
 RECOMMENDATION_SUMMARY_ORDER = [

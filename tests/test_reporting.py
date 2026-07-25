@@ -67,6 +67,10 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     assert '<h2 id="summary">Summary</h2>' in html
     assert '<a href="#summary">Summary</a>' in html
     assert '<a href="#top-matches">Top Matches</a>' in html
+    assert (
+        '<a href="#potential-top-matches">Potential Top Matches</a>'
+        in html
+    )
     assert "Northern Colorado Highlights" not in html
     assert '<a href="#review-needed">Review Needed</a>' in html
     assert '<a href="#tracked-applications">Tracked Applications</a>' in html
@@ -86,7 +90,7 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
     )
     assert html.count(
         '<a href="#report-contents">Back to report contents</a>'
-    ) == 5
+    ) == 6
     assert "<strong>Generated at:</strong> 2026-06-24 12:34 UTC" in html
     assert "<strong>Actionable jobs stored:</strong> 1" in html
     assert "<strong>Jobs not actionable:</strong> 0" in html
@@ -207,7 +211,7 @@ def test_needs_review_eligibility_blocks_direct_apply_recommendation() -> None:
         ),
     )
 
-    assert _get_recommended_action(scored_posting) == "Hold"
+    assert _get_recommended_action(scored_posting) == "Needs your review"
     assert _get_action_rationale(scored_posting) == (
         "Needs review before applying. "
         "The posting does not provide usable compensation."

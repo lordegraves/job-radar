@@ -20,7 +20,7 @@ PASS_REASONS = (
     "Duplicate or stale posting",
     "Other",
 )
-MAX_JOB_DECISION_NOTES_LENGTH = 2000
+MAX_JOB_DECISION_NOTES_LENGTH = 300
 
 
 class JobDecisionError(ValueError):

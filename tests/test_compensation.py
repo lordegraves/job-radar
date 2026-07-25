@@ -1,6 +1,10 @@
 """Tests salary parsing and comparison with the candidate's compensation floor."""
 
-from job_radar.compensation import evaluate_compensation, parse_salary_range_usd
+from job_radar.compensation import (
+    evaluate_compensation,
+    extract_annual_compensation_text,
+    parse_salary_range_usd,
+)
 
 
 def test_parse_salary_range_usd_handles_k_range() -> None:
@@ -67,3 +71,23 @@ def test_evaluate_compensation_unknown_without_salary_text() -> None:
     assert result.range_label == "Unknown"
     assert result.min_usd is None
     assert result.max_usd is None
+
+
+def test_extract_annual_compensation_from_description() -> None:
+    description = (
+        "The annual compensation range for this position is "
+        "$170,000 - $210,000 per year."
+    )
+
+    extracted = extract_annual_compensation_text(description)
+
+    assert extracted is not None
+    assert evaluate_compensation(extracted, 160000).label == "Meets floor"
+
+
+def test_compensation_extractor_ignores_unrelated_large_numbers() -> None:
+    description = (
+        "Operate a 100000-node platform used by customers in 25 countries."
+    )
+
+    assert extract_annual_compensation_text(description) is None

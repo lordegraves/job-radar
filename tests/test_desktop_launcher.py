@@ -215,11 +215,12 @@ def test_main_bootstraps_starts_native_job_radar(
     monkeypatch.setattr(
         desktop_launcher,
         "run_native_window",
-        lambda server, *, url, shutdown_event: calls.update(
+        lambda server, *, url, shutdown_event, window_state_path: calls.update(
             {
                 "server": server,
                 "url": url,
                 "shutdown_event": shutdown_event,
+                "window_state_path": window_state_path,
             }
         ),
     )
@@ -236,6 +237,9 @@ def test_main_bootstraps_starts_native_job_radar(
         "app": fake_app,
         "server": fake_server,
         "url": "http://127.0.0.1:5000/",
+        "window_state_path": tmp_path
+        / "runtime"
+        / desktop_launcher.WINDOW_STATE_NAME,
         "scan_waited": True,
     }
 
@@ -355,7 +359,24 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
         def shutdown(self) -> None:
             server_stopped.set()
 
+    class FakeEvent:
+        def __init__(self) -> None:
+            self.handlers: list[object] = []
+
+        def __iadd__(self, handler: object) -> "FakeEvent":
+            self.handlers.append(handler)
+            return self
+
+    class FakeEvents:
+        closing = FakeEvent()
+
     class FakeWindow:
+        events = FakeEvents()
+        width = 1440
+        height = 900
+        x = 120
+        y = 80
+
         def destroy(self) -> None:
             calls["destroyed"] = True
 
@@ -385,6 +406,7 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
         FakeServer(),
         url="http://127.0.0.1:5000/",
         shutdown_event=shutdown_event,
+        window_state_path=tmp_path / "runtime" / "desktop-window.json",
         webview_module=FakeWebview,
     )
 
@@ -393,7 +415,12 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
     assert url == "http://127.0.0.1:5000/"
     assert options["resizable"] is True
     assert options["min_size"] == (960, 640)
+    assert options["width"] == 1440
+    assert options["height"] == 900
+    assert options["x"] is None
+    assert options["y"] is None
     assert options["background_color"] == "#101114"
+    assert len(FakeEvents.closing.handlers) == 1
     assert calls["start"] == {
         "icon": str(icon_path),
         "private_mode": True,
@@ -409,6 +436,124 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
     monkeypatch.setattr(desktop_launcher.sys, "platform", "darwin")
     assert desktop_launcher._webview_start_options() == {
         "private_mode": True,
+    }
+
+
+def test_window_state_round_trip_and_invalid_state_falls_back(
+    tmp_path: Path,
+) -> None:
+    state_path = tmp_path / "runtime" / "desktop-window.json"
+
+    assert desktop_launcher.load_window_state(state_path) == {
+        "width": 1440,
+        "height": 900,
+    }
+
+    desktop_launcher.save_window_state(
+        state_path,
+        width=1440,
+        height=900,
+        x=90,
+        y=45,
+    )
+
+    assert desktop_launcher.load_window_state(state_path) == {
+        "width": 1440,
+        "height": 900,
+        "x": 90,
+        "y": 45,
+    }
+
+    state_path.write_text(
+        '{"width":200,"height":100,"x":0,"y":0}\n',
+        encoding="utf-8",
+    )
+
+    assert desktop_launcher.load_window_state(state_path) == {
+        "width": 1440,
+        "height": 900,
+    }
+
+
+def test_native_window_restores_and_saves_geometry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shutdown_event = threading.Event()
+    server_stopped = threading.Event()
+    calls: dict[str, Any] = {}
+    state_path = tmp_path / "runtime" / "desktop-window.json"
+    desktop_launcher.save_window_state(
+        state_path,
+        width=1460,
+        height=910,
+        x=130,
+        y=75,
+    )
+
+    class FakeServer:
+        def serve_forever(self) -> None:
+            server_stopped.wait(timeout=2)
+
+        def shutdown(self) -> None:
+            server_stopped.set()
+
+    class FakeEvent:
+        def __init__(self) -> None:
+            self.handlers: list[object] = []
+
+        def __iadd__(self, handler: object) -> "FakeEvent":
+            self.handlers.append(handler)
+            return self
+
+    class FakeEvents:
+        closing = FakeEvent()
+
+    class FakeWindow:
+        events = FakeEvents()
+        width = 1510
+        height = 940
+        x = 160
+        y = 100
+
+        def destroy(self) -> None:
+            pass
+
+    class FakeWebview:
+        @staticmethod
+        def create_window(title: str, url: str, **kwargs: Any) -> FakeWindow:
+            calls["window"] = (title, url, kwargs)
+            return FakeWindow()
+
+        @staticmethod
+        def start(**_kwargs: Any) -> None:
+            for handler in FakeEvents.closing.handlers:
+                handler()
+
+    monkeypatch.setattr(
+        desktop_launcher,
+        "wait_until_ready",
+        lambda _url: None,
+    )
+
+    desktop_launcher.run_native_window(
+        FakeServer(),
+        url="http://127.0.0.1:5000/",
+        shutdown_event=shutdown_event,
+        window_state_path=state_path,
+        webview_module=FakeWebview,
+    )
+
+    _, _, options = calls["window"]
+    assert options["width"] == 1460
+    assert options["height"] == 910
+    assert options["x"] == 130
+    assert options["y"] == 75
+    assert desktop_launcher.load_window_state(state_path) == {
+        "width": 1510,
+        "height": 940,
+        "x": 160,
+        "y": 100,
     }
 
 

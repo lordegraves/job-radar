@@ -55,6 +55,28 @@ def evaluate_top_match_eligibility(
     ]
 
 
+def evaluate_potential_top_match_eligibility(
+    posting: JobPosting,
+    score: int,
+    score_reasons: list[str],
+    location_status: str,
+    scoring_config: dict[str, Any],
+) -> bool:
+    """Allow only unresolved location facts through the strict role-fit gate."""
+
+    if location_status not in {"conditional", "mixed", "unknown"}:
+        return False
+
+    eligible_without_location, _reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=score,
+        score_reasons=score_reasons,
+        location_status="allowed",
+        scoring_config=scoring_config,
+    )
+    return eligible_without_location
+
+
 def evaluate_review_needed_eligibility(
     score: int,
     score_reasons: list[str],

@@ -471,7 +471,18 @@ def _detect_employment_types(posting: JobPosting) -> tuple[str, ...]:
         if any(marker in text for marker in employment_markers):
             detected.append(employment_type)
 
-    return tuple(detected)
+    if re.search(r"\bfulltime\b", text):
+        detected.append(EMPLOYMENT_FULL_TIME)
+    if re.search(r"\bparttime\b", text):
+        detected.append(EMPLOYMENT_PART_TIME)
+    if re.search(
+        r"\b(?:fixed[- ]term|contract[- ]to[- ]hire|"
+        r"\d+\s*[- ]?\s*(?:week|month|year)s?\s+contract)\b",
+        text,
+    ):
+        detected.append(EMPLOYMENT_CONTRACT)
+
+    return tuple(dict.fromkeys(detected))
 
 
 def _evaluate_schedule_eligibility(
@@ -528,18 +539,10 @@ def _evaluate_schedule_eligibility(
         return None
 
     if not detected_schedules:
-        return EligibilityResult(
-            status=ELIGIBILITY_NEEDS_REVIEW,
-            reasons=(
-                EligibilityReason(
-                    code="schedule_unclear",
-                    message=(
-                        "The posting does not clearly identify a work schedule "
-                        "that can be compared with this profile."
-                    ),
-                ),
-            ),
-        )
+        # Most professional postings omit a shift because they use ordinary
+        # daytime hours. Absence is not evidence of a conflict. Explicit night,
+        # evening, weekend, or on-call requirements are still enforced above.
+        return None
 
     if selected_schedule == SCHEDULE_WEEKENDS:
         if SCHEDULE_WEEKENDS in detected_schedules:
@@ -1306,9 +1309,6 @@ def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
         )
     ).lower()
 
-    if not text:
-        return None
-
     if "hybrid" in text:
         return ARRANGEMENT_HYBRID
 
@@ -1334,5 +1334,41 @@ def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
         )
     ):
         return ARRANGEMENT_REMOTE
+
+    description = clean_text(posting.description).lower()
+    explicit_description_patterns = (
+        (
+            ARRANGEMENT_HYBRID,
+            (
+                r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+hybrid\b",
+                r"\bhybrid\s+(?:role|position|job|work arrangement)\b",
+                r"\bworkplace\s+type\s*:\s*hybrid\b",
+            ),
+        ),
+        (
+            ARRANGEMENT_ON_SITE,
+            (
+                r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+"
+                r"(?:on[- ]?site|in[- ]?person)\b",
+                r"\b(?:on[- ]?site|in[- ]?person)\s+"
+                r"(?:role|position|job|work arrangement)\b",
+                r"\bworkplace\s+type\s*:\s*(?:on[- ]?site|in[- ]?person)\b",
+            ),
+        ),
+        (
+            ARRANGEMENT_REMOTE,
+            (
+                r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+"
+                r"(?:fully\s+)?remote\b",
+                r"\b(?:fully\s+)?remote\s+(?:role|position|job|work arrangement)\b",
+                r"\bworkplace\s+type\s*:\s*remote\b",
+                r"\bwork\s+remotely\b",
+            ),
+        ),
+    )
+
+    for arrangement, patterns in explicit_description_patterns:
+        if any(re.search(pattern, description) for pattern in patterns):
+            return arrangement
 
     return None

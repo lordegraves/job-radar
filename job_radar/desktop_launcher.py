@@ -36,6 +36,13 @@ DEFAULT_PORT = 5000
 DEFAULT_STARTUP_TIMEOUT_SECONDS = 10.0
 DESKTOP_ERROR_TITLE = "junior could not start"
 INSTANCE_LOCK_NAME = "desktop-instance.lock"
+WINDOW_STATE_NAME = "desktop-window.json"
+DEFAULT_WINDOW_WIDTH = 1440
+DEFAULT_WINDOW_HEIGHT = 900
+MINIMUM_WINDOW_WIDTH = 960
+MINIMUM_WINDOW_HEIGHT = 640
+MAXIMUM_WINDOW_WIDTH = 7680
+MAXIMUM_WINDOW_HEIGHT = 4320
 
 
 class DesktopInstanceLock(AbstractContextManager["DesktopInstanceLock"]):
@@ -203,6 +210,7 @@ def run_native_window(
     *,
     url: str,
     shutdown_event: threading.Event,
+    window_state_path: Path | None = None,
     webview_module: Any = webview,
 ) -> None:
     """Run the shared Flask UI inside one normal native application window."""
@@ -215,16 +223,28 @@ def run_native_window(
     server_thread.start()
     try:
         wait_until_ready(url)
+        window_state = load_window_state(window_state_path)
         window = webview_module.create_window(
             "Junior",
             url,
-            width=1280,
-            height=820,
+            width=window_state["width"],
+            height=window_state["height"],
+            x=window_state.get("x"),
+            y=window_state.get("y"),
             min_size=(960, 640),
             resizable=True,
             background_color="#101114",
             text_select=True,
         )
+
+        if window_state_path is not None:
+            window.events.closing += lambda: save_window_state(
+                window_state_path,
+                width=window.width,
+                height=window.height,
+                x=window.x,
+                y=window.y,
+            )
 
         def close_window_when_requested() -> None:
             shutdown_event.wait()
@@ -245,6 +265,79 @@ def run_native_window(
         shutdown_event.set()
         server.shutdown()
         server_thread.join(timeout=5.0)
+
+
+def load_window_state(path: Path | None) -> dict[str, int]:
+    """Load safe desktop geometry, falling back to the reviewed first-run size."""
+
+    default_state = {
+        "width": DEFAULT_WINDOW_WIDTH,
+        "height": DEFAULT_WINDOW_HEIGHT,
+    }
+    if path is None or not path.is_file():
+        return default_state
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return default_state
+    if not isinstance(payload, dict):
+        return default_state
+
+    width = payload.get("width")
+    height = payload.get("height")
+    x = payload.get("x")
+    y = payload.get("y")
+    if (
+        not _is_plain_int(width)
+        or not _is_plain_int(height)
+        or not _is_plain_int(x)
+        or not _is_plain_int(y)
+        or not MINIMUM_WINDOW_WIDTH <= width <= MAXIMUM_WINDOW_WIDTH
+        or not MINIMUM_WINDOW_HEIGHT <= height <= MAXIMUM_WINDOW_HEIGHT
+        or not -10000 <= x <= 10000
+        or not -10000 <= y <= 10000
+    ):
+        return default_state
+    return {"width": width, "height": height, "x": x, "y": y}
+
+
+def save_window_state(
+    path: Path,
+    *,
+    width: int,
+    height: int,
+    x: int,
+    y: int,
+) -> None:
+    """Atomically save only non-sensitive native-window geometry."""
+
+    if (
+        not _is_plain_int(width)
+        or not _is_plain_int(height)
+        or not _is_plain_int(x)
+        or not _is_plain_int(y)
+        or not MINIMUM_WINDOW_WIDTH <= width <= MAXIMUM_WINDOW_WIDTH
+        or not MINIMUM_WINDOW_HEIGHT <= height <= MAXIMUM_WINDOW_HEIGHT
+        or not -10000 <= x <= 10000
+        or not -10000 <= y <= 10000
+    ):
+        return
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = path.with_suffix(".tmp")
+    temporary_path.write_text(
+        json.dumps(
+            {"width": width, "height": height, "x": x, "y": y},
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    os.replace(temporary_path, path)
+
+
+def _is_plain_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def set_windows_app_identity() -> None:
@@ -310,6 +403,9 @@ def launch_desktop() -> None:
     url = build_local_url(args.host, args.port)
     settings_path = ensure_desktop_workspace()
     lock_path = settings_path.parent.parent / "runtime" / INSTANCE_LOCK_NAME
+    window_state_path = (
+        settings_path.parent.parent / "runtime" / WINDOW_STATE_NAME
+    )
 
     with DesktopInstanceLock(lock_path, url) as instance:
         if not instance.acquired:
@@ -355,6 +451,7 @@ def launch_desktop() -> None:
                     server,
                     url=url,
                     shutdown_event=shutdown_event,
+                    window_state_path=window_state_path,
                 )
         finally:
             # GUI scans use a non-daemon worker. Keep the instance lock until

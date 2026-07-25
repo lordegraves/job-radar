@@ -6,6 +6,7 @@ import pytest
 
 from job_radar.models import JobPosting
 from job_radar.recommendation_policy import (
+    evaluate_potential_top_match_eligibility,
     evaluate_review_needed_eligibility,
     evaluate_top_match_eligibility,
 )
@@ -666,6 +667,50 @@ def test_evaluate_top_match_eligibility_rejects_non_allowed_location() -> None:
 
     assert eligible is False
     assert reasons == ["location_not_allowed:conditional"]
+
+
+def test_potential_top_match_allows_only_unresolved_location() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Build Linux systems.",
+        location="Location not specified",
+    )
+    config = make_scoring_config()
+    score_reasons = [
+        "+30 title:infrastructure",
+        "+10 body:linux",
+    ]
+
+    assert evaluate_potential_top_match_eligibility(
+        posting=posting,
+        score=110,
+        score_reasons=score_reasons,
+        location_status="unknown",
+        scoring_config=config,
+    )
+    assert not evaluate_potential_top_match_eligibility(
+        posting=posting,
+        score=110,
+        score_reasons=score_reasons,
+        location_status="blocked",
+        scoring_config=config,
+    )
+
+
+def test_potential_top_match_keeps_existing_role_fit_gate() -> None:
+    posting = make_posting(
+        title="General Systems Analyst",
+        description="General operations role.",
+        location="Location not specified",
+    )
+
+    assert not evaluate_potential_top_match_eligibility(
+        posting=posting,
+        score=99,
+        score_reasons=[],
+        location_status="unknown",
+        scoring_config=make_scoring_config(),
+    )
 
 
 def test_evaluate_top_match_eligibility_rejects_negative_title_match() -> None:

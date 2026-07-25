@@ -15,9 +15,11 @@ def make_scored_posting(
     *,
     title: str,
     top_match_eligible: bool = False,
+    potential_top_match_eligible: bool = False,
     review_needed_eligible: bool = False,
     tracked: bool = False,
     score_reasons: list[str] | None = None,
+    top_match_reasons: list[str] | None = None,
     eligibility: EligibilityResult | None = None,
 ) -> ScoredPosting:
     posting = JobPosting(
@@ -55,6 +57,8 @@ def make_scored_posting(
             "+0 location_allowed:remote",
         ],
         top_match_eligible=top_match_eligible,
+        potential_top_match_eligible=potential_top_match_eligible,
+        top_match_reasons=top_match_reasons,
         review_needed_eligible=review_needed_eligible,
         eligibility=eligibility,
         application=application,
@@ -239,7 +243,7 @@ def test_not_eligible_role_is_excluded_from_action_sections() -> None:
     assert view.email_review_needed == []
 
 
-def test_needs_review_role_moves_from_top_match_to_review_needed() -> None:
+def test_needs_review_role_moves_from_top_match_to_potential_top_match() -> None:
     posting = make_scored_posting(
         title="Senior Infrastructure Engineer",
         top_match_eligible=True,
@@ -257,9 +261,11 @@ def test_needs_review_role_moves_from_top_match_to_review_needed() -> None:
     view = build_report_view_model(scored_postings=[posting])
 
     assert view.top_matches == []
-    assert view.review_needed == [posting]
+    assert view.potential_top_matches == [posting]
+    assert view.review_needed == []
     assert view.email_top_matches == []
-    assert view.email_review_needed == [posting]
+    assert view.email_potential_top_matches == [posting]
+    assert view.email_review_needed == []
 
 
 def test_practical_unknown_is_review_needed_even_below_legacy_score_gate() -> None:
@@ -279,9 +285,34 @@ def test_practical_unknown_is_review_needed_even_below_legacy_score_gate() -> No
     view = build_report_view_model(scored_postings=[posting])
 
     assert view.top_matches == []
+    assert view.potential_top_matches == []
     assert view.review_needed == [posting]
     assert view.email_top_matches == []
+    assert view.email_potential_top_matches == []
     assert view.email_review_needed == [posting]
+    assert _is_storage_relevant_posting(posting)
+
+
+def test_strong_role_with_unresolved_location_is_potential_top_match() -> None:
+    posting = make_scored_posting(
+        title="Senior Infrastructure Engineer",
+        potential_top_match_eligible=True,
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="job_location_ambiguous",
+                    message="The posting location needs confirmation.",
+                ),
+            ),
+        ),
+    )
+
+    view = build_report_view_model(scored_postings=[posting])
+
+    assert view.top_matches == []
+    assert view.potential_top_matches == [posting]
+    assert view.review_needed == []
     assert _is_storage_relevant_posting(posting)
 
 

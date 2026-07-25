@@ -821,3 +821,99 @@ def test_profile_can_correct_company_name_without_changing_source(
     assert employer.name == "Example Company"
     assert employer.source_type == "lever"
     assert employer.source_config == {"source_slug": "example-company"}
+
+
+def test_profile_can_save_and_open_company_links_without_changing_source(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="example_company",
+            name="Example Company",
+            source_type="lever",
+            source_config={"source_slug": "example-company"},
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+        company_ids=("example_company",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    response = client.post(
+        "/companies/example_company/links",
+        data={
+            "website_url": "https://example.invalid",
+            "careers_link_url": "https://example.invalid/careers",
+            "linkedin_url": (
+                "https://www.linkedin.com/company/example-company"
+            ),
+            "glassdoor_url": (
+                "https://www.glassdoor.com/Overview/example-company"
+            ),
+        },
+        follow_redirects=True,
+    )
+    html = response.get_data(as_text=True)
+    employer = get_employer_source(database_path, "example_company")
+
+    assert response.status_code == 200
+    assert "working job source was not changed" in html
+    assert "Open website" in html
+    assert "Open careers" in html
+    assert "Open LinkedIn" in html
+    assert "Open Glassdoor" in html
+    assert employer is not None
+    assert employer.source_type == "lever"
+    assert employer.source_config["source_slug"] == "example-company"
+    assert employer.source_config["linkedin_url"].startswith(
+        "https://www.linkedin.com/"
+    )
+
+
+def test_company_links_reject_wrong_social_domain_and_preserve_source(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="example_company",
+            name="Example Company",
+            source_type="lever",
+            source_config={"source_slug": "example-company"},
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+        company_ids=("example_company",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    response = client.post(
+        "/companies/example_company/links",
+        data={"linkedin_url": "https://example.invalid/not-linkedin"},
+        follow_redirects=True,
+    )
+    employer = get_employer_source(database_path, "example_company")
+
+    assert response.status_code == 200
+    assert "must use an official linkedin.com address" in response.get_data(
+        as_text=True
+    )
+    assert employer is not None
+    assert employer.source_config == {"source_slug": "example-company"}

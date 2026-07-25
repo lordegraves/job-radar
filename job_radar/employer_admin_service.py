@@ -314,12 +314,20 @@ def update_employer(
     if source_type not in SUPPORTED_SOURCE_TYPES:
         raise EmployerAdminError("Choose a supported job source.")
 
+    normalized_source_config = _normalize_source_config(source_type, source_config)
+    # Company reference links are independent of collector settings. An
+    # administrator editing the collector must not silently erase them.
+    for key in COMPANY_LINK_KEYS:
+        existing_link = previous.employer.source_config.get(key)
+        if isinstance(existing_link, str) and existing_link.strip():
+            normalized_source_config[key] = existing_link.strip()
+
     employer = EmployerSource(
         employer_id=employer_id,
         name=name.strip(),
         source_type=source_type,
         enabled=previous.employer.enabled,
-        source_config=_normalize_source_config(source_type, source_config),
+        source_config=normalized_source_config,
         notes=notes.strip() or None,
     )
     db_path = initialize_database(database_path)
@@ -399,6 +407,63 @@ def rename_employer(
             connection,
             employer_id,
             "rename",
+            previous,
+            employer,
+            previous.retired,
+        )
+    return get_admin_employer(db_path, employer_id)  # type: ignore[return-value]
+
+
+COMPANY_LINK_KEYS = (
+    "website_url",
+    "careers_link_url",
+    "linkedin_url",
+    "glassdoor_url",
+)
+
+
+def update_employer_links(
+    database_path: str | Path,
+    employer_id: str,
+    *,
+    links: dict[str, str],
+) -> EmployerAdminRecord:
+    """Save optional public reference links without changing the job collector."""
+
+    previous = get_admin_employer(database_path, employer_id)
+    if previous is None:
+        raise EmployerAdminError("That employer no longer exists.")
+
+    source_config = dict(previous.employer.source_config)
+    for key in COMPANY_LINK_KEYS:
+        value = _normalize_company_link(key, links.get(key, ""))
+        if value:
+            source_config[key] = value
+        else:
+            source_config.pop(key, None)
+
+    employer = EmployerSource(
+        employer_id=previous.employer.employer_id,
+        name=previous.employer.name,
+        source_type=previous.employer.source_type,
+        enabled=previous.employer.enabled,
+        source_config=source_config,
+        notes=previous.employer.notes,
+    )
+    db_path = initialize_database(database_path)
+    with connect_database(db_path) as connection:
+        connection.execute(
+            """
+            UPDATE employer_sources
+            SET source_config_json = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE employer_id = ?
+            """,
+            (_dump_config(employer.source_config), employer_id),
+        )
+        _record_audit(
+            connection,
+            employer_id,
+            "update_links",
             previous,
             employer,
             previous.retired,
@@ -684,6 +749,34 @@ def _normalize_source_config(
     if source_type == "usajobs" and "organization" in config:
         config["query_params"] = {"Organization": config.pop("organization")}
     return config
+
+
+def _normalize_company_link(key: str, value: str) -> str:
+    normalized = value.strip()
+    if not normalized:
+        return ""
+    if len(normalized) > 2048:
+        raise EmployerAdminError("Company links must be 2,048 characters or fewer.")
+
+    parsed = urlparse(normalized)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise EmployerAdminError(
+            "Enter complete company links beginning with http:// or https://."
+        )
+
+    hostname = (parsed.hostname or "").casefold()
+    required_domain = {
+        "linkedin_url": "linkedin.com",
+        "glassdoor_url": "glassdoor.com",
+    }.get(key)
+    if required_domain and not (
+        hostname == required_domain or hostname.endswith(f".{required_domain}")
+    ):
+        label = "LinkedIn" if key == "linkedin_url" else "Glassdoor"
+        raise EmployerAdminError(
+            f"The {label} field must use an official {required_domain} address."
+        )
+    return normalized
 
 
 def form_source_config(employer: EmployerSource) -> dict[str, str]:

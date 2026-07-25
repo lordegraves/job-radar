@@ -218,6 +218,21 @@
     </a>
 </section>
 
+<section class="panel support-panel" aria-labelledby="support-junior-heading">
+    <div>
+        <h2 id="support-junior-heading">Support Junior</h2>
+        <p>
+            Tell us how Junior has helped your job search or support continued
+            development with an optional donation. Donations never change
+            Junior's features or how the application works.
+        </p>
+    </div>
+    <div class="support-actions">
+        <a href="mailto:claytonmgraves@outlook.com?subject=My%20Junior%20story">Share your story</a>
+        <a class="button-link" href="https://account.venmo.com/u/LordGraves" target="_blank" rel="noopener noreferrer">Donate with Venmo</a>
+    </div>
+</section>
+
 <section class="dashboard-layout" aria-label="Dashboard overview">
     <div class="panel">
         <div class="panel-header">
@@ -229,17 +244,17 @@
                 <p>Latest generated report summary.</p>
                 {% endif %}
             </div>
-            {% if latest_report.html_report_exists %}
-            <a href="{{ url_for('report_view', report_name=latest_report.html_report_name) }}">Open HTML report</a>
-            {% else %}
-            <a href="{{ url_for('reports') }}">Open reports</a>
-            {% endif %}
+            <a href="{{ url_for('reports') }}">Review jobs</a>
         </div>
 
         <div class="scan-grid" aria-label="Latest scan summary">
             <a class="scan-card" href="{{ url_for('report_section_view', section_name='top_matches') }}">
                 <strong>{{ latest_report.top_matches }}</strong>
                 <span class="muted">Top Matches</span>
+            </a>
+            <a class="scan-card" href="{{ url_for('report_section_view', section_name='potential_top_matches') }}">
+                <strong>{{ latest_report.potential_top_matches }}</strong>
+                <span class="muted">Potential Top Matches</span>
             </a>
             <a class="scan-card" href="{{ url_for('report_section_view', section_name='review_needed') }}">
                 <strong>{{ latest_report.review_needed }}</strong>
@@ -289,21 +304,6 @@
         {% else %}
         <p class="muted">No tracker records need attention right now.</p>
         {% endif %}
-    </div>
-</section>
-
-<section class="panel support-panel" aria-labelledby="support-junior-heading">
-    <div>
-        <h2 id="support-junior-heading">Support Junior</h2>
-        <p>
-            Tell us how Junior has helped your job search or support continued
-            development with an optional donation. Donations never change
-            Junior's features or how the application works.
-        </p>
-    </div>
-    <div class="support-actions">
-        <a href="mailto:claytonmgraves@outlook.com?subject=My%20Junior%20story">Share your story</a>
-        <a class="button-link" href="https://account.venmo.com/u/LordGraves" target="_blank" rel="noopener noreferrer">Donate with Venmo</a>
     </div>
 </section>
 

@@ -1,7 +1,7 @@
 {# Lists current report outputs and provides access to saved report files. #}
 {% extends "base.html" %}
 
-{% block title %}Reports - junior{% endblock %}
+{% block title %}Review Jobs - junior{% endblock %}
 
 {% block page_styles %}
 <style>
@@ -10,6 +10,38 @@
         gap: 12px;
         grid-template-columns: repeat(2, minmax(220px, 1fr));
         margin: 18px 0;
+    }
+
+    .review-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        margin: 18px 0;
+    }
+
+    .review-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+        padding: 18px;
+        text-decoration: none;
+    }
+
+    .review-card:hover {
+        background: var(--surface-hover);
+        border-color: var(--link);
+        color: var(--text);
+    }
+
+    .review-card strong {
+        color: var(--link);
+        display: block;
+        font-size: 1.65rem;
+    }
+
+    .report-exports {
+        margin-top: 28px;
     }
 
     .primary-output-card {
@@ -37,26 +69,55 @@
 
 {% block content %}
 <div class="page-card">
-    <h1 class="page-title">Reports</h1>
+    <h1 class="page-title">Review Jobs</h1>
 
     <p class="muted">
-        This page opens the latest generated scan report and email preview. It does not start a scan or send email.
+        Review the latest scan, save promising jobs, pass on jobs you do not
+        want to see again, or move an application into the tracker.
     </p>
 
-    <p class="muted">
-        The latest filenames remain stable. Older report sets appear below when retention is enabled.
-    </p>
-
-    <p><strong>Reports path:</strong> <code>{{ reports_path }}</code></p>
+    {% if latest_report.generated_at %}
+    <p class="muted">Latest scan completed {{ latest_report.generated_at }}.</p>
+    {% endif %}
 </div>
 
-<h2>Latest scan results</h2>
+{% if latest_report.generated_at %}
+<div class="review-grid" aria-label="Latest scan job groups">
+    <a class="review-card" href="{{ url_for('report_section_view', section_name='top_matches') }}">
+        <strong>{{ latest_report.top_matches }}</strong>
+        <span>Top Matches</span>
+    </a>
+    <a class="review-card" href="{{ url_for('report_section_view', section_name='potential_top_matches') }}">
+        <strong>{{ latest_report.potential_top_matches }}</strong>
+        <span>Potential Top Matches</span>
+    </a>
+    <a class="review-card" href="{{ url_for('report_section_view', section_name='review_needed') }}">
+        <strong>{{ latest_report.review_needed }}</strong>
+        <span>Review Needed</span>
+    </a>
+    <a class="review-card" href="{{ url_for('report_section_view', section_name='new_jobs') }}">
+        <strong>{{ latest_report.new_jobs }}</strong>
+        <span>New Jobs</span>
+    </a>
+    <a class="review-card" href="{{ url_for('job_decisions') }}">
+        <strong>Open</strong>
+        <span>Saved and Reviewed Jobs</span>
+    </a>
+</div>
+{% else %}
+<div class="page-card">
+    <p>No scan results are available yet. Run a scan first.</p>
+</div>
+{% endif %}
 
-<p class="muted">Open the latest generated scan report and email preview.</p>
-<p><a class="button-link button-secondary" href="{{ url_for('job_decisions') }}">Open saved and reviewed jobs</a></p>
-
+<section class="report-exports">
+<h2>View or download reports</h2>
+<p class="muted">
+    These are read-only copies for sharing, printing, or troubleshooting.
+    Review decisions are made in the job groups above.
+</p>
 {% if primary_report_files %}
-<div class="primary-output-grid" aria-label="Latest scan result shortcuts">
+<div class="primary-output-grid" aria-label="Report export shortcuts">
     {% for report in primary_report_files %}
     <div class="primary-output-card">
         <strong><a href="{{ url_for('report_view', report_name=report.name) }}">{{ report.name }}</a></strong>
@@ -90,7 +151,7 @@
 </table>
 {% else %}
 <div class="page-card">
-    <p>No scan outputs found yet. Run a scan first.</p>
+    <p>No report exports are available yet.</p>
 </div>
 {% endif %}
 
@@ -132,4 +193,5 @@
     <p>No previous report runs are retained.</p>
 </div>
 {% endif %}
+</section>
 {% endblock %}

@@ -17,7 +17,11 @@ from job_radar.domain_errors import (
     InvalidCompanyStateError,
     JuniorDomainError,
 )
-from job_radar.employer_admin_service import EmployerAdminError, rename_employer
+from job_radar.employer_admin_service import (
+    EmployerAdminError,
+    rename_employer,
+    update_employer_links,
+)
 from job_radar.employer_connection_service import (
     EmployerConnectionError,
     test_employer_connection,
@@ -201,6 +205,37 @@ def register_company_routes(
             return redirect(url_for("company_detail", company_key=company_key))
         flash(
             f"The shared company name is now {renamed.employer.name}.",
+            "success",
+        )
+        return redirect(url_for("company_detail", company_key=company_key))
+
+    @app.post("/companies/<company_key>/links")
+    def save_company_links(company_key: str):
+        workspace = build_company_workspace(get_database_path())
+        if workspace.active_profile is None:
+            abort(404)
+        if not any(
+            item.company_key == company_key for item in workspace.companies
+        ):
+            abort(404)
+        try:
+            update_employer_links(
+                get_database_path(),
+                company_key,
+                links={
+                    "website_url": request.form.get("website_url", ""),
+                    "careers_link_url": request.form.get(
+                        "careers_link_url", ""
+                    ),
+                    "linkedin_url": request.form.get("linkedin_url", ""),
+                    "glassdoor_url": request.form.get("glassdoor_url", ""),
+                },
+            )
+        except EmployerAdminError as error:
+            flash(str(error), "error")
+            return redirect(url_for("company_detail", company_key=company_key))
+        flash(
+            "Company links were saved. The working job source was not changed.",
             "success",
         )
         return redirect(url_for("company_detail", company_key=company_key))

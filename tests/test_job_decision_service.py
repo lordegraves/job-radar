@@ -180,7 +180,7 @@ def test_job_decision_rejects_unbounded_notes(tmp_path: Path) -> None:
     database_path = tmp_path / "junior.sqlite3"
     create_test_profile(database_path, "profile_11111111")
 
-    with pytest.raises(JobDecisionError, match="2000 characters"):
+    with pytest.raises(JobDecisionError, match="300 characters"):
         save_job_decision(
             database_path,
             profile_id="profile_11111111",
@@ -190,5 +190,5 @@ def test_job_decision_rejects_unbounded_notes(tmp_path: Path) -> None:
             title="Example Role",
             source_url=None,
             location=None,
-            notes="x" * 2001,
+            notes="x" * 301,
         )

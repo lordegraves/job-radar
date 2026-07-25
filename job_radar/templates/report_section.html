@@ -184,10 +184,9 @@
     }
 
     .job-links {
-        align-items: center;
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
         gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         margin-top: 18px;
     }
 
@@ -195,10 +194,88 @@
         align-items: center;
         display: inline-flex;
         justify-content: center;
+        width: 100%;
     }
 
     .job-links form {
         margin: 0;
+    }
+
+    .job-links label {
+        color: var(--muted);
+        font-size: 0.82rem;
+        margin: 0 0 5px;
+    }
+
+    .job-links button,
+    .job-links .button-link,
+    .job-links select {
+        font: inherit;
+        min-height: 38px;
+    }
+
+    .job-decision-form {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        display: grid;
+        gap: 10px 12px;
+        grid-column: 1 / -1;
+        grid-template-columns: minmax(0, 2fr) minmax(190px, 1fr);
+        padding: 14px;
+    }
+
+    .job-decision-field label {
+        margin-top: 0;
+    }
+
+    .job-decision-field input,
+    .job-decision-field select {
+        width: 100%;
+    }
+
+    .job-decision-actions {
+        display: grid;
+        gap: 10px;
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .job-decision-actions button {
+        width: 100%;
+    }
+
+    .field-help {
+        color: var(--muted);
+        display: block;
+        font-size: 0.78rem;
+        margin-top: 4px;
+    }
+
+    .job-details {
+        border-top: 1px solid var(--border);
+        margin-top: 16px;
+        padding-top: 12px;
+    }
+
+    .job-details summary {
+        color: var(--link);
+        cursor: pointer;
+        font-weight: 650;
+    }
+
+    .pagination {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        margin: 18px 0;
+    }
+
+    .pagination-actions {
+        display: flex;
+        gap: 8px;
     }
 
     .error-card-grid {
@@ -263,6 +340,15 @@
             margin-top: 14px;
             text-align: left;
         }
+
+        .job-links {
+            grid-template-columns: 1fr;
+        }
+
+        .job-decision-form,
+        .job-decision-actions {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
@@ -305,9 +391,10 @@
     {% endfor %}
 </section>
 {% elif job_cards %}
-{% if section_name in ('top_matches', 'review_needed', 'new_jobs') %}
+{% if section_name in ('top_matches', 'potential_top_matches', 'review_needed', 'new_jobs') %}
 <form id="bulk-decision-form" class="page-card" method="post" action="{{ url_for('save_bulk_report_job_decisions', section_name=section_name) }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="page" value="{{ current_page }}">
     <h2>Update selected jobs</h2>
     <p class="muted">Select jobs below, then save or pass all selected jobs together.</p>
     <label for="bulk-decision-reason">Reason for passing (optional)</label>
@@ -323,10 +410,24 @@
     </div>
 </form>
 {% endif %}
+{% if total_jobs %}
+<nav class="pagination" aria-label="Job result pages">
+    <span>Showing {{ page_start }}–{{ page_end }} of {{ total_jobs }} jobs</span>
+    <span>Page {{ current_page }} of {{ total_pages }}</span>
+    <div class="pagination-actions">
+        {% if current_page > 1 %}
+        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page - 1) }}">Previous</a>
+        {% endif %}
+        {% if current_page < total_pages %}
+        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page + 1) }}">Next</a>
+        {% endif %}
+    </div>
+</nav>
+{% endif %}
 <section class="job-card-grid" aria-label="{{ section_title }} job cards">
     {% for job in job_cards %}
     <article class="job-card">
-        {% if job.job_radar_id and section_name in ('top_matches', 'review_needed', 'new_jobs') %}
+        {% if job.job_radar_id and section_name in ('top_matches', 'potential_top_matches', 'review_needed', 'new_jobs') %}
         <label class="job-selection">
             <input form="bulk-decision-form" type="checkbox" name="job_radar_id" value="{{ job.job_radar_id }}">
             Select this job
@@ -379,14 +480,20 @@
 
         {% if job.why_matched %}
         <section class="job-section">
-            <h2>Matched because</h2>
+            <h2>
+                {% if section_name == 'potential_top_matches' %}
+                Strong evidence
+                {% else %}
+                Matched because
+                {% endif %}
+            </h2>
             <p>{{ job.why_matched }}</p>
         </section>
         {% endif %}
 
-        {% if job.eligibility_reasons %}
+        {% if section_name == 'potential_top_matches' and job.eligibility_reasons %}
         <section class="job-section">
-            <h2>Eligibility review</h2>
+            <h2>Waiting on</h2>
             <ul class="eligibility-reasons">
                 {% for reason in job.eligibility_reasons %}
                 <li>{{ reason }}</li>
@@ -395,7 +502,20 @@
         </section>
         {% endif %}
 
-        <div class="job-signal-grid">
+        <details class="job-details">
+            <summary>Show supporting details</summary>
+            {% if job.eligibility_reasons and section_name != 'potential_top_matches' %}
+            <section class="job-section">
+                <h2>Eligibility review</h2>
+                <ul class="eligibility-reasons">
+                    {% for reason in job.eligibility_reasons %}
+                    <li>{{ reason }}</li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            <div class="job-signal-grid">
             {% if job.technical_match %}
             <div class="job-signal">
                 <span>Role fit</span>
@@ -423,22 +543,23 @@
                 <strong>{{ job.history_risk }}</strong>
             </div>
             {% endif %}
-        </div>
+            </div>
 
-        {% if job.resume_evidence or job.resume_gaps or job.history_context %}
-        <section class="job-section">
-            <h2>Context</h2>
-            {% if job.resume_evidence %}
-            <p><strong>Resume evidence:</strong> {{ job.resume_evidence }}</p>
+            {% if job.resume_evidence or job.resume_gaps or job.history_context %}
+            <section class="job-section">
+                <h2>Context</h2>
+                {% if job.resume_evidence %}
+                <p><strong>Resume evidence:</strong> {{ job.resume_evidence }}</p>
+                {% endif %}
+                {% if job.resume_gaps %}
+                <p><strong>Resume gaps:</strong> {{ job.resume_gaps }}</p>
+                {% endif %}
+                {% if job.history_context %}
+                <p><strong>History context:</strong> {{ job.history_context }}</p>
+                {% endif %}
+            </section>
             {% endif %}
-            {% if job.resume_gaps %}
-            <p><strong>Resume gaps:</strong> {{ job.resume_gaps }}</p>
-            {% endif %}
-            {% if job.history_context %}
-            <p><strong>History context:</strong> {{ job.history_context }}</p>
-            {% endif %}
-        </section>
-        {% endif %}
+        </details>
 
         <div class="job-links">
             <a class="button-link" href="{{ job.tracker_add_url }}">I applied — track application</a>
@@ -446,28 +567,47 @@
             <a class="button-link button-secondary" href="{{ job.url }}" target="_blank" rel="noopener noreferrer">Open job posting</a>
             {% endif %}
             {% if job.job_radar_id and section_name in ('top_matches', 'review_needed', 'new_jobs') %}
-            <form method="post" action="{{ url_for('save_report_job_decision', job_radar_id=job.job_radar_id) }}">
+            <form class="job-decision-form" method="post" action="{{ url_for('save_report_job_decision', job_radar_id=job.job_radar_id) }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="section_name" value="{{ section_name }}">
-                <button class="button-secondary" type="submit" name="decision" value="saved">Save for later</button>
-            </form>
-            <form method="post" action="{{ url_for('save_report_job_decision', job_radar_id=job.job_radar_id) }}">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="section_name" value="{{ section_name }}">
-                <label for="pass-reason-{{ loop.index }}">Reason (optional)</label>
-                <select id="pass-reason-{{ loop.index }}" name="decision_reason">
-                    <option value="">No reason selected</option>
-                    {% for reason in pass_reasons %}
-                    <option value="{{ reason }}">{{ reason }}</option>
-                    {% endfor %}
-                </select>
-                <button class="button-secondary" type="submit" name="decision" value="passed">Pass — don't show again</button>
+                <input type="hidden" name="page" value="{{ current_page }}">
+                <div class="job-decision-field">
+                    <label for="review-notes-{{ loop.index }}">Notes for my review (optional)</label>
+                    <input id="review-notes-{{ loop.index }}" name="notes" maxlength="300" placeholder="Example: Three-month contract and on-site in California">
+                    <span class="field-help">Up to 300 characters. Notes are for you and do not affect scoring.</span>
+                </div>
+                <div class="job-decision-field">
+                    <label for="pass-reason-{{ loop.index }}">Reason (optional)</label>
+                    <select id="pass-reason-{{ loop.index }}" name="decision_reason">
+                        <option value="">No reason selected</option>
+                        {% for reason in pass_reasons %}
+                        <option value="{{ reason }}">{{ reason }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="job-decision-actions">
+                    <button class="button-secondary" type="submit" name="decision" value="saved">Save for later</button>
+                    <button class="button-secondary" type="submit" name="decision" value="passed">Pass — don't show again</button>
+                </div>
             </form>
             {% endif %}
         </div>
     </article>
     {% endfor %}
 </section>
+{% if total_pages > 1 %}
+<nav class="pagination" aria-label="Job result pages">
+    <span>Page {{ current_page }} of {{ total_pages }}</span>
+    <div class="pagination-actions">
+        {% if current_page > 1 %}
+        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page - 1) }}">Previous</a>
+        {% endif %}
+        {% if current_page < total_pages %}
+        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page + 1) }}">Next</a>
+        {% endif %}
+    </div>
+</nav>
+{% endif %}
 {% else %}
 <div class="empty-panel">
     {{ empty_message }}

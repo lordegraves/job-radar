@@ -86,7 +86,7 @@
                 <form class="decision-notes" method="post" action="{{ url_for('update_job_decision', job_radar_id=job.job_radar_id) }}">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <label for="saved-notes-{{ loop.index }}">Notes</label>
-                    <textarea id="saved-notes-{{ loop.index }}" name="notes" maxlength="2000">{{ job.notes or '' }}</textarea>
+                    <textarea id="saved-notes-{{ loop.index }}" name="notes" maxlength="300">{{ job.notes or '' }}</textarea>
                     <button class="button-secondary" type="submit" name="action" value="save_details">Save notes</button>
                 </form>
                 <div class="decision-actions">
@@ -137,7 +137,7 @@
                         {% endfor %}
                     </select>
                     <label for="passed-notes-{{ loop.index }}">Notes</label>
-                    <textarea id="passed-notes-{{ loop.index }}" name="notes" maxlength="2000">{{ job.notes or '' }}</textarea>
+                    <textarea id="passed-notes-{{ loop.index }}" name="notes" maxlength="300">{{ job.notes or '' }}</textarea>
                     <button class="button-secondary" type="submit" name="action" value="save_details">Save details</button>
                 </form>
                 <div class="decision-actions">

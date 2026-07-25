@@ -17,6 +17,7 @@ from job_radar.employer_admin_service import (
     set_employer_lifecycle,
     set_employer_profile_assignment,
     update_employer,
+    update_employer_links,
     validate_employer,
 )
 from job_radar.employer_storage import (
@@ -179,6 +180,11 @@ def test_edit_requires_revalidation_and_audit_excludes_configuration(
         notes="",
     )
     validate_employer(database_path, created.employer.employer_id)
+    update_employer_links(
+        database_path,
+        created.employer.employer_id,
+        links={"linkedin_url": "https://www.linkedin.com/company/example-labs"},
+    )
 
     updated = update_employer(
         database_path,
@@ -191,6 +197,9 @@ def test_edit_requires_revalidation_and_audit_excludes_configuration(
 
     assert updated.validation_state == "not_checked"
     assert updated.employer.name == "Example Research Labs"
+    assert updated.employer.source_config["linkedin_url"] == (
+        "https://www.linkedin.com/company/example-labs"
+    )
     with sqlite3.connect(database_path) as connection:
         audit_json = "\n".join(
             value

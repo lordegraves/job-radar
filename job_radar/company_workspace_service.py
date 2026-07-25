@@ -26,6 +26,10 @@ class CompanyWorkspaceItem:
     scanning: bool
     source_type: str
     connection_health: EmployerConnectionHealth
+    website_url: str | None = None
+    careers_url: str | None = None
+    linkedin_url: str | None = None
+    glassdoor_url: str | None = None
 
     @property
     def source_label(self) -> str:
@@ -104,6 +108,19 @@ def build_company_workspace(
                     db_path,
                     employer.employer_id,
                 ),
+                website_url=_optional_url(
+                    employer.source_config.get("website_url")
+                ),
+                careers_url=_optional_url(
+                    employer.source_config.get("careers_link_url")
+                    or employer.source_config.get("careers_url")
+                ),
+                linkedin_url=_optional_url(
+                    employer.source_config.get("linkedin_url")
+                ),
+                glassdoor_url=_optional_url(
+                    employer.source_config.get("glassdoor_url")
+                ),
             )
         )
 
@@ -118,3 +135,12 @@ def build_company_workspace(
         scanning_companies=scanning_companies,
         paused_companies=len(company_items) - scanning_companies,
     )
+
+
+def _optional_url(value: object) -> str | None:
+    """Expose only HTTP links to the normal-user template."""
+
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    return normalized if normalized.startswith(("http://", "https://")) else None

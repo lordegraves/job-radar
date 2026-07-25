@@ -43,6 +43,40 @@
         font-weight: 650;
     }
 
+    .company-links-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .company-links-grid label {
+        display: grid;
+        gap: 7px;
+        margin: 0;
+    }
+
+    .company-links-grid input {
+        max-width: none;
+        width: 100%;
+    }
+
+    .company-link-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 0 0 18px;
+    }
+
+    .company-links-grid + button {
+        margin-top: 16px;
+    }
+
+    @media (max-width: 760px) {
+        .company-links-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
 </style>
 {% endblock %}
 
@@ -131,6 +165,54 @@
     <p>{{ company.connection_health.message }}</p>
 </div>
 {% endif %}
+
+<section class="page-card">
+    <h2>Company links</h2>
+    <p class="muted">
+        Keep useful public pages together for quick reference. Junior opens
+        these links in your browser; it does not sign in to, monitor, or scrape
+        LinkedIn, Glassdoor, or the company website. These shared links are
+        available to every profile on this Junior installation.
+    </p>
+    {% if company.website_url or company.careers_url or company.linkedin_url or company.glassdoor_url %}
+    <div class="company-link-actions" aria-label="Saved company links">
+        {% if company.website_url %}
+        <a class="button-link button-secondary" href="{{ company.website_url }}" target="_blank" rel="noopener noreferrer">Open website</a>
+        {% endif %}
+        {% if company.careers_url %}
+        <a class="button-link button-secondary" href="{{ company.careers_url }}" target="_blank" rel="noopener noreferrer">Open careers</a>
+        {% endif %}
+        {% if company.linkedin_url %}
+        <a class="button-link button-secondary" href="{{ company.linkedin_url }}" target="_blank" rel="noopener noreferrer">Open LinkedIn</a>
+        {% endif %}
+        {% if company.glassdoor_url %}
+        <a class="button-link button-secondary" href="{{ company.glassdoor_url }}" target="_blank" rel="noopener noreferrer">Open Glassdoor</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    <form method="post" action="{{ url_for('save_company_links', company_key=company.company_key) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="company-links-grid">
+            <label for="website-url">
+                <span>Company website</span>
+                <input id="website-url" name="website_url" type="url" maxlength="2048" placeholder="https://www.example.com" value="{{ company.website_url or '' }}">
+            </label>
+            <label for="careers-link-url">
+                <span>Careers page</span>
+                <input id="careers-link-url" name="careers_link_url" type="url" maxlength="2048" placeholder="https://www.example.com/careers" value="{{ company.careers_url or '' }}">
+            </label>
+            <label for="linkedin-url">
+                <span>LinkedIn company page</span>
+                <input id="linkedin-url" name="linkedin_url" type="url" maxlength="2048" placeholder="https://www.linkedin.com/company/example" value="{{ company.linkedin_url or '' }}">
+            </label>
+            <label for="glassdoor-url">
+                <span>Glassdoor company page</span>
+                <input id="glassdoor-url" name="glassdoor_url" type="url" maxlength="2048" placeholder="https://www.glassdoor.com/Overview/..." value="{{ company.glassdoor_url or '' }}">
+            </label>
+        </div>
+        <button type="submit">Save company links</button>
+    </form>
+</section>
 
 <section class="page-card">
     <h2>Correct the company name</h2>

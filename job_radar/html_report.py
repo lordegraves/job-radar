@@ -237,6 +237,7 @@ def _append_html_table_of_contents(
         sections.extend(
             [
                 ("top-matches", "Top Matches"),
+                ("potential-top-matches", "Potential Top Matches"),
                 ("review-needed", "Review Needed"),
                 ("tracked-applications", "Tracked Applications"),
                 ("new-jobs", "New Jobs"),
@@ -897,6 +898,9 @@ def _append_html_scored_sections(
     _append_html_top_matches_section(lines, report_scored_postings)
     _append_html_back_to_contents(lines)
 
+    _append_html_potential_top_matches_section(lines, report_scored_postings)
+    _append_html_back_to_contents(lines)
+
     _append_html_review_needed_section(lines, report_scored_postings)
     _append_html_back_to_contents(lines)
 
@@ -975,6 +979,27 @@ def _append_html_review_needed_section(
         return
 
     for scored_posting in review_needed:
+        _append_html_scored_posting(lines, scored_posting)
+
+
+def _append_html_potential_top_matches_section(
+    lines: list[str],
+    scored_postings: list[ScoredPosting],
+) -> None:
+    lines.append('<h2 id="potential-top-matches">Potential Top Matches</h2>')
+    potential_matches = build_report_view_model(
+        scored_postings=scored_postings,
+    ).potential_top_matches
+
+    if not potential_matches:
+        lines.append("<p>No potential top matches found.</p>")
+        return
+
+    lines.append(
+        "<p>These roles have strong fit evidence, but important practical "
+        "details still need confirmation.</p>"
+    )
+    for scored_posting in potential_matches:
         _append_html_scored_posting(lines, scored_posting)
 
 
