@@ -5,6 +5,7 @@ import json
 import re
 import sqlite3
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 from html import unescape
 from pathlib import Path
@@ -41,6 +42,7 @@ ALREADY_ASSIGNED = "ALREADY_ASSIGNED"
 EXTERNAL_LOOKUP_DISABLED = "EXTERNAL_LOOKUP_DISABLED"
 EXTERNAL_LOOKUP_UNAVAILABLE = "EXTERNAL_LOOKUP_UNAVAILABLE"
 EXTERNAL_LOOKUP_NO_SOURCE = "EXTERNAL_LOOKUP_NO_SOURCE"
+DISCOVERY_TIMED_OUT = "DISCOVERY_TIMED_OUT"
 
 _TRACKING_QUERY_KEYS = {
     "fbclid",
@@ -49,6 +51,7 @@ _TRACKING_QUERY_KEYS = {
     "mc_eid",
 }
 _PUBLIC_SOURCE_SEARCH_URL = "https://www.bing.com/search"
+_COMPANY_DISCOVERY_TIMEOUT_SECONDS = 120
 _GENERIC_COMPANY_WORDS = {
     "careers",
     "com",
@@ -726,6 +729,54 @@ def _create_and_assign_generic(
 ) -> EmployerResolutionResult:
     """Enable an unfamiliar public careers page only after extracting real jobs."""
 
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(
+        _resolve_generic_source,
+        display_name=display_name,
+        normalized_url=normalized_url,
+        allow_external_lookup=allow_external_lookup,
+    )
+    try:
+        source_result = future.result(timeout=_COMPANY_DISCOVERY_TIMEOUT_SECONDS)
+    except FutureTimeoutError:
+        future.cancel()
+        return EmployerResolutionResult(
+            status=DISCOVERY_TIMED_OUT,
+            message=(
+                "Junior stopped checking after two minutes and did not add "
+                "the company. The careers site may be slow or temporarily "
+                "unavailable. You can safely try again later."
+            ),
+            employer_name=display_name,
+            careers_url=normalized_url,
+        )
+    finally:
+        # Discovery performs network reads only. A timed-out worker may finish
+        # its current bounded request, but it cannot write durable user data.
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    if isinstance(source_result, EmployerResolutionResult):
+        return source_result
+    discovered, job_count = source_result
+    return _create_and_assign_scan_ready(
+        database_path,
+        profile_id=profile_id,
+        display_name=display_name,
+        normalized_name=normalized_name,
+        normalized_url=normalized_url,
+        detection=discovered,
+        connection_job_count=job_count,
+    )
+
+
+def _resolve_generic_source(
+    *,
+    display_name: str,
+    normalized_url: str,
+    allow_external_lookup: bool,
+) -> EmployerResolutionResult | tuple[DetectedEmployerSource, int]:
+    """Run bounded network-only discovery without writing application data."""
+
     discoveries = _discover_branded_sources(normalized_url)
     discoveries.append(
         DetectedEmployerSource(
@@ -800,16 +851,7 @@ def _create_and_assign_generic(
             )
     if tested_source is None:
         return _source_test_failed()
-    discovered, job_count = tested_source
-    return _create_and_assign_scan_ready(
-        database_path,
-        profile_id=profile_id,
-        display_name=display_name,
-        normalized_name=normalized_name,
-        normalized_url=normalized_url,
-        detection=discovered,
-        connection_job_count=job_count,
-    )
+    return tested_source
 
 
 def _first_working_source(

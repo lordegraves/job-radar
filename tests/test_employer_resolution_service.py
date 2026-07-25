@@ -3,6 +3,7 @@
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Event
 
 import pytest
 
@@ -14,6 +15,7 @@ from job_radar.employer_resolution_service import (
     CREATED_SCAN_READY,
     DETECTED_SCAN_READY,
     DETECTED_SETUP_REQUIRED,
+    DISCOVERY_TIMED_OUT,
     EXTERNAL_LOOKUP_DISABLED,
     EXTERNAL_LOOKUP_NO_SOURCE,
     EXTERNAL_LOOKUP_UNAVAILABLE,
@@ -494,6 +496,44 @@ def test_unknown_site_failure_directs_user_to_safe_support(
     assert result.status == EXTERNAL_LOOKUP_NO_SOURCE
     assert "claytonmgraves@outlook.com" in result.message
     assert "Do not send passwords" in result.message
+    assert list_profile_employer_assignments(database_path, profile.profile_id) == []
+
+
+def test_unknown_site_discovery_has_an_overall_timeout_and_writes_nothing(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    release_worker = Event()
+
+    def slow_discovery(**kwargs):
+        release_worker.wait(timeout=1)
+        return None
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._COMPANY_DISCOVERY_TIMEOUT_SECONDS",
+        0.01,
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._resolve_generic_source",
+        slow_discovery,
+    )
+    try:
+        result = resolve_employer_submission(
+            database_path,
+            profile_id=profile.profile_id,
+            company_name="Example Kitchens",
+            careers_url="https://careers.example.invalid/jobs",
+            confirm_detected=True,
+        )
+    finally:
+        release_worker.set()
+
+    assert result.status == DISCOVERY_TIMED_OUT
+    assert "after two minutes" in result.message
+    assert "did not add" in result.message
+    assert get_employer_source(database_path, "example-kitchens") is None
     assert list_profile_employer_assignments(database_path, profile.profile_id) == []
 
 
