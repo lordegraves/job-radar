@@ -391,7 +391,7 @@
     {% endfor %}
 </section>
 {% elif job_cards %}
-{% if section_name in ('top_matches', 'potential_top_matches', 'review_needed', 'new_jobs') %}
+{% if decisions_enabled %}
 <form id="bulk-decision-form" class="page-card" method="post" action="{{ url_for('save_bulk_report_job_decisions', section_name=section_name) }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="page" value="{{ current_page }}">
@@ -427,7 +427,7 @@
 <section class="job-card-grid" aria-label="{{ section_title }} job cards">
     {% for job in job_cards %}
     <article class="job-card">
-        {% if job.job_radar_id and section_name in ('top_matches', 'potential_top_matches', 'review_needed', 'new_jobs') %}
+        {% if job.job_radar_id and decisions_enabled %}
         <label class="job-selection">
             <input form="bulk-decision-form" type="checkbox" name="job_radar_id" value="{{ job.job_radar_id }}">
             Select this job
@@ -566,7 +566,7 @@
             {% if job.url %}
             <a class="button-link button-secondary" href="{{ job.url }}" target="_blank" rel="noopener noreferrer">Open job posting</a>
             {% endif %}
-            {% if job.job_radar_id and section_name in ('top_matches', 'review_needed', 'new_jobs') %}
+            {% if job.job_radar_id and decisions_enabled %}
             <form class="job-decision-form" method="post" action="{{ url_for('save_report_job_decision', job_radar_id=job.job_radar_id) }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="section_name" value="{{ section_name }}">

@@ -49,7 +49,8 @@ Application History is a permanent app-native feature. It is stored in SQLite an
 Managed profiles have separate Active Applications and Application History records. Switching profiles changes which records the GUI, scans, reports, and CLI use. Existing tracker and history records are assigned to the active managed profile during the protected database migration. A profile that owns tracker or history records cannot be deleted, preventing accidental loss of job-search data.
 
 The current RC5 work adds **Save for later**, **Pass / don't show again**, and
-**I applied — track application** to structured scan-result pages. Saved and
+**I applied — track application** to every structured scan-result
+classification. Saved and
 passed jobs live in a separate profile-owned workspace; they do not become
 applications or application-history records. Passing or saving hides that exact
 source job from future reports for that profile and can be reversed later.

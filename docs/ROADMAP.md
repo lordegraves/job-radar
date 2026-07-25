@@ -259,7 +259,7 @@ packaged collector catalog before contacting an external search provider.
 
 | Requirement | Status | Verified behavior |
 | --- | --- | --- |
-| Individual report actions | Completed | Structured Top Matches, Review Needed, and New Jobs cards offer Save for later, Pass / don't show again, and I applied — track application. |
+| Individual report actions | Completed | Every structured scan-result classification, including Potential Top Matches and Passed / Not Recommended, offers notes, Save for later, Pass / don't show again, and I applied — track application. |
 | Profile-owned Saved and Reviewed workspace | Completed | Saved and passed jobs remain separate from Active Applications and Application History and are isolated to the active profile. |
 | Exact-job suppression | Completed | Saved and passed job IDs are omitted from later reports for that profile without deleting the shared posting. |
 | Reversible decisions | Completed | A saved bookmark can be removed, a saved job can be passed, and a passed job can be allowed in future scans again. |

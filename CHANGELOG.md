@@ -6,6 +6,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Ensured every structured scan-result classification, including Potential
+  Top Matches and Passed / Not Recommended, retains individual notes, Save for
+  later, Pass / don't show again, and application-tracking controls.
 - Added optional shared Website, Careers, LinkedIn, and Glassdoor reference
   links to company detail pages. Junior opens these public links in the
   user's browser and never signs in to or scrapes the linked services.

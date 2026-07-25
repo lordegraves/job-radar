@@ -36,6 +36,7 @@ from job_radar.retention_service import list_retained_report_runs
 
 REPORT_FILE_EXTENSIONS = {".html", ".htm", ".md", ".txt"}
 JOB_DECISION_SECTIONS = {
+    "passed_not_recommended",
     "top_matches",
     "potential_top_matches",
     "review_needed",
@@ -251,6 +252,7 @@ def register_report_routes(
             html_report_name=html_report_name,
             html_report_exists=html_report_path.is_file(),
             pass_reasons=PASS_REASONS,
+            decisions_enabled=section_name in JOB_DECISION_SECTIONS,
             current_page=current_page,
             total_pages=total_pages,
             total_jobs=total_jobs,

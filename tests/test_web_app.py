@@ -926,14 +926,15 @@ def test_potential_top_matches_show_evidence_and_unresolved_facts(
                     title="Senior Platform Reliability Engineer",
                     url="https://example.invalid/jobs/platform-reliability",
                     company="ExampleCompute",
-                why_matched="linux, kubernetes, reliability",
-                technical_match="Very Strong",
-                eligibility_status="needs_review",
-                eligibility_reasons=[
-                    "The posting does not provide usable compensation.",
-                    "The workplace arrangement is unclear.",
-                ],
-            )
+                    job_radar_id="jr-examplecompute-platform-12345678",
+                    why_matched="linux, kubernetes, reliability",
+                    technical_match="Very Strong",
+                    eligibility_status="needs_review",
+                    eligibility_reasons=[
+                        "The posting does not provide usable compensation.",
+                        "The workplace arrangement is unclear.",
+                    ],
+                )
         ],
     )
 
@@ -949,7 +950,52 @@ def test_potential_top_matches_show_evidence_and_unresolved_facts(
     assert "Waiting on" in html
     assert "The posting does not provide usable compensation." in html
     assert "The workplace arrangement is unclear." in html
+    assert "I applied" in html
+    assert "Notes for my review (optional)" in html
+    assert "Save for later" in html
+    assert "Pass" in html
+    assert "show again" in html
+    assert "Update selected jobs" in html
     assert "Score:" not in html
+
+
+def test_passed_not_recommended_jobs_keep_user_decision_controls(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(
+        settings_file,
+        database_file,
+        reports_path=reports_path,
+    )
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-25T12:00:00+00:00",
+        passed_not_recommended=[
+            make_report_snapshot_job(
+                title="Synthetic On-site Role",
+                url="https://example.invalid/jobs/on-site",
+                company="ExampleCompute",
+                job_radar_id="jr-examplecompute-onsite-12345678",
+            )
+        ],
+    )
+
+    html = create_app(
+        settings_path=str(settings_file)
+    ).test_client().get(
+        "/reports/section/passed_not_recommended"
+    ).get_data(as_text=True)
+
+    assert "I applied" in html
+    assert "Notes for my review (optional)" in html
+    assert "Save for later" in html
+    assert "Pass" in html
+    assert "show again" in html
+    assert "Update selected jobs" in html
 
 
 def test_review_needed_job_can_be_passed_without_creating_application(
