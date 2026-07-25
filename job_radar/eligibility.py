@@ -105,6 +105,8 @@ def evaluate_practical_eligibility(
             posting=posting,
             preferences=preferences,
         ),
+        _evaluate_fixed_duration(posting),
+        _evaluate_work_authorization(posting),
     )
     evaluated_results = tuple(result for result in results if result is not None)
 
@@ -231,6 +233,12 @@ def evaluate_workplace_eligibility(
     arrangement = _classify_workplace_arrangement(posting)
 
     if arrangement is None:
+        location_result = _evaluate_specific_location_without_arrangement(
+            posting=posting,
+            preferences=preferences,
+        )
+        if location_result is not None:
+            return location_result
         return EligibilityResult(
             status=ELIGIBILITY_NEEDS_REVIEW,
             reasons=(
@@ -268,6 +276,61 @@ def evaluate_workplace_eligibility(
         posting=posting,
         preferences=preferences,
         arrangement=arrangement,
+    )
+
+
+def _evaluate_specific_location_without_arrangement(
+    *,
+    posting: JobPosting,
+    preferences: ProfilePreferences,
+) -> EligibilityResult | None:
+    """Reject a definite location mismatch even when arrangement wording is absent."""
+
+    if not _looks_like_specific_city_state(posting.location):
+        return None
+
+    selected_locations = tuple(
+        location.label for location in preferences.location_selections
+    ) or preferences.preferred_locations
+    if not selected_locations:
+        return None
+
+    posting_location = _normalize_location_label(posting.location)
+    if any(
+        _location_labels_match(
+            posting_location=posting_location,
+            selected_location=_normalize_location_label(selected_location),
+        )
+        for selected_location in selected_locations
+    ):
+        return EligibilityResult(
+            status=ELIGIBILITY_NEEDS_REVIEW,
+            reasons=(
+                EligibilityReason(
+                    code="workplace_arrangement_unclear",
+                    message=(
+                        f"The posting identifies {clean_text(posting.location)} "
+                        "as the job location, which matches a selected area, but "
+                        "does not clearly say whether the job is remote, hybrid, "
+                        "or on-site."
+                    ),
+                ),
+            ),
+        )
+
+    approved_locations = "; ".join(selected_locations)
+    return EligibilityResult(
+        status=ELIGIBILITY_NOT_ELIGIBLE,
+        reasons=(
+            EligibilityReason(
+                code="specific_location_outside_selected_areas",
+                message=(
+                    f"The posting identifies {clean_text(posting.location)} as "
+                    "the job location. It does not match this profile's selected "
+                    f"areas: {approved_locations}."
+                ),
+            ),
+        ),
     )
 
 
@@ -707,6 +770,74 @@ def _has_vague_travel_requirement(posting: JobPosting) -> bool:
             "must travel",
             "willingness to travel",
         )
+    )
+
+
+def _evaluate_fixed_duration(posting: JobPosting) -> EligibilityResult | None:
+    text = _posting_text(posting)
+    duration_match = re.search(
+        r"\b(?:duration|term|assignment|contract)\s*[:\-]?\s*"
+        r"(\d{1,2})\s*[- ]?(day|week|month|year)s?\b",
+        text,
+    )
+    if duration_match is None:
+        duration_match = re.search(
+            r"\b(\d{1,2})\s*[- ]?(day|week|month|year)s?\s+"
+            r"(?:contract|assignment|position|role)\b",
+            text,
+        )
+    if duration_match is None:
+        return None
+
+    amount, unit = duration_match.groups()
+    readable_unit = unit if amount == "1" else f"{unit}s"
+    return EligibilityResult(
+        status=ELIGIBILITY_NEEDS_REVIEW,
+        reasons=(
+            EligibilityReason(
+                code="fixed_duration_needs_review",
+                message=(
+                    f"The posting states that the job lasts {amount} "
+                    f"{readable_unit}. This profile does not currently specify "
+                    "a minimum acceptable contract length, so the duration needs "
+                    "review."
+                ),
+            ),
+        ),
+    )
+
+
+def _evaluate_work_authorization(
+    posting: JobPosting,
+) -> EligibilityResult | None:
+    text = _posting_text(posting)
+    markers = (
+        "authorized to work",
+        "authorised to work",
+        "work authorization",
+        "work authorisation",
+        "permitted to work",
+        "eligible to work",
+        "sponsorship is not available",
+        "no visa sponsorship",
+        "unable to sponsor",
+        "cannot sponsor",
+    )
+    if not any(marker in text for marker in markers):
+        return None
+
+    return EligibilityResult(
+        status=ELIGIBILITY_NEEDS_REVIEW,
+        reasons=(
+            EligibilityReason(
+                code="work_authorization_needs_review",
+                message=(
+                    "The posting includes a work-authorization or sponsorship "
+                    "requirement. Junior cannot confirm the applicant's legal "
+                    "eligibility, so this requirement needs review."
+                ),
+            ),
+        ),
     )
 
 

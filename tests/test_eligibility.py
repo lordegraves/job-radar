@@ -282,6 +282,26 @@ def test_unclear_workplace_arrangement_needs_review() -> None:
     assert result.reasons[0].code == "workplace_arrangement_unclear"
 
 
+def test_explicit_foreign_location_is_not_treated_as_unknown() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Amsterdam, Netherlands",
+            remote_status=None,
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote", "Hybrid", "On-site"),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == (
+        "specific_location_outside_selected_areas"
+    )
+    assert "Amsterdam, Netherlands" in result.reasons[0].message
+
+
 def test_legacy_context_does_not_create_structured_eligibility() -> None:
     result = evaluate_workplace_eligibility(
         posting=make_posting(),
@@ -710,3 +730,47 @@ def test_any_schedule_does_not_create_schedule_uncertainty() -> None:
     assert [reason.code for reason in result.reasons] == [
         "remote_arrangement_selected",
     ]
+
+
+def test_fixed_contract_duration_is_retained_for_review() -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(
+            location="Remote",
+            description=(
+                "Summary: Duration: 3 months. This is a full-time position."
+            ),
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            employment_types=("Full-time",),
+        ),
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NEEDS_REVIEW
+    duration_reason = next(
+        reason
+        for reason in result.reasons
+        if reason.code == "fixed_duration_needs_review"
+    )
+    assert "3 months" in duration_reason.message
+
+
+def test_work_authorization_requirement_is_retained_for_review() -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(
+            location="Remote",
+            description=(
+                "Work authorization: permitted to work in the job's location."
+            ),
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+        ),
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NEEDS_REVIEW
+    assert result.reasons[-1].code == "work_authorization_needs_review"
