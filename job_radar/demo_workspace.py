@@ -7,6 +7,7 @@ been created successfully.
 
 from pathlib import Path
 import gc
+import json
 import shutil
 import time
 from uuid import uuid4
@@ -67,6 +68,7 @@ def create_demo_workspace(destination: str | Path) -> UserDataPaths:
         _seed_employers(database_path)
         _seed_profile(database_path, paths)
         _seed_scan(database_path)
+        _seed_report(paths)
         _seed_applications(database_path)
         _seed_history(database_path)
         _publish_completed_build(build_path, destination_path)
@@ -338,6 +340,130 @@ def _seed_scan(database_path: Path) -> None:
         review_needed_count=1,
         report_status="not_requested",
         email_status="not_requested",
+    )
+
+
+def _seed_report(paths: UserDataPaths) -> None:
+    """Create the fictional report snapshot used by GUI release checks."""
+
+    def job(
+        *,
+        title: str,
+        company: str,
+        location: str,
+        compensation: str,
+        job_id: str,
+        action: str,
+        rationale: str,
+        match: str,
+        risks: str,
+        eligibility: str,
+        eligibility_reasons: list[str],
+    ) -> dict[str, object]:
+        return {
+            "title": title,
+            "url": f"https://{company.lower().replace(' ', '-')}.invalid/jobs/{job_id}",
+            "company": company,
+            "location": location,
+            "compensation": compensation,
+            "hiring_probability": "Medium",
+            "recommended_action": action,
+            "action_rationale": rationale,
+            "why_matched": match,
+            "technical_match": "Strong",
+            "resume_match": "Strong",
+            "resume_evidence": match,
+            "resume_gaps": "None identified from the fictional résumé.",
+            "hiring_risks": risks,
+            "history_context": "No earlier decision is recorded.",
+            "history_risk": None,
+            "job_radar_id": job_id,
+            "eligibility_status": eligibility,
+            "eligibility_reasons": eligibility_reasons,
+        }
+
+    top_match = job(
+        title="Production Baker",
+        company="Northstar Foods",
+        location="Madison, Wisconsin",
+        compensation="$55,000 - $62,000",
+        job_id="jr-demo-report-101",
+        action="Apply",
+        rationale=(
+            "The role matches demonstrated baking and food-safety work, "
+            "and its practical requirements fit this profile."
+        ),
+        match="scratch baking, food safety, production planning",
+        risks="No major concerns identified.",
+        eligibility="Eligible",
+        eligibility_reasons=[
+            "The on-site location is inside the selected commuting area.",
+            "The listed compensation meets the profile minimum.",
+        ],
+    )
+    review_job = job(
+        title="Catering Operations Coordinator",
+        company="Harborview University",
+        location="Madison, Wisconsin",
+        compensation="Not listed",
+        job_id="jr-demo-report-202",
+        action="Review",
+        rationale=(
+            "The work looks relevant, but the posting does not provide enough "
+            "schedule or compensation detail for a final decision."
+        ),
+        match="catering coordination, inventory, event preparation",
+        risks="Schedule and compensation need confirmation.",
+        eligibility="Needs Review",
+        eligibility_reasons=[
+            "The posting does not list usable compensation.",
+            "The work schedule is unclear.",
+        ],
+    )
+    passed_job = job(
+        title="Commission Bakery Sales Representative",
+        company="Meadow Market",
+        location="Remote",
+        compensation="Commission only",
+        job_id="jr-demo-report-303",
+        action="Pass",
+        rationale=(
+            "The role is primarily commission sales, which this profile "
+            "explicitly excludes."
+        ),
+        match="food-service industry knowledge",
+        risks="The primary duties conflict with the profile.",
+        eligibility="Not Eligible",
+        eligibility_reasons=[
+            "Commission-only sales is excluded by this profile."
+        ],
+    )
+    snapshot = {
+        "schema_version": 2,
+        "summary": {
+            "generated_at": "2026-07-20T13:04:00+00:00",
+            "top_matches": 1,
+            "review_needed": 1,
+            "tracked_applications": 0,
+            "new_jobs": 2,
+            "collector_errors": 0,
+        },
+        "top_matches": [top_match],
+        "review_needed": [review_job],
+        "tracked_applications": [],
+        "new_jobs": [top_match, review_job],
+        "passed_not_recommended": [passed_job],
+        "collector_errors": [],
+    }
+    paths.reports.mkdir(parents=True, exist_ok=True)
+    (paths.reports / "target-scan.json").write_text(
+        json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    (paths.reports / "target-scan.html").write_text(
+        "<!doctype html><html><body><h1>Fictional Junior scan</h1>"
+        "<p>This report contains demonstration data only.</p></body></html>\n",
+        encoding="utf-8",
     )
 
 

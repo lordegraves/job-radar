@@ -46,6 +46,8 @@ def test_create_demo_workspace_builds_complete_fictional_data(
     ) == 3
     assert (paths.resumes / DEMO_PROFILE_ID / "resume.md").is_file()
     assert (paths.resumes / DEMO_PROFILE_ID / "resume.normalized.txt").is_file()
+    assert (paths.reports / "target-scan.json").is_file()
+    assert (paths.reports / "target-scan.html").is_file()
 
 
 def test_create_demo_workspace_refuses_to_touch_existing_destination(
@@ -71,6 +73,8 @@ def test_create_demo_workspace_refuses_to_touch_existing_destination(
         ("/companies", "Northstar Foods"),
         ("/tracker", "Production Baker"),
         ("/history", "Lakeview Hotel"),
+        ("/reports/section/top_matches", "Production Baker"),
+        ("/job-decisions", "Saved for later"),
     ),
 )
 def test_demo_workspace_renders_key_pages(
