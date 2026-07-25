@@ -6,6 +6,16 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Hid Junior-managed job IDs from normal forms and reports while preserving
+  scan-linked identity and automatic IDs for manually entered applications.
+- Added bounded notes, listed pass reasons, and atomic multi-select Save or Pass
+  actions to the profile-owned Saved and Reviewed Jobs workflow.
+- Strengthened practical eligibility explanations for explicit foreign
+  locations, fixed contract durations, and work-authorization requirements
+  without inventing a global preference against short contracts.
+- Added a two-minute overall ceiling to unfamiliar company-source discovery.
+  Timed-out discovery saves no employer or profile assignment, and the Add
+  Company page continues to show an active checking indicator while it runs.
 - Added a global, default-off Bing company-lookup setting with plain-language
   disclosure of its limited advantage, complete search payload, IP-address
   exposure, reliability risk, and strict separation from normal scans.
