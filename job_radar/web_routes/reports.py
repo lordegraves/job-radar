@@ -20,10 +20,12 @@ from flask import (
 from job_radar.job_decision_service import (
     DECISION_PASSED,
     DECISION_SAVED,
+    PASS_REASONS,
     delete_job_decision,
     get_decided_job_ids,
     list_job_decisions,
     save_job_decision,
+    save_job_decisions_bulk,
 )
 from job_radar.report_snapshot import (
     ReportSnapshotCollectorError,
@@ -209,6 +211,7 @@ def register_report_routes(
             eligibility_counts=eligibility_counts,
             html_report_name=html_report_name,
             html_report_exists=html_report_path.is_file(),
+            pass_reasons=PASS_REASONS,
         )
 
     @app.get("/reports")
@@ -251,6 +254,7 @@ def register_report_routes(
             title=job.title,
             source_url=job.url,
             location=job.location,
+            decision_reason=request.form.get("decision_reason"),
         )
         flash(
             (
@@ -260,6 +264,57 @@ def register_report_routes(
             ),
             "success",
         )
+        return redirect(url_for("report_section_view", section_name=section_name))
+
+    @app.post("/reports/section/<section_name>/bulk-decision")
+    def save_bulk_report_job_decisions(section_name: str):
+        profile_id = get_profile_id()
+        if profile_id is None:
+            abort(400)
+        if section_name not in JOB_DECISION_SECTIONS:
+            abort(400)
+        decision = request.form.get("decision", "")
+        if decision not in {DECISION_SAVED, DECISION_PASSED}:
+            abort(400)
+        selected_ids = tuple(
+            dict.fromkeys(
+                value.strip()
+                for value in request.form.getlist("job_radar_id")
+                if value.strip()
+            )
+        )
+        if not selected_ids:
+            flash("Select at least one job first.", "error")
+            return redirect(
+                url_for("report_section_view", section_name=section_name)
+            )
+
+        snapshot = _load_latest_snapshot(get_reports_path())
+        jobs = [
+            _find_snapshot_job(snapshot, job_id, section_name=section_name)
+            for job_id in selected_ids
+        ]
+        if any(job is None for job in jobs):
+            abort(409)
+        verified_jobs = [job for job in jobs if job is not None]
+        save_job_decisions_bulk(
+            get_database_path(),
+            profile_id=profile_id,
+            decision=decision,
+            decision_reason=request.form.get("decision_reason"),
+            jobs=[
+                {
+                    "job_radar_id": job.job_radar_id,
+                    "company": job.company,
+                    "title": job.title,
+                    "source_url": job.url,
+                    "location": job.location,
+                }
+                for job in verified_jobs
+            ],
+        )
+        action = "saved for later" if decision == DECISION_SAVED else "passed"
+        flash(f"{len(verified_jobs)} selected jobs were {action}.", "success")
         return redirect(url_for("report_section_view", section_name=section_name))
 
     @app.get("/job-decisions")
@@ -279,6 +334,7 @@ def register_report_routes(
                 profile_id=profile_id,
                 decision=DECISION_PASSED,
             ),
+            pass_reasons=PASS_REASONS,
         )
 
     @app.post("/job-decisions/<path:job_radar_id>")
@@ -308,8 +364,23 @@ def register_report_routes(
                 source_url=existing.source_url,
                 location=existing.location,
                 notes=existing.notes,
+                decision_reason=request.form.get("decision_reason"),
             )
             flash(f"{existing.title} was moved to Reviewed Jobs.", "success")
+        elif action == "save_details":
+            save_job_decision(
+                get_database_path(),
+                profile_id=profile_id,
+                job_radar_id=existing.job_radar_id,
+                decision=existing.decision,
+                company=existing.company,
+                title=existing.title,
+                source_url=existing.source_url,
+                location=existing.location,
+                notes=request.form.get("notes"),
+                decision_reason=request.form.get("decision_reason"),
+            )
+            flash(f"Details for {existing.title} were saved.", "success")
         elif action == "remove":
             delete_job_decision(
                 get_database_path(),

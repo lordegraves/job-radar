@@ -305,9 +305,33 @@
     {% endfor %}
 </section>
 {% elif job_cards %}
+{% if section_name in ('top_matches', 'review_needed', 'new_jobs') %}
+<form id="bulk-decision-form" class="page-card" method="post" action="{{ url_for('save_bulk_report_job_decisions', section_name=section_name) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <h2>Update selected jobs</h2>
+    <p class="muted">Select jobs below, then save or pass all selected jobs together.</p>
+    <label for="bulk-decision-reason">Reason for passing (optional)</label>
+    <select id="bulk-decision-reason" name="decision_reason">
+        <option value="">No reason selected</option>
+        {% for reason in pass_reasons %}
+        <option value="{{ reason }}">{{ reason }}</option>
+        {% endfor %}
+    </select>
+    <div class="actions">
+        <button type="submit" name="decision" value="saved">Save selected for later</button>
+        <button class="button-secondary" type="submit" name="decision" value="passed">Pass selected</button>
+    </div>
+</form>
+{% endif %}
 <section class="job-card-grid" aria-label="{{ section_title }} job cards">
     {% for job in job_cards %}
     <article class="job-card">
+        {% if job.job_radar_id and section_name in ('top_matches', 'review_needed', 'new_jobs') %}
+        <label class="job-selection">
+            <input form="bulk-decision-form" type="checkbox" name="job_radar_id" value="{{ job.job_radar_id }}">
+            Select this job
+        </label>
+        {% endif %}
         <div class="job-card-header">
             <div>
                 {% if job.company %}
@@ -430,6 +454,13 @@
             <form method="post" action="{{ url_for('save_report_job_decision', job_radar_id=job.job_radar_id) }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="section_name" value="{{ section_name }}">
+                <label for="pass-reason-{{ loop.index }}">Reason (optional)</label>
+                <select id="pass-reason-{{ loop.index }}" name="decision_reason">
+                    <option value="">No reason selected</option>
+                    {% for reason in pass_reasons %}
+                    <option value="{{ reason }}">{{ reason }}</option>
+                    {% endfor %}
+                </select>
                 <button class="button-secondary" type="submit" name="decision" value="passed">Pass — don't show again</button>
             </form>
             {% endif %}

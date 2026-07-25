@@ -834,6 +834,9 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "Save for later" in html
     assert "Pass" in html
     assert "show again" in html
+    assert "Update selected jobs" in html
+    assert "Save selected for later" in html
+    assert "Pass selected" in html
     assert "/tracker/add?" in html
     assert "job_radar_id=jr-examplecompute-655a542b" in html
     assert "company_name=ExampleCompute" in html
@@ -913,6 +916,111 @@ def test_review_needed_job_can_be_passed_without_creating_application(
     assert "Reviewed and passed" in workspace_html
     assert "Synthetic Systems Role" in workspace_html
     assert "Allow in future scans" in workspace_html
+
+
+def test_report_jobs_can_be_passed_together_atomically(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(
+        settings_file,
+        database_file,
+        reports_path=reports_path,
+    )
+    profile = ManagedProfile(
+        profile_id="profile_34343434",
+        display_name="Synthetic bulk reviewer",
+    )
+    create_profile(database_file, profile)
+    set_active_profile(database_file, profile.profile_id)
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-24T10:00:00+00:00",
+        review_needed=[
+            make_report_snapshot_job(
+                title="Synthetic Role One",
+                url="https://example.invalid/jobs/one",
+                company="Synthetic Company One",
+                job_radar_id="jr-synthetic-11111111",
+            ),
+            make_report_snapshot_job(
+                title="Synthetic Role Two",
+                url="https://example.invalid/jobs/two",
+                company="Synthetic Company Two",
+                job_radar_id="jr-synthetic-22222222",
+            ),
+        ],
+    )
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/reports/section/review_needed/bulk-decision",
+        data={
+            "decision": DECISION_PASSED,
+            "decision_reason": "Not interested",
+            "job_radar_id": [
+                "jr-synthetic-11111111",
+                "jr-synthetic-22222222",
+            ],
+        },
+    )
+
+    assert response.status_code == 302
+    decisions = list_job_decisions(
+        database_file,
+        profile_id=profile.profile_id,
+        decision=DECISION_PASSED,
+    )
+    assert len(decisions) == 2
+    assert {item.decision_reason for item in decisions} == {"Not interested"}
+
+
+def test_reviewed_job_notes_and_reason_can_be_updated(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    profile = ManagedProfile(
+        profile_id="profile_35353535",
+        display_name="Synthetic notes reviewer",
+    )
+    create_profile(database_file, profile)
+    set_active_profile(database_file, profile.profile_id)
+    save_job_decision(
+        database_file,
+        profile_id=profile.profile_id,
+        job_radar_id="jr-synthetic-33333333",
+        decision=DECISION_PASSED,
+        company="Synthetic Company",
+        title="Synthetic Role",
+        source_url=None,
+        location="Remote",
+    )
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/job-decisions/jr-synthetic-33333333",
+        data={
+            "action": "save_details",
+            "decision_reason": "Location",
+            "notes": "Outside the selected commuting area.",
+        },
+    )
+
+    assert response.status_code == 302
+    decision = list_job_decisions(
+        database_file,
+        profile_id=profile.profile_id,
+        decision=DECISION_PASSED,
+    )[0]
+    assert decision.decision_reason == "Location"
+    assert decision.notes == "Outside the selected commuting area."
 
 
 def test_saved_job_moves_out_of_bookmarks_when_application_is_created(

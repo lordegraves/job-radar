@@ -324,6 +324,11 @@ def _schema_migrations() -> tuple:
             "add profile-owned job decisions",
             _migrate_profile_job_decisions,
         ),
+        (
+            28,
+            "add profile job-decision reasons",
+            _migrate_profile_job_decision_reasons,
+        ),
     )
 
 
@@ -1306,6 +1311,24 @@ def _migrate_profile_job_decisions(connection: sqlite3.Connection) -> None:
         ON profile_job_decisions(profile_id, decision, updated_at)
         """
     )
+
+
+def _migrate_profile_job_decision_reasons(
+    connection: sqlite3.Connection,
+) -> None:
+    """Keep a bounded user reason separate from free-form job notes."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(profile_job_decisions)"
+        ).fetchall()
+    }
+    if "decision_reason" not in existing_columns:
+        connection.execute(
+            "ALTER TABLE profile_job_decisions "
+            "ADD COLUMN decision_reason TEXT"
+        )
 
 
 def _migrate_active_profile_selection(connection: sqlite3.Connection) -> None:

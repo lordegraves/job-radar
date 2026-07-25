@@ -12,6 +12,7 @@ from job_radar.job_decision_service import (
     get_decided_job_ids,
     list_job_decisions,
     save_job_decision,
+    save_job_decisions_bulk,
 )
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_storage import create_profile
@@ -63,6 +64,7 @@ def test_job_decisions_are_profile_owned_and_reversible(tmp_path: Path) -> None:
         source_url="https://example.invalid/jobs/1",
         location="Remote",
         notes="Synthetic note",
+        decision_reason="Location",
     )
 
     assert result == "updated"
@@ -73,6 +75,7 @@ def test_job_decisions_are_profile_owned_and_reversible(tmp_path: Path) -> None:
     )
     assert len(passed) == 1
     assert passed[0].notes == "Synthetic note"
+    assert passed[0].decision_reason == "Location"
     assert delete_job_decision(
         database_path,
         profile_id="profile_11111111",
@@ -98,4 +101,94 @@ def test_job_decision_rejects_unknown_choice(tmp_path: Path) -> None:
             title="Example Role",
             source_url=None,
             location=None,
+        )
+
+
+def test_bulk_job_decisions_are_saved_together(tmp_path: Path) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    create_test_profile(database_path, "profile_11111111")
+
+    count = save_job_decisions_bulk(
+        database_path,
+        profile_id="profile_11111111",
+        decision=DECISION_PASSED,
+        decision_reason="Not interested",
+        jobs=[
+            {
+                "job_radar_id": "jr-example-11111111",
+                "company": "Example One",
+                "title": "Role One",
+                "source_url": "https://example.invalid/1",
+                "location": "Remote",
+            },
+            {
+                "job_radar_id": "jr-example-22222222",
+                "company": "Example Two",
+                "title": "Role Two",
+                "source_url": "https://example.invalid/2",
+                "location": "Remote",
+            },
+        ],
+    )
+
+    decisions = list_job_decisions(
+        database_path,
+        profile_id="profile_11111111",
+        decision=DECISION_PASSED,
+    )
+    assert count == 2
+    assert len(decisions) == 2
+    assert {item.decision_reason for item in decisions} == {"Not interested"}
+
+
+def test_bulk_job_decisions_roll_back_when_any_job_is_invalid(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    create_test_profile(database_path, "profile_11111111")
+
+    with pytest.raises(JobDecisionError, match="every selected job"):
+        save_job_decisions_bulk(
+            database_path,
+            profile_id="profile_11111111",
+            decision=DECISION_SAVED,
+            jobs=[
+                {
+                    "job_radar_id": "jr-example-11111111",
+                    "company": "Example One",
+                    "title": "Role One",
+                    "source_url": None,
+                    "location": "Remote",
+                },
+                {
+                    "job_radar_id": "",
+                    "company": "Example Two",
+                    "title": "Role Two",
+                    "source_url": None,
+                    "location": "Remote",
+                },
+            ],
+        )
+
+    assert list_job_decisions(
+        database_path,
+        profile_id="profile_11111111",
+    ) == []
+
+
+def test_job_decision_rejects_unbounded_notes(tmp_path: Path) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    create_test_profile(database_path, "profile_11111111")
+
+    with pytest.raises(JobDecisionError, match="2000 characters"):
+        save_job_decision(
+            database_path,
+            profile_id="profile_11111111",
+            job_radar_id="jr-example-12345678",
+            decision=DECISION_SAVED,
+            company="Example Company",
+            title="Example Role",
+            source_url=None,
+            location=None,
+            notes="x" * 2001,
         )

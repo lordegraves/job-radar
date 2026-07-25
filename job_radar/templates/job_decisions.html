@@ -46,6 +46,12 @@
         margin: 0;
     }
 
+    .decision-notes {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
     @media (max-width: 850px) {
         .decision-grid {
             grid-template-columns: 1fr;
@@ -76,6 +82,12 @@
                 <h3>{{ job.title }}</h3>
                 <p class="decision-company">{{ job.company }}</p>
                 {% if job.location %}<p class="decision-location">{{ job.location }}</p>{% endif %}
+                <form class="decision-notes" method="post" action="{{ url_for('update_job_decision', job_radar_id=job.job_radar_id) }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <label for="saved-notes-{{ loop.index }}">Notes</label>
+                    <textarea id="saved-notes-{{ loop.index }}" name="notes" maxlength="2000">{{ job.notes or '' }}</textarea>
+                    <button class="button-secondary" type="submit" name="action" value="save_details">Save notes</button>
+                </form>
                 <div class="decision-actions">
                     {% if job.source_url %}
                     <a class="button-link button-secondary" href="{{ job.source_url }}" target="_blank" rel="noopener noreferrer">Open job posting</a>
@@ -83,6 +95,13 @@
                     <a class="button-link" href="{{ url_for('add_tracker_application', job_radar_id=job.job_radar_id, company_name=job.company, role_title=job.title, source_url=job.source_url or '', status='Applied', outcome='Pending / In Progress') }}">I applied — track application</a>
                     <form method="post" action="{{ url_for('update_job_decision', job_radar_id=job.job_radar_id) }}">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <label for="saved-pass-reason-{{ loop.index }}">Reason (optional)</label>
+                        <select id="saved-pass-reason-{{ loop.index }}" name="decision_reason">
+                            <option value="">No reason selected</option>
+                            {% for reason in pass_reasons %}
+                            <option value="{{ reason }}">{{ reason }}</option>
+                            {% endfor %}
+                        </select>
                         <button class="button-secondary" type="submit" name="action" value="pass">Pass — don't show again</button>
                     </form>
                     <form method="post" action="{{ url_for('update_job_decision', job_radar_id=job.job_radar_id) }}">
@@ -107,6 +126,19 @@
                 <h3>{{ job.title }}</h3>
                 <p class="decision-company">{{ job.company }}</p>
                 {% if job.location %}<p class="decision-location">{{ job.location }}</p>{% endif %}
+                <form class="decision-notes" method="post" action="{{ url_for('update_job_decision', job_radar_id=job.job_radar_id) }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <label for="passed-reason-{{ loop.index }}">Reason</label>
+                    <select id="passed-reason-{{ loop.index }}" name="decision_reason">
+                        <option value="">No reason selected</option>
+                        {% for reason in pass_reasons %}
+                        <option value="{{ reason }}" {% if reason == job.decision_reason %}selected{% endif %}>{{ reason }}</option>
+                        {% endfor %}
+                    </select>
+                    <label for="passed-notes-{{ loop.index }}">Notes</label>
+                    <textarea id="passed-notes-{{ loop.index }}" name="notes" maxlength="2000">{{ job.notes or '' }}</textarea>
+                    <button class="button-secondary" type="submit" name="action" value="save_details">Save details</button>
+                </form>
                 <div class="decision-actions">
                     {% if job.source_url %}
                     <a class="button-link button-secondary" href="{{ job.source_url }}" target="_blank" rel="noopener noreferrer">Open job posting</a>
