@@ -248,6 +248,14 @@ def _canonicalize(name: str) -> str:
     return name.lower().replace("_", "-").replace(".", "-")
 
 
+def _text_file_sha256(path: Path) -> str:
+    """Hash repository notices consistently across Git line-ending settings."""
+    normalized = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace(
+        "\r", "\n"
+    )
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
 def _license_files(distribution: importlib.metadata.Distribution) -> list[dict[str, str]]:
     results: list[dict[str, str]] = []
     for relative_path in distribution.files or ():
@@ -313,9 +321,7 @@ def _package_record(name: str, expected_license: str) -> dict[str, Any]:
                 {
                     "type": "supplemental-upstream-copy",
                     "path": supplemental["path"],
-                    "sha256": hashlib.sha256(
-                        supplemental_path.read_bytes()
-                    ).hexdigest(),
+                    "sha256": _text_file_sha256(supplemental_path),
                     "upstream": supplemental["source"],
                 }
             )

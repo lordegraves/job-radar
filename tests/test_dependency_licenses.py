@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.audit_dependency_licenses import _stale_output_diff
+from scripts.audit_dependency_licenses import _stale_output_diff, _text_file_sha256
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +42,17 @@ def test_stale_dependency_report_explains_the_exact_difference(
     assert "generated/dependency-license-report.json" in difference
     assert '-{"version": "old"}' in difference
     assert '+{"version": "current"}' in difference
+
+
+def test_repository_notice_hash_ignores_platform_line_endings(
+    tmp_path: Path,
+) -> None:
+    windows_notice = tmp_path / "windows-license.txt"
+    unix_notice = tmp_path / "unix-license.txt"
+    windows_notice.write_bytes(b"License line one\r\nLicense line two\r\n")
+    unix_notice.write_bytes(b"License line one\nLicense line two\n")
+
+    assert _text_file_sha256(windows_notice) == _text_file_sha256(unix_notice)
 
 
 def test_dependency_report_contains_required_compliance_fields() -> None:
