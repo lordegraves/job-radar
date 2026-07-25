@@ -181,6 +181,20 @@ junior uses bootstrapped user settings by default when they are present. The est
 
 ## Validation
 
+GitHub Actions automatically runs two repository checks for pushes and pull
+requests involving `main` or `feature/productization-foundation`:
+
+- **Python validation** uses Windows and Python 3.13 to run Ruff and the complete
+  Python test suite.
+- **Secret scanning** uses the checksum-verified Gitleaks 8.30.1 release to scan
+  all reachable Git history. Findings are redacted, and the temporary report is
+  removed before the job ends.
+
+Both workflows use read-only repository permissions, do not persist checkout
+credentials, and can also be started manually from GitHub's Actions page. These
+remote checks supplement rather than replace the local validation required
+before a commit or release.
+
 Run Ruff:
 
 ```powershell

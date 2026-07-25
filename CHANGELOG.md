@@ -6,6 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added GitHub Actions workflows for Windows/Python 3.13 Ruff and full-suite
+  validation plus checksum-verified, redacted Gitleaks scanning of reachable
+  Git history.
+- Documented the automated validation boundaries, release requirements, and
+  response required if secret scanning identifies a real credential.
 - Added a reproducible third-party license audit with machine-readable package,
   platform-component, and reference-data records; bundled the audit, notices,
   and required upstream license material in every supported distribution.

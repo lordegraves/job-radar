@@ -5,6 +5,18 @@ is the repository-root [PRIVACY.md](../PRIVACY.md). Private vulnerability
 reporting and release-authenticity guidance is in
 [SECURITY.md](../SECURITY.md).
 
+Repository pushes and pull requests involving `main` or
+`feature/productization-foundation` receive an additional automated
+reachable-history scan through
+`.github/workflows/secret-scanning.yml`. The workflow uses a pinned,
+checksum-verified Gitleaks release, redacts findings, retains no report
+artifact, and has read-only repository access. GitHub's built-in secret
+scanning and push protection remain enabled as a separate defense.
+
+Automated detection reduces risk but does not make a detected credential safe.
+If a real secret is ever committed, revoke or rotate it first; deleting a file
+or making a later commit does not remove the secret from Git history.
+
 ## Local-first model
 
 junior is designed to run under the user's control. It is not a hosted SaaS service.

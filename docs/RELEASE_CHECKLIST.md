@@ -98,6 +98,12 @@ git diff --check
 - [ ] `scripts\validate_performance_scale.py` passes at its default long-term
   data volumes.
 - [ ] No whitespace errors remain.
+- [ ] The **Python validation** GitHub Actions workflow passes on the exact
+  release commit.
+- [ ] The **Secret scanning** GitHub Actions workflow passes its complete
+  reachable-history scan on the exact release commit.
+- [ ] Any failed GitHub Actions run was investigated and resolved rather than
+  rerun until it happened to pass.
 
 ## Packaging
 

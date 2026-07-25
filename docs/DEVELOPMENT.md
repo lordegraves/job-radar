@@ -67,6 +67,30 @@ git diff
 
 Do not use automatic Ruff fixes during review-sensitive refactors. Review each edit explicitly.
 
+## GitHub Actions validation
+
+The repository contains two remote validation workflows:
+
+- `.github/workflows/python-validation.yml` runs Ruff and the complete Python
+  test suite on Windows with Python 3.13.
+- `.github/workflows/secret-scanning.yml` downloads the pinned Gitleaks 8.30.1
+  Linux release, verifies its SHA-256 checksum, and scans all reachable Git
+  history with findings redacted.
+
+Both workflows run for pushes and pull requests involving `main` or
+`feature/productization-foundation`, and both support a manual
+`workflow_dispatch` run. Their repository permission is limited to read-only
+contents, and checkout credentials are not persisted.
+
+Review the GitHub Actions result after pushing. A failed workflow is a real
+validation failure: inspect the reported test, lint, scanner, download, or
+execution problem before continuing. Never paste a suspected secret into an
+issue, pull request, chat, or diagnostic record.
+
+GitHub Actions provides an independent clean runner, but it does not replace
+focused local testing, full local validation, packaging checks, or the
+normal-user release walkthrough.
+
 ## Packaging validation
 
 Packaging behavior is tested in `tests/test_packaging.py`.
