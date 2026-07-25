@@ -113,6 +113,25 @@ def test_extract_annual_compensation_handles_usd_before_each_amount() -> None:
     assert parse_salary_range_usd(extracted) == (175000, 215000)
 
 
+def test_extract_annual_compensation_from_double_encoded_ats_html() -> None:
+    description = (
+        "&lt;div class=&quot;title&quot;&gt;Base Compensation Range&lt;/div&gt;"
+        "&lt;div class=&quot;pay-range&quot;&gt;"
+        "&lt;span&gt;$179,500&lt;/span&gt;"
+        "&lt;span class=&quot;divider&quot;&gt;&amp;mdash;&lt;/span&gt;"
+        "&lt;span&gt;$224,300 USD&lt;/span&gt;"
+        "&lt;/div&gt;"
+    )
+
+    extracted = extract_annual_compensation_text(description)
+    result = evaluate_compensation(extracted, 160000)
+
+    assert result.label == "Meets floor"
+    assert result.range_label == "$179,500 - $224,300"
+    assert result.min_usd == 179500
+    assert result.max_usd == 224300
+
+
 def test_compensation_extractor_ignores_html_with_unrelated_large_numbers() -> None:
     description = (
         "<p>Operate a 100000-node platform used by customers in 25 countries.</p>"

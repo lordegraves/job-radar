@@ -6,6 +6,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Fixed compensation extraction when an ATS double-encodes its job-description
+  HTML, including salary ranges separated by an encoded dash.
+- Standardized native dropdown styling across the application and expanded the
+  profile occupation search field to use the available card width.
 - Added automatic UKG Pro Recruiting/UltiPro company discovery and collection
   from complete public job-board URLs, including bounded pagination and full
   public job-detail extraction.

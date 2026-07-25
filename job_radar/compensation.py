@@ -64,7 +64,17 @@ def extract_annual_compensation_text(description: str | None) -> str | None:
 
     # ATS descriptions commonly contain HTML and encoded dash characters. Search
     # the human-readable text so the same pay wording works across collectors.
-    readable_description = re.sub(r"<[^>]+>", " ", unescape(description))
+    # Some ATS feeds escape an already-escaped HTML fragment. Decode a small,
+    # fixed number of times so visible salary ranges become ordinary text
+    # without allowing unbounded processing.
+    decoded_description = description
+    for _ in range(3):
+        next_description = unescape(decoded_description)
+        if next_description == decoded_description:
+            break
+        decoded_description = next_description
+
+    readable_description = re.sub(r"<[^>]+>", " ", decoded_description)
     normalized = " ".join(readable_description.split())
     annual_marker = r"(?:annually|annual|per year|a year|/year|/yr|yearly)"
     currency = r"(?:USD\s*)?"
