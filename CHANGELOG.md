@@ -6,6 +6,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Fixed recognized `*.icims.com` career sites so company setup validates them
+  with Junior's dedicated iCIMS collector instead of incorrectly falling back
+  to generic webpage parsing or optional external lookup.
 - Added GitHub Actions workflows for Windows/Python 3.13 Ruff and full-suite
   validation plus checksum-verified, redacted Gitleaks scanning of reachable
   Git history.

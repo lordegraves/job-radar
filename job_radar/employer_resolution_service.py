@@ -342,6 +342,16 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
             },
             scan_ready=True,
         )
+    if host.endswith(".icims.com") and host.count(".") >= 2:
+        return DetectedEmployerSource(
+            source_type="icims",
+            source_identifier=host.casefold(),
+            source_config={
+                "source_url": careers_url,
+                "careers_url": careers_url,
+            },
+            scan_ready=True,
+        )
     if host == "careers.nintendo.com":
         return DetectedEmployerSource(
             source_type="html",
@@ -1327,6 +1337,7 @@ def _source_label(source_type: str | None) -> str:
         "ashby": "Ashby",
         "adp": "ADP",
         "recruitee": "Recruitee",
+        "icims": "iCIMS",
         "eightfold": "Eightfold",
     }.get(source_type or "", "supported")
 
