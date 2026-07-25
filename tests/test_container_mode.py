@@ -46,6 +46,8 @@ def test_container_uses_persistent_mount_and_shared_web_app() -> None:
     assert 'VOLUME ["/var/lib/junior"]' in dockerfile
     assert "USER junior:junior" in dockerfile
     assert "/health" in dockerfile
+    assert "COPY pyproject.toml README.md LICENSE ./" in dockerfile
+    assert 'org.opencontainers.image.licenses="GPL-3.0-only"' in dockerfile
     assert "job-radar bootstrap-user-data" in entrypoint
     assert '"job_radar.web_app:create_app()"' in entrypoint
     assert entrypoint.count("bootstrap-user-data") == 1

@@ -455,6 +455,14 @@ model, and company discovery improvements.
 - [Release Checklist](docs/RELEASE_CHECKLIST.md)
 - [Changelog](CHANGELOG.md)
 
+## License
+
+Junior is free software licensed under the GNU General Public License,
+version 3.0 only (`GPL-3.0-only`).
+
+See [LICENSE](LICENSE) for the complete license terms. Third-party components
+and reference data retain their own licenses and attribution requirements.
+
 ## Product boundaries
 
 junior is designed to remain:

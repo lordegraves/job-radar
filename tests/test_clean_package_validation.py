@@ -14,6 +14,7 @@ def test_windows_clean_package_uses_installed_executable_and_isolated_data() -> 
     script = _read("validate_clean_windows_package.ps1")
 
     assert "Junior.exe" in script
+    assert 'Join-Path $installRoot "LICENSE"' in script
     assert "--no-browser" in script
     assert "JOB_RADAR_DATA_DIR = $dataRoot" in script
     assert "Welcome to junior" in script

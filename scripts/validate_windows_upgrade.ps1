@@ -77,11 +77,21 @@ try {
     $before = Get-UserDataHashes -Root $dataRoot
 
     Invoke-Setup
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "LICENSE"
+    ) -PathType Leaf)) {
+        throw "Initial install did not include LICENSE."
+    }
     Assert-HashesEqual -Expected $before -Actual (
         Get-UserDataHashes -Root $dataRoot
     ) -Stage "Initial install"
 
     Invoke-Setup
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "LICENSE"
+    ) -PathType Leaf)) {
+        throw "Repair or upgrade did not preserve LICENSE."
+    }
     Assert-HashesEqual -Expected $before -Actual (
         Get-UserDataHashes -Root $dataRoot
     ) -Stage "Repair or upgrade"

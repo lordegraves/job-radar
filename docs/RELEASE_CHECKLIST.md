@@ -107,6 +107,7 @@ git diff --check
 
 - [ ] Wheel builds from a clean temporary source copy.
 - [ ] Wheel contains all required packages, templates, and safe bootstrap starter files.
+- [ ] Wheel, source distribution, Windows bundle and installation, Linux archive, and container image include the complete root `LICENSE`; package metadata and the container label declare `GPL-3.0-only`.
 - [ ] Source distribution builds from a clean temporary source copy.
 - [ ] Source distribution includes safe bootstrap starter files.
 - [ ] Source distribution excludes private runtime data and local inspection artifacts.

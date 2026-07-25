@@ -3,6 +3,11 @@
 This guide describes the current local application and its supported Windows
 and Linux packaging paths.
 
+Junior is licensed under the GNU General Public License version 3.0 only
+(`GPL-3.0-only`). Every supported distribution includes the complete terms in
+its `LICENSE` file. Third-party components and reference data retain their own
+licenses.
+
 ## Windows installation
 
 Junior's Windows installer is a per-user installer. Close Junior, run the

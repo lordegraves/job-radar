@@ -1,6 +1,7 @@
 """Interpret advertised pay ranges and compare them with the candidate's floor."""
 
 from dataclasses import dataclass
+from html import unescape
 import re
 
 
@@ -61,16 +62,23 @@ def extract_annual_compensation_text(description: str | None) -> str | None:
     if not description:
         return None
 
-    normalized = " ".join(description.split())
+    # ATS descriptions commonly contain HTML and encoded dash characters. Search
+    # the human-readable text so the same pay wording works across collectors.
+    readable_description = re.sub(r"<[^>]+>", " ", unescape(description))
+    normalized = " ".join(readable_description.split())
     annual_marker = r"(?:annually|annual|per year|a year|/year|/yr|yearly)"
-    money = r"\$?\s*\d{2,3}(?:,\d{3})*(?:\.\d+)?\s*[kK]?"
+    currency = r"(?:USD\s*)?"
+    money = rf"{currency}\$?\s*\d{{2,3}}(?:,\d{{3}})*(?:\.\d+)?\s*[kK]?"
     range_separator = r"(?:-|–|—|to|through)"
+    trailing_currency = r"(?:\s*USD)?"
     patterns = (
         rf"(?:salary|pay|compensation)(?:\s+range)?[^.;:\n]{{0,30}}"
-        rf"({money}\s*{range_separator}\s*{money})(?:\s*{annual_marker})?",
-        rf"({money}\s*{range_separator}\s*{money})\s*{annual_marker}",
+        rf"({money}\s*{range_separator}\s*{money}){trailing_currency}"
+        rf"(?:\s*{annual_marker})?",
+        rf"({money}\s*{range_separator}\s*{money}){trailing_currency}"
+        rf"\s*{annual_marker}",
         rf"(?:salary|pay|compensation)(?:\s+is|\s+of|:)?\s*"
-        rf"({money})\s*{annual_marker}",
+        rf"({money}){trailing_currency}\s*{annual_marker}",
     )
 
     for pattern in patterns:

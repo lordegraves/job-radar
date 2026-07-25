@@ -14,7 +14,11 @@ analysis = Analysis(
     [str(project_root / "job_radar" / "desktop_launcher.py")],
     pathex=[str(project_root)],
     binaries=webview_binaries,
-    datas=[*job_radar_data, *webview_data],
+    datas=[
+        (str(project_root / "LICENSE"), "."),
+        *job_radar_data,
+        *webview_data,
+    ],
     hiddenimports=[*webview_hidden, *keyring_hidden],
     excludes=[],
     noarchive=False,

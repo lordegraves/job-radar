@@ -267,7 +267,7 @@ packaged collector catalog before contacting an external search provider.
 | Notes and decision reasons | Completed | Individual Save and Pass decisions accept human-only notes up to 300 characters. Passing supports a bounded listed reason, stores both per profile, and neither notes nor reasons alter scoring. |
 | Multi-select report actions | Completed | Report groups can save or pass selected jobs in one profile-owned transaction; any invalid selected job rolls back the complete operation. |
 | Responsive Review Jobs workflow | Completed | Scan completion leads to interactive job groups; each group renders at most 20 full cards per page, supporting evidence is expandable, and static reports remain secondary read-only exports. |
-| Practical-detail extraction | Completed | Conservative parsing fills missing ATS fields only from explicit workplace, employment-type, and annual-pay wording. Missing schedule wording is neutral while explicit conflicts remain enforced. Jobs meeting existing top-match score and strong-signal rules with unresolved practical facts appear as Potential Top Matches with evidence and waiting-on explanations; thresholds remain unchanged. |
+| Practical-detail extraction | Completed | Conservative parsing fills missing ATS fields only from explicit workplace, employment-type, and annual-pay wording, including common HTML pay headings, encoded dash characters, and USD range labels. Missing schedule wording is neutral while explicit conflicts remain enforced. Jobs meeting existing top-match score and strong-signal rules with unresolved practical facts appear as Potential Top Matches with evidence and waiting-on explanations; thresholds remain unchanged. |
 
 ## Planned RC7 language assistance
 

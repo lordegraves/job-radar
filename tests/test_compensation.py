@@ -85,6 +85,42 @@ def test_extract_annual_compensation_from_description() -> None:
     assert evaluate_compensation(extracted, 160000).label == "Meets floor"
 
 
+def test_extract_annual_compensation_from_html_with_encoded_dash() -> None:
+    description = (
+        "<h3>Pay Transparency</h3>"
+        "<h4>Base Compensation Range</h4>"
+        "<p>$179,500 &ndash; $224,300 USD</p>"
+    )
+
+    extracted = extract_annual_compensation_text(description)
+    result = evaluate_compensation(extracted, 160000)
+
+    assert result.label == "Meets floor"
+    assert result.range_label == "$179,500 - $224,300"
+    assert result.min_usd == 179500
+    assert result.max_usd == 224300
+
+
+def test_extract_annual_compensation_handles_usd_before_each_amount() -> None:
+    description = (
+        "The expected annual pay range is "
+        "USD $175,000 to USD $215,000 based on experience."
+    )
+
+    extracted = extract_annual_compensation_text(description)
+
+    assert extracted is not None
+    assert parse_salary_range_usd(extracted) == (175000, 215000)
+
+
+def test_compensation_extractor_ignores_html_with_unrelated_large_numbers() -> None:
+    description = (
+        "<p>Operate a 100000-node platform used by customers in 25 countries.</p>"
+    )
+
+    assert extract_annual_compensation_text(description) is None
+
+
 def test_compensation_extractor_ignores_unrelated_large_numbers() -> None:
     description = (
         "Operate a 100000-node platform used by customers in 25 countries."

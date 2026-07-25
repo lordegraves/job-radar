@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tomllib
 import zipfile
 from importlib.metadata import version
 from pathlib import Path
@@ -18,6 +19,19 @@ from job_radar import __version__
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_project_declares_complete_gpl_v3_only_license() -> None:
+    license_text = (PROJECT_ROOT / "LICENSE").read_text(encoding="utf-8")
+    project_metadata = tomllib.loads(
+        (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )["project"]
+
+    assert "GNU GENERAL PUBLIC LICENSE" in license_text
+    assert "Version 3, 29 June 2007" in license_text
+    assert "END OF TERMS AND CONDITIONS" in license_text
+    assert project_metadata["license"] == "GPL-3.0-only"
+    assert project_metadata["license-files"] == ["LICENSE"]
 
 
 def test_package_exposes_installed_version() -> None:
@@ -35,6 +49,7 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
     shutil.copytree(PROJECT_ROOT / "job_radar", source_directory / "job_radar")
     shutil.copy2(PROJECT_ROOT / "pyproject.toml", source_directory)
     shutil.copy2(PROJECT_ROOT / "README.md", source_directory)
+    shutil.copy2(PROJECT_ROOT / "LICENSE", source_directory)
 
     subprocess.run(
         [
@@ -99,6 +114,16 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
             if name.endswith(".dist-info/entry_points.txt")
         )
         entry_points = wheel_archive.read(entry_points_path).decode("utf-8")
+        metadata_path = next(
+            name for name in archive_names if name.endswith(".dist-info/METADATA")
+        )
+        metadata = wheel_archive.read(metadata_path).decode("utf-8")
+        license_path = next(
+            name
+            for name in archive_names
+            if name.endswith(".dist-info/licenses/LICENSE")
+        )
+        packaged_license = wheel_archive.read(license_path).decode("utf-8")
 
     assert "job-radar = job_radar.cli:main" in entry_points
     assert "job-radar-web = job_radar.web_app:main" in entry_points
@@ -106,6 +131,9 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
         "job-radar-desktop = job_radar.desktop_launcher:main"
         in entry_points
     )
+    assert "License-Expression: GPL-3.0-only" in metadata
+    assert "GNU GENERAL PUBLIC LICENSE" in packaged_license
+    assert "Version 3, 29 June 2007" in packaged_license
 
     private_runtime_prefixes = (
         "config/",
@@ -130,6 +158,7 @@ def test_built_source_distribution_excludes_private_runtime_data(
     shutil.copytree(PROJECT_ROOT / "tests", source_directory / "tests")
     shutil.copy2(PROJECT_ROOT / "pyproject.toml", source_directory)
     shutil.copy2(PROJECT_ROOT / "README.md", source_directory)
+    shutil.copy2(PROJECT_ROOT / "LICENSE", source_directory)
 
     synthetic_private_files = {
         "config/local-private-settings.yaml": "smtp_password: private-value\n",
@@ -179,6 +208,7 @@ def test_built_source_distribution_excludes_private_runtime_data(
     }
 
     required_files = {
+        "LICENSE",
         "README.md",
         "pyproject.toml",
         "job_radar/__init__.py",
@@ -253,6 +283,7 @@ def test_installed_wheel_runs_outside_source_checkout(
     shutil.copytree(PROJECT_ROOT / "job_radar", source_directory / "job_radar")
     shutil.copy2(PROJECT_ROOT / "pyproject.toml", source_directory)
     shutil.copy2(PROJECT_ROOT / "README.md", source_directory)
+    shutil.copy2(PROJECT_ROOT / "LICENSE", source_directory)
     execution_directory.mkdir()
 
     subprocess.run(
@@ -431,6 +462,7 @@ def test_installed_wheel_renders_home_page_with_user_owned_data(
     shutil.copytree(PROJECT_ROOT / "job_radar", source_directory / "job_radar")
     shutil.copy2(PROJECT_ROOT / "pyproject.toml", source_directory)
     shutil.copy2(PROJECT_ROOT / "README.md", source_directory)
+    shutil.copy2(PROJECT_ROOT / "LICENSE", source_directory)
 
     execution_directory.mkdir()
     settings_file.parent.mkdir(parents=True)

@@ -1,6 +1,8 @@
 # Run the same Junior web application with one persistent user-data mount.
 FROM python:3.13-slim-bookworm
 
+LABEL org.opencontainers.image.licenses="GPL-3.0-only"
+
 ARG JUNIOR_UID=10001
 ARG JUNIOR_GID=10001
 
@@ -9,7 +11,7 @@ RUN groupadd --gid "${JUNIOR_GID}" junior \
         --home-dir /var/lib/junior --create-home junior
 
 WORKDIR /app
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md LICENSE ./
 COPY job_radar ./job_radar
 COPY packaging/container/entrypoint.sh /usr/local/bin/junior-container-entrypoint
 

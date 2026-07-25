@@ -71,6 +71,9 @@ def test_about_page_shows_safe_support_and_version_details(tmp_path: Path) -> No
     assert "never downloads or installs" in html
     assert "Beta testers" in html
     assert "Dawn Peacock" in html
+    assert "GNU General Public License v3.0 only" in html
+    assert "GPL-3.0-only" in html
+    assert "github.com/lordegraves/job-radar/blob/HEAD/LICENSE" in html
 
 
 def test_update_check_reports_newer_verified_stable_release() -> None:

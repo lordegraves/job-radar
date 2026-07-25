@@ -74,6 +74,7 @@ Packaging behavior is tested in `tests/test_packaging.py`.
 The tests verify:
 
 - recursive package discovery
+- exact `GPL-3.0-only` metadata and inclusion of the root `LICENSE`
 - inclusion of templates, subpackages, and safe bootstrap starter files
 - wheel construction from a clean temporary source copy
 - installation into an isolated environment outside the repository

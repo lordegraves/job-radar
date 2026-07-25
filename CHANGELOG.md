@@ -6,6 +6,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Licensed Junior under the GNU General Public License version 3.0 only
+  (`GPL-3.0-only`) and included the complete license in Python, Windows, Linux,
+  and container distributions.
+- Fixed annual compensation extraction for common ATS description formats,
+  including HTML headings, encoded dash characters, and USD labels before or
+  after a clearly identified pay range. Confirmed compensation continues to
+  enforce only the profile minimum and does not reward higher advertised pay.
 - Ensured every structured scan-result classification, including Potential
   Top Matches and Passed / Not Recommended, retains individual notes, Save for
   later, Pass / don't show again, and application-tracking controls.

@@ -31,6 +31,24 @@ def test_installer_build_script_requires_verified_bundle_first() -> None:
     assert "packaging\\windows\\junior-installer.iss" in script_text
     assert "ISCC.exe" in script_text
     assert "artifacts\\installer\\Junior-Setup-0.2.0.exe" in script_text
+    validation_text = (
+        PROJECT_ROOT / "scripts" / "validate_windows_upgrade.ps1"
+    ).read_text(encoding="utf-8")
+    assert 'Join-Path $installRoot "LICENSE"' in validation_text
+
+
+def test_installer_receives_license_from_complete_windows_bundle() -> None:
+    installer_text = (
+        PROJECT_ROOT / "packaging" / "windows" / "junior-installer.iss"
+    ).read_text(encoding="utf-8")
+    spec_text = (
+        PROJECT_ROOT / "packaging" / "windows" / "junior.spec"
+    ).read_text(encoding="utf-8")
+
+    assert 'artifacts\\windows\\Junior\\*"; DestDir: "{app}"' in installer_text
+    assert "recursesubdirs createallsubdirs" in installer_text
+    assert 'Source: "..\\..\\LICENSE"; DestDir: "{app}"' in installer_text
+    assert '(str(project_root / "LICENSE"), ".")' in spec_text
 
 
 def test_windows_bundle_embeds_product_version_details() -> None:

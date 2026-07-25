@@ -49,6 +49,11 @@ try {
     if (-not (Test-Path -LiteralPath $juniorExecutable -PathType Leaf)) {
         throw "The clean Windows installation did not contain Junior.exe."
     }
+    if (-not (Test-Path -LiteralPath (
+        Join-Path $installRoot "LICENSE"
+    ) -PathType Leaf)) {
+        throw "The clean Windows installation did not contain LICENSE."
+    }
 
     $port = Get-AvailablePort
     $env:JOB_RADAR_DATA_DIR = $dataRoot

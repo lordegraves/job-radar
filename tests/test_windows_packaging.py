@@ -18,6 +18,7 @@ def test_windows_spec_uses_desktop_entry_and_packaged_resources() -> None:
     assert 'name="Junior"' in spec_text
     assert "console=False" in spec_text
     assert '"junior.ico"' in spec_text
+    assert '(str(project_root / "LICENSE"), ".")' in spec_text
 
 
 def test_windows_build_script_uses_only_repository_build_outputs() -> None:

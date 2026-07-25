@@ -12,6 +12,7 @@ def test_linux_spec_uses_shared_desktop_entry_and_resources() -> None:
     assert 'collect_data_files("job_radar")' in text
     assert 'collect_all("webview")' in text
     assert 'name="junior"' in text
+    assert '(str(project_root / "LICENSE"), ".")' in text
 
 
 def test_linux_build_is_native_and_creates_tarball() -> None:
@@ -26,6 +27,7 @@ def test_docker_build_context_excludes_user_data() -> None:
     dockerignore = (PROJECT_ROOT / ".dockerignore").read_text()
     assert dockerignore.startswith("# Linux release builds")
     assert dockerignore.splitlines()[1] == "*"
+    assert "!LICENSE" in dockerignore
     assert "!job_radar/**" in dockerignore
     for private_path in ("data", "profiles", "reports", "logs", "config"):
         assert f"!{private_path}" not in dockerignore
