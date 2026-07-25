@@ -8,6 +8,7 @@ audit from transmitting repository or user information.
 from __future__ import annotations
 
 import argparse
+import difflib
 import hashlib
 import importlib.metadata
 import json
@@ -521,6 +522,19 @@ def _json_text(report: dict[str, Any]) -> str:
     return json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
+def _stale_output_diff(path: Path, expected: str) -> str:
+    """Show why a generated audit file differs without changing the file."""
+    actual = path.read_text(encoding="utf-8") if path.is_file() else ""
+    return "".join(
+        difflib.unified_diff(
+            actual.splitlines(keepends=True),
+            expected.splitlines(keepends=True),
+            fromfile=f"committed/{path.name}",
+            tofile=f"generated/{path.name}",
+        )
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     mode = parser.add_mutually_exclusive_group(required=True)
@@ -537,14 +551,21 @@ def main() -> int:
         DEFAULT_MARKDOWN.write_text(markdown_text, encoding="utf-8")
     else:
         mismatches: list[str] = []
+        mismatch_diffs: list[str] = []
         for path, expected in (
             (DEFAULT_JSON, json_text),
             (DEFAULT_MARKDOWN, markdown_text),
         ):
             if not path.is_file() or path.read_text(encoding="utf-8") != expected:
                 mismatches.append(str(path.relative_to(PROJECT_ROOT)))
+                mismatch_diffs.append(_stale_output_diff(path, expected))
         if mismatches:
             print("License audit outputs are missing or stale: " + ", ".join(mismatches))
+            print(
+                "The diff below compares the committed file with the audit "
+                "generated in this environment:"
+            )
+            print("\n".join(mismatch_diffs))
             return 1
 
     if not report["summary"]["audit_passed"]:

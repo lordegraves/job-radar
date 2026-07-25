@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.audit_dependency_licenses import _stale_output_diff
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,6 +25,23 @@ def test_dependency_license_audit_is_current() -> None:
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_stale_dependency_report_explains_the_exact_difference(
+    tmp_path: Path,
+) -> None:
+    report_path = tmp_path / "dependency-license-report.json"
+    report_path.write_text('{"version": "old"}\n', encoding="utf-8")
+
+    difference = _stale_output_diff(
+        report_path,
+        '{"version": "current"}\n',
+    )
+
+    assert "committed/dependency-license-report.json" in difference
+    assert "generated/dependency-license-report.json" in difference
+    assert '-{"version": "old"}' in difference
+    assert '+{"version": "current"}' in difference
 
 
 def test_dependency_report_contains_required_compliance_fields() -> None:
