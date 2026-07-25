@@ -1133,7 +1133,8 @@ def test_tracker_add_prefills_from_report_card_query_params(tmp_path: Path) -> N
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert 'id="job_radar_id" name="job_radar_id" value="jr-examplecompute-655a542b" readonly' in html
+    assert 'type="hidden" name="job_radar_id" value="jr-examplecompute-655a542b"' in html
+    assert "Job Radar ID" not in html
     assert 'id="company_name" name="company_name" value="ExampleCompute" required' in html
     assert 'id="role_title" name="role_title" value="Site Reliability Engineer" required' in html
     assert 'id="source_url" name="source_url" value="https://example.com/top"' in html
@@ -3351,8 +3352,8 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert "Application details" in html
     assert "Example Mobility" in html
     assert "Senior Site Reliability Engineer" in html
-    assert "Job Radar ID" in html
-    assert "jr-example-mobility-12345678" in html
+    assert "Job Radar ID" not in html
+    assert "jr-example-mobility-12345678" not in html
     assert "application-header" in html
     assert "quick-action-grid" in html
     assert "date-grid" in html
@@ -3852,8 +3853,9 @@ def test_tracker_add_page_shows_application_form(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Add Application" in html
-    assert "junior assigns the ID when one is not already linked from a scan result." in html
-    assert 'id="job_radar_id" name="job_radar_id" value="" readonly' in html
+    assert "creates the required internal record automatically" in html
+    assert 'type="hidden" name="job_radar_id" value=""' in html
+    assert "Job Radar ID" not in html
     assert 'name="company_name"' in html
     assert 'name="role_title"' in html
     assert 'name="source_url"' in html

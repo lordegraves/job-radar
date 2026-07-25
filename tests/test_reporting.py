@@ -112,7 +112,7 @@ def test_render_html_report_includes_summary_and_clickable_job_links() -> None:
         'target="_blank" rel="noopener noreferrer">View posting</a>'
         in html
     )
-    assert "<strong>Job Radar ID:</strong>" in html
+    assert "<strong>Job Radar ID:</strong>" not in html
     assert "<strong>URL:</strong>" not in html
 
 

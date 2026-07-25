@@ -1091,8 +1091,6 @@ def _append_html_passed_posting(
             f"{escape(_format_pass_reason(scored_posting))}</li>",
             f"<li><strong>Hiring risks:</strong> "
             f"{escape(job.hiring_risks)}</li>",
-            f"<li><strong>Job Radar ID:</strong> "
-            f"<code>{escape(job.job_radar_id)}</code></li>",
             f"<li><strong>Posting:</strong> "
             f'<a href="{escape(job.source_url, quote=True)}" '
             'target="_blank" rel="noopener noreferrer">'
@@ -1153,8 +1151,6 @@ def _append_html_unscored_jobs_section(
                 f"<li><strong>Source:</strong> {escape(posting.source_type)}</li>",
                 f"<li><strong>Location:</strong> "
                 f"{escape(posting.location or 'Unknown')}</li>",
-                f"<li><strong>Job Radar ID:</strong> "
-                f"<code>{escape(posting.job_radar_id)}</code></li>",
                 f"<li><strong>Posting:</strong> "
                 f'<a href="{escape(posting.source_url, quote=True)}" '
                 'target="_blank" rel="noopener noreferrer">'
@@ -1219,8 +1215,6 @@ def _append_html_scored_posting(
             f"{escape(job.action_rationale)}</li>",
             f"<li><strong>Hiring risks:</strong> "
             f"{escape(job.hiring_risks)}</li>",
-            f"<li><strong>Job Radar ID:</strong> "
-            f"<code>{escape(job.job_radar_id)}</code></li>",
             f"<li><strong>History context:</strong> "
             f"{escape(job.history_context)}</li>",
         ]
