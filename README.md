@@ -48,11 +48,13 @@ Application History is a permanent app-native feature. It is stored in SQLite an
 
 Managed profiles have separate Active Applications and Application History records. Switching profiles changes which records the GUI, scans, reports, and CLI use. Existing tracker and history records are assigned to the active managed profile during the protected database migration. A profile that owns tracker or history records cannot be deleted, preventing accidental loss of job-search data.
 
-The RC4 field test does not yet provide a report-level **Pass / don't show
-again** action. RC5 is planned to add a profile-specific dismissal that hides
-the same source job from future reports without deleting the shared job,
-changing another profile, or treating a similar title as the same posting.
-RC5 is also planned to strengthen extraction of explicit practical details
+The current RC5 work adds **Save for later**, **Pass / don't show again**, and
+**I applied — track application** to structured scan-result pages. Saved and
+passed jobs live in a separate profile-owned workspace; they do not become
+applications or application-history records. Passing or saving hides that exact
+source job from future reports for that profile and can be reversed later.
+RC5 must still add practical multi-select decisions and notes, and strengthen
+extraction of explicit practical details
 such as work location, temporary or contract duration, employment type, and
 work authorization before eligibility is classified.
 
@@ -71,13 +73,13 @@ identifier assigned during collection, while an application entered manually
 from LinkedIn or another outside source must receive a new Junior-managed ID
 when the user selects Save. Normal users must never invent or maintain it.
 
-RC5 must also separate bookmarked jobs from applications. **Save for later**
-will keep a profile-owned job for later review without claiming the user
-applied. **Pass** will move a job into a separate profile-owned Reviewed Jobs
-view and prevent that exact posting from returning in future reports. **I
-applied — track application** will move the same job into Active Applications
-without duplicating it. Active Applications and Application History will remain
-limited to jobs the user actually applied for. Junior's recommendation label
+RC5 now separates bookmarked jobs from applications. **Save for later** keeps a
+profile-owned job for later review without claiming the user applied. **Pass**
+moves a job into the profile's Reviewed Jobs view and prevents that exact
+posting from returning in future reports. **I applied — track application**
+opens the application workflow with Junior's scan-owned ID and source details.
+Active Applications and Application History remain limited to jobs the user
+actually applied for. Junior's recommendation label
 **Hold** is not the same as the user's saved state.
 
 ## Quick start for development

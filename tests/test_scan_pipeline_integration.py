@@ -3,10 +3,12 @@
 import json
 import sqlite3
 from pathlib import Path
+from types import SimpleNamespace
 
 from job_radar.cli import handle_scan
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
+from job_radar.scan_service import _exclude_decided_postings
 
 
 def make_fake_posting() -> JobPosting:
@@ -107,6 +109,21 @@ def count_job_postings(database_file: Path) -> int:
 def read_snapshot(report_file: Path) -> dict:
     snapshot_file = report_file.with_suffix(".json")
     return json.loads(snapshot_file.read_text(encoding="utf-8"))
+
+
+def test_scan_omits_profile_decided_job_from_future_reports(
+) -> None:
+    visible = SimpleNamespace(
+        posting=SimpleNamespace(job_radar_id="jr-visible-12345678"),
+    )
+    passed = SimpleNamespace(
+        posting=SimpleNamespace(job_radar_id="jr-passed-12345678"),
+    )
+
+    assert _exclude_decided_postings(
+        [visible, passed],
+        {"jr-passed-12345678"},
+    ) == [visible]
 
 
 def test_scan_pipeline_tracks_new_then_seen(

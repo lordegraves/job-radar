@@ -171,6 +171,8 @@ def create_app(
         get_reports_path=lambda: str(
             _get_runtime_paths(app).reports_path
         ),
+        get_database_path=lambda: _get_database_path(app),
+        get_profile_id=lambda: _get_active_profile_id(app),
     )
 
     register_tracker_routes(

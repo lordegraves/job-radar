@@ -319,6 +319,11 @@ def _schema_migrations() -> tuple:
             "add security-clearance profile preference",
             _migrate_clearance_profile_preference,
         ),
+        (
+            27,
+            "add profile-owned job decisions",
+            _migrate_profile_job_decisions,
+        ),
     )
 
 
@@ -1271,6 +1276,36 @@ def _migrate_managed_profile_tables(connection: sqlite3.Connection) -> None:
 
     for statement in statements:
         connection.execute(statement)
+
+
+def _migrate_profile_job_decisions(connection: sqlite3.Connection) -> None:
+    """Store bookmarks and passes without turning them into applications."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS profile_job_decisions (
+            profile_id TEXT NOT NULL,
+            job_radar_id TEXT NOT NULL,
+            decision TEXT NOT NULL CHECK (decision IN ('saved', 'passed')),
+            company TEXT NOT NULL,
+            title TEXT NOT NULL,
+            source_url TEXT,
+            location TEXT,
+            notes TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (profile_id, job_radar_id),
+            FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+                ON DELETE CASCADE
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_profile_job_decisions_state
+        ON profile_job_decisions(profile_id, decision, updated_at)
+        """
+    )
 
 
 def _migrate_active_profile_selection(connection: sqlite3.Connection) -> None:

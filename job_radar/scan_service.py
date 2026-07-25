@@ -28,6 +28,7 @@ from job_radar.history_match import (
     summarize_history_risk,
 )
 from job_radar.history_summary import build_history_summary
+from job_radar.job_decision_service import get_decided_job_ids
 from job_radar.normalize import clean_text
 from job_radar.profile_context import load_active_candidate_context
 from job_radar.profile_storage import get_active_profile
@@ -183,6 +184,19 @@ def _is_storage_relevant_posting(scored_posting: ScoredPosting) -> bool:
         is_top_match_report_posting(scored_posting)
         or is_review_needed_report_posting(scored_posting)
     )
+
+
+def _exclude_decided_postings(
+    scored_postings: list[ScoredPosting],
+    decided_job_ids: set[str],
+) -> list[ScoredPosting]:
+    """Keep an exact saved or passed job out of this profile's future report."""
+
+    return [
+        item
+        for item in scored_postings
+        if item.posting.job_radar_id not in decided_job_ids
+    ]
 
 
 def handle_scan(
@@ -476,6 +490,14 @@ def _handle_scan_unlocked(
             )
 
         scored_postings.sort(key=lambda item: item.score, reverse=True)
+        decided_job_ids = get_decided_job_ids(
+            database_path,
+            profile_id=profile_id,
+        )
+        scored_postings = _exclude_decided_postings(
+            scored_postings,
+            decided_job_ids,
+        )
 
         relevant_scored_postings = [
             scored_posting

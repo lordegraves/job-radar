@@ -197,14 +197,8 @@
         justify-content: center;
     }
 
-    .job-id-pill {
-        background: var(--surface-muted);
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        color: var(--muted);
-        display: inline-flex;
-        gap: 6px;
-        padding: 6px 10px;
+    .job-links form {
+        margin: 0;
     }
 
     .error-card-grid {
@@ -281,6 +275,7 @@
     <div class="section-actions">
         <a href="{{ url_for('index') }}">Back to dashboard</a>
         <a href="{{ url_for('reports') }}">Open reports</a>
+        <a href="{{ url_for('job_decisions') }}">Saved and reviewed jobs</a>
         {% if html_report_exists %}
         <a href="{{ url_for('report_view', report_name=html_report_name) }}">Open full HTML report</a>
         {% endif %}
@@ -422,12 +417,21 @@
         {% endif %}
 
         <div class="job-links">
-            <a class="button-link" href="{{ job.tracker_add_url }}">Track this application</a>
+            <a class="button-link" href="{{ job.tracker_add_url }}">I applied — track application</a>
             {% if job.url %}
             <a class="button-link button-secondary" href="{{ job.url }}" target="_blank" rel="noopener noreferrer">Open job posting</a>
             {% endif %}
-            {% if job.job_radar_id %}
-            <span class="job-id-pill">Job Radar ID: <code>{{ job.job_radar_id }}</code></span>
+            {% if job.job_radar_id and section_name in ('top_matches', 'review_needed', 'new_jobs') %}
+            <form method="post" action="{{ url_for('save_report_job_decision', job_radar_id=job.job_radar_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="section_name" value="{{ section_name }}">
+                <button class="button-secondary" type="submit" name="decision" value="saved">Save for later</button>
+            </form>
+            <form method="post" action="{{ url_for('save_report_job_decision', job_radar_id=job.job_radar_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="section_name" value="{{ section_name }}">
+                <button class="button-secondary" type="submit" name="decision" value="passed">Pass — don't show again</button>
+            </form>
             {% endif %}
         </div>
     </article>

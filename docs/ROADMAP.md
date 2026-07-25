@@ -248,6 +248,19 @@ packaged collector catalog before contacting an external search provider.
   restoration. Full release validation and a normal-user visual check remain
   required.
 
+### Current job-decision implementation (RC5)
+
+| Requirement | Status | Verified behavior |
+| --- | --- | --- |
+| Individual report actions | Completed | Structured Top Matches, Review Needed, and New Jobs cards offer Save for later, Pass / don't show again, and I applied — track application. |
+| Profile-owned Saved and Reviewed workspace | Completed | Saved and passed jobs remain separate from Active Applications and Application History and are isolated to the active profile. |
+| Exact-job suppression | Completed | Saved and passed job IDs are omitted from later reports for that profile without deleting the shared posting. |
+| Reversible decisions | Completed | A saved bookmark can be removed, a saved job can be passed, and a passed job can be allowed in future scans again. |
+| Scan-owned application identity | Completed | Choosing I applied preserves Junior's scan-owned job ID and source evidence in the application form. |
+| Notes and decision reasons | Planned | The storage boundary permits bounded notes, but the normal-user notes and reason workflow is not implemented yet. |
+| Multi-select report actions | Planned | Saving or passing several jobs in one all-or-nothing operation is not implemented yet. |
+| Practical-detail extraction | In Progress | Explicit location, contract duration, employment type, schedule, compensation, and work authorization still require broader extraction and acceptance testing. |
+
 ## Protected wording notes
 
 - Priority 19 uses “user-owned” to mean data stored in the user's application-data area. Employer organizations and source definitions are installation-wide; profiles independently select from that shared catalog.

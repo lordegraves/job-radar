@@ -12,6 +12,12 @@ import job_radar.web_app as web_app_module
 from job_radar.config import load_settings
 from job_radar.database import connect_database
 from job_radar.history_models import JobHistoryRecord
+from job_radar.job_decision_service import (
+    DECISION_PASSED,
+    DECISION_SAVED,
+    list_job_decisions,
+    save_job_decision,
+)
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_storage import upsert_employer_source
 from job_radar.profile_models import ManagedProfile
@@ -822,9 +828,12 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "Linux infrastructure; reliability engineering" in html
     assert "History context" in html
     assert "Prior similar role at ExampleCompute" in html
-    assert "Job Radar ID" in html
+    assert "Job Radar ID" not in html
     assert 'target="_blank" rel="noopener noreferrer"' in html
-    assert "Track this application" in html
+    assert "I applied" in html
+    assert "Save for later" in html
+    assert "Pass" in html
+    assert "show again" in html
     assert "/tracker/add?" in html
     assert "job_radar_id=jr-examplecompute-655a542b" in html
     assert "company_name=ExampleCompute" in html
@@ -839,6 +848,125 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "Canonical key" not in html
     assert "Hardware Operations Engineer" not in html
     assert "Tracked SRE" not in html
+
+
+def test_review_needed_job_can_be_passed_without_creating_application(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(
+        settings_file,
+        database_file,
+        reports_path=reports_path,
+    )
+    profile = ManagedProfile(
+        profile_id="profile_33333333",
+        display_name="Synthetic reviewer",
+    )
+    create_profile(database_file, profile)
+    set_active_profile(database_file, profile.profile_id)
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-24T10:00:00+00:00",
+        review_needed=[
+            make_report_snapshot_job(
+                title="Synthetic Systems Role",
+                url="https://example.invalid/jobs/review",
+                company="Synthetic Company",
+                location="Remote",
+                job_radar_id="jr-synthetic-12345678",
+            )
+        ],
+    )
+
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+    response = client.post(
+        "/reports/jobs/jr-synthetic-12345678/decision",
+        data={
+            "section_name": "review_needed",
+            "decision": DECISION_PASSED,
+        },
+    )
+
+    assert response.status_code == 302
+    decisions = list_job_decisions(
+        database_file,
+        profile_id=profile.profile_id,
+        decision=DECISION_PASSED,
+    )
+    assert len(decisions) == 1
+    assert decisions[0].title == "Synthetic Systems Role"
+    assert list_applications(
+        database_file,
+        profile_id=profile.profile_id,
+    ) == []
+    refreshed_html = client.get(
+        "/reports/section/review_needed",
+    ).get_data(as_text=True)
+    assert 'href="https://example.invalid/jobs/review"' not in refreshed_html
+
+    workspace_html = client.get("/job-decisions").get_data(as_text=True)
+    assert "Reviewed and passed" in workspace_html
+    assert "Synthetic Systems Role" in workspace_html
+    assert "Allow in future scans" in workspace_html
+
+
+def test_saved_job_moves_out_of_bookmarks_when_application_is_created(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    profile = ManagedProfile(
+        profile_id="profile_55555555",
+        display_name="Synthetic applicant",
+    )
+    create_profile(database_file, profile)
+    set_active_profile(database_file, profile.profile_id)
+    save_job_decision(
+        database_file,
+        profile_id=profile.profile_id,
+        job_radar_id="jr-synthetic-87654321",
+        decision=DECISION_SAVED,
+        company="Synthetic Company",
+        title="Synthetic Role",
+        source_url="https://example.invalid/jobs/apply",
+        location="Remote",
+    )
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    response = client.post(
+        "/tracker/add",
+        data={
+            "job_radar_id": "jr-synthetic-87654321",
+            "company_name": "Synthetic Company",
+            "role_title": "Synthetic Role",
+            "source_url": "https://example.invalid/jobs/apply",
+            "status": "Applied",
+            "outcome": "Pending / In Progress",
+            "applied_on": "2026-07-24",
+            "follow_up_on": "",
+            "last_activity_on": "2026-07-24",
+            "notes": "",
+        },
+    )
+
+    assert response.status_code == 302
+    assert list_job_decisions(
+        database_file,
+        profile_id=profile.profile_id,
+    ) == []
+    application = get_application(
+        database_file,
+        "jr-synthetic-87654321",
+        profile_id=profile.profile_id,
+    )
+    assert application is not None
 
 
 def test_report_section_view_shows_new_jobs_from_latest_scan(tmp_path: Path) -> None:
@@ -905,7 +1033,7 @@ def test_report_section_view_shows_new_jobs_from_latest_scan(tmp_path: Path) -> 
     assert "Strong infrastructure fit" in html
     assert "linux, infrastructure, automation, reliability" in html
     assert "Production Kubernetes translation" in html
-    assert "Track this application" in html
+    assert "I applied" in html
     assert "job_radar_id=jr-newco-12345678" in html
     assert "source_url=https://example.com/new-job" in html
 
@@ -3492,6 +3620,9 @@ def test_tracker_bulk_update_moves_selected_applications_to_history(
     assert 'id="select-all-applications"' in page_html
     assert 'id="bulk-outcome"' in page_html
     assert 'id="bulk-update-button"' in page_html
+    assert 'id="bulk-confirmation-dialog"' in page_html
+    assert "Move applications to History?" in page_html
+    assert "window.confirm" not in page_html
 
     response = client.post(
         "/tracker/bulk-update",

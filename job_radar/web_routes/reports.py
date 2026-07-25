@@ -9,11 +9,22 @@ from pathlib import Path
 from flask import (
     Flask,
     abort,
+    flash,
+    redirect,
     render_template,
+    request,
     send_from_directory,
     url_for,
 )
 
+from job_radar.job_decision_service import (
+    DECISION_PASSED,
+    DECISION_SAVED,
+    delete_job_decision,
+    get_decided_job_ids,
+    list_job_decisions,
+    save_job_decision,
+)
 from job_radar.report_snapshot import (
     ReportSnapshotCollectorError,
     ReportSnapshotJob,
@@ -22,6 +33,7 @@ from job_radar.report_snapshot import (
 from job_radar.retention_service import list_retained_report_runs
 
 REPORT_FILE_EXTENSIONS = {".html", ".htm", ".md", ".txt"}
+JOB_DECISION_SECTIONS = {"top_matches", "review_needed", "new_jobs"}
 
 REPORT_HTML_BODY_PATTERN = re.compile(
     r"<body\b[^>]*>(.*?)</body>",
@@ -143,6 +155,8 @@ def register_report_routes(
     app: Flask,
     *,
     get_reports_path: Callable[[], str],
+    get_database_path: Callable[[], str],
+    get_profile_id: Callable[[], str | None],
 ) -> None:
     """Register report listing, viewing, and download routes."""
 
@@ -173,9 +187,14 @@ def register_report_routes(
             ]
         else:
             snapshot_jobs = getattr(snapshot, section_name)
+            decided_job_ids = get_decided_job_ids(
+                get_database_path(),
+                profile_id=get_profile_id(),
+            )
             job_cards = [
                 _build_report_job_card(job)
                 for job in snapshot_jobs
+                if job.job_radar_id not in decided_job_ids
             ]
             eligibility_counts = _count_eligibility_labels(job_cards)
 
@@ -203,6 +222,107 @@ def register_report_routes(
             primary_report_files=primary_report_files,
             retained_report_runs=list_retained_report_runs(reports_path),
         )
+
+    @app.post("/reports/jobs/<path:job_radar_id>/decision")
+    def save_report_job_decision(job_radar_id: str):
+        profile_id = get_profile_id()
+        if profile_id is None:
+            abort(400)
+        section_name = request.form.get("section_name", "review_needed")
+        if section_name not in JOB_DECISION_SECTIONS:
+            abort(400)
+        decision = request.form.get("decision", "")
+        if decision not in {DECISION_SAVED, DECISION_PASSED}:
+            abort(400)
+        snapshot = _load_latest_snapshot(get_reports_path())
+        job = _find_snapshot_job(
+            snapshot,
+            job_radar_id,
+            section_name=section_name,
+        )
+        if job is None:
+            abort(404)
+        save_job_decision(
+            get_database_path(),
+            profile_id=profile_id,
+            job_radar_id=job.job_radar_id,
+            decision=decision,
+            company=job.company,
+            title=job.title,
+            source_url=job.url,
+            location=job.location,
+        )
+        flash(
+            (
+                f"{job.title} was saved for later."
+                if decision == DECISION_SAVED
+                else f"{job.title} was marked reviewed and passed."
+            ),
+            "success",
+        )
+        return redirect(url_for("report_section_view", section_name=section_name))
+
+    @app.get("/job-decisions")
+    def job_decisions() -> str:
+        profile_id = get_profile_id()
+        if profile_id is None:
+            abort(400)
+        return render_template(
+            "job_decisions.html",
+            saved_jobs=list_job_decisions(
+                get_database_path(),
+                profile_id=profile_id,
+                decision=DECISION_SAVED,
+            ),
+            passed_jobs=list_job_decisions(
+                get_database_path(),
+                profile_id=profile_id,
+                decision=DECISION_PASSED,
+            ),
+        )
+
+    @app.post("/job-decisions/<path:job_radar_id>")
+    def update_job_decision(job_radar_id: str):
+        profile_id = get_profile_id()
+        if profile_id is None:
+            abort(400)
+        action = request.form.get("action", "")
+        decisions = list_job_decisions(
+            get_database_path(),
+            profile_id=profile_id,
+        )
+        existing = next(
+            (item for item in decisions if item.job_radar_id == job_radar_id),
+            None,
+        )
+        if existing is None:
+            abort(404)
+        if action == "pass":
+            save_job_decision(
+                get_database_path(),
+                profile_id=profile_id,
+                job_radar_id=existing.job_radar_id,
+                decision=DECISION_PASSED,
+                company=existing.company,
+                title=existing.title,
+                source_url=existing.source_url,
+                location=existing.location,
+                notes=existing.notes,
+            )
+            flash(f"{existing.title} was moved to Reviewed Jobs.", "success")
+        elif action == "remove":
+            delete_job_decision(
+                get_database_path(),
+                profile_id=profile_id,
+                job_radar_id=existing.job_radar_id,
+            )
+            flash(
+                f"{existing.title} can appear in a future scan again.",
+                "success",
+            )
+        else:
+            abort(400)
+        return redirect(url_for("job_decisions"))
 
     @app.get("/reports/view/<path:report_name>")
     def report_view(report_name: str) -> str:
@@ -267,6 +387,30 @@ def build_latest_report_summary(
         tracked_applications=snapshot.summary.tracked_applications,
         new_jobs=snapshot.summary.new_jobs,
         collector_errors=snapshot.summary.collector_errors,
+    )
+
+
+def _load_latest_snapshot(reports_path: str | Path):
+    snapshot_path = Path(reports_path).resolve() / "target-scan.json"
+    if not snapshot_path.is_file():
+        abort(404)
+    return load_report_snapshot(snapshot_path)
+
+
+def _find_snapshot_job(
+    snapshot,
+    job_radar_id: str,
+    *,
+    section_name: str,
+) -> ReportSnapshotJob | None:
+    section = getattr(snapshot, section_name)
+    return next(
+        (
+            job
+            for job in section
+            if job.job_radar_id == job_radar_id
+        ),
+        None,
     )
 
 

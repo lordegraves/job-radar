@@ -45,6 +45,17 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## 0.2.0 - 2026-07-24
 
+- Added profile-owned Saved and Reviewed Jobs decisions to structured scan
+  results. Users can save a job, pass on the exact posting, reverse either
+  choice, or explicitly move into the application workflow only after applying.
+- Added protected SQLite migration version 27 for job decisions. Saved and
+  passed jobs remain separate from Active Applications and Application History,
+  and later reports omit only the exact decided job for the active profile.
+- Removed the internal Job Radar ID from structured result cards while
+  preserving it behind the scenes when a user tracks an application.
+- Replaced the browser-branded bulk application confirmation with a
+  Junior-styled in-app confirmation panel that preserves the same guarded move
+  to Application History without exposing the local server address.
 - Corrected report grouping so jobs with unresolved practical details appear
   under Review Needed instead of being contradicted by a "not recommended"
   category. Top Matches still require both strong role fit and confirmed

@@ -134,10 +134,14 @@ SQLite is the system of record for:
 - scan runs and errors
 - active applications
 - application history
+- profile-owned saved and passed job decisions
 - the installation-wide employer/source catalog and profile-specific employer selections
 - managed profile identity, preferences, scoring/report settings, and app-owned resume metadata
 
 `database.py` owns connections and transaction behavior. `storage.py` owns general persistence. Tracker persistence lives under `job_radar/tracker/`.
+`job_decision_service.py` owns the separate Saved Jobs and Reviewed Jobs
+records. These decisions suppress only the exact posting for one profile and
+never create an application or application-history record.
 
 Database protections include:
 

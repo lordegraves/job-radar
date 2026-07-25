@@ -1,0 +1,127 @@
+{# Shows profile-owned saved and reviewed jobs without treating them as applications. #}
+{% extends "base.html" %}
+
+{% block title %}Saved and Reviewed Jobs - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .decision-grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .decision-list {
+        display: grid;
+        gap: 12px;
+        margin-top: 18px;
+    }
+
+    .decision-card {
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .decision-card h3 {
+        margin: 0 0 4px;
+    }
+
+    .decision-company,
+    .decision-location {
+        color: var(--muted);
+        margin: 0;
+    }
+
+    .decision-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .decision-actions form {
+        margin: 0;
+    }
+
+    @media (max-width: 850px) {
+        .decision-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">Saved and Reviewed Jobs</h1>
+    <p>
+        Saved jobs are waiting for your decision. Reviewed jobs are postings you passed on and Junior will leave out of future scans.
+    </p>
+    <p class="muted">
+        Neither list is part of your application tracker. A job enters Active Applications only after you choose “I applied.”
+    </p>
+    <p><a href="{{ url_for('reports') }}">Back to reports</a></p>
+</div>
+
+<div class="decision-grid">
+    <section class="page-card" aria-labelledby="saved-jobs-title">
+        <h2 id="saved-jobs-title">Saved for later</h2>
+        {% if saved_jobs %}
+        <div class="decision-list">
+            {% for job in saved_jobs %}
+            <article class="decision-card">
+                <h3>{{ job.title }}</h3>
+                <p class="decision-company">{{ job.company }}</p>
+                {% if job.location %}<p class="decision-location">{{ job.location }}</p>{% endif %}
+                <div class="decision-actions">
+                    {% if job.source_url %}
+                    <a class="button-link button-secondary" href="{{ job.source_url }}" target="_blank" rel="noopener noreferrer">Open job posting</a>
+                    {% endif %}
+                    <a class="button-link" href="{{ url_for('add_tracker_application', job_radar_id=job.job_radar_id, company_name=job.company, role_title=job.title, source_url=job.source_url or '', status='Applied', outcome='Pending / In Progress') }}">I applied — track application</a>
+                    <form method="post" action="{{ url_for('update_job_decision', job_radar_id=job.job_radar_id) }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <button class="button-secondary" type="submit" name="action" value="pass">Pass — don't show again</button>
+                    </form>
+                    <form method="post" action="{{ url_for('update_job_decision', job_radar_id=job.job_radar_id) }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <button class="button-secondary" type="submit" name="action" value="remove">Remove bookmark</button>
+                    </form>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted">No jobs are saved for later.</p>
+        {% endif %}
+    </section>
+
+    <section class="page-card" aria-labelledby="reviewed-jobs-title">
+        <h2 id="reviewed-jobs-title">Reviewed and passed</h2>
+        {% if passed_jobs %}
+        <div class="decision-list">
+            {% for job in passed_jobs %}
+            <article class="decision-card">
+                <h3>{{ job.title }}</h3>
+                <p class="decision-company">{{ job.company }}</p>
+                {% if job.location %}<p class="decision-location">{{ job.location }}</p>{% endif %}
+                <div class="decision-actions">
+                    {% if job.source_url %}
+                    <a class="button-link button-secondary" href="{{ job.source_url }}" target="_blank" rel="noopener noreferrer">Open job posting</a>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('update_job_decision', job_radar_id=job.job_radar_id) }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <button class="button-secondary" type="submit" name="action" value="remove">Allow in future scans</button>
+                    </form>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted">No jobs have been reviewed and passed.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

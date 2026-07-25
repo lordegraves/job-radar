@@ -390,15 +390,16 @@ receives a new Junior-managed ID when it is saved. Normal users never need to
 enter, create, or maintain this value. Posting URLs remain source evidence, not
 primary identity.
 
-The RC4 field test still displays the internal value in some normal-user views.
-Removing that field from forms and reports is an RC5 acceptance requirement;
-the underlying compatibility ID will remain managed by Junior.
+RC5 structured result cards no longer display the internal value. The
+underlying compatibility ID remains managed by Junior and is preserved when a
+user chooses **I applied — track application**.
 
-RC4 also does not yet provide a separate Saved Jobs workspace. RC5 is planned
-to let users select **Save for later** directly from a report without recording
-an application. A saved job can later be moved into Active Applications with
-**I applied — track application**, or moved into a separate Reviewed Jobs view
-with **Pass** so the same posting is omitted from future reports. Active
+RC5 structured scan-result pages now provide **Save for later**, **Pass /
+don't show again**, and **I applied — track application**. A saved job can later
+be moved into Active Applications with **I applied — track application**, or
+moved into the Reviewed Jobs view with **Pass** so the exact posting is omitted
+from future reports. The Saved and Reviewed Jobs page also lets you reverse a
+bookmark or pass so the posting may appear in a later scan. Active
 Applications and Application History will remain limited to jobs the user
 actually applied for. Saved Jobs and Reviewed Jobs will preserve profile-owned
 job decisions without becoming a second application tracker. The user bookmark
@@ -410,12 +411,11 @@ compensation. This does not mean the role is a poor fit. **Top Match** remains
 reserved for roles that have both strong role evidence and enough confirmed
 practical information to support applying.
 
-The RC4 field test does not yet include a report-level **Pass / don't show
-again** control. A durable, profile-specific version of that action and stronger
-extraction of explicit location and short-contract details are RC5 acceptance
-requirements. Until that work is released, treat Review Needed as a request for
-human confirmation rather than proof that Junior extracted every practical
-detail in the posting.
+The RC5 **Pass / don't show again** control is durable and profile-specific.
+Stronger extraction of explicit location and short-contract details remains an
+RC5 acceptance requirement. Until that work is complete, treat Review Needed
+as a request for human confirmation rather than proof that Junior extracted
+every practical detail in the posting.
 
 RC5 also requires broader company-source acceptance testing. A company should
 be saved only after Junior identifies a working public source and receives

@@ -6,6 +6,7 @@ from datetime import date, timedelta
 
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
 
+from job_radar.job_decision_service import delete_job_decision
 from job_radar.tracker.tracker_ids import build_manual_job_radar_id
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import (
@@ -404,6 +405,14 @@ def register_tracker_routes(
             ),
             profile_id=profile_id,
         )
+        if profile_id is not None:
+            # Applying changes ownership state: it is now an application, not a
+            # bookmark or pre-application pass.
+            delete_job_decision(
+                database_path,
+                profile_id=profile_id,
+                job_radar_id=job_radar_id,
+            )
 
         return redirect(
             url_for(

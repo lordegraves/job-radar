@@ -182,6 +182,33 @@
         gap: 10px;
     }
 
+    .confirmation-dialog {
+        background: var(--surface);
+        border: 1px solid var(--border-strong);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        color: var(--text);
+        max-width: 520px;
+        padding: 24px;
+        width: calc(100% - 48px);
+    }
+
+    .confirmation-dialog::backdrop {
+        background: rgba(0, 0, 0, 0.72);
+        backdrop-filter: blur(3px);
+    }
+
+    .confirmation-dialog h2 {
+        margin-top: 0;
+    }
+
+    .confirmation-dialog-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 22px;
+    }
+
     .table-wrap table {
         table-layout: fixed;
         width: 100%;
@@ -429,6 +456,16 @@
     </form>
 </div>
 
+<dialog id="bulk-confirmation-dialog" class="confirmation-dialog" aria-labelledby="bulk-confirmation-title">
+    <h2 id="bulk-confirmation-title">Move applications to History?</h2>
+    <p id="bulk-confirmation-message"></p>
+    <p class="muted">The selected applications will leave Active Applications and remain available in Application History.</p>
+    <div class="confirmation-dialog-actions">
+        <button id="cancel-bulk-update" class="button-secondary" type="button">Cancel</button>
+        <button id="confirm-bulk-update" type="button">Move to History</button>
+    </div>
+</dialog>
+
 <script>
     (() => {
         const form = document.getElementById("bulk-application-form");
@@ -436,6 +473,11 @@
         const selectors = [...document.querySelectorAll(".application-selector")];
         const updateButton = document.getElementById("bulk-update-button");
         const outcome = document.getElementById("bulk-outcome");
+        const confirmationDialog = document.getElementById("bulk-confirmation-dialog");
+        const confirmationMessage = document.getElementById("bulk-confirmation-message");
+        const confirmBulkUpdate = document.getElementById("confirm-bulk-update");
+        const cancelBulkUpdate = document.getElementById("cancel-bulk-update");
+        let confirmed = false;
 
         function refreshSelectionState() {
             const selectedCount = selectors.filter((selector) => selector.checked).length;
@@ -455,15 +497,31 @@
         });
         form.addEventListener("submit", (event) => {
             const selectedCount = selectors.filter((selector) => selector.checked).length;
-            if (
-                selectedCount === 0
-                || !window.confirm(
-                    `Move ${selectedCount} selected application${selectedCount === 1 ? "" : "s"} `
-                    + `to History as ${outcome.value}?`
-                )
-            ) {
+            if (selectedCount === 0) {
                 event.preventDefault();
+                return;
             }
+
+            if (confirmed) {
+                return;
+            }
+
+            event.preventDefault();
+            confirmationMessage.textContent = (
+                `Move ${selectedCount} selected application${selectedCount === 1 ? "" : "s"} `
+                + `to History as ${outcome.value}?`
+            );
+            confirmationDialog.showModal();
+        });
+
+        confirmBulkUpdate.addEventListener("click", () => {
+            confirmed = true;
+            confirmationDialog.close();
+            form.requestSubmit();
+        });
+
+        cancelBulkUpdate.addEventListener("click", () => {
+            confirmationDialog.close();
         });
     })();
 </script>
