@@ -151,6 +151,11 @@ def test_profile_suggestions_expose_and_support_keyboard_navigation() -> None:
     assert 'role="listbox"' not in template
     assert 'event.key === "ArrowDown"' in template
     assert 'event.key === "Escape"' in template
+    assert (
+        'class="control-field control-field-multiline"'
+        in template
+    )
+    assert ".control-field-multiline" in template
 
 
 def test_destructive_application_actions_use_user_facing_language() -> None:

@@ -43,6 +43,7 @@ JOB_DECISION_SECTIONS = {
     "new_jobs",
 }
 REPORT_JOBS_PER_PAGE = 20
+COMPACT_REPORT_JOBS_PER_PAGE = 50
 
 REPORT_HTML_BODY_PATTERN = re.compile(
     r"<body\b[^>]*>(.*?)</body>",
@@ -205,6 +206,17 @@ def register_report_routes(
         total_jobs = 0
         page_start_index = 0
         page_end_index = 0
+        view_mode = (
+            "compact"
+            if section_name == "review_needed"
+            and request.args.get("view") == "compact"
+            else "full"
+        )
+        jobs_per_page = (
+            COMPACT_REPORT_JOBS_PER_PAGE
+            if view_mode == "compact"
+            else REPORT_JOBS_PER_PAGE
+        )
 
         if section_name == "collector_errors":
             collector_errors = [
@@ -226,16 +238,16 @@ def register_report_routes(
             total_jobs = len(all_job_cards)
             total_pages = max(
                 1,
-                (total_jobs + REPORT_JOBS_PER_PAGE - 1)
-                // REPORT_JOBS_PER_PAGE,
+                (total_jobs + jobs_per_page - 1)
+                // jobs_per_page,
             )
             current_page = min(
                 max(request.args.get("page", 1, type=int) or 1, 1),
                 total_pages,
             )
-            page_start_index = (current_page - 1) * REPORT_JOBS_PER_PAGE
+            page_start_index = (current_page - 1) * jobs_per_page
             page_end_index = min(
-                page_start_index + REPORT_JOBS_PER_PAGE,
+                page_start_index + jobs_per_page,
                 total_jobs,
             )
             job_cards = all_job_cards[page_start_index:page_end_index]
@@ -258,6 +270,8 @@ def register_report_routes(
             total_jobs=total_jobs,
             page_start=page_start_index + 1 if total_jobs else 0,
             page_end=page_end_index,
+            view_mode=view_mode,
+            view_query="compact" if view_mode == "compact" else None,
         )
 
     @app.get("/reports")
@@ -280,6 +294,10 @@ def register_report_routes(
             abort(400)
         section_name = request.form.get("section_name", "review_needed")
         return_page = max(request.form.get("page", 1, type=int) or 1, 1)
+        view_mode = _validated_view_mode(
+            section_name,
+            request.form.get("view"),
+        )
         if section_name not in JOB_DECISION_SECTIONS:
             abort(400)
         decision = request.form.get("decision", "")
@@ -322,6 +340,7 @@ def register_report_routes(
                 "report_section_view",
                 section_name=section_name,
                 page=return_page,
+                view="compact" if view_mode == "compact" else None,
             )
         )
 
@@ -333,6 +352,10 @@ def register_report_routes(
         if section_name not in JOB_DECISION_SECTIONS:
             abort(400)
         return_page = max(request.form.get("page", 1, type=int) or 1, 1)
+        view_mode = _validated_view_mode(
+            section_name,
+            request.form.get("view"),
+        )
         decision = request.form.get("decision", "")
         if decision not in {DECISION_SAVED, DECISION_PASSED}:
             abort(400)
@@ -350,6 +373,7 @@ def register_report_routes(
                     "report_section_view",
                     section_name=section_name,
                     page=return_page,
+                    view="compact" if view_mode == "compact" else None,
                 )
             )
 
@@ -384,6 +408,7 @@ def register_report_routes(
                 "report_section_view",
                 section_name=section_name,
                 page=return_page,
+                view="compact" if view_mode == "compact" else None,
             )
         )
 
@@ -696,6 +721,12 @@ def _count_eligibility_labels(
         for label, count in counts.items()
         if count > 0
     }
+
+
+def _validated_view_mode(section_name: str, value: str | None) -> str:
+    if section_name == "review_needed" and value == "compact":
+        return "compact"
+    return "full"
 
 
 def _build_report_job_card(

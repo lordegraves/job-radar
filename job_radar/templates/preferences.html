@@ -114,6 +114,10 @@
         grid-template-rows: 52px 58px 38px;
     }
 
+    .control-field-multiline {
+        grid-template-rows: auto auto minmax(120px, auto);
+    }
+
     .employment-settings select,
     .employment-settings input[type="number"] {
         box-sizing: border-box;
@@ -443,7 +447,7 @@
             <div class="selection-groups">
                 <div class="selection-group"><h4>Roles included in this search</h4><div id="target-role-list" class="chip-list" aria-live="polite"></div></div>
             </div>
-            <div class="control-field" style="margin-top: 1.25rem;">
+            <div class="control-field control-field-multiline" style="margin-top: 1.25rem;">
                 <label for="profile-exclusions">Work you do not want</label>
                 <span class="field-help">Optional. Enter one role or responsibility per line. Describe the work itself when a job title could mean different things.</span>
                 <textarea id="profile-exclusions" name="exclusions" rows="4" placeholder="Example: commission-only sales">{{ saved_preferences.exclusions|join('\n') if saved_preferences else '' }}</textarea>

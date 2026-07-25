@@ -408,7 +408,15 @@ bookmark or pass so the posting may appear in a later scan. Active
 Applications and Application History will remain limited to jobs the user
 actually applied for. Saved Jobs and Reviewed Jobs will preserve profile-owned
 job decisions without becoming a second application tracker. The user bookmark
-will remain separate from Junior's recommendation label **Hold**.
+remains separate from Junior's recommendation label **Needs your review**.
+
+Review Needed uses the full 20-job card view by default. **Compact review**
+shows up to 50 collapsed summaries per page so company, title, and location can
+be checked quickly. Expand any summary to use the same Save, Pass, Apply,
+Notes, and evidence controls available in the full view. **Select all on this
+page** never selects unseen jobs on another page. Previous and Next navigation
+appears above and below the jobs. **Back to top** moves only within the current
+page and does not reload it, change pages, or clear selections.
 
 Scan results use **Review Needed** whenever Junior cannot confirm a practical
 requirement such as workplace arrangement, employment type, schedule, or
@@ -426,6 +434,9 @@ RC5 also requires broader company-source acceptance testing. A company should
 be saved only after Junior identifies a working public source and receives
 credible jobs from the selected collector. Failed candidate URLs and probe
 results must be discarded rather than left as unfinished company data.
+Complete public UKG Pro Recruiting/UltiPro job-board URLs are recognized
+directly and use Junior's shipped UKG collector without optional external
+lookup.
 
 ## Application History
 

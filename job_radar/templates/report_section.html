@@ -278,6 +278,44 @@
         gap: 8px;
     }
 
+    .review-display-controls,
+    .bulk-selection-controls,
+    .bottom-review-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .review-display-controls {
+        margin-top: 16px;
+    }
+
+    .bulk-selection-controls {
+        margin: 12px 0;
+    }
+
+    .compact-job-details {
+        margin-top: 14px;
+    }
+
+    .compact-job-details > summary {
+        color: var(--link);
+        cursor: pointer;
+        font-weight: 650;
+    }
+
+    .compact-job-details > div {
+        margin-top: 12px;
+    }
+
+    .bottom-review-actions {
+        border-top: 1px solid var(--border);
+        justify-content: space-between;
+        margin-top: 20px;
+        padding-top: 18px;
+    }
+
     .error-card-grid {
         display: grid;
         gap: 16px;
@@ -354,7 +392,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="section-hero">
+<section id="review-page-top" class="section-hero">
     <h1>{{ section_title }}</h1>
     <p>{{ section_description }}</p>
 
@@ -372,6 +410,16 @@
         {% for label, count in eligibility_counts.items() %}
         <span>{{ label }}: {{ count }}</span>
         {% endfor %}
+    </div>
+    {% endif %}
+    {% if section_name == "review_needed" and total_jobs %}
+    <div class="review-display-controls" aria-label="Review display">
+        <span class="muted">Display:</span>
+        <a class="button-link{% if view_mode == 'compact' %} button-secondary{% endif %}" href="{{ url_for('report_section_view', section_name=section_name, view='full') }}">Full details</a>
+        <a class="button-link{% if view_mode != 'compact' %} button-secondary{% endif %}" href="{{ url_for('report_section_view', section_name=section_name, view='compact') }}">Compact review</a>
+        {% if view_mode == "compact" %}
+        <span class="muted">Compact review shows up to 50 jobs per page. Expand a job for its individual actions.</span>
+        {% endif %}
     </div>
     {% endif %}
 </section>
@@ -395,8 +443,13 @@
 <form id="bulk-decision-form" class="page-card" method="post" action="{{ url_for('save_bulk_report_job_decisions', section_name=section_name) }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="page" value="{{ current_page }}">
+    <input type="hidden" name="view" value="{{ view_mode }}">
     <h2>Update selected jobs</h2>
-    <p class="muted">Select jobs below, then save or pass all selected jobs together.</p>
+    <p class="muted">Select jobs on this page, then save or pass them together. Jobs on other pages are never selected automatically.</p>
+    <div class="bulk-selection-controls">
+        <button id="select-visible-jobs" class="button-secondary" type="button">Select all on this page</button>
+        <button id="clear-visible-jobs" class="button-secondary" type="button">Clear selections</button>
+    </div>
     <label for="bulk-decision-reason">Reason for passing (optional)</label>
     <select id="bulk-decision-reason" name="decision_reason">
         <option value="">No reason selected</option>
@@ -416,17 +469,17 @@
     <span>Page {{ current_page }} of {{ total_pages }}</span>
     <div class="pagination-actions">
         {% if current_page > 1 %}
-        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page - 1) }}">Previous</a>
+        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page - 1, view=view_query) }}">Previous</a>
         {% endif %}
         {% if current_page < total_pages %}
-        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page + 1) }}">Next</a>
+        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page + 1, view=view_query) }}">Next</a>
         {% endif %}
     </div>
 </nav>
 {% endif %}
 <section class="job-card-grid" aria-label="{{ section_title }} job cards">
     {% for job in job_cards %}
-    <article class="job-card">
+    <article class="job-card{% if view_mode == 'compact' %} job-card-compact{% endif %}">
         {% if job.job_radar_id and decisions_enabled %}
         <label class="job-selection">
             <input form="bulk-decision-form" type="checkbox" name="job_radar_id" value="{{ job.job_radar_id }}">
@@ -471,6 +524,11 @@
             {% endif %}
         </div>
 
+        {% if view_mode == "compact" %}
+        <details class="compact-job-details">
+            <summary>Review details and individual actions</summary>
+            <div>
+        {% endif %}
         {% if job.action_rationale %}
         <section class="job-section">
             <h2>Why this is worth acting on</h2>
@@ -571,6 +629,7 @@
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="section_name" value="{{ section_name }}">
                 <input type="hidden" name="page" value="{{ current_page }}">
+                <input type="hidden" name="view" value="{{ view_mode }}">
                 <div class="job-decision-field">
                     <label for="review-notes-{{ loop.index }}">Notes for my review (optional)</label>
                     <input id="review-notes-{{ loop.index }}" name="notes" maxlength="300" placeholder="Example: Three-month contract and on-site in California">
@@ -592,6 +651,10 @@
             </form>
             {% endif %}
         </div>
+        {% if view_mode == "compact" %}
+            </div>
+        </details>
+        {% endif %}
     </article>
     {% endfor %}
 </section>
@@ -600,17 +663,45 @@
     <span>Page {{ current_page }} of {{ total_pages }}</span>
     <div class="pagination-actions">
         {% if current_page > 1 %}
-        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page - 1) }}">Previous</a>
+        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page - 1, view=view_query) }}">Previous</a>
         {% endif %}
         {% if current_page < total_pages %}
-        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page + 1) }}">Next</a>
+        <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page + 1, view=view_query) }}">Next</a>
         {% endif %}
     </div>
 </nav>
+{% endif %}
+{% if decisions_enabled %}
+<div class="bottom-review-actions">
+    <div class="actions">
+        <button form="bulk-decision-form" type="submit" name="decision" value="saved">Save selected for later</button>
+        <button form="bulk-decision-form" class="button-secondary" type="submit" name="decision" value="passed">Pass selected</button>
+    </div>
+    <a href="#review-page-top">Back to top</a>
+</div>
 {% endif %}
 {% else %}
 <div class="empty-panel">
     {{ empty_message }}
 </div>
+{% endif %}
+{% if decisions_enabled and job_cards %}
+<script>
+    (() => {
+        const visibleJobCheckboxes = () => Array.from(
+            document.querySelectorAll('input[name="job_radar_id"][form="bulk-decision-form"]')
+        );
+        document.getElementById("select-visible-jobs")?.addEventListener("click", () => {
+            visibleJobCheckboxes().forEach((checkbox) => {
+                checkbox.checked = true;
+            });
+        });
+        document.getElementById("clear-visible-jobs")?.addEventListener("click", () => {
+            visibleJobCheckboxes().forEach((checkbox) => {
+                checkbox.checked = false;
+            });
+        });
+    })();
+</script>
 {% endif %}
 {% endblock %}

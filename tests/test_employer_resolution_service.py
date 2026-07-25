@@ -137,6 +137,12 @@ def test_name_and_url_normalization_is_safe_and_stable() -> None:
             "example.icims.com",
             True,
         ),
+        (
+            "https://recruiting.ultipro.com/TENANT/JobBoard/board-id/",
+            "ukg",
+            "recruiting.ultipro.com:tenant:board-id",
+            True,
+        ),
         ("https://jobs.smartrecruiters.com/Example", "smartrecruiters", None, False),
         ("https://example.invalid/careers", "html", None, False),
     ),
@@ -472,6 +478,56 @@ def test_icims_url_is_configured_with_the_icims_collector(
     assert employer is not None
     assert employer.source_type == "icims"
     assert employer.source_config["source_url"] == url.rstrip("/")
+
+
+def test_ukg_url_is_configured_with_the_ukg_collector(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    attempted_configs: list[dict[str, object]] = []
+
+    def collect(config):
+        attempted_configs.append(config)
+        return [object()]
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        collect,
+    )
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    url = (
+        "https://recruiting.ultipro.com/TENANT/JobBoard/"
+        "d1569a66-00f5-4887-b2a9-048c2d9169a7/?q="
+    )
+
+    detected = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        careers_url=url,
+    )
+    created = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name="Synthetic Manufacturer",
+        careers_url=url,
+        confirm_detected=True,
+    )
+
+    assert detected.status == DETECTED_SCAN_READY
+    assert detected.detected_source_label == "UKG Pro Recruiting"
+    assert created.status == CREATED_SCAN_READY
+    assert attempted_configs[0]["source_type"] == "ukg"
+    assert attempted_configs[0]["source_url"] == (
+        "https://recruiting.ultipro.com/TENANT/JobBoard/"
+        "d1569a66-00f5-4887-b2a9-048c2d9169a7/"
+    )
+    employer = get_employer_source(
+        database_path,
+        "synthetic-manufacturer",
+    )
+    assert employer is not None
+    assert employer.source_type == "ukg"
 
 
 def test_unknown_site_must_pass_generic_collector_before_being_added(

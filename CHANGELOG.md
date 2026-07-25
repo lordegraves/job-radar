@@ -6,6 +6,16 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added automatic UKG Pro Recruiting/UltiPro company discovery and collection
+  from complete public job-board URLs, including bounded pagination and full
+  public job-detail extraction.
+- Added a compact Review Needed display with at most 50 jobs per page,
+  current-page-only Select all, top and bottom page navigation, repeated bulk
+  actions, and a Back to top link that keeps the current page and selections.
+  Every compact job retains the same expandable Save, Pass, Apply, Notes, and
+  evidence controls.
+- Fixed the profile editor's multiline work-exclusion field so its contents no
+  longer overlap the Job requirements card.
 - Fixed recognized `*.icims.com` career sites so company setup validates them
   with Junior's dedicated iCIMS collector instead of incorrectly falling back
   to generic webpage parsing or optional external lookup.

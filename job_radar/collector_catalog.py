@@ -63,6 +63,12 @@ COLLECTOR_CAPABILITIES = (
         "Scans configured public iCIMS career sites.",
     ),
     CollectorCapability(
+        "ukg",
+        "UKG Pro Recruiting",
+        "Automatic from complete UKG or UltiPro URL",
+        "Scans public UKG Pro Recruiting job boards.",
+    ),
+    CollectorCapability(
         "oracle_hcm",
         "Oracle Cloud HCM",
         "Additional setup may be required",

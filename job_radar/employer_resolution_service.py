@@ -352,6 +352,10 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
             },
             scan_ready=True,
         )
+    if host.endswith(".ultipro.com"):
+        ukg_detection = _ukg_detection(careers_url)
+        if ukg_detection is not None:
+            return ukg_detection
     if host == "careers.nintendo.com":
         return DetectedEmployerSource(
             source_type="html",
@@ -459,6 +463,32 @@ def _adp_detection(careers_url: str) -> DetectedEmployerSource | None:
     )
 
 
+def _ukg_detection(careers_url: str) -> DetectedEmployerSource | None:
+    """Build a complete UKG collector configuration from a public board URL."""
+
+    parsed = urlsplit(careers_url)
+    host = parsed.hostname or ""
+    parts = [part for part in parsed.path.split("/") if part]
+    if (
+        not host.endswith(".ultipro.com")
+        or len(parts) < 3
+        or parts[1].casefold() != "jobboard"
+    ):
+        return None
+    tenant = parts[0]
+    board_id = parts[2]
+    board_url = f"https://{host}/{tenant}/JobBoard/{board_id}/"
+    return DetectedEmployerSource(
+        source_type="ukg",
+        source_identifier=f"{host.casefold()}:{tenant.casefold()}:{board_id.casefold()}",
+        source_config={
+            "source_url": board_url,
+            "careers_url": careers_url,
+        },
+        scan_ready=True,
+    )
+
+
 def _workday_detection(
     workday_url: str,
     careers_url: str,
@@ -493,6 +523,7 @@ def _detect_supported_family(host: str, path: str) -> str | None:
     patterns = (
         ("myworkdayjobs.com", "workday"),
         ("icims.com", "icims"),
+        ("ultipro.com", "ukg"),
         ("oraclecloud.com", "oracle_hcm"),
         ("smartrecruiters.com", "smartrecruiters"),
         ("selectminds.com", "selectminds"),
@@ -1338,6 +1369,7 @@ def _source_label(source_type: str | None) -> str:
         "adp": "ADP",
         "recruitee": "Recruitee",
         "icims": "iCIMS",
+        "ukg": "UKG Pro Recruiting",
         "eightfold": "Eightfold",
     }.get(source_type or "", "supported")
 

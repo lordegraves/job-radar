@@ -39,7 +39,8 @@ junior currently provides:
 - an installation-wide employer/source catalog with independent profile assignments and per-profile enable/disable control
 - a global Collector Catalog shipped on every installation, automatic setup
   for supported ATS platforms including ADP, Recruitee, Workday, Oracle,
-  Phenom, and Eightfold, and a validated public-page fallback
+  Phenom, Eightfold, UKG Pro Recruiting/UltiPro, and a validated public-page
+  fallback
 - user-owned runtime paths and non-destructive configuration/database bootstrap
 - versioned SQLite migrations, foreign-key enforcement, atomic tracker/history moves, and backup-before-migration protection
 - clean wheel installation and installed-package rendering tests
@@ -94,8 +95,11 @@ workflow. Top Matches retain confirmed practical eligibility. Potential Top
 Matches already satisfy the profile's existing top-match score and strong-signal
 rules but list the practical facts still awaiting confirmation; no threshold is
 lowered and no internal score is shown. Each group loads at most 20 full job
-cards per page and keeps supporting evidence collapsed until requested,
-preventing large scans from overwhelming the desktop window. Explicit workplace,
+cards per page. Review Needed also offers a compact view with at most 50
+collapsed job summaries per page, page-only Select all, matching navigation at
+the top and bottom, and a Back to top link that never changes pages or clears
+selections. Every compact summary can expand to the same Save, Pass, Apply,
+Notes, and evidence controls. Explicit workplace,
 employment-type, and annual-pay wording in a description can fill a missing ATS
 field. An omitted schedule does not imply a conflict, while an explicit night,
 evening, weekend, or on-call requirement is still enforced.

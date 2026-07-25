@@ -1121,6 +1121,60 @@ def test_report_section_paginates_large_result_sets(
     assert "Synthetic Review Role 40" not in last_html
 
 
+def test_review_needed_compact_view_is_bounded_and_keeps_controls(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(
+        settings_file,
+        database_file,
+        reports_path=reports_path,
+    )
+    jobs = [
+        make_report_snapshot_job(
+            title=f"Compact Synthetic Role {index:02d}",
+            url=f"https://example.invalid/compact/{index}",
+            company="Compact Synthetic Company",
+            location="Synthetic City",
+            job_radar_id=f"jr-compact-{index:08d}",
+        )
+        for index in range(1, 56)
+    ]
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-25T10:00:00+00:00",
+        review_needed=jobs,
+    )
+
+    client = create_app(
+        settings_path=str(settings_file)
+    ).test_client()
+    first_html = client.get(
+        "/reports/section/review_needed?view=compact"
+    ).get_data(as_text=True)
+
+    assert "Showing 1" in first_html
+    assert "50 of 55 jobs" in first_html
+    assert "Compact Synthetic Role 01" in first_html
+    assert "Compact Synthetic Role 50" in first_html
+    assert "Compact Synthetic Role 51" not in first_html
+    assert "Select all on this page" in first_html
+    assert "Jobs on other pages are never selected automatically." in first_html
+    assert "Review details and individual actions" in first_html
+    assert "I applied" in first_html
+    assert "Save for later" in first_html
+    assert "Pass" in first_html
+    assert 'href="#review-page-top">Back to top</a>' in first_html
+    assert first_html.count("Page 1 of 2") == 2
+    assert (
+        'href="/reports/section/review_needed?page=2&amp;view=compact"'
+        in first_html
+    )
+
+
 def test_report_jobs_can_be_passed_together_atomically(
     tmp_path: Path,
 ) -> None:
