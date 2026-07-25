@@ -1,0 +1,65 @@
+name: Python validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - feature/productization-foundation
+  push:
+    branches:
+      - main
+      - feature/productization-foundation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Ruff and Python tests
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Install development dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install ruff
+
+      - name: Run Ruff
+        shell: pwsh
+        run: |
+          python -m ruff check .
+          $ruffExitCode = $LASTEXITCODE
+
+          if ($ruffExitCode -ne 0) {
+              Write-Output "::error title=Ruff validation failed::Ruff found a formatting, syntax, or code-quality problem. Review the Ruff output above."
+              exit $ruffExitCode
+          }
+
+      - name: Run full Python test suite
+        shell: pwsh
+        run: |
+          python -m pytest -q tests
+          $pytestExitCode = $LASTEXITCODE
+
+          if ($pytestExitCode -ne 0) {
+              Write-Output "::error title=Python tests failed::One or more automated tests failed. Review the first reported failure and traceback above."
+              exit $pytestExitCode
+          }
