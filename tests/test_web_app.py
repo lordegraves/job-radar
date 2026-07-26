@@ -233,6 +233,7 @@ def make_report_snapshot_job(
     url: str,
     company: str,
     location: str | None = None,
+    workplace_arrangement: str = "Not stated",
     compensation: str | None = None,
     hiring_probability: str = "Unknown",
     recommended_action: str = "Review",
@@ -254,6 +255,7 @@ def make_report_snapshot_job(
         "url": url,
         "company": company,
         "location": location,
+        "workplace_arrangement": workplace_arrangement,
         "compensation": compensation,
         "hiring_probability": hiring_probability,
         "recommended_action": recommended_action,
@@ -807,6 +809,7 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
                 url="https://example.com/top",
                 company="ExampleCompute",
                 location="Remote - USA",
+                workplace_arrangement="Remote",
                 hiring_probability="High",
                 recommended_action="Apply",
                 action_rationale=(
@@ -862,6 +865,8 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "ExampleCompute" in html
     assert "Site Reliability Engineer" in html
     assert "Remote - USA" in html
+    assert "Workplace: Remote" in html
+    assert "Location: Remote - USA" in html
     assert "Hiring probability: High" in html
     assert "Eligibility: Needs Review" in html
     assert "Eligibility summary" in html
@@ -957,6 +962,98 @@ def test_potential_top_matches_show_evidence_and_unresolved_facts(
     assert "show again" in html
     assert "Update selected jobs" in html
     assert "Score:" not in html
+
+
+def test_potential_top_matches_keep_total_and_show_review_progress(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(
+        settings_file,
+        database_file,
+        reports_path=reports_path,
+    )
+    profile = ManagedProfile(
+        profile_id="profile_66666666",
+        display_name="Synthetic applicant",
+    )
+    create_profile(database_file, profile)
+    set_active_profile(database_file, profile.profile_id)
+    potential_jobs = [
+        make_report_snapshot_job(
+            title=title,
+            url=f"https://example.invalid/jobs/{index}",
+            company="Synthetic Company",
+            job_radar_id=job_radar_id,
+        )
+        for index, (title, job_radar_id) in enumerate(
+            (
+                ("Needs Decision", "jr-synthetic-need-11111111"),
+                ("Saved Role", "jr-synthetic-save-22222222"),
+                ("Applied Role", "jr-synthetic-apply-33333333"),
+                ("Passed Role", "jr-synthetic-pass-44444444"),
+            ),
+            start=1,
+        )
+    ]
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-26T12:00:00+00:00",
+        potential_top_matches=potential_jobs,
+    )
+    save_job_decision(
+        database_file,
+        profile_id=profile.profile_id,
+        job_radar_id="jr-synthetic-save-22222222",
+        decision=DECISION_SAVED,
+        company="Synthetic Company",
+        title="Saved Role",
+        source_url="https://example.invalid/jobs/2",
+        location=None,
+    )
+    save_job_decision(
+        database_file,
+        profile_id=profile.profile_id,
+        job_radar_id="jr-synthetic-pass-44444444",
+        decision=DECISION_PASSED,
+        company="Synthetic Company",
+        title="Passed Role",
+        source_url="https://example.invalid/jobs/4",
+        location=None,
+    )
+    upsert_application(
+        database_file,
+        ApplicationRecord(
+            job_radar_id="jr-synthetic-apply-33333333",
+            company_name="Synthetic Company",
+            role_title="Applied Role",
+            status="Applied",
+        ),
+        profile_id=profile.profile_id,
+    )
+    client = create_app(settings_path=str(settings_file)).test_client()
+
+    dashboard_html = " ".join(
+        client.get("/reports").get_data(as_text=True).split()
+    )
+    section_html = client.get(
+        "/reports/section/potential_top_matches"
+    ).get_data(as_text=True)
+
+    assert "<strong>4</strong> <span>Potential Top Matches</span>" in dashboard_html
+    assert "1 need your review" in dashboard_html
+    assert "1 applied" in dashboard_html
+    assert "1 saved" in dashboard_html
+    assert "1 passed" in dashboard_html
+    assert section_html.index("Needs Decision") < section_html.index("Saved Role")
+    assert section_html.index("Saved Role") < section_html.index("Applied Role")
+    assert "Saved for later" in section_html
+    assert "Open in Active Applications" in section_html
+    assert "Reviewed and passed" in section_html
+    assert section_html.count("Select this job") == 1
 
 
 def test_passed_not_recommended_jobs_keep_user_decision_controls(
@@ -1507,7 +1604,10 @@ def test_tracker_add_prefills_from_report_card_query_params(tmp_path: Path) -> N
     assert '<option value="Pending / In Progress" selected>' in html
     assert 'id="applied_on" name="applied_on" type="date" value="2026-07-11"' in html
     assert 'id="follow_up_on" name="follow_up_on" type="date" value=""' in html
-    assert 'id="last_activity_on" name="last_activity_on" type="date" value=""' in html
+    assert (
+        'id="last_activity_on" name="last_activity_on" type="date" '
+        f'value="{date.today().isoformat()}"'
+    ) in html
 
 
 def test_tracker_add_saves_prefilled_scan_job_radar_id(tmp_path: Path) -> None:
@@ -1546,6 +1646,80 @@ def test_tracker_add_saves_prefilled_scan_job_radar_id(tmp_path: Path) -> None:
     assert application.status == "Applied"
     assert application.outcome == "Pending / In Progress"
     assert application.applied_on == "2026-07-11"
+    assert application.last_activity_on == date.today().isoformat()
+
+
+def test_review_job_application_returns_to_origin_and_leaves_review_queue(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(
+        settings_file,
+        database_file,
+        reports_path=reports_path,
+    )
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-26T12:00:00+00:00",
+        review_needed=[
+            make_report_snapshot_job(
+                title="Synthetic Review Role",
+                url="https://example.invalid/jobs/review-role",
+                company="Synthetic Company",
+                location="Remote",
+                workplace_arrangement="Remote",
+                job_radar_id="jr-synthetic-review-12345678",
+            )
+        ],
+    )
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    review_html = client.get(
+        "/reports/section/review_needed"
+    ).get_data(as_text=True)
+
+    assert "return_section=review_needed" in review_html
+    assert "return_page=1" in review_html
+    assert "return_view=full" in review_html
+
+    response = client.post(
+        "/tracker/add",
+        data={
+            "job_radar_id": "jr-synthetic-review-12345678",
+            "company_name": "Synthetic Company",
+            "role_title": "Synthetic Review Role",
+            "source_url": "https://example.invalid/jobs/review-role",
+            "status": "Applied",
+            "outcome": "Pending / In Progress",
+            "applied_on": "2026-07-26",
+            "follow_up_on": "",
+            "last_activity_on": "",
+            "notes": "",
+            "return_section": "review_needed",
+            "return_page": "1",
+            "return_view": "full",
+        },
+    )
+
+    assert response.status_code == 302
+    assert response.location.endswith(
+        "/reports/section/review_needed?page=1&view=full"
+    )
+    application = get_application(
+        database_file,
+        "jr-synthetic-review-12345678",
+    )
+    assert application is not None
+    assert application.last_activity_on == date.today().isoformat()
+
+    refreshed_html = client.get(
+        "/reports/section/review_needed"
+    ).get_data(as_text=True)
+    assert "Synthetic Review Role" not in refreshed_html
 
 
 def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
@@ -3728,7 +3902,10 @@ def test_tracker_edit_page_shows_application_form(tmp_path: Path) -> None:
     assert '<option value="Applied" selected>' in html
     assert 'id="follow_up_on" name="follow_up_on" type="date" value="2099-07-10"' in html
     assert 'id="applied_on" name="applied_on" type="date" value="2026-07-03"' in html
-    assert 'id="last_activity_on" name="last_activity_on" type="date" value="2026-07-05"' in html
+    assert (
+        'id="last_activity_on" name="last_activity_on" type="date" '
+        f'value="{date.today().isoformat()}"'
+    ) in html
     assert '<option value="Interview Scheduled" selected>' in html
     assert "Refresh activity today" in html
     assert "Schedule follow-up next week" in html

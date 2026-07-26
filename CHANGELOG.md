@@ -6,6 +6,15 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Fixed systemic location triage so concrete cities, named offices, and
+  city/state suffixes in job titles are compared with the profile's allowed
+  locations even when the ATS omits a remote, hybrid, or on-site label. Review
+  cards now show workplace arrangement and location separately at a glance.
+- Fixed the Review Jobs application workflow so saving an application returns
+  to its originating review group, removes it from unresolved review results,
+  and records today's date as the default last activity. Potential Top Matches
+  retain their full scan count while clearly separating jobs needing a decision
+  from saved, applied, and passed jobs.
 - Fixed compensation extraction when an ATS double-encodes its job-description
   HTML, including salary ranges separated by an encoded dash.
 - Standardized native dropdown styling across the application and expanded the

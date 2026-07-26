@@ -480,7 +480,7 @@
 <section class="job-card-grid" aria-label="{{ section_title }} job cards">
     {% for job in job_cards %}
     <article class="job-card{% if view_mode == 'compact' %} job-card-compact{% endif %}">
-        {% if job.job_radar_id and decisions_enabled %}
+        {% if job.job_radar_id and decisions_enabled and job.review_state == "needs_review" %}
         <label class="job-selection">
             <input form="bulk-decision-form" type="checkbox" name="job_radar_id" value="{{ job.job_radar_id }}">
             Select this job
@@ -501,8 +501,9 @@
                 </h2>
 
                 <div class="job-meta">
+                    <span>Workplace: {{ job.workplace_arrangement }}</span>
                     {% if job.location %}
-                    <span>{{ job.location }}</span>
+                    <span>Location: {{ job.location }}</span>
                     {% endif %}
                     {% if job.compensation %}
                     <span>{{ job.compensation }}</span>
@@ -516,7 +517,22 @@
                 </div>
             </div>
 
-            {% if job.recommended_action %}
+            {% if job.review_state == "applied" %}
+            <div class="job-action">
+                <span class="job-action-label">Your decision</span>
+                <strong>Applied</strong>
+            </div>
+            {% elif job.review_state == "saved" %}
+            <div class="job-action">
+                <span class="job-action-label">Your decision</span>
+                <strong>Saved for later</strong>
+            </div>
+            {% elif job.review_state == "passed" %}
+            <div class="job-action">
+                <span class="job-action-label">Your decision</span>
+                <strong>Reviewed and passed</strong>
+            </div>
+            {% elif job.recommended_action %}
             <div class="job-action">
                 <span class="job-action-label">Recommended action</span>
                 <strong>{{ job.recommended_action }}</strong>
@@ -620,11 +636,17 @@
         </details>
 
         <div class="job-links">
+            {% if job.review_state == "applied" and job.tracker_edit_url %}
+            <a class="button-link" href="{{ job.tracker_edit_url }}">Open in Active Applications</a>
+            {% elif job.review_state in ("saved", "passed") %}
+            <a class="button-link" href="{{ url_for('job_decisions') }}">Open saved and reviewed jobs</a>
+            {% else %}
             <a class="button-link" href="{{ job.tracker_add_url }}">I applied — track application</a>
+            {% endif %}
             {% if job.url %}
             <a class="button-link button-secondary" href="{{ job.url }}" target="_blank" rel="noopener noreferrer">Open job posting</a>
             {% endif %}
-            {% if job.job_radar_id and decisions_enabled %}
+            {% if job.job_radar_id and decisions_enabled and job.review_state == "needs_review" %}
             <form class="job-decision-form" method="post" action="{{ url_for('save_report_job_decision', job_radar_id=job.job_radar_id) }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="section_name" value="{{ section_name }}">

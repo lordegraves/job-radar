@@ -22,7 +22,6 @@ from job_radar.job_decision_service import (
     DECISION_SAVED,
     PASS_REASONS,
     delete_job_decision,
-    get_decided_job_ids,
     list_job_decisions,
     save_job_decision,
     save_job_decisions_bulk,
@@ -33,6 +32,7 @@ from job_radar.report_snapshot import (
     load_report_snapshot,
 )
 from job_radar.retention_service import list_retained_report_runs
+from job_radar.tracker.tracker_storage import list_applications
 
 REPORT_FILE_EXTENSIONS = {".html", ".htm", ".md", ".txt"}
 JOB_DECISION_SECTIONS = {
@@ -135,6 +135,7 @@ class ReportJobCardView:
     url: str | None
     company: str | None
     location: str | None
+    workplace_arrangement: str
     compensation: str | None
     hiring_probability: str | None
     recommended_action: str | None
@@ -152,6 +153,9 @@ class ReportJobCardView:
     eligibility_label: str
     eligibility_reasons: tuple[str, ...]
     tracker_add_url: str
+    tracker_edit_url: str | None
+    is_tracked: bool
+    review_state: str
 
 
 @dataclass(frozen=True)
@@ -217,6 +221,10 @@ def register_report_routes(
             if view_mode == "compact"
             else REPORT_JOBS_PER_PAGE
         )
+        requested_page = max(
+            request.args.get("page", 1, type=int) or 1,
+            1,
+        )
 
         if section_name == "collector_errors":
             collector_errors = [
@@ -225,15 +233,53 @@ def register_report_routes(
             ]
         else:
             snapshot_jobs = getattr(snapshot, section_name)
-            decided_job_ids = get_decided_job_ids(
-                get_database_path(),
-                profile_id=get_profile_id(),
+            database_path = get_database_path()
+            profile_id = get_profile_id()
+            decisions = list_job_decisions(
+                database_path,
+                profile_id=profile_id,
             )
+            decisions_by_job_id = {
+                decision.job_radar_id: decision.decision
+                for decision in decisions
+            }
+            decided_job_ids = set(decisions_by_job_id)
+            tracked_job_ids = {
+                application.job_radar_id
+                for application in list_applications(
+                    database_path,
+                    profile_id=profile_id,
+                )
+            }
             all_job_cards = [
-                _build_report_job_card(job)
+                _build_report_job_card(
+                    job,
+                    is_tracked=job.job_radar_id in tracked_job_ids,
+                    decision=decisions_by_job_id.get(job.job_radar_id),
+                    return_section=section_name,
+                    return_page=requested_page,
+                    return_view=view_mode,
+                )
                 for job in snapshot_jobs
-                if job.job_radar_id not in decided_job_ids
+                if (
+                    section_name == "potential_top_matches"
+                    or (
+                        job.job_radar_id not in decided_job_ids
+                        and job.job_radar_id not in tracked_job_ids
+                    )
+                )
             ]
+            if section_name == "potential_top_matches":
+                # Preserve the scan's full Potential Top Matches list while
+                # keeping jobs that still need a decision at the front.
+                all_job_cards.sort(
+                    key=lambda card: {
+                        "needs_review": 0,
+                        "saved": 1,
+                        "applied": 2,
+                        "passed": 3,
+                    }.get(card.review_state, 4)
+                )
             eligibility_counts = _count_eligibility_labels(all_job_cards)
             total_jobs = len(all_job_cards)
             total_pages = max(
@@ -242,7 +288,7 @@ def register_report_routes(
                 // jobs_per_page,
             )
             current_page = min(
-                max(request.args.get("page", 1, type=int) or 1, 1),
+                requested_page,
                 total_pages,
             )
             page_start_index = (current_page - 1) * jobs_per_page
@@ -272,6 +318,7 @@ def register_report_routes(
             page_end=page_end_index,
             view_mode=view_mode,
             view_query="compact" if view_mode == "compact" else None,
+            today_iso=date.today().isoformat(),
         )
 
     @app.get("/reports")
@@ -283,6 +330,11 @@ def register_report_routes(
             "reports.html",
             reports_path=reports_path,
             latest_report=build_latest_report_summary(reports_path),
+            potential_top_progress=_build_potential_top_progress(
+                reports_path,
+                get_database_path(),
+                profile_id=get_profile_id(),
+            ),
             primary_report_files=primary_report_files,
             retained_report_runs=list_retained_report_runs(reports_path),
         )
@@ -731,12 +783,19 @@ def _validated_view_mode(section_name: str, value: str | None) -> str:
 
 def _build_report_job_card(
     job: ReportSnapshotJob,
+    *,
+    is_tracked: bool = False,
+    decision: str | None = None,
+    return_section: str | None = None,
+    return_page: int = 1,
+    return_view: str = "full",
 ) -> ReportJobCardView:
     return ReportJobCardView(
         title=job.title,
         url=job.url,
         company=job.company,
         location=job.location,
+        workplace_arrangement=job.workplace_arrangement,
         compensation=job.compensation,
         hiring_probability=job.hiring_probability,
         # Existing snapshots may retain the retired RC5 label. Translate it
@@ -768,5 +827,72 @@ def _build_report_job_card(
             status="Applied",
             outcome="Pending / In Progress",
             applied_on=date.today().isoformat(),
+            return_section=return_section,
+            return_page=return_page,
+            return_view=return_view,
+        ),
+        tracker_edit_url=(
+            url_for(
+                "edit_tracker_application",
+                job_radar_id=job.job_radar_id,
+                filter="all",
+            )
+            if is_tracked and job.job_radar_id
+            else None
+        ),
+        is_tracked=is_tracked,
+        review_state=(
+            "applied"
+            if is_tracked
+            else decision or "needs_review"
         ),
     )
+
+
+def _build_potential_top_progress(
+    reports_path: str | Path,
+    database_path: str | Path,
+    *,
+    profile_id: str | None,
+) -> dict[str, int]:
+    snapshot_path = Path(reports_path) / "target-scan.json"
+    progress = {
+        "needs_review": 0,
+        "saved": 0,
+        "applied": 0,
+        "passed": 0,
+    }
+    if not snapshot_path.is_file():
+        return progress
+
+    snapshot = load_report_snapshot(snapshot_path)
+    decisions_by_job_id = (
+        {
+            decision.job_radar_id: decision.decision
+            for decision in list_job_decisions(
+                database_path,
+                profile_id=profile_id,
+            )
+        }
+        if profile_id is not None
+        else {}
+    )
+    tracked_job_ids = {
+        application.job_radar_id
+        for application in list_applications(
+            database_path,
+            profile_id=profile_id,
+        )
+    }
+
+    for job in snapshot.potential_top_matches:
+        if job.job_radar_id in tracked_job_ids:
+            progress["applied"] += 1
+        elif decisions_by_job_id.get(job.job_radar_id) == DECISION_SAVED:
+            progress["saved"] += 1
+        elif decisions_by_job_id.get(job.job_radar_id) == DECISION_PASSED:
+            progress["passed"] += 1
+        else:
+            progress["needs_review"] += 1
+
+    return progress

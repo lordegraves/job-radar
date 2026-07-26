@@ -9,13 +9,14 @@ from job_radar.html_report import (
     _get_omitted_postings,
     _get_ordered_omitted_postings,
 )
+from job_radar.eligibility import describe_workplace_arrangement
 from job_radar.report_models import ScanReport
 from job_radar.report_view_model import build_report_view_model
 from job_radar.report_view_model import build_job_output_view_model
 from job_radar.scored_posting import ScoredPosting
 
 
-REPORT_SNAPSHOT_SCHEMA_VERSION = 3
+REPORT_SNAPSHOT_SCHEMA_VERSION = 4
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,7 @@ class ReportSnapshotJob:
     history_context: str
     history_risk: str | None
     job_radar_id: str
+    workplace_arrangement: str = "Not stated"
     eligibility_status: str | None = None
     eligibility_reasons: list[str] | None = None
 
@@ -202,6 +204,7 @@ def _build_snapshot_job(
         history_context=job.history_context,
         history_risk=None if job.history_risk == "None" else job.history_risk,
         job_radar_id=posting.job_radar_id,
+        workplace_arrangement=describe_workplace_arrangement(posting),
         eligibility_status=job.eligibility_status,
         eligibility_reasons=(
             list(job.eligibility_reasons)
@@ -230,6 +233,7 @@ def _load_snapshot_jobs(
 
     for raw_job in raw_jobs:
         compatible_job = dict(raw_job)
+        compatible_job.setdefault("workplace_arrangement", "Not stated")
         compatible_job.setdefault("eligibility_status", None)
         compatible_job.setdefault("eligibility_reasons", None)
         jobs.append(ReportSnapshotJob(**compatible_job))

@@ -299,7 +299,7 @@ top_matches:
     assert scan_row["collector_errors"] == 0
     assert fetch_scan_errors(database_file) == []
     assert snapshot_file.is_file()
-    assert '"schema_version": 3' in snapshot_file.read_text(encoding="utf-8")
+    assert '"schema_version": 4' in snapshot_file.read_text(encoding="utf-8")
 
 
 def test_handle_scan_resolves_profile_from_explicit_runtime_base(

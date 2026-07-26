@@ -58,6 +58,13 @@ TRACKER_FILTERS = {
     "closed": {"closed"},
 }
 
+REPORT_RETURN_SECTIONS = {
+    "top_matches",
+    "potential_top_matches",
+    "review_needed",
+    "new_jobs",
+}
+
 TRACKER_SORT_OPTIONS = {
     "workflow": "Workflow priority",
     "applied_desc": "Applied date newest first",
@@ -351,8 +358,11 @@ def register_tracker_routes(
             ).strip(),
             "last_activity_on": request.args.get(
                 "last_activity_on",
-                "",
-            ).strip(),
+                today_provider().isoformat(),
+            ).strip() or today_provider().isoformat(),
+            "return_section": request.args.get("return_section", "").strip(),
+            "return_page": request.args.get("return_page", "1").strip(),
+            "return_view": request.args.get("return_view", "full").strip(),
         }
 
         return render_template(
@@ -397,8 +407,9 @@ def register_tracker_routes(
                 applied_on=normalize_optional_form_value(
                     "applied_on"
                 ),
-                last_activity_on=normalize_optional_form_value(
-                    "last_activity_on"
+                last_activity_on=(
+                    normalize_optional_form_value("last_activity_on")
+                    or today_provider().isoformat()
                 ),
                 outcome=normalize_optional_form_value("outcome"),
                 notes=normalize_optional_form_value("notes"),
@@ -412,6 +423,31 @@ def register_tracker_routes(
                 database_path,
                 profile_id=profile_id,
                 job_radar_id=job_radar_id,
+            )
+
+        return_section = request.form.get("return_section", "").strip()
+        if return_section in REPORT_RETURN_SECTIONS:
+            try:
+                return_page = max(
+                    1,
+                    int(request.form.get("return_page", "1")),
+                )
+            except ValueError:
+                return_page = 1
+            return_view = request.form.get("return_view", "full").strip()
+            if return_view not in {"full", "compact"}:
+                return_view = "full"
+            flash(
+                "Application added. This job is now marked as applied.",
+                "success",
+            )
+            return redirect(
+                url_for(
+                    "report_section_view",
+                    section_name=return_section,
+                    page=return_page,
+                    view=return_view,
+                )
             )
 
         return redirect(
@@ -450,6 +486,7 @@ def register_tracker_routes(
                 workflow_state.replace("_", " ").title(),
             ),
             return_filter=return_filter,
+            last_activity_default=today_provider().isoformat(),
             status_options=TRACKER_STATUS_OPTIONS,
             outcome_options=TRACKER_EDIT_OUTCOME_OPTIONS,
             quick_actions=TRACKER_QUICK_ACTIONS,

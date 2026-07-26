@@ -12,6 +12,9 @@
     <form method="post">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="job_radar_id" value="{{ prefill_values.job_radar_id }}">
+        <input type="hidden" name="return_section" value="{{ prefill_values.return_section }}">
+        <input type="hidden" name="return_page" value="{{ prefill_values.return_page }}">
+        <input type="hidden" name="return_view" value="{{ prefill_values.return_view }}">
 
         <label for="company_name">Company</label>
         <input id="company_name" name="company_name" value="{{ prefill_values.company_name }}" required>
@@ -54,7 +57,11 @@
 
         <div class="actions">
             <button type="submit">Save</button>
+            {% if prefill_values.return_section %}
+            <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=prefill_values.return_section, page=prefill_values.return_page, view=prefill_values.return_view) }}">Cancel</a>
+            {% else %}
             <a class="button-link button-secondary" href="{{ url_for('tracker', filter='all') }}">Cancel</a>
+            {% endif %}
         </div>
     </form>
 </div>

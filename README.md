@@ -61,8 +61,12 @@ details editable, and multi-select actions remain all-or-nothing. Notes never
 alter scoring. Eligibility retains
 explicit work location, temporary or contract duration, employment type,
 schedule, compensation, and work-authorization details when the posting
-provides them. Unresolved practical facts remain in Review Needed rather than
-being guessed.
+provides them. A concrete city, named office, or city/state suffix in a title is
+treated as location-bound when the posting does not explicitly state that the
+job is remote. Those jobs are compared with the profile's selected locations
+instead of flooding Review Needed as unknown. Review cards show workplace
+arrangement and location separately at a glance. Unresolved practical facts
+remain in Review Needed rather than being guessed.
 
 Company discovery is also an RC5 release gate. Junior must combine known ATS
 patterns, redirects, page metadata and links, structured data, custom domains,
@@ -103,8 +107,11 @@ Notes, and evidence controls. Explicit workplace,
 employment-type, and annual-pay wording in a description can fill a missing ATS
 field. An omitted schedule does not imply a conflict, while an explicit night,
 evening, weekend, or on-call requirement is still enforced.
-The generated HTML report and email preview remain available as secondary,
-read-only exports.
+Creating an application from Review Jobs returns to the same review group and
+marks that scan job as applied. Potential Top Matches keep the scan's complete
+category count while showing how many still need a decision and which were
+saved, applied, or passed. The generated HTML report and email preview remain
+available as secondary, read-only exports.
 
 ### Planned RC7 language assistance
 

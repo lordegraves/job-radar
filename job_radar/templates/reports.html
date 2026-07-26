@@ -40,6 +40,13 @@
         font-size: 1.65rem;
     }
 
+    .review-card small {
+        color: var(--muted);
+        display: block;
+        line-height: 1.4;
+        margin-top: 8px;
+    }
+
     .report-exports {
         margin-top: 28px;
     }
@@ -90,6 +97,12 @@
     <a class="review-card" href="{{ url_for('report_section_view', section_name='potential_top_matches') }}">
         <strong>{{ latest_report.potential_top_matches }}</strong>
         <span>Potential Top Matches</span>
+        <small>
+            {{ potential_top_progress.needs_review }} need your review
+            {% if potential_top_progress.applied %} &middot; {{ potential_top_progress.applied }} applied{% endif %}
+            {% if potential_top_progress.saved %} &middot; {{ potential_top_progress.saved }} saved{% endif %}
+            {% if potential_top_progress.passed %} &middot; {{ potential_top_progress.passed }} passed{% endif %}
+        </small>
     </a>
     <a class="review-card" href="{{ url_for('report_section_view', section_name='review_needed') }}">
         <strong>{{ latest_report.review_needed }}</strong>

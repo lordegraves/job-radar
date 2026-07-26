@@ -19,6 +19,7 @@ from job_radar.scored_posting import ScoredPosting
 
 def make_posting(
     *,
+    title: str = "Senior Infrastructure Engineer",
     location: str | None = "Remote",
     remote_status: str | None = None,
     salary_text: str | None = None,
@@ -30,7 +31,7 @@ def make_posting(
         source_type="greenhouse",
         source_job_id="123",
         source_url="https://example.com/jobs/123",
-        title="Senior Infrastructure Engineer",
+        title=title,
         location=location,
         description=description,
         remote_status=remote_status,
@@ -300,6 +301,79 @@ def test_explicit_foreign_location_is_not_treated_as_unknown() -> None:
         "specific_location_outside_selected_areas"
     )
     assert "Amsterdam, Netherlands" in result.reasons[0].message
+
+
+def test_single_city_foreign_location_is_not_treated_as_unknown() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Amsterdam",
+            remote_status=None,
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote", "Hybrid", "On-site"),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "specific_location_outside_selected_areas"
+    assert "Amsterdam" in result.reasons[0].message
+
+
+def test_named_office_location_is_not_treated_as_unknown() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="San Jose Office (Zanker)",
+            remote_status=None,
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote", "Hybrid", "On-site"),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "specific_location_outside_selected_areas"
+    assert "San Jose Office (Zanker)" in result.reasons[0].message
+
+
+def test_title_city_state_supplements_broad_ats_location() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            title="Infrastructure Operations Engineer Greensboro, NC",
+            location="US",
+            remote_status=None,
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote", "Hybrid", "On-site"),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "specific_location_outside_selected_areas"
+    assert "Greensboro, NC" in result.reasons[0].message
+
+
+def test_broad_country_location_without_title_city_still_needs_review() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            title="Infrastructure Operations Engineer",
+            location="US",
+            remote_status=None,
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote", "Hybrid", "On-site"),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NEEDS_REVIEW
+    assert result.reasons[0].code == "workplace_arrangement_unclear"
 
 
 def test_legacy_context_does_not_create_structured_eligibility() -> None:

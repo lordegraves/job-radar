@@ -279,6 +279,17 @@ def evaluate_workplace_eligibility(
     )
 
 
+def describe_workplace_arrangement(posting: JobPosting) -> str:
+    """Return the plain-language arrangement shown on review cards."""
+
+    arrangement = _classify_workplace_arrangement(posting)
+    if arrangement is not None:
+        return arrangement
+    if _specific_location_for_evaluation(posting) is not None:
+        return "Location-bound (remote not stated)"
+    return "Not stated"
+
+
 def _evaluate_specific_location_without_arrangement(
     *,
     posting: JobPosting,
@@ -286,7 +297,8 @@ def _evaluate_specific_location_without_arrangement(
 ) -> EligibilityResult | None:
     """Reject a definite location mismatch even when arrangement wording is absent."""
 
-    if not _looks_like_specific_city_state(posting.location):
+    specific_location = _specific_location_for_evaluation(posting)
+    if specific_location is None:
         return None
 
     selected_locations = tuple(
@@ -295,7 +307,7 @@ def _evaluate_specific_location_without_arrangement(
     if not selected_locations:
         return None
 
-    posting_location = _normalize_location_label(posting.location)
+    posting_location = _normalize_location_label(specific_location)
     if any(
         _location_labels_match(
             posting_location=posting_location,
@@ -309,7 +321,7 @@ def _evaluate_specific_location_without_arrangement(
                 EligibilityReason(
                     code="workplace_arrangement_unclear",
                     message=(
-                        f"The posting identifies {clean_text(posting.location)} "
+                        f"The posting identifies {specific_location} "
                         "as the job location, which matches a selected area, but "
                         "does not clearly say whether the job is remote, hybrid, "
                         "or on-site."
@@ -325,7 +337,7 @@ def _evaluate_specific_location_without_arrangement(
             EligibilityReason(
                 code="specific_location_outside_selected_areas",
                 message=(
-                    f"The posting identifies {clean_text(posting.location)} as "
+                    f"The posting identifies {specific_location} as "
                     "the job location. It does not match this profile's selected "
                     f"areas: {approved_locations}."
                 ),
@@ -1284,17 +1296,63 @@ def _looks_like_specific_city_state(value: str | None) -> bool:
         "multiple locations",
         "various locations",
         "united states",
+        "u.s.",
+        "usa",
+        "us",
         "us only",
         "nationwide",
         "regional",
+        "north america",
+        "global",
+        "worldwide",
+        "remote",
+        "unknown",
+        "not specified",
+        "not provided",
+        "n/a",
     )
 
-    if any(marker in normalized.lower() for marker in broad_location_markers):
+    normalized_lower = normalized.lower()
+    if normalized_lower in broad_location_markers or any(
+        marker in normalized_lower
+        for marker in (
+            "multiple locations",
+            "various locations",
+            "us only",
+            "nationwide",
+            "north america",
+            "worldwide",
+            "remote",
+            "not specified",
+            "not provided",
+        )
+    ):
         return False
 
-    return "," in normalized or any(
-        character.isdigit() for character in normalized
+    # ATS feeds use many concrete-location formats: "Amsterdam",
+    # "San Jose Office (Zanker)", "Greensboro, NC", and postal addresses.
+    # Once broad and remote labels are excluded, a named place is actionable
+    # location evidence even when the feed omits a comma or postal code.
+    return any(character.isalpha() for character in normalized)
+
+
+def _specific_location_for_evaluation(posting: JobPosting) -> str | None:
+    """Return concrete location evidence from ATS metadata or a title suffix."""
+
+    location = clean_text(posting.location)
+    if _looks_like_specific_city_state(location):
+        return location
+
+    # Some ATS feeds expose only a broad country in the location field while
+    # preserving a concrete U.S. city and state at the end of the job title.
+    title_match = re.search(
+        r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3},\s*[A-Z]{2})\)?$",
+        clean_text(posting.title),
     )
+    if title_match is not None:
+        return clean_text(title_match.group(1))
+
+    return None
 
 
 def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
