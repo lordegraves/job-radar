@@ -533,13 +533,13 @@
                     <details id="workplace-arrangements" class="checklist-select">
                         <summary id="workplace-arrangements-summary">Choose workplace arrangements</summary>
                         <div class="checklist-menu">
-                            {% for arrangement in ["Remote", "Hybrid", "On-site"] %}
+                            {% for arrangement in ["Remote", "Hybrid", "On-site", "Flex"] %}
                             <label><input name="workplace-arrangement" type="checkbox" value="{{ arrangement }}"{% if saved_preferences and arrangement in saved_preferences.work_arrangements %} checked{% endif %}>{{ arrangement }}</label>
                             {% endfor %}
                         </div>
                     </details>
                 </div>
-                <p class="field-help">A truly remote job is not limited by commuting distance. If an employer restricts remote hiring to a region, that requirement is checked against your selected locations.</p>
+                <p class="field-help">A truly remote job is not limited by commuting distance. Hybrid, on-site, and flex jobs are checked against your selected locations. Flex means the employer explicitly describes a flexible workplace arrangement; it does not mean flexible hours.</p>
             </div>
         </section>
 
@@ -980,7 +980,7 @@
             : "No locations selected yet";
         const locationSummary = [
             `Locations you selected: ${areas}`,
-            "If a job does not clearly say whether it is remote, hybrid, or on-site, junior will place it in Needs Review.",
+            "If a job does not clearly say whether it is remote, hybrid, on-site, or flex, junior will place it in Needs Review.",
             `Jobs may require up to ${travel}% travel.`,
         ];
         if (arrangements.includes("Remote")) {

@@ -1,5 +1,7 @@
 #define AppName "Junior"
 #define AppVersion "0.2.0"
+#define BuildLabel "RC5 Build 1"
+#define BuildSlug "RC5-build-1"
 #define AppPublisher "Junior"
 #define AppExeName "Junior.exe"
 
@@ -7,6 +9,7 @@
 AppId={{CB6B32BA-8BC0-4CC0-A14D-0C12864035B1}
 AppName={#AppName}
 AppVersion={#AppVersion}
+AppVerName={#AppName} {#AppVersion} - {#BuildLabel}
 AppPublisher={#AppPublisher}
 DefaultDirName={localappdata}\Programs\Junior
 DefaultGroupName=Junior
@@ -15,7 +18,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\..\artifacts\installer
-OutputBaseFilename=Junior-Setup-{#AppVersion}
+OutputBaseFilename=Junior-Setup-{#AppVersion}-{#BuildSlug}
 SetupIconFile=..\..\job_radar\static\junior.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 Compression=lzma2

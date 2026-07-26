@@ -6,6 +6,28 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Label field-test packages and every application page as `RC5 Build 1`, and
+  include the same build identity in diagnostics and generated reports.
+- Add an explicit Flex workplace arrangement to profile creation and editing.
+  Junior recognizes explicit flex-workplace wording without treating flexible
+  hours or schedules as workplace-location evidence.
+- Let users download recognized, sanitized Junior logs directly from
+  Settings → Diagnostics without exposing unrelated files.
+
+- Added direct downloads for current and retained reports, including a
+  compressed raw-scan ZIP containing every public posting collected in a run.
+  Normal HTML and email reports remain summarized instead of rendering
+  thousands of unrelated or omitted jobs. New installations retain 10
+  successful report runs by default; existing saved retention choices remain
+  unchanged.
+- Fixed passing a previously saved job by placing its notes, reason, and Pass
+  action in one explicit form. The decision now either moves the job to
+  Reviewed / passed or shows a useful error, and a bounded privacy-safe action
+  log records success or failure without job text, notes, résumé content, URLs,
+  or raw exceptions.
+- Clarified that a missing job type means full-time, part-time, contract,
+  temporary, seasonal, or internship—not remote, hybrid, or on-site—and made
+  résumé-supported strengths and possible gaps prominent on review cards.
 - Added an occupational-relevance gate before practical eligibility review.
   An allowed location, missing compensation, or other unresolved logistics can
   no longer place unrelated work in Review Jobs without profile-owned title,

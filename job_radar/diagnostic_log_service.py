@@ -15,7 +15,7 @@ from job_radar.diagnostic_service import DiagnosticsView
 MAX_VISIBLE_LOGS = 20
 MAX_LOG_VIEW_BYTES = 200_000
 _OWNED_LOG_PATTERN = re.compile(
-    r"^(?:startup-errors\.log|(?:junior|startup-errors)-"
+    r"^(?:junior-actions\.log|startup-errors\.log|(?:junior|startup-errors)-"
     r"\d{8}T\d{12}Z\.log)$"
 )
 
@@ -91,6 +91,15 @@ def read_diagnostic_log(
     )
 
 
+def get_diagnostic_log_download(
+    logs_path: str | Path,
+    log_name: str,
+) -> Path:
+    """Resolve only a recognized Junior-owned log for direct download."""
+
+    return _resolve_owned_log(logs_path, log_name)
+
+
 def build_support_summary(
     application_info: ApplicationInfo,
     diagnostics: DiagnosticsView,
@@ -98,6 +107,7 @@ def build_support_summary(
     lines = [
         "Junior troubleshooting summary",
         f"Version: {application_info.version}",
+        f"Build: {application_info.build_label}",
         f"Release channel: {application_info.release_channel}",
         f"Database schema: {application_info.database_schema_version}",
         f"Profile schema: {application_info.profile_schema_version}",

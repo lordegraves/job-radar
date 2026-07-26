@@ -191,7 +191,7 @@ def test_search_preferences_preserve_resume_owned_profile_fields(
         ),
         seniority_levels=["Mid-level", "Senior"],
         employment_types=["Full-time", "Contract"],
-        work_arrangements=["Remote", "Hybrid"],
+        work_arrangements=["Remote", "Hybrid", "Flex"],
         schedule_preference="Any schedule",
         compensation_floor_usd="160000",
         travel_percentage="15",
@@ -204,6 +204,7 @@ def test_search_preferences_preserve_resume_owned_profile_fields(
     assert updated.preferences.compensation_target_usd == 185000
     assert updated.preferences.compensation_floor_usd == 160000
     assert updated.preferences.travel_tolerance == "15"
+    assert updated.preferences.work_arrangements == ("Remote", "Hybrid", "Flex")
 
 
 def test_managed_resume_upload_uses_app_owned_names(tmp_path: Path) -> None:

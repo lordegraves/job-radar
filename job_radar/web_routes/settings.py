@@ -11,6 +11,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_file,
     session,
     url_for,
 )
@@ -28,6 +29,7 @@ from job_radar.diagnostic_service import build_diagnostics_view
 from job_radar.diagnostic_log_service import (
     DiagnosticLogError,
     build_support_summary,
+    get_diagnostic_log_download,
     list_diagnostic_logs,
     open_data_directory,
     read_diagnostic_log,
@@ -198,6 +200,24 @@ def register_settings_routes(
         return render_template(
             "settings_diagnostic_log.html",
             log_view=log_view,
+        )
+
+    @app.get("/settings/diagnostics/logs/<log_name>/download")
+    def settings_diagnostic_log_download(log_name: str):
+        runtime_paths = get_runtime_paths()
+        try:
+            log_path = get_diagnostic_log_download(
+                runtime_paths.logs_path,
+                log_name,
+            )
+        except DiagnosticLogError as error:
+            flash(str(error), "error")
+            return redirect(url_for("settings_diagnostics"))
+        return send_file(
+            log_path,
+            as_attachment=True,
+            download_name=log_path.name,
+            mimetype="text/plain",
         )
 
     @app.post("/settings/diagnostics/open-data")

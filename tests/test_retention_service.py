@@ -26,6 +26,7 @@ def run_retention(
         html_report_path=reports / "target-scan.html",
         snapshot_path=reports / "target-scan.json",
         email_preview_path=reports / "target-email-preview.txt",
+        raw_scan_path=reports / "target-scan-raw.zip",
     )
     apply_retention_after_report_write(
         reports_path=reports,
@@ -44,6 +45,7 @@ def write_current_reports(reports: Path, value: str) -> None:
         f'{{"run": "{value}"}}', encoding="utf-8"
     )
     (reports / "target-email-preview.txt").write_text(value, encoding="utf-8")
+    (reports / "target-scan-raw.zip").write_text(value, encoding="utf-8")
 
 
 def test_retention_archives_previous_complete_report_set(tmp_path: Path) -> None:
@@ -66,6 +68,8 @@ def test_retention_archives_previous_complete_report_set(tmp_path: Path) -> None
     ) == "first run"
     assert (archive / "target-scan.json").is_file()
     assert (archive / "target-email-preview.txt").is_file()
+    assert (archive / "target-scan-raw.zip").is_file()
+    assert runs[0].raw_scan_name is not None
 
 
 def test_retention_prunes_old_archives_but_leaves_unknown_files(

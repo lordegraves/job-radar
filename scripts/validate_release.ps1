@@ -13,7 +13,7 @@ $installerBuild = Join-Path $projectRoot "scripts\build_windows_installer.ps1"
 $installerValidation = Join-Path $projectRoot "scripts\validate_windows_upgrade.ps1"
 $defaultInstaller = Join-Path (
     $projectRoot
-) "artifacts\installer\Junior-Setup-0.2.0.exe"
+) "artifacts\installer\Junior-Setup-0.2.0-RC5-build-1.exe"
 
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     throw "Junior's repository-local Python interpreter was not found: $python"

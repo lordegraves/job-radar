@@ -54,7 +54,7 @@ EMPLOYMENT_TYPES = {
     "Seasonal",
     "Internship or apprenticeship",
 }
-WORKPLACE_ARRANGEMENTS = {"Remote", "Hybrid", "On-site"}
+WORKPLACE_ARRANGEMENTS = {"Remote", "Hybrid", "On-site", "Flex"}
 SCHEDULE_PREFERENCES = {
     "Any schedule",
     "Day shift",

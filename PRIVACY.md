@@ -12,7 +12,9 @@ features that do not yet exist.
 
 Junior stores profiles, résumés, employer settings, collected jobs, review
 decisions, applications, reports, settings, schedules, logs, backups, and
-runtime files in its configured user-data location. On a normal Windows
+runtime files in its configured user-data location. Report storage can include
+a compressed raw-scan ZIP containing public job descriptions collected from
+configured employers. On a normal Windows
 installation, that location is `%LOCALAPPDATA%\JobRadar`.
 
 Email passwords are not stored in Junior's SQLite database or ordinary settings
@@ -80,6 +82,14 @@ sanitized categories and plain-language summaries instead of raw network or
 exception text. Startup diagnostics may include Junior's version, the settings
 file path, the Python error type, and source-code stack locations. They
 deliberately omit exception messages and local variables.
+
+Job-review actions write a bounded local `junior-actions.log`. Its allowlisted
+fields record when an action occurred, whether it succeeded, the Junior-managed
+job identifier, the screen where it occurred, the prior and requested state,
+and a bounded reason code. It does not record job titles, public URLs, user
+notes, job descriptions, profile or résumé contents, credentials, raw
+exceptions, or environment contents. If the log cannot be written, Junior does
+not undo or misreport an otherwise successful user decision.
 
 Junior does not automatically upload logs or diagnostics. A user decides
 whether to copy or share a troubleshooting summary. Do not share passwords,

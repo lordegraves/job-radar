@@ -161,6 +161,7 @@ def test_remote_job_is_not_eligible_when_remote_is_not_selected() -> None:
     [
         ("Fort Collins, CO", "Hybrid", "Hybrid"),
         ("On-site - Fort Collins, CO", None, "On-site"),
+        ("Fort Collins, CO", "Flex work model", "Flex"),
     ],
 )
 def test_location_based_job_is_eligible_when_location_matches(
@@ -190,6 +191,20 @@ def test_location_based_job_is_eligible_when_location_matches(
     assert result is not None
     assert result.status == ELIGIBILITY_ELIGIBLE
     assert result.reasons[0].code == "location_matches_selected_area"
+
+
+def test_flexible_schedule_is_not_mistaken_for_flex_workplace() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="",
+            description="This role offers flexible scheduling and flexible hours.",
+        ),
+        preferences=ProfilePreferences(work_arrangements=("Flex",)),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NEEDS_REVIEW
+    assert result.reasons[0].code == "workplace_arrangement_unclear"
 
 
 def test_location_matching_normalizes_multiword_state_names_safely() -> None:

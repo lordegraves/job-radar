@@ -48,6 +48,7 @@ from job_radar.retention_service import (
     apply_retention_after_report_write,
     archive_before_report_write,
 )
+from job_radar.raw_scan_export import RAW_SCAN_ARCHIVE_NAME, write_raw_scan_export
 from job_radar.runtime_paths import DEFAULT_SCORING_CONFIG_PATH, RuntimePaths
 from job_radar.scored_posting import ScoredPosting
 from job_radar.resume_match import match_resume_to_posting
@@ -601,6 +602,7 @@ def _handle_scan_unlocked(
             html_report_path=Path(report_path).with_suffix(".html"),
             snapshot_path=Path(report_path).with_suffix(".json"),
             email_preview_path=email_preview_path,
+            raw_scan_path=Path(report_path).parent / RAW_SCAN_ARCHIVE_NAME,
         )
 
         written_html_report_path = write_html_report(
@@ -625,6 +627,10 @@ def _handle_scan_unlocked(
             reports_path=Path(report_path).parent,
             logs_path=logs_path,
             retention=settings.retention,
+        )
+        write_raw_scan_export(
+            Path(report_path).parent / RAW_SCAN_ARCHIVE_NAME,
+            report,
         )
 
         email_send_result = None

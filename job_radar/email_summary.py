@@ -4,6 +4,7 @@ from datetime import datetime
 from html import escape
 from pathlib import Path
 
+from job_radar import __display_version__
 from job_radar.recommendation_constants import (
     ACTION_HOLD,
     ACTION_PASS,
@@ -56,6 +57,7 @@ def build_email_body(
     review_needed = _get_review_needed(email_scored_postings)
 
     lines: list[str] = [
+        f"Junior build: {__display_version__}",
         f"Generated at: {_format_generated_at(report.generated_at)}",
         f"Companies enabled: {report.companies_enabled}",
         f"Jobs collected: {report.jobs_collected}",
@@ -156,6 +158,7 @@ def build_email_html_body(
         "<h1>junior Report</h1>",
         "<h2>Summary</h2>",
         "<ul>",
+        f"<li><strong>Junior build:</strong> {escape(__display_version__)}</li>",
         f"<li><strong>Generated at:</strong> "
         f"{escape(_format_generated_at(report.generated_at))}</li>",
         f"<li><strong>Companies enabled:</strong> {report.companies_enabled}</li>",

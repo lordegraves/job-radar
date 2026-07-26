@@ -140,7 +140,7 @@ The script rebuilds the application bundle first, then compiles
 `packaging/windows/junior-installer.iss`. It accepts `-CompilerPath` when
 `ISCC.exe` is not in the documented local-tool or standard installation paths.
 The generated installer is written to
-`artifacts/installer/Junior-Setup-0.2.0.exe`.
+`artifacts/installer/Junior-Setup-0.2.0-RC5-build-1.exe`.
 
 Installer validation uses disposable install and user-data directories. It
 must verify install, packaged launch, HTTP readiness, uninstall, application

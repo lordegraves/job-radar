@@ -84,13 +84,14 @@
     <p>Open a sanitized Junior log. Only the newest {{ diagnostic_logs|length }} recognized log(s) are listed.</p>
     <table>
         <caption class="visually-hidden">Available diagnostic logs</caption>
-        <thead><tr><th>Log</th><th>Modified</th><th>Size</th></tr></thead>
+        <thead><tr><th>Log</th><th>Modified</th><th>Size</th><th>Action</th></tr></thead>
         <tbody>
             {% for log in diagnostic_logs %}
             <tr>
                 <td><a href="{{ url_for('settings_diagnostic_log', log_name=log.name) }}">{{ log.name }}</a></td>
                 <td>{{ log.modified_at }}</td>
                 <td>{{ log.size_bytes }} bytes</td>
+                <td><a href="{{ url_for('settings_diagnostic_log_download', log_name=log.name) }}">Download</a></td>
             </tr>
             {% endfor %}
         </tbody>

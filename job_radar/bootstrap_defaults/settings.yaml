@@ -4,8 +4,8 @@ reports_path: reports
 logs_path: logs
 
 retention:
-  report_policy: latest_only
-  report_count: 1
+  report_policy: keep_last_n
+  report_count: 10
   log_policy: latest_only
   log_count: 1
 

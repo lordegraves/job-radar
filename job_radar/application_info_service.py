@@ -4,7 +4,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from job_radar import __version__
+from job_radar import __build__, __version__
 from job_radar.database import connect_database
 from job_radar.profile_models import PROFILE_SCHEMA_VERSION
 
@@ -18,6 +18,7 @@ class ApplicationInfo:
     user_data_location: str
     database_schema_version: str
     profile_schema_version: str
+    build_label: str = __build__
 
 
 def build_application_info(
@@ -30,7 +31,7 @@ def build_application_info(
     version = __version__
     return ApplicationInfo(
         version=version,
-        release_channel=_release_channel(version),
+        release_channel=f"{_release_channel(version)} ({__build__})",
         user_data_location=str(Path(user_data_location).resolve()),
         database_schema_version=_database_schema_version(database_path),
         profile_schema_version=str(PROFILE_SCHEMA_VERSION),

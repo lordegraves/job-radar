@@ -9,7 +9,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, redirect, render_template, url_for
 
-from job_radar import __version__
+from job_radar import __build__, __version__
 from job_radar.config import ConfigError
 from job_radar.csrf import register_csrf_protection
 from job_radar.runtime_paths import RuntimePaths, get_default_user_data_directory
@@ -72,6 +72,12 @@ def create_app(
     )
     # This marker makes an Administration unlock valid only for this process.
     app.config["JOB_RADAR_ADMIN_SESSION_MARKER"] = secrets.token_urlsafe(32)
+
+    @app.context_processor
+    def inject_build_label() -> dict[str, str]:
+        """Make the exact tester build visible on every GUI page."""
+
+        return {"junior_build_label": __build__}
 
     initialize_database(runtime_paths.database_path)
     # Complete the protected one-time employer migration before any profile,
@@ -210,6 +216,7 @@ def create_app(
         ),
         get_database_path=lambda: _get_database_path(app),
         get_profile_id=lambda: _get_active_profile_id(app),
+        get_logs_path=lambda: str(_get_runtime_paths(app).logs_path),
     )
 
     register_tracker_routes(

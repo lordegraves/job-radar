@@ -553,6 +553,20 @@
         </section>
         {% endif %}
 
+        {% if job.resume_evidence %}
+        <section class="job-section">
+            <h2>Strengths from your résumé</h2>
+            <p>{{ job.resume_evidence }}</p>
+        </section>
+        {% endif %}
+
+        {% if job.resume_gaps %}
+        <section class="job-section">
+            <h2>Possible gaps</h2>
+            <p>{{ job.resume_gaps }}</p>
+        </section>
+        {% endif %}
+
         {% if job.action_rationale %}
         <section class="job-section">
             <h2>Junior's recommendation</h2>
@@ -614,15 +628,9 @@
             {% endif %}
             </div>
 
-            {% if job.resume_evidence or job.resume_gaps or job.history_context %}
+            {% if job.history_context %}
             <section class="job-section">
                 <h2>Context</h2>
-                {% if job.resume_evidence %}
-                <p><strong>Resume evidence:</strong> {{ job.resume_evidence }}</p>
-                {% endif %}
-                {% if job.resume_gaps %}
-                <p><strong>Resume gaps:</strong> {{ job.resume_gaps }}</p>
-                {% endif %}
                 {% if job.history_context %}
                 <p><strong>History context:</strong> {{ job.history_context }}</p>
                 {% endif %}

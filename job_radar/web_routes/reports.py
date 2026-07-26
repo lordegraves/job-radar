@@ -21,10 +21,16 @@ from job_radar.job_decision_service import (
     DECISION_PASSED,
     DECISION_SAVED,
     PASS_REASONS,
+    JobDecisionError,
     delete_job_decision,
     list_job_decisions,
     save_job_decision,
     save_job_decisions_bulk,
+)
+from job_radar.decision_event_log import record_decision_event
+from job_radar.raw_scan_export import (
+    RAW_SCAN_ARCHIVE_NAME,
+    raw_scan_download_name,
 )
 from job_radar.report_snapshot import (
     ReportSnapshotCollectorError,
@@ -63,6 +69,13 @@ PRIMARY_REPORT_FILE_DETAILS = {
     "target-email-preview.txt": {
         "description": "Latest plain-text email preview.",
         "sort_order": 20,
+    },
+    RAW_SCAN_ARCHIVE_NAME: {
+        "description": (
+            "Compressed plain-text export of every posting collected in the "
+            "latest scan."
+        ),
+        "sort_order": 30,
     },
 }
 
@@ -175,6 +188,7 @@ class ReportFileView:
     description: str
     is_primary: bool
     sort_order: int
+    can_view: bool
 
 
 def register_report_routes(
@@ -183,6 +197,7 @@ def register_report_routes(
     get_reports_path: Callable[[], str],
     get_database_path: Callable[[], str],
     get_profile_id: Callable[[], str | None],
+    get_logs_path: Callable[[], str],
 ) -> None:
     """Register report listing, viewing, and download routes."""
 
@@ -359,21 +374,62 @@ def register_report_routes(
         )
         if job is None:
             abort(404)
-        save_job_decision(
-            get_database_path(),
-            profile_id=profile_id,
+        prior_decisions = {
+            item.job_radar_id: item.decision
+            for item in list_job_decisions(
+                get_database_path(),
+                profile_id=profile_id,
+            )
+        }
+        try:
+            save_job_decision(
+                get_database_path(),
+                profile_id=profile_id,
+                job_radar_id=job.job_radar_id,
+                decision=decision,
+                company=job.company,
+                title=job.title,
+                source_url=job.url,
+                location=job.location,
+                notes=request.form.get("notes"),
+                decision_reason=(
+                    request.form.get("decision_reason")
+                    if decision == DECISION_PASSED
+                    else None
+                ),
+            )
+        except JobDecisionError:
+            record_decision_event(
+                get_logs_path(),
+                event="job_decision",
+                status="failed",
+                job_radar_id=job.job_radar_id,
+                source_view=section_name,
+                prior_state=prior_decisions.get(job.job_radar_id),
+                target_state=decision,
+                reason_code="invalid_decision_input",
+            )
+            flash(
+                "Junior could not save that decision. Review the selected "
+                "reason and keep notes to 300 characters or fewer.",
+                "error",
+            )
+            return redirect(
+                url_for(
+                    "report_section_view",
+                    section_name=section_name,
+                    page=return_page,
+                    view="compact" if view_mode == "compact" else None,
+                )
+            )
+        record_decision_event(
+            get_logs_path(),
+            event="job_decision",
+            status="completed",
             job_radar_id=job.job_radar_id,
-            decision=decision,
-            company=job.company,
-            title=job.title,
-            source_url=job.url,
-            location=job.location,
-            notes=request.form.get("notes"),
-            decision_reason=(
-                request.form.get("decision_reason")
-                if decision == DECISION_PASSED
-                else None
-            ),
+            source_view=section_name,
+            prior_state=prior_decisions.get(job.job_radar_id),
+            target_state=decision,
         )
         flash(
             (
@@ -433,21 +489,55 @@ def register_report_routes(
         if any(job is None for job in jobs):
             abort(409)
         verified_jobs = [job for job in jobs if job is not None]
-        save_job_decisions_bulk(
-            get_database_path(),
-            profile_id=profile_id,
-            decision=decision,
-            decision_reason=request.form.get("decision_reason"),
-            jobs=[
-                {
-                    "job_radar_id": job.job_radar_id,
-                    "company": job.company,
-                    "title": job.title,
-                    "source_url": job.url,
-                    "location": job.location,
-                }
-                for job in verified_jobs
-            ],
+        try:
+            save_job_decisions_bulk(
+                get_database_path(),
+                profile_id=profile_id,
+                decision=decision,
+                decision_reason=request.form.get("decision_reason"),
+                jobs=[
+                    {
+                        "job_radar_id": job.job_radar_id,
+                        "company": job.company,
+                        "title": job.title,
+                        "source_url": job.url,
+                        "location": job.location,
+                    }
+                    for job in verified_jobs
+                ],
+            )
+        except JobDecisionError:
+            record_decision_event(
+                get_logs_path(),
+                event="bulk_job_decision",
+                status="failed",
+                job_radar_id=None,
+                source_view=section_name,
+                target_state=decision,
+                reason_code="invalid_decision_input",
+                item_count=len(verified_jobs),
+            )
+            flash(
+                "Junior could not update the selected jobs. Review the pass "
+                "reason and try again.",
+                "error",
+            )
+            return redirect(
+                url_for(
+                    "report_section_view",
+                    section_name=section_name,
+                    page=return_page,
+                    view="compact" if view_mode == "compact" else None,
+                )
+            )
+        record_decision_event(
+            get_logs_path(),
+            event="bulk_job_decision",
+            status="completed",
+            job_radar_id=None,
+            source_view=section_name,
+            target_state=decision,
+            item_count=len(verified_jobs),
         )
         action = "saved for later" if decision == DECISION_SAVED else "passed"
         flash(f"{len(verified_jobs)} selected jobs were {action}.", "success")
@@ -496,42 +586,78 @@ def register_report_routes(
         )
         if existing is None:
             abort(404)
-        if action == "pass":
-            save_job_decision(
-                get_database_path(),
-                profile_id=profile_id,
-                job_radar_id=existing.job_radar_id,
-                decision=DECISION_PASSED,
-                company=existing.company,
-                title=existing.title,
-                source_url=existing.source_url,
-                location=existing.location,
-                notes=existing.notes,
-                decision_reason=request.form.get("decision_reason"),
-            )
-            flash(f"{existing.title} was moved to Reviewed Jobs.", "success")
-        elif action == "save_details":
-            save_job_decision(
-                get_database_path(),
-                profile_id=profile_id,
-                job_radar_id=existing.job_radar_id,
-                decision=existing.decision,
-                company=existing.company,
-                title=existing.title,
-                source_url=existing.source_url,
-                location=existing.location,
-                notes=request.form.get("notes"),
-                decision_reason=request.form.get("decision_reason"),
-            )
-            flash(f"Details for {existing.title} were saved.", "success")
-        elif action == "remove":
+        if action == "remove":
             delete_job_decision(
                 get_database_path(),
                 profile_id=profile_id,
                 job_radar_id=existing.job_radar_id,
             )
+            record_decision_event(
+                get_logs_path(),
+                event="job_decision_removed",
+                status="completed",
+                job_radar_id=existing.job_radar_id,
+                source_view="saved_and_reviewed_jobs",
+                prior_state=existing.decision,
+                target_state=None,
+            )
             flash(
                 f"{existing.title} can appear in a future scan again.",
+                "success",
+            )
+        elif action in {"pass", "save_details"}:
+            target_decision = (
+                DECISION_PASSED
+                if action == "pass"
+                else existing.decision
+            )
+            try:
+                save_job_decision(
+                    get_database_path(),
+                    profile_id=profile_id,
+                    job_radar_id=existing.job_radar_id,
+                    decision=target_decision,
+                    company=existing.company,
+                    title=existing.title,
+                    source_url=existing.source_url,
+                    location=existing.location,
+                    notes=(
+                        request.form.get("notes")
+                    ),
+                    decision_reason=request.form.get("decision_reason"),
+                )
+            except JobDecisionError:
+                record_decision_event(
+                    get_logs_path(),
+                    event="saved_job_update",
+                    status="failed",
+                    job_radar_id=existing.job_radar_id,
+                    source_view="saved_and_reviewed_jobs",
+                    prior_state=existing.decision,
+                    target_state=target_decision,
+                    reason_code="invalid_decision_input",
+                )
+                flash(
+                    "Junior could not save that change. Review the selected "
+                    "reason and keep notes to 300 characters or fewer.",
+                    "error",
+                )
+                return redirect(url_for("job_decisions"))
+            record_decision_event(
+                get_logs_path(),
+                event="saved_job_update",
+                status="completed",
+                job_radar_id=existing.job_radar_id,
+                source_view="saved_and_reviewed_jobs",
+                prior_state=existing.decision,
+                target_state=target_decision,
+            )
+            flash(
+                (
+                    f"{existing.title} was moved to Reviewed Jobs."
+                    if action == "pass"
+                    else f"Details for {existing.title} were saved."
+                ),
                 "success",
             )
         else:
@@ -563,9 +689,19 @@ def register_report_routes(
     @app.get("/reports/<path:report_name>")
     def report_file(report_name: str):
         reports_path = Path(get_reports_path()).resolve()
-        _validate_report_path(reports_path, report_name)
+        report_path = _validate_download_path(reports_path, report_name)
+        download_name = (
+            raw_scan_download_name(report_path.stat().st_mtime)
+            if report_path.name == RAW_SCAN_ARCHIVE_NAME
+            else report_path.name
+        )
 
-        return send_from_directory(reports_path, report_name)
+        return send_from_directory(
+            reports_path,
+            report_name,
+            as_attachment=True,
+            download_name=download_name,
+        )
 
 
 def build_latest_report_summary(
@@ -724,6 +860,18 @@ def _validate_report_path(
     return report_path
 
 
+def _validate_download_path(
+    reports_path: Path,
+    report_name: str,
+) -> Path:
+    report_path = (reports_path / report_name).resolve()
+    if reports_path not in report_path.parents or not report_path.is_file():
+        abort(404)
+    if report_path.suffix.lower() not in REPORT_FILE_EXTENSIONS | {".zip"}:
+        abort(404)
+    return report_path
+
+
 def _get_report_file_views(
     reports_path: str,
 ) -> list[ReportFileView]:
@@ -753,6 +901,7 @@ def _get_report_file_views(
                 description=report_details["description"],
                 is_primary=True,
                 sort_order=report_details["sort_order"],
+                can_view=path.suffix.lower() != ".zip",
             )
         )
 

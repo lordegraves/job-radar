@@ -157,6 +157,7 @@ def test_scan_pipeline_tracks_new_then_seen(
     assert count_job_postings(database_file) == 1
     assert report_file.exists()
     assert report_file.with_suffix(".json").exists()
+    assert (report_file.parent / "target-scan-raw.zip").exists()
     assert not report_file.with_suffix(".md").exists()
 
     assert "Jobs collected: 1" in first_output

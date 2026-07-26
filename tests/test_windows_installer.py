@@ -30,7 +30,10 @@ def test_installer_build_script_requires_verified_bundle_first() -> None:
     assert "scripts\\build_windows.ps1" in script_text
     assert "packaging\\windows\\junior-installer.iss" in script_text
     assert "ISCC.exe" in script_text
-    assert "artifacts\\installer\\Junior-Setup-0.2.0.exe" in script_text
+    assert (
+        "artifacts\\installer\\Junior-Setup-0.2.0-RC5-build-1.exe"
+        in script_text
+    )
     validation_text = (
         PROJECT_ROOT / "scripts" / "validate_windows_upgrade.ps1"
     ).read_text(encoding="utf-8")
@@ -79,5 +82,8 @@ def test_windows_bundle_embeds_product_version_details() -> None:
 
     assert "junior-version-info.txt" in spec_text
     assert 'StringStruct("ProductName", "junior")' in version_text
-    assert 'StringStruct("ProductVersion", "0.2.0")' in version_text
-    assert 'StringStruct("FileVersion", "0.2.0")' in version_text
+    assert (
+        'StringStruct("ProductVersion", "0.2.0 - RC5 Build 1")'
+        in version_text
+    )
+    assert 'StringStruct("FileVersion", "0.2.0.1")' in version_text

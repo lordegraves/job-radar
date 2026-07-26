@@ -22,6 +22,7 @@ VALID_ELIGIBILITY_STATUSES = {
 ARRANGEMENT_REMOTE = "Remote"
 ARRANGEMENT_HYBRID = "Hybrid"
 ARRANGEMENT_ON_SITE = "On-site"
+ARRANGEMENT_FLEX = "Flex"
 
 EMPLOYMENT_FULL_TIME = "Full-time"
 EMPLOYMENT_PART_TIME = "Part-time"
@@ -246,7 +247,7 @@ def evaluate_workplace_eligibility(
                     code="workplace_arrangement_unclear",
                     message=(
                         "The posting does not clearly say whether the job is "
-                        "remote, hybrid, or on-site."
+                        "remote, hybrid, on-site, or flex."
                     ),
                 ),
             ),
@@ -377,8 +378,9 @@ def _evaluate_employment_type_eligibility(
                 EligibilityReason(
                     code="employment_type_unclear",
                     message=(
-                        "The posting does not clearly identify an employment type "
-                        "that can be compared with this profile."
+                        "The posting does not clearly state whether this job is "
+                        "full-time, part-time, contract, temporary, seasonal, "
+                        "or an internship."
                     ),
                 ),
             ),
@@ -1367,6 +1369,9 @@ def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
         )
     ).lower()
 
+    if _has_explicit_flex_arrangement(text):
+        return ARRANGEMENT_FLEX
+
     if "hybrid" in text:
         return ARRANGEMENT_HYBRID
 
@@ -1395,6 +1400,17 @@ def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
 
     description = clean_text(posting.description).lower()
     explicit_description_patterns = (
+        (
+            ARRANGEMENT_FLEX,
+            (
+                r"\b(?:this|the)\s+(?:role|position|job)\s+uses?\s+"
+                r"(?:a\s+)?flex(?:ible)?\s+(?:workplace|work)\s+"
+                r"(?:arrangement|model)\b",
+                r"\bflex(?:ible)?\s+(?:workplace|work)\s+"
+                r"(?:arrangement|model)\b",
+                r"\bworkplace\s+type\s*:\s*flex\b",
+            ),
+        ),
         (
             ARRANGEMENT_HYBRID,
             (
@@ -1430,3 +1446,16 @@ def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
             return arrangement
 
     return None
+
+
+def _has_explicit_flex_arrangement(text: str) -> bool:
+    """Recognize workplace Flex without confusing it with flexible hours."""
+
+    return any(
+        re.search(pattern, text)
+        for pattern in (
+            r"\bflex\s+(?:workplace|work)\s+(?:arrangement|model)\b",
+            r"\bflexible\s+(?:workplace|work)\s+(?:arrangement|model)\b",
+            r"\bworkplace\s+type\s*:\s*flex\b",
+        )
+    )

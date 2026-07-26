@@ -23,6 +23,8 @@ from urllib.request import urlopen
 from werkzeug.serving import BaseWSGIServer, make_server
 import webview
 
+from job_radar import __build__
+
 from job_radar.runtime_paths import UserDataPaths
 from job_radar.user_data_bootstrap import bootstrap_packaged_user_configuration
 from job_radar.web_app import (
@@ -225,7 +227,7 @@ def run_native_window(
         wait_until_ready(url)
         window_state = load_window_state(window_state_path)
         window = webview_module.create_window(
-            "Junior",
+            f"Junior — {__build__}",
             url,
             width=window_state["width"],
             height=window_state["height"],

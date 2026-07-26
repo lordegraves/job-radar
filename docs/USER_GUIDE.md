@@ -11,7 +11,7 @@ licenses.
 ## Windows installation
 
 Junior's Windows installer is a per-user installer. Close Junior, run the
-trusted `Junior-Setup-0.2.0.exe` installer, and keep the default installation
+trusted `Junior-Setup-0.2.0-RC5-build-1.exe` installer, and keep the default installation
 location unless you have a specific reason to change it. Administrator access
 is not required.
 
@@ -362,14 +362,23 @@ Current scan artifacts are:
 - HTML scan report — the primary user-facing report
 - plain-text email preview — the message that can be reviewed before delivery
 - structured JSON snapshot — internal structured data used by the application
+- compressed raw-scan ZIP — a downloadable plain-text record of every public
+  posting collected in that run
 
-The latest outputs keep the same fixed filenames. In **Settings > Report and log retention**, choose:
+The normal HTML and email reports summarize the jobs worth presenting and do
+not create thousands of full cards for unrelated or omitted jobs. The raw ZIP
+is not displayed inside Junior. Download and open it only when a complete raw
+scan record is needed for troubleshooting or offline review.
+
+New installations retain the latest 10 successful report runs. Existing
+installations keep their previously saved choice. In **Settings > Report and
+log retention**, choose:
 
 - latest only
 - latest plus the previous run
 - a chosen total from 1 through 50
 
-When history is enabled, Junior copies and verifies the previous complete report set before replacing the latest files. Older HTML reports and email previews appear under **Retained report history** on the Reports page. Lower limits take effect during the next successful scan. Junior removes only marked report archives and recognized dated Junior logs; the active startup log and unrelated files remain untouched.
+When history is enabled, Junior copies and verifies the previous complete report set before replacing the latest files. Older HTML reports, email previews, and raw-scan ZIPs appear under **Retained report history** on the Reports page with direct Download controls. Raw ZIPs are compressed, but installations scanning many employers can still use meaningful disk space; lower the retained-run count when long history is unnecessary. Lower limits take effect during the next successful scan. Junior removes only marked report archives and recognized dated Junior logs; active logs and unrelated files remain untouched.
 
 ## Active Applications
 
@@ -419,10 +428,21 @@ appears above and below the jobs. **Back to top** moves only within the current
 page and does not reload it, change pages, or clear selections.
 
 Scan results use **Review Needed** whenever Junior cannot confirm a practical
-requirement such as workplace arrangement, employment type, schedule, or
-compensation. This does not mean the role is a poor fit. **Top Match** remains
+requirement such as workplace arrangement, job type, schedule, or
+compensation. Here, **job type** means full-time, part-time, contract,
+temporary, seasonal, or internship; workplace arrangement separately means
+remote, hybrid, on-site, or flex. This does not mean the role is a poor fit. Every
+full review card shows strengths supported by the résumé and possible résumé
+gaps before the practical recommendation. **Top Match** remains
 reserved for roles that have both strong role evidence and enough confirmed
 practical information to support applying.
+
+On **Saved and Reviewed Jobs**, a saved job's notes, reason, and **Pass — don't
+show again** action belong to one decision form. Passing a saved job stores the
+current reason and notes, moves it to Reviewed and passed, and prevents that
+exact posting from returning in later scans. If a decision cannot be saved,
+Junior keeps the job in place and shows an understandable error instead of
+silently appearing to do nothing.
 
 The RC5 **Pass / don't show again** control is durable and profile-specific.
 Stronger extraction of explicit location and short-contract details remains an

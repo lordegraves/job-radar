@@ -891,7 +891,7 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "linux, infrastructure, sre, gpu, observability" in html
     assert "Role fit" in html
     assert "Very Strong" in html
-    assert "Resume evidence" in html
+    assert "Strengths from your résumé" in html
     assert "Linux infrastructure; reliability engineering" in html
     assert "History context" in html
     assert "Prior similar role at ExampleCompute" in html
@@ -1379,6 +1379,59 @@ def test_reviewed_job_notes_and_reason_can_be_updated(
     )[0]
     assert decision.decision_reason == "Location"
     assert decision.notes == "Outside the selected commuting area."
+
+
+def test_saved_job_can_be_passed_with_notes_and_records_safe_event(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    profile = ManagedProfile(
+        profile_id="profile_36363636",
+        display_name="Synthetic saved-job reviewer",
+    )
+    create_profile(database_file, profile)
+    set_active_profile(database_file, profile.profile_id)
+    save_job_decision(
+        database_file,
+        profile_id=profile.profile_id,
+        job_radar_id="jr-synthetic-36363636",
+        decision=DECISION_SAVED,
+        company="Synthetic Company",
+        title="Synthetic Saved Role",
+        source_url="https://example.invalid/jobs/saved",
+        location="Remote",
+    )
+    client = create_app(settings_path=str(settings_file)).test_client()
+
+    page_html = client.get("/job-decisions").get_data(as_text=True)
+    assert 'form="saved-job-1"' in page_html
+
+    response = client.post(
+        "/job-decisions/jr-synthetic-36363636",
+        data={
+            "action": "pass",
+            "decision_reason": "Contract duration",
+            "notes": "Short contract.",
+        },
+    )
+
+    assert response.status_code == 302
+    decision = list_job_decisions(
+        database_file,
+        profile_id=profile.profile_id,
+        decision=DECISION_PASSED,
+    )[0]
+    assert decision.notes == "Short contract."
+    assert decision.decision_reason == "Contract duration"
+    action_log = (tmp_path / "junior-actions.log").read_text(
+        encoding="utf-8"
+    )
+    assert '"status": "completed"' in action_log
+    assert '"prior_state": "saved"' in action_log
+    assert "Synthetic Saved Role" not in action_log
+    assert "Short contract" not in action_log
 
 
 def test_saved_job_moves_out_of_bookmarks_when_application_is_created(
@@ -2664,6 +2717,10 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     assert "Raw exceptions" in html
     assert "No company sources are configured yet." in html
     assert "startup-errors.log" in html
+    assert (
+        'href="/settings/diagnostics/logs/startup-errors.log/download"'
+        in html
+    )
     assert "Copy troubleshooting details" in html
     assert "Open Data Directory" in html
     assert "Junior troubleshooting summary" in html
@@ -2675,8 +2732,19 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     assert log_response.status_code == 200
     assert "sanitized startup entry" in log_html
 
+    download_response = client.get(
+        "/settings/diagnostics/logs/startup-errors.log/download"
+    )
+    assert download_response.status_code == 200
+    assert b"sanitized startup entry" in download_response.data
+    assert "attachment" in download_response.headers["Content-Disposition"]
+
     rejected = client.get("/settings/diagnostics/logs/personal.log")
     assert rejected.status_code == 302
+    rejected_download = client.get(
+        "/settings/diagnostics/logs/personal.log/download"
+    )
+    assert rejected_download.status_code == 302
 
 
 def test_diagnostics_open_data_uses_resolved_runtime_root(
@@ -3169,6 +3237,7 @@ def test_reports_page_lists_only_current_scan_outputs(
         "Email preview",
         encoding="utf-8",
     )
+    (reports_path / "target-scan-raw.zip").write_bytes(b"raw archive")
     (reports_path / "code-audit.md").write_text(
         "# Code audit",
         encoding="utf-8",
@@ -3197,6 +3266,9 @@ def test_reports_page_lists_only_current_scan_outputs(
     assert "These are read-only copies" in html
     assert "target-email-preview.txt" in html
     assert "Latest plain-text email preview." in html
+    assert "target-scan-raw.zip" in html
+    assert "every posting collected" in html
+    assert 'href="/reports/target-scan-raw.zip">Download</a>' in html
     assert "code-audit.md" not in html
     assert "job_radar.sqlite3" not in html
     assert "Additional files" not in html
@@ -3335,6 +3407,30 @@ def test_report_file_serves_allowed_report_file(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "# Code audit" in response.get_data(as_text=True)
+    assert response.headers["Content-Disposition"].startswith("attachment;")
+
+
+def test_raw_scan_archive_download_uses_timestamped_filename(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    raw_export = reports_path / "target-scan-raw.zip"
+    raw_export.write_bytes(b"raw archive")
+    timestamp = datetime(2026, 7, 26, 16, 30).timestamp()
+    os.utime(raw_export, (timestamp, timestamp))
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    response = create_app(settings_path=str(settings_file)).test_client().get(
+        "/reports/target-scan-raw.zip"
+    )
+
+    assert response.status_code == 200
+    assert "junior-raw-scan-2026-07-26-1630.zip" in response.headers[
+        "Content-Disposition"
+    ]
 
 
 def test_report_file_rejects_non_report_file(tmp_path: Path) -> None:
@@ -4925,6 +5021,8 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Full-time"' in html
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
+    assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
+    assert "RC5 Build 1" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

@@ -55,7 +55,7 @@ def validate_first_run_setup(
             issues.append("Add at least one target role to the profile.")
         if not preferences.work_arrangements:
             issues.append("Choose at least one workplace arrangement.")
-        office_modes = {"Hybrid", "On-site"}
+        office_modes = {"Hybrid", "On-site", "Flex"}
         if (
             office_modes.intersection(preferences.work_arrangements)
             and not preferences.location_selections

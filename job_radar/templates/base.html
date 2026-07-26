@@ -128,6 +128,13 @@
             width: 38px;
         }
 
+        .brand-build {
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 500;
+            letter-spacing: 0;
+        }
+
         .site-nav {
             align-items: center;
             display: flex;
@@ -568,6 +575,7 @@
             <a class="brand" href="{{ url_for('index') }}">
                 <img class="brand-logo" src="{{ url_for('static', filename='junior_icon_v2.png') }}" alt="">
                 <span>junior</span>
+                <span class="brand-build">{{ junior_build_label }}</span>
             </a>
             <nav class="site-nav" aria-label="Primary navigation">
                 <a class="{% if request.endpoint == 'index' %}active-nav{% endif %}" href="{{ url_for('index') }}"{% if request.endpoint == 'index' %} aria-current="page"{% endif %}>Home</a>

@@ -4,6 +4,7 @@ from datetime import datetime
 from html import escape
 from pathlib import Path
 
+from job_radar import __display_version__
 from job_radar.models import JobPosting
 from job_radar.report_models import ScanError, ScanReport
 from job_radar.report_view_model import (
@@ -91,6 +92,7 @@ def render_html_report(report: ScanReport) -> str:
         "</head>",
         "<body>",
         "<h1>junior Report</h1>",
+        f"<p><strong>Junior build:</strong> {escape(__display_version__)}</p>",
     ]
 
     _append_html_table_of_contents(lines, report)
@@ -1084,7 +1086,9 @@ def _append_html_omitted_jobs_section(
         lines.append(
             "<p>"
             f"{len(omitted_postings) - PASSED_JOBS_REPORT_LIMIT} additional "
-            "passed jobs were hidden from this report to keep the file readable."
+            "jobs did not meet this profile's relevance or practical "
+            "requirements. They are summarized rather than listed here; "
+            "the raw scan download contains every collected posting."
             "</p>"
         )
 

@@ -6,6 +6,8 @@ value so they all report the version installed in the active Python environment.
 
 from importlib.metadata import PackageNotFoundError, version
 
+from job_radar.build_info import BUILD_LABEL, display_version
+
 
 try:
     # Packaging metadata is the authoritative version source. This keeps the
@@ -14,3 +16,6 @@ try:
 except PackageNotFoundError:
     # A source checkout may be inspected before Job Radar has been installed.
     __version__ = "0+unknown"
+
+__build__ = BUILD_LABEL
+__display_version__ = display_version(__version__)

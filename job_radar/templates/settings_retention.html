@@ -50,7 +50,11 @@
     <div class="retention-grid">
         <section class="page-card retention-card">
             <h2>Scan reports</h2>
-            <p class="muted">The latest report keeps its familiar filename. Older complete report sets are stored as history.</p>
+            <p class="muted">
+                Each run includes the readable summary and a compressed raw-scan
+                download containing every public posting collected in that run.
+                Keeping fewer runs uses less disk space.
+            </p>
             <label>Report history
                 <select name="report_policy" data-count-control="report_count">
                     {% for value, label in retention_form.policy_options %}

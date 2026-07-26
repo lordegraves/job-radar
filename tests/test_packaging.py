@@ -15,7 +15,8 @@ import zipfile
 from importlib.metadata import version
 from pathlib import Path
 
-from job_radar import __version__
+from job_radar import __build__, __display_version__, __version__
+from job_radar.build_info import BUILD_SLUG
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +53,25 @@ def test_project_declares_complete_gpl_v3_only_license() -> None:
 
 def test_package_exposes_installed_version() -> None:
     assert __version__ == version("job-radar")
+    assert __build__ == "RC5 Build 1"
+    assert __display_version__ == f"{__version__} — RC5 Build 1"
+
+
+def test_windows_packaging_uses_the_shared_field_test_build() -> None:
+    installer = (
+        PROJECT_ROOT / "packaging" / "windows" / "junior-installer.iss"
+    ).read_text(encoding="utf-8")
+    version_info = (
+        PROJECT_ROOT / "packaging" / "windows" / "junior-version-info.txt"
+    ).read_text(encoding="utf-8")
+    build_script = (
+        PROJECT_ROOT / "scripts" / "build_windows_installer.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert f'#define BuildLabel "{__build__}"' in installer
+    assert f'#define BuildSlug "{BUILD_SLUG}"' in installer
+    assert f'ProductVersion", "0.2.0 - {__build__}"' in version_info
+    assert f"Junior-Setup-0.2.0-{BUILD_SLUG}.exe" in build_script
 
 
 def test_built_wheel_contains_runtime_packages_and_entry_points(
@@ -484,6 +504,8 @@ def test_installed_wheel_runs_outside_source_checkout(
     company_config_text = company_config_path.read_text(encoding="utf-8")
 
     assert "smtp_password:" not in settings_text
+    assert "report_policy: keep_last_n" in settings_text
+    assert "report_count: 10" in settings_text
     assert "companies: []" in company_config_text
     assert "example_ai" not in company_config_text
     assert "examplecloud" not in company_config_text
