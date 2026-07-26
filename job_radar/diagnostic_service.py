@@ -28,6 +28,7 @@ class HealthCard:
     category: str
     summary: str
     next_step: str
+    endpoint: str | None = None
 
 
 @dataclass(frozen=True)
@@ -120,6 +121,7 @@ def _scan_health_card(database_path: Path) -> HealthCard:
             category="Scan",
             summary="Junior has no completed or failed scan to review.",
             next_step="Run a scan when the profile and company sources are ready.",
+            endpoint="settings_scan_diagnostics",
         )
 
     status = str(row["status"])
@@ -136,6 +138,7 @@ def _scan_health_card(database_path: Path) -> HealthCard:
                 else "Junior could not complete the latest scan."
             ),
             next_step=_next_step_for_category(category),
+            endpoint="settings_scan_diagnostics",
         )
     if status == "completed_with_warnings":
         categories = _scan_error_categories(database_path, int(row["id"]))
@@ -149,7 +152,8 @@ def _scan_health_card(database_path: Path) -> HealthCard:
                 f"The scan completed, but {int(row['collector_errors'] or 0)} "
                 "company source warning(s) need review."
             ),
-            next_step="Open the report's Collector Errors section for affected companies.",
+            next_step="Open scan details to review the affected companies.",
+            endpoint="settings_scan_diagnostics",
         )
 
     email_status = str(row["email_status"] or "not_requested")
@@ -161,6 +165,7 @@ def _scan_health_card(database_path: Path) -> HealthCard:
             category="Email",
             summary="The latest report completed, but email was not delivered.",
             next_step="Review Email Setup and use Test Connection.",
+            endpoint="settings_scan_diagnostics",
         )
     return HealthCard(
         title="Latest scan",
@@ -169,6 +174,7 @@ def _scan_health_card(database_path: Path) -> HealthCard:
         category="Scan",
         summary="The latest scan completed successfully.",
         next_step="No action is needed.",
+        endpoint="settings_scan_diagnostics",
     )
 
 
@@ -213,6 +219,7 @@ def _source_health_card(database_path: Path) -> HealthCard:
             category="Configuration",
             summary="No company sources are configured yet.",
             next_step="Add companies before running a targeted scan.",
+            endpoint="settings_source_health",
         )
     if failing:
         category = "network" if "network" in categories else "collector"
@@ -225,7 +232,8 @@ def _source_health_card(database_path: Path) -> HealthCard:
                 f"{failing} of {total} company source(s) have a failed "
                 "connection test."
             ),
-            next_step="Open Company Administration and review the affected sources.",
+            next_step="Open source health and review the affected companies.",
+            endpoint="settings_source_health",
         )
     tone = "success" if healthy else "warning"
     state = "Healthy" if healthy and not untested else "Testing incomplete"
@@ -243,6 +251,7 @@ def _source_health_card(database_path: Path) -> HealthCard:
             if tone == "success"
             else "Test enabled company sources before relying on scheduled scans."
         ),
+        endpoint="settings_source_health",
     )
 
 

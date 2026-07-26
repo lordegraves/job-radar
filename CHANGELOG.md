@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added clickable latest-scan and company-source Diagnostics details. Normal
+  users can review sanitized per-company collector warnings, open the global
+  read-only Collector Catalog, test selected or all untested sources in the
+  background, and run a targeted scan for selected companies without replacing
+  the latest full-scan report.
+- Made the manual update check field-test-build aware. It compares the installed
+  SP5 build with installer assets on Junior's verified RC5 GitHub release and
+  never downloads, installs, migrates, or changes user data.
 - Added an off-by-default profile option for exceptional matches outside the
   user's selected locations. Eligible roles must already satisfy Junior's
   strong-match rules and have location as their only blocker; they appear in a
@@ -17,7 +25,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   general diagnostic history is retained separately.
 - Fixed Eightfold collection when the server returns smaller pages than Junior
   requests, and preserved an employer's explicit Flex workplace field.
-- Label field-test packages and every application page as `SP5 Build 1.1`, and
+- Label field-test packages and every application page as `SP5 Build 1.2`, and
   include the same build identity in diagnostics and generated reports.
 - Add an explicit Flex workplace arrangement to profile creation and editing.
   Junior recognizes explicit flex-workplace wording without treating flexible

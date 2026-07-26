@@ -3111,6 +3111,56 @@ def test_scan_run_calls_handle_scan_and_redirects(
     release_scan.set()
 
 
+def test_selected_scan_uses_separate_reports_and_only_selected_companies(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    calls = []
+    scan_started = threading.Event()
+    release_scan = threading.Event()
+
+    write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
+    monkeypatch.chdir(tmp_path)
+
+    def fake_handle_scan(**kwargs):
+        calls.append(kwargs)
+        scan_started.set()
+        release_scan.wait(timeout=5)
+
+    monkeypatch.setattr(web_app_module, "handle_scan", fake_handle_scan)
+
+    app = create_app(settings_path=str(settings_file))
+    runtime_paths = app.config["JOB_RADAR_RUNTIME_PATHS"]
+    client = app.test_client()
+
+    response = client.post(
+        "/scan/run-selected",
+        data={"employer_id": ["first_company", "second_company"]},
+    )
+
+    assert response.status_code == 302
+    assert scan_started.wait(timeout=2)
+    assert calls == [
+        {
+            "config_path": str(runtime_paths.company_config_path),
+            "settings_path": str(runtime_paths.settings_path),
+            "report_path": str(runtime_paths.reports_path / "targeted-scan.html"),
+            "scoring_path": str(runtime_paths.scoring_config_path),
+            "email_preview_path": str(
+                runtime_paths.reports_path / "targeted-email-preview.txt"
+            ),
+            "send_email": False,
+            "base_directory": str(runtime_paths.base_directory),
+            "trigger_source": "manual:selected",
+            "selected_employer_ids": ["first_company", "second_company"],
+        }
+    ]
+    release_scan.set()
+
+
 def test_scan_run_reports_busy_when_scan_is_already_running(
     tmp_path: Path,
     monkeypatch,
@@ -5022,7 +5072,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "SP5 Build 1.1" in html
+    assert "SP5 Build 1.2" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

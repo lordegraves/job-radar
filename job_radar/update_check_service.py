@@ -12,6 +12,9 @@ import requests
 LATEST_RELEASE_API = (
     "https://api.github.com/repos/lordegraves/job-radar/releases/latest"
 )
+RELEASE_BY_TAG_API = (
+    "https://api.github.com/repos/lordegraves/job-radar/releases/tags/{tag}"
+)
 _VERSION_PATTERN = re.compile(
     r"^v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
 )
@@ -25,6 +28,7 @@ class UpdateCheckResult:
     message: str
     available_version: str | None = None
     release_url: str | None = None
+    available_build: str | None = None
 
     def as_session_value(self) -> dict[str, str | None]:
         return asdict(self)
@@ -95,6 +99,100 @@ def check_for_stable_update(
         available_version=available_version,
         release_url=release_url,
     )
+
+
+def check_for_update(
+    installed_version: str,
+    *,
+    installed_build: str | None = None,
+    release_label: str | None = None,
+    release_tag: str | None = None,
+    request_get: Callable[..., Any] = requests.get,
+) -> UpdateCheckResult:
+    """Check the installed stable version or exact field-test release channel."""
+
+    if not installed_build or not release_label or not release_tag:
+        return check_for_stable_update(
+            installed_version,
+            request_get=request_get,
+        )
+
+    if not re.fullmatch(r"v\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?", release_tag):
+        return _unavailable_result()
+    try:
+        response = request_get(
+            RELEASE_BY_TAG_API.format(tag=release_tag),
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": f"Junior/{installed_version} {installed_build}",
+            },
+            timeout=5,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError):
+        return _unavailable_result()
+
+    release_url = _safe_release_url(payload.get("html_url"))
+    build = _latest_build_from_assets(payload.get("assets"), release_label)
+    installed = _build_tuple(installed_build)
+    available = _build_tuple(build)
+    if release_url is None or installed is None or available is None:
+        return _unavailable_result()
+    if available > installed:
+        return UpdateCheckResult(
+            status="available",
+            message=(
+                f"{release_label} Build {build} is available. Junior will not "
+                "download or install it automatically."
+            ),
+            available_version=installed_version,
+            available_build=build,
+            release_url=release_url,
+        )
+    return UpdateCheckResult(
+        status="current",
+        message=f"{release_label} Build {installed_build} is current.",
+        available_version=installed_version,
+        available_build=build,
+        release_url=release_url,
+    )
+
+
+def _unavailable_result() -> UpdateCheckResult:
+    return UpdateCheckResult(
+        status="unavailable",
+        message=(
+            "Junior could not check for updates right now. Your installed "
+            "version and data were not changed."
+        ),
+    )
+
+
+def _latest_build_from_assets(value: object, release_label: str) -> str | None:
+    if not isinstance(value, list):
+        return None
+    pattern = re.compile(
+        rf"{re.escape(release_label)}-build-(?P<build>\d+(?:\.\d+)+)",
+        re.IGNORECASE,
+    )
+    builds: list[tuple[tuple[int, ...], str]] = []
+    for item in value:
+        if not isinstance(item, dict) or not isinstance(item.get("name"), str):
+            continue
+        match = pattern.search(item["name"])
+        if match:
+            build = match.group("build")
+            parsed = _build_tuple(build)
+            if parsed is not None:
+                builds.append((parsed, build))
+    return max(builds)[1] if builds else None
+
+
+def _build_tuple(value: str | None) -> tuple[int, ...] | None:
+    if not isinstance(value, str) or not re.fullmatch(r"\d+(?:\.\d+)+", value):
+        return None
+    return tuple(int(part) for part in value.split("."))
 
 
 def _normalized_version(value: object) -> str | None:

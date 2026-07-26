@@ -221,6 +221,7 @@ def handle_scan(
     send_email: bool = False,
     base_directory: str | Path | None = None,
     trigger_source: str = "manual",
+    selected_employer_ids: list[str] | None = None,
 ) -> None:
     settings = load_settings(settings_path)
     runtime_paths = RuntimePaths.from_application_settings(
@@ -252,6 +253,7 @@ def handle_scan(
             base_directory=runtime_paths.base_directory,
             candidate_profile_path=runtime_paths.candidate_profile_path,
             trigger_source=trigger_source,
+            selected_employer_ids=selected_employer_ids,
         )
 
 
@@ -269,12 +271,18 @@ def _handle_scan_unlocked(
     base_directory: Path,
     candidate_profile_path: Path | None,
     trigger_source: str,
+    selected_employer_ids: list[str] | None,
 ) -> None:
     initialize_database(database_path)
 
     companies = resolve_scan_companies(
         database_path,
         config_path,
+        selected_employer_ids=(
+            set(selected_employer_ids)
+            if selected_employer_ids is not None
+            else None
+        ),
     )
 
     requested_at = datetime.now(UTC).isoformat()

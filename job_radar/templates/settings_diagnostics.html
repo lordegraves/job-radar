@@ -74,6 +74,9 @@
         <p class="health-category">Category: {{ card.category }}</p>
         <p>{{ card.summary }}</p>
         <p class="health-next-step"><strong>Next step:</strong> {{ card.next_step }}</p>
+        {% if card.endpoint %}
+        <p><a href="{{ url_for(card.endpoint) }}">View details</a></p>
+        {% endif %}
     </section>
     {% endfor %}
 </div>

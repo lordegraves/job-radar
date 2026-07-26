@@ -8,6 +8,7 @@ from flask import (
     Flask,
     current_app,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -16,7 +17,8 @@ from flask import (
     url_for,
 )
 
-from job_radar import __version__
+from job_radar import __build__, __version__
+from job_radar.build_info import RELEASE_LABEL, RELEASE_TAG
 from job_radar.application_info_service import build_application_info
 from job_radar.collector_catalog import list_collector_capabilities
 from job_radar.company_discovery_settings_service import (
@@ -41,6 +43,7 @@ from job_radar.email_settings_service import (
     test_email_connection,
 )
 from job_radar.email_sender import get_email_readiness
+from job_radar.employer_connection_service import test_employer_connection
 from job_radar.runtime_paths import (
     DEFAULT_COMPANY_CONFIG_PATH,
     DEFAULT_EMAIL_PREVIEW_PATH,
@@ -65,7 +68,12 @@ from job_radar.scheduler_integration import (
     inspect_scheduler,
     remove_scheduler,
 )
-from job_radar.update_check_service import check_for_stable_update
+from job_radar.source_health_service import (
+    build_latest_scan_warnings,
+    build_source_health_items,
+)
+from job_radar.source_test_runner import SourceTestRunner
+from job_radar.update_check_service import check_for_update
 
 
 @dataclass(frozen=True)
@@ -92,6 +100,12 @@ def register_settings_routes(
     get_runtime_paths: Callable[[], RuntimePaths],
 ) -> None:
     """Register normal-user settings and read-only application information."""
+    source_test_runner = SourceTestRunner(
+        lambda employer_id: test_employer_connection(
+            get_runtime_paths().database_path,
+            employer_id,
+        )
+    )
 
     @app.get("/settings")
     def settings() -> str:
@@ -139,6 +153,53 @@ def register_settings_routes(
             capabilities=list_collector_capabilities(),
         )
 
+    @app.get("/settings/diagnostics/sources")
+    def settings_source_health() -> str:
+        runtime_paths = get_runtime_paths()
+        return render_template(
+            "settings_source_health.html",
+            sources=build_source_health_items(runtime_paths.database_path),
+            test_status=source_test_runner.status(),
+        )
+
+    @app.post("/settings/diagnostics/sources/test")
+    def settings_source_health_test():
+        runtime_paths = get_runtime_paths()
+        available = {
+            item.employer_id: item
+            for item in build_source_health_items(runtime_paths.database_path)
+        }
+        requested = request.form.getlist("employer_id")
+        if request.form.get("test_scope") == "untested":
+            requested = [
+                item.employer_id
+                for item in available.values()
+                if item.enabled and item.state == "not_tested"
+            ]
+        selected = [item for item in requested if item in available]
+        if not selected:
+            flash("Select at least one company source to test.", "error")
+        elif source_test_runner.start(selected):
+            flash(
+                f"Testing {len(selected)} company source(s) in the background.",
+                "success",
+            )
+        else:
+            flash("A company-source test is already running.", "error")
+        return redirect(url_for("settings_source_health"))
+
+    @app.get("/settings/diagnostics/sources/status")
+    def settings_source_health_status():
+        return jsonify(source_test_runner.status())
+
+    @app.get("/settings/diagnostics/latest-scan")
+    def settings_scan_diagnostics() -> str:
+        runtime_paths = get_runtime_paths()
+        return render_template(
+            "settings_scan_diagnostics.html",
+            warnings=build_latest_scan_warnings(runtime_paths.database_path),
+        )
+
     @app.get("/settings/company-discovery")
     def settings_company_discovery() -> str:
         return render_template(
@@ -163,8 +224,11 @@ def register_settings_routes(
 
     @app.post("/settings/about/check-updates")
     def settings_about_check_updates():
-        session["update_check"] = check_for_stable_update(
-            __version__
+        session["update_check"] = check_for_update(
+            __version__,
+            installed_build=__build__.removeprefix(f"{RELEASE_LABEL} Build "),
+            release_label=RELEASE_LABEL,
+            release_tag=RELEASE_TAG,
         ).as_session_value()
         return redirect(url_for("settings_about"))
 

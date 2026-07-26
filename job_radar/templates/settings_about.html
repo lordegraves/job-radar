@@ -22,10 +22,10 @@
             <dt>Profile/configuration schema version</dt>
             <dd>{{ application_info.profile_schema_version }}</dd>
         </dl>
-        <h3>Stable release updates</h3>
+        <h3>Updates</h3>
         <p>
-            Junior checks only when you ask. It never downloads or installs an
-            update automatically.
+            Junior checks this installed release channel only when you ask. It
+            never downloads or installs an update automatically.
         </p>
         <form method="post" action="{{ url_for('settings_about_check_updates') }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">

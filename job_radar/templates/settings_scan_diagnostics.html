@@ -1,0 +1,58 @@
+{# Shows only sanitized warnings from the latest scan. #}
+{% extends "base.html" %}
+
+{% block title %}Latest Scan Details - junior{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('settings_diagnostics') }}">&larr; Diagnostics</a></p>
+<h1 class="page-title">Latest Scan Details</h1>
+
+<section class="page-card">
+    <p>
+        These are safe explanations of company-source warnings from the latest
+        scan. Junior does not display raw responses, private URLs, credentials,
+        profile contents, or résumé contents here.
+    </p>
+</section>
+
+{% if warnings %}
+<div class="table-wrap">
+    <table>
+        <caption class="visually-hidden">Company-source warnings from the latest scan</caption>
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Platform</th>
+                <th>Warning type</th>
+                <th>What happened</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for warning in warnings %}
+            <tr>
+                <td>{{ warning.employer_name }}</td>
+                <td>{{ warning.source_label }}</td>
+                <td>{{ warning.category }}</td>
+                <td>{{ warning.message }}</td>
+                <td>
+                    {% if warning.employer_id %}
+                    <a href="{{ url_for('company_detail', company_key=warning.employer_id) }}">Open company</a>
+                    {% else %}
+                    Review source health
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<section class="page-card">
+    <h2>No company-source warnings</h2>
+    <p>The latest scan did not store any sanitized collector warnings.</p>
+</section>
+{% endif %}
+
+<p><a href="{{ url_for('settings_source_health') }}">Open Company Source Health</a></p>
+{% endblock %}

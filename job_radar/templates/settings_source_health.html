@@ -1,0 +1,123 @@
+{# Gives normal users operational source health without exposing edit controls. #}
+{% extends "base.html" %}
+
+{% block title %}Company Source Health - junior{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('settings_diagnostics') }}">&larr; Diagnostics</a></p>
+<h1 class="page-title">Company Source Health</h1>
+
+<section class="page-card">
+    <p>
+        A normal scan and a separate connection test answer different questions.
+        A scan collects and scores jobs. A connection test only confirms that
+        Junior can read the public source; it does not import jobs.
+    </p>
+    <p class="muted">
+        “Not separately tested” does not mean a source is broken. The latest-scan
+        column shows whether the most recent scan recorded a warning.
+    </p>
+    <p>
+        <a href="{{ url_for('settings_job_platforms') }}">View the read-only Collector Catalog</a>
+    </p>
+</section>
+
+<section class="page-card" id="source-test-progress" data-status-url="{{ url_for('settings_source_health_status') }}">
+    <h2>Test company sources</h2>
+    <p>Tests run one at a time in the background so Junior remains usable.</p>
+    <p id="source-test-status">
+        {% if test_status.running %}
+        Testing {{ test_status.completed }} of {{ test_status.total }} source(s).
+        {% else %}
+        No source test is currently running.
+        {% endif %}
+    </p>
+    <form method="post" action="{{ url_for('settings_source_health_test') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" name="test_scope" value="untested">Test all untested sources</button>
+        <button class="button-secondary" type="submit" name="test_scope" value="selected">Test selected sources</button>
+        <button
+            class="button-secondary"
+            type="submit"
+            formaction="{{ url_for('run_selected_scan') }}"
+        >Scan selected companies</button>
+        <p class="muted">
+            A selected-company scan imports and scores current jobs but writes a
+            separate targeted report. It does not replace the latest full-scan report.
+        </p>
+
+        <div class="table-wrap">
+            <table>
+                <caption class="visually-hidden">Company source health and connection-test results</caption>
+                <thead>
+                    <tr>
+                        <th><input id="select-all-sources" type="checkbox" aria-label="Select all sources"></th>
+                        <th>Company</th>
+                        <th>Platform</th>
+                        <th>Latest scan</th>
+                        <th>Separate test</th>
+                        <th>Last checked</th>
+                        <th>Jobs returned</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for source in sources %}
+                    <tr>
+                        <td>
+                            <input
+                                class="source-select"
+                                type="checkbox"
+                                name="employer_id"
+                                value="{{ source.employer_id }}"
+                                aria-label="Select {{ source.employer_name }}"
+                            >
+                        </td>
+                        <td><a href="{{ url_for('company_detail', company_key=source.employer_id) }}">{{ source.employer_name }}</a></td>
+                        <td>{{ source.source_label }}</td>
+                        <td title="{{ source.latest_scan_message }}">{{ source.latest_scan_state }}</td>
+                        <td title="{{ source.message }}">{{ source.state_label }}</td>
+                        <td>{{ source.tested_at or "Not separately tested" }}</td>
+                        <td>{{ source.job_count if source.job_count is not none else "—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+    const selectAll = document.getElementById("select-all-sources");
+    selectAll?.addEventListener("change", () => {
+        document.querySelectorAll(".source-select").forEach((item) => {
+            item.checked = selectAll.checked;
+        });
+    });
+
+    const container = document.getElementById("source-test-progress");
+    const status = document.getElementById("source-test-status");
+    if (!container || !status) return;
+    let observedRunning = {{ "true" if test_status.running else "false" }};
+    const poll = async () => {
+        try {
+            const response = await fetch(container.dataset.statusUrl, {cache: "no-store"});
+            const result = await response.json();
+            if (result.running) {
+                observedRunning = true;
+                status.textContent = `Testing ${result.completed} of ${result.total} source(s).`;
+                window.setTimeout(poll, 1000);
+            } else if (result.total && observedRunning) {
+                status.textContent = `Testing finished: ${result.completed} checked, ${result.failed} need attention.`;
+                window.setTimeout(() => window.location.reload(), 800);
+            }
+        } catch {
+            status.textContent = "Junior could not refresh test progress. Reload this page to check the results.";
+        }
+    };
+    poll();
+})();
+</script>
+{% endblock %}

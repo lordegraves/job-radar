@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 
 from job_radar.runtime_paths import (
     DEFAULT_EMAIL_PREVIEW_PATH,
@@ -95,6 +95,52 @@ def register_scan_routes(
             return jsonify({"status": "busy"}), 409
 
         return jsonify({"status": "starting"}), 202
+
+    @app.post("/scan/run-selected")
+    def run_selected_scan():
+        runtime_paths = get_runtime_paths()
+        selected = tuple(
+            dict.fromkeys(
+                item.strip()
+                for item in request.form.getlist("employer_id")
+                if item.strip()
+            )
+        )
+        if not selected:
+            flash("Select at least one company to scan.", "error")
+            return redirect(url_for("settings_source_health"))
+        if len(selected) > 25:
+            flash(
+                "Select no more than 25 companies for one targeted scan.",
+                "error",
+            )
+            return redirect(url_for("settings_source_health"))
+        if fetch_active_scan_run(runtime_paths.database_path) is not None:
+            flash("A scan is already running.", "error")
+            return redirect(url_for("settings_source_health"))
+
+        targeted_report = runtime_paths.reports_path / "targeted-scan.html"
+        targeted_email = runtime_paths.reports_path / "targeted-email-preview.txt"
+        started = scan_runner.start(
+            config_path=str(runtime_paths.company_config_path),
+            settings_path=str(runtime_paths.settings_path),
+            report_path=str(targeted_report),
+            scoring_path=str(runtime_paths.scoring_config_path),
+            email_preview_path=str(targeted_email),
+            send_email=False,
+            base_directory=str(runtime_paths.base_directory),
+            trigger_source="manual:selected",
+            selected_employer_ids=list(selected),
+        )
+        if started:
+            flash(
+                f"Scanning {len(selected)} selected company source(s). "
+                "The latest full-scan report will not be replaced.",
+                "success",
+            )
+        else:
+            flash("A scan is already running.", "error")
+        return redirect(url_for("scan"))
 
 
 def _build_scan_status_payload(

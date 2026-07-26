@@ -53,8 +53,8 @@ def test_project_declares_complete_gpl_v3_only_license() -> None:
 
 def test_package_exposes_installed_version() -> None:
     assert __version__ == version("job-radar")
-    assert __build__ == "SP5 Build 1.1"
-    assert __display_version__ == f"{__version__} — SP5 Build 1.1"
+    assert __build__ == "SP5 Build 1.2"
+    assert __display_version__ == f"{__version__} — SP5 Build 1.2"
 
 
 def test_windows_packaging_uses_the_shared_field_test_build() -> None:

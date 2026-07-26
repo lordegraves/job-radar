@@ -139,6 +139,39 @@ def test_resolve_scan_companies_uses_only_active_profile_enabled_employers(
     ]
 
 
+def test_resolve_scan_companies_can_limit_scan_to_selected_profile_employer(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "data" / "job_radar.sqlite3"
+    company_config_path = tmp_path / "config" / "target-companies.yaml"
+    write_company_file(company_config_path)
+    profile = ManagedProfile(
+        profile_id="profile_selected",
+        display_name="Selected Scan",
+        company_ids=("first_company", "second_company"),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    for employer_id in profile.company_ids:
+        upsert_employer_source(
+            database_path,
+            EmployerSource(
+                employer_id=employer_id,
+                name=employer_id.replace("_", " ").title(),
+                source_type="greenhouse",
+                source_config={"source_slug": employer_id},
+            ),
+        )
+
+    companies = resolve_scan_companies(
+        database_path,
+        company_config_path,
+        selected_employer_ids={"second_company"},
+    )
+
+    assert [item["company_key"] for item in companies] == ["second_company"]
+
+
 def test_resolve_scan_companies_skips_profile_disabled_employer(
     tmp_path: Path,
 ) -> None:

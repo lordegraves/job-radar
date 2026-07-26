@@ -7,7 +7,10 @@ from job_radar import __version__
 from job_radar.application_info_service import build_application_info
 from job_radar.storage import initialize_database
 from job_radar.web_app import create_app
-from job_radar.update_check_service import check_for_stable_update
+from job_radar.update_check_service import (
+    check_for_stable_update,
+    check_for_update,
+)
 
 
 class _ReleaseResponse:
@@ -110,6 +113,31 @@ def test_update_check_rejects_unverified_release_link() -> None:
     assert "not changed" in result.message
 
 
+def test_update_check_reports_newer_field_test_build() -> None:
+    result = check_for_update(
+        "0.2.0",
+        installed_build="1.1",
+        release_label="SP5",
+        release_tag="v0.2.0-rc5",
+        request_get=lambda *args, **kwargs: _ReleaseResponse(
+            {
+                "html_url": (
+                    "https://github.com/lordegraves/job-radar/"
+                    "releases/tag/v0.2.0-rc5"
+                ),
+                "assets": [
+                    {"name": "Junior-Setup-0.2.0-SP5-build-1.2.exe"},
+                    {"name": "SHA256.txt"},
+                ],
+            }
+        ),
+    )
+
+    assert result.status == "available"
+    assert result.available_build == "1.2"
+    assert "SP5 Build 1.2 is available" in result.message
+
+
 def test_about_update_check_is_manual_and_displays_safe_result(
     tmp_path: Path,
     monkeypatch,
@@ -120,9 +148,9 @@ def test_about_update_check_is_manual_and_displays_safe_result(
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
     monkeypatch.setattr(
         settings_routes,
-        "check_for_stable_update",
-        lambda version: check_for_stable_update(
-            version,
+        "check_for_update",
+        lambda version, **kwargs: check_for_stable_update(
+            "0.1.0",
             request_get=lambda *args, **kwargs: _ReleaseResponse(
                 {
                         "tag_name": "v0.3.0",
@@ -147,3 +175,28 @@ def test_about_update_check_is_manual_and_displays_safe_result(
     assert response.status_code == 200
     assert "Junior 0.3.0 is available" in after_check
     assert "will not download or install it automatically" in after_check
+
+
+def test_diagnostics_links_to_read_only_source_and_scan_details(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+    database_path = tmp_path / "data" / "junior.sqlite3"
+    _write_settings(settings_path, database_path)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    diagnostics = client.get("/settings/diagnostics").get_data(as_text=True)
+    source_health = client.get(
+        "/settings/diagnostics/sources"
+    ).get_data(as_text=True)
+    scan_details = client.get(
+        "/settings/diagnostics/latest-scan"
+    ).get_data(as_text=True)
+
+    assert "/settings/diagnostics/sources" in diagnostics
+    assert "/settings/diagnostics/latest-scan" in diagnostics
+    assert "Company Source Health" in source_health
+    assert "View the read-only Collector Catalog" in source_health
+    assert "Scan selected companies" in source_health
+    assert "No company-source warnings" in scan_details
