@@ -19,6 +19,7 @@ class ScoredPosting:
     location_status: str = "unknown"
     top_match_eligible: bool = False
     potential_top_match_eligible: bool = False
+    location_outlier_eligible: bool = False
     top_match_reasons: list[str] | None = None
     review_needed_eligible: bool = False
     resume_match: ResumeMatchResult | None = None

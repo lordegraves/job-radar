@@ -80,3 +80,57 @@ def test_microsoft_url_detects_eightfold_source() -> None:
         "https://apply.careers.microsoft.com"
     )
     assert result.source_config["display_name"] == "Microsoft"
+
+
+def test_eightfold_uses_actual_server_page_size_and_keeps_fetching(
+    monkeypatch,
+) -> None:
+    starts = []
+
+    def fake_get_response(url, **kwargs):
+        if url.endswith("/api/pcsx/search"):
+            start = kwargs["params"]["start"]
+            starts.append(start)
+            positions = (
+                [
+                    {
+                            "id": start + offset + 1,
+                            "name": f"Role {start + offset + 1}",
+                            "positionUrl": f"/careers/job/{start + offset + 1}",
+                    }
+                    for offset in range(10)
+                ]
+                if start < 20
+                else []
+            )
+            return _Response({"data": {"count": 20, "positions": positions}})
+        position_id = kwargs["params"]["position_id"]
+        return _Response(
+            {
+                "data": {
+                    "displayJobId": str(position_id),
+                    "locations": ["Spring, Texas, United States"],
+                    "jobDescription": "Analyze business data.",
+                    "workLocationOption": "onsite",
+                    "efcustomTextJobRequisitionWorkstyle": "Flex",
+                }
+            }
+        )
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+    jobs = collect_eightfold_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_type": "eightfold",
+            "source_url": "https://apply.example.com",
+            "domain": "example.com",
+        }
+    )
+
+    assert len(jobs) == 20
+    assert starts == [0, 10]
+    assert all(job.remote_status == "Flex" for job in jobs)

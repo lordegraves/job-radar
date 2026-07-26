@@ -45,6 +45,7 @@ JOB_DECISION_SECTIONS = {
     "passed_not_recommended",
     "top_matches",
     "potential_top_matches",
+    "location_outliers",
     "review_needed",
     "new_jobs",
 }
@@ -97,6 +98,16 @@ REPORT_SECTION_DETAILS = {
             "No Potential Top Matches were found in the latest scan."
         ),
     },
+    "location_outliers": {
+        "title": "Outside Your Usual Locations",
+        "page_title": "Outside Your Usual Locations",
+        "description": (
+            "Unusually strong role matches with a confirmed workplace outside "
+            "your selected locations. Junior keeps these separate and never "
+            "treats them as Top Matches."
+        ),
+        "empty_message": "No exceptional location-outlier roles were found.",
+    },
     "review_needed": {
         "title": "Review Needed",
         "page_title": "Review Needed",
@@ -136,6 +147,7 @@ class LatestReportSummaryView:
     html_report_exists: bool
     top_matches: int
     potential_top_matches: int
+    location_outliers: int
     review_needed: int
     tracked_applications: int
     new_jobs: int
@@ -719,6 +731,7 @@ def build_latest_report_summary(
             html_report_exists=html_report_path.is_file(),
             top_matches=0,
             potential_top_matches=0,
+            location_outliers=0,
             review_needed=0,
             tracked_applications=0,
             new_jobs=0,
@@ -735,6 +748,7 @@ def build_latest_report_summary(
         html_report_exists=html_report_path.is_file(),
         top_matches=snapshot.summary.top_matches,
         potential_top_matches=snapshot.summary.potential_top_matches,
+        location_outliers=snapshot.summary.location_outliers,
         review_needed=snapshot.summary.review_needed,
         tracked_applications=snapshot.summary.tracked_applications,
         new_jobs=snapshot.summary.new_jobs,
@@ -788,6 +802,7 @@ def build_review_inbox_summary(
         html_report_exists=latest.html_report_exists,
         top_matches=unresolved_count("top_matches"),
         potential_top_matches=unresolved_count("potential_top_matches"),
+        location_outliers=unresolved_count("location_outliers"),
         review_needed=unresolved_count("review_needed"),
         tracked_applications=latest.tracked_applications,
         new_jobs=unresolved_count("new_jobs"),

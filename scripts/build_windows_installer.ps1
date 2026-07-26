@@ -35,7 +35,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "The Windows installer build failed."
 }
 
-$installerPath = Join-Path $projectRoot "artifacts\installer\Junior-Setup-0.2.0-RC5-build-1.exe"
+$installerPath = Join-Path $projectRoot "artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.1.exe"
 if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
     throw "The installer compiler did not produce the expected setup file."
 }

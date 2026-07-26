@@ -116,7 +116,7 @@ def make_report() -> ScanReport:
 def test_build_report_snapshot_partitions_gui_sections() -> None:
     snapshot = build_report_snapshot(make_report())
 
-    assert snapshot.schema_version == 4
+    assert snapshot.schema_version == 5
     assert snapshot.summary.generated_at == "2026-07-15T12:00:00+00:00"
     assert snapshot.summary.top_matches == 1
     assert snapshot.summary.review_needed == 1
@@ -189,7 +189,7 @@ def test_report_snapshot_persists_eligibility_details(tmp_path: Path) -> None:
     loaded_snapshot = load_report_snapshot(snapshot_path)
     loaded_job = loaded_snapshot.potential_top_matches[0]
 
-    assert loaded_snapshot.schema_version == 4
+    assert loaded_snapshot.schema_version == 5
     assert loaded_job.eligibility_status == "needs_review"
     assert loaded_job.eligibility_reasons == [
         "The posting does not provide usable compensation.",

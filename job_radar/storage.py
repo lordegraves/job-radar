@@ -329,6 +329,11 @@ def _schema_migrations() -> tuple:
             "add profile job-decision reasons",
             _migrate_profile_job_decision_reasons,
         ),
+        (
+            29,
+            "add strong location-outlier preference",
+            _migrate_strong_location_outlier_preference,
+        ),
     )
 
 
@@ -1415,6 +1420,25 @@ def _migrate_clearance_profile_preference(
             "'Exclude jobs requiring an existing active clearance' "
             "WHERE replace(lower(exclusions_json), '-', ' ') "
             "LIKE '%cleared only roles%'"
+        )
+
+
+def _migrate_strong_location_outlier_preference(
+    connection: sqlite3.Connection,
+) -> None:
+    """Add an opt-in exception without changing any existing profile behavior."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(profile_preferences)"
+        ).fetchall()
+    }
+    if "include_strong_location_outliers" not in existing_columns:
+        connection.execute(
+            "ALTER TABLE profile_preferences "
+            "ADD COLUMN include_strong_location_outliers INTEGER NOT NULL "
+            "DEFAULT 0"
         )
 
 

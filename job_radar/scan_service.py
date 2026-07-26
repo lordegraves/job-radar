@@ -62,6 +62,11 @@ from job_radar.scoring import (
     classify_location,
     score_posting_with_evidence,
 )
+from job_radar.scan_diagnostic_log import (
+    elapsed_seconds,
+    record_scan_diagnostic,
+    start_scan_diagnostics,
+)
 from job_radar.storage import (
     complete_scan_run,
     fail_scan_run,
@@ -189,6 +194,7 @@ def _is_storage_relevant_posting(scored_posting: ScoredPosting) -> bool:
     return (
         is_top_match_report_posting(scored_posting)
         or is_potential_top_match_report_posting(scored_posting)
+        or scored_posting.location_outlier_eligible
         or is_review_needed_report_posting(scored_posting)
     )
 
@@ -291,6 +297,12 @@ def _handle_scan_unlocked(
     collector_errors: list[ScanError] = []
     report_status = "not_started"
     email_status = "not_requested"
+    diagnostic_started = start_scan_diagnostics(
+        logs_path,
+        scan_run_id=scan_run_id,
+        trigger=trigger_source,
+        companies_requested=len(companies),
+    )
 
     try:
         scoring_config = resolve_effective_scoring_config(
@@ -331,7 +343,7 @@ def _handle_scan_unlocked(
             current_stage=current_stage,
         )
 
-        for company in companies:
+        for company_number, company in enumerate(companies, start=1):
             company_key = company["company_key"]
             company_name = company["name"]
             source_type = company["source_type"]
@@ -368,6 +380,19 @@ def _handle_scan_unlocked(
                     collector_errors=len(collector_errors),
                 )
                 print(f"  ERROR: {diagnostic.message}")
+                record_scan_diagnostic(
+                    logs_path,
+                    event="company_collection_failed",
+                    scan_run_id=scan_run_id,
+                    stage=current_stage,
+                    company_number=company_number,
+                    source_type=source_type,
+                    companies_scanned=companies_scanned,
+                    jobs_found=total_jobs,
+                    collector_errors=len(collector_errors),
+                    failure_category=diagnostic.category,
+                    elapsed_seconds=elapsed_seconds(diagnostic_started),
+                )
                 continue
 
             total_jobs += len(postings)
@@ -382,6 +407,17 @@ def _handle_scan_unlocked(
                 collector_errors=len(collector_errors),
             )
             print(f"  collected_jobs={len(postings)}")
+            record_scan_diagnostic(
+                logs_path,
+                event="company_collection_completed",
+                scan_run_id=scan_run_id,
+                stage=current_stage,
+                company_number=company_number,
+                source_type=source_type,
+                companies_scanned=companies_scanned,
+                jobs_found=len(postings),
+                elapsed_seconds=elapsed_seconds(diagnostic_started),
+            )
 
         current_stage = "scoring"
         update_scan_run_progress(
@@ -474,6 +510,31 @@ def _handle_scan_unlocked(
                 profile_id=profile_id,
             )
 
+            eligibility = evaluate_practical_eligibility(
+                posting=posting,
+                preferences=job_preferences,
+                compensation=compensation,
+            )
+            location_outlier_eligible = (
+                bool(
+                    job_preferences
+                    and job_preferences.include_strong_location_outliers
+                )
+                and potential_top_match_eligible
+                and eligibility is not None
+                and eligibility.status == "not_eligible"
+                and bool(eligibility.reasons)
+                and all(
+                    reason.code
+                    in {
+                        "specific_location_outside_selected_areas",
+                        "location_outside_selected_areas",
+                        "remote_region_outside_selected_areas",
+                    }
+                    for reason in eligibility.reasons
+                )
+            )
+
             scored_postings.append(
                 ScoredPosting(
                     posting=posting,
@@ -483,6 +544,7 @@ def _handle_scan_unlocked(
                     location_status=location_status,
                     top_match_eligible=top_match_eligible,
                     potential_top_match_eligible=potential_top_match_eligible,
+                    location_outlier_eligible=location_outlier_eligible,
                     review_needed_eligible=review_needed_eligible,
                     top_match_reasons=top_match_reasons,
                     resume_match=match_resume_to_posting(
@@ -491,11 +553,7 @@ def _handle_scan_unlocked(
                         resume_text=resume_text,
                     ),
                     compensation=compensation,
-                    eligibility=evaluate_practical_eligibility(
-                        posting=posting,
-                        preferences=job_preferences,
-                        compensation=compensation,
-                    ),
+                    eligibility=eligibility,
                     profile_avoid_matches=_find_profile_avoid_matches(
                         candidate_profile=candidate_profile,
                         posting=posting,
@@ -667,6 +725,26 @@ def _handle_scan_unlocked(
 
         finished_at = datetime.now(UTC).isoformat()
 
+        top_matches_count = sum(
+            1
+            for scored_posting in relevant_scored_postings
+            if is_top_match_report_posting(scored_posting)
+        )
+        potential_top_matches_count = sum(
+            1
+            for scored_posting in relevant_scored_postings
+            if is_potential_top_match_report_posting(scored_posting)
+        )
+        location_outliers_count = sum(
+            scored_posting.location_outlier_eligible
+            for scored_posting in relevant_scored_postings
+        )
+        review_needed_count = sum(
+            1
+            for scored_posting in relevant_scored_postings
+            if is_review_needed_report_posting(scored_posting)
+        )
+
         if not complete_scan_run(
             database_path,
             scan_run_id=scan_run_id,
@@ -680,22 +758,36 @@ def _handle_scan_unlocked(
             jobs_seen=jobs_seen,
             jobs_changed=jobs_changed,
             collector_errors=len(collector_errors),
-            top_matches_count=sum(
-                1
-                for scored_posting in relevant_scored_postings
-                if is_top_match_report_posting(scored_posting)
-            ),
-            review_needed_count=sum(
-                1
-                for scored_posting in relevant_scored_postings
-                if is_review_needed_report_posting(scored_posting)
-            ),
+            top_matches_count=top_matches_count,
+            review_needed_count=review_needed_count,
             report_status=report_status,
             email_status=email_status,
         ):
             raise RuntimeError(
                 f"Scan run {scan_run_id} could not be marked complete."
             )
+        record_scan_diagnostic(
+            logs_path,
+            event="scan_completed",
+            scan_run_id=scan_run_id,
+            stage="completed",
+            companies_requested=len(companies),
+            companies_scanned=companies_scanned,
+            jobs_found=total_jobs,
+            jobs_stored=jobs_stored,
+            jobs_omitted=jobs_omitted,
+            jobs_new=jobs_new,
+            jobs_seen=jobs_seen,
+            jobs_changed=jobs_changed,
+            collector_errors=len(collector_errors),
+            top_matches=top_matches_count,
+            potential_top_matches=potential_top_matches_count,
+            location_outliers=location_outliers_count,
+            review_needed=review_needed_count,
+            report_status=report_status,
+            email_status=email_status,
+            elapsed_seconds=elapsed_seconds(diagnostic_started),
+        )
 
         print()
         print("Scan summary:")
@@ -733,6 +825,20 @@ def _handle_scan_unlocked(
             companies_scanned=companies_scanned,
             jobs_found=total_jobs,
             collector_errors=len(collector_errors),
+        )
+        record_scan_diagnostic(
+            logs_path,
+            event="scan_failed",
+            scan_run_id=scan_run_id,
+            stage=current_stage,
+            companies_requested=len(companies),
+            companies_scanned=companies_scanned,
+            jobs_found=total_jobs,
+            collector_errors=len(collector_errors),
+            report_status=report_status,
+            email_status=email_status,
+            failure_category=diagnostic.category,
+            elapsed_seconds=elapsed_seconds(diagnostic_started),
         )
         raise
 

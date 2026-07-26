@@ -221,7 +221,7 @@
                 {% if latest_report.generated_at %}
                 <p>
                     Latest scan completed {{ latest_report.generated_at }}.
-                    {{ review_inbox.top_matches + review_inbox.potential_top_matches + review_inbox.review_needed }}
+                    {{ review_inbox.top_matches + review_inbox.potential_top_matches + review_inbox.location_outliers + review_inbox.review_needed }}
                     jobs still need your decision.
                 </p>
                 {% else %}
@@ -240,6 +240,12 @@
                 <strong>{{ review_inbox.potential_top_matches }}</strong>
                 <span class="muted">Potential top matches</span>
             </a>
+            {% if review_inbox.location_outliers %}
+            <a class="scan-card" href="{{ url_for('report_section_view', section_name='location_outliers') }}">
+                <strong>{{ review_inbox.location_outliers }}</strong>
+                <span class="muted">Outside your usual locations</span>
+            </a>
+            {% endif %}
             <a class="scan-card" href="{{ url_for('report_section_view', section_name='review_needed') }}">
                 <strong>{{ review_inbox.review_needed }}</strong>
                 <span class="muted">Other matching jobs</span>

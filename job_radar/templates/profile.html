@@ -361,6 +361,10 @@
         <div class="profile-status-card"><strong>Employment</strong><span>{{ active_managed_profile.preferences.employment_types | join(', ') or 'No employment types selected' }}</span></div>
         <div class="profile-status-card"><strong>Workplace</strong><span>{{ active_managed_profile.preferences.work_arrangements | join(', ') or 'No workplace arrangements selected' }}</span></div>
         <div class="profile-status-card"><strong>Locations</strong><span>{{ active_managed_profile.preferences.preferred_locations | join(', ') or 'No locations selected' }}</span></div>
+        <div class="profile-status-card">
+            <strong>Exceptional matches outside your locations</strong>
+            <span>{{ 'Shown in a separate review group' if active_managed_profile.preferences.include_strong_location_outliers else 'Not shown' }}</span>
+        </div>
         <div class="profile-status-card"><strong>Schedule</strong><span>{{ active_managed_profile.preferences.schedule_preference or 'Any schedule' }}</span></div>
         <div class="profile-status-card"><strong>On-call</strong><span>{{ active_managed_profile.preferences.on_call_preference }}</span></div>
         <div class="profile-status-card"><strong>Security clearance</strong><span>{{ active_managed_profile.preferences.clearance_preference }}</span></div>

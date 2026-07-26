@@ -81,7 +81,8 @@
 <div class="page-card">
     <h2>Need more detail?</h2>
     {% if diagnostic_logs %}
-    <p>Open a sanitized Junior log. Only the newest {{ diagnostic_logs|length }} recognized log(s) are listed.</p>
+    <p>Open or download a sanitized Junior log. <strong>junior-last-scan.log</strong> explains the most recent scan step by step without including job listings, profile settings, or résumé contents.</p>
+    <p class="muted">Only the newest {{ diagnostic_logs|length }} recognized log(s) are listed. These text files can be attached to a support email.</p>
     <table>
         <caption class="visually-hidden">Available diagnostic logs</caption>
         <thead><tr><th>Log</th><th>Modified</th><th>Size</th><th>Action</th></tr></thead>

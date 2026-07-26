@@ -568,6 +568,13 @@
                 <div id="location-list" class="chip-list location-selection-list"></div>
                 <div id="location-coverage" class="location-coverage" aria-live="polite"></div>
                 <p class="field-help">Commuting areas use approximate straight-line distance. Actual driving distance and time vary with roads, route, and traffic.</p>
+                <label class="checkbox-row">
+                    <input name="include_strong_location_outliers" type="checkbox" value="1"{% if saved_preferences and saved_preferences.include_strong_location_outliers %} checked{% endif %}>
+                    <span>
+                        <strong>Show exceptional matches outside my locations</strong>
+                        <span class="field-help">Show a separate, small review group when a role is an unusually strong match but its confirmed workplace is outside your selected locations. Junior will not treat these jobs as Top Matches, and this is off by default.</span>
+                    </span>
+                </label>
             </div>
 
             <div class="travel-control">

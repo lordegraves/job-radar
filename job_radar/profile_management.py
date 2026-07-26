@@ -229,6 +229,7 @@ def save_managed_search_profile(
     compensation_floor_usd: str,
     travel_percentage: str,
     exclusions: str = "",
+    include_strong_location_outliers: bool = False,
     base_directory: str | Path | None = None,
 ) -> tuple[ManagedProfile, bool]:
     """Create a complete search profile or update the active one safely."""
@@ -267,6 +268,7 @@ def save_managed_search_profile(
         compensation_floor_usd=compensation_floor_usd,
         travel_percentage=travel_percentage,
         exclusions=exclusions,
+        include_strong_location_outliers=include_strong_location_outliers,
     )
 
     if current is None:
@@ -308,6 +310,7 @@ def _validated_search_preferences(
     compensation_floor_usd: str,
     travel_percentage: str,
     exclusions: str,
+    include_strong_location_outliers: bool,
 ) -> ProfilePreferences:
     occupations = _occupation_preferences(occupation_selections_json)
     locations = _location_preferences(location_selections_json)
@@ -350,6 +353,7 @@ def _validated_search_preferences(
         occupation_selections=occupations,
         location_selections=locations,
         exclusions=exclusion_values,
+        include_strong_location_outliers=include_strong_location_outliers,
     )
 
 

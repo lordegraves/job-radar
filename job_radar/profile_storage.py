@@ -460,6 +460,13 @@ def _replace_profile_preferences(
         insertion_index = columns.index("occupation_selections_json")
         columns.insert(insertion_index, "clearance_preference")
         values.insert(insertion_index, preferences.clearance_preference)
+    if "include_strong_location_outliers" in existing_columns:
+        insertion_index = columns.index("occupation_selections_json")
+        columns.insert(insertion_index, "include_strong_location_outliers")
+        values.insert(
+            insertion_index,
+            int(preferences.include_strong_location_outliers),
+        )
 
     placeholders = ", ".join("?" for _ in columns)
     connection.execute(
@@ -571,6 +578,9 @@ def _row_to_profile(
             schedule_preference=preference_row["schedule_preference"],
             on_call_preference=preference_row["on_call_preference"],
             clearance_preference=preference_row["clearance_preference"],
+            include_strong_location_outliers=bool(
+                preference_row["include_strong_location_outliers"]
+            ),
             occupation_selections=_load_occupation_preferences(
                 preference_row["occupation_selections_json"]
             ),

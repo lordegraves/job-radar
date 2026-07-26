@@ -16,7 +16,7 @@ from job_radar.report_view_model import build_job_output_view_model
 from job_radar.scored_posting import ScoredPosting
 
 
-REPORT_SNAPSHOT_SCHEMA_VERSION = 4
+REPORT_SNAPSHOT_SCHEMA_VERSION = 5
 
 
 @dataclass(frozen=True)
@@ -56,6 +56,7 @@ class ReportSnapshotSummary:
     generated_at: str | None
     top_matches: int
     potential_top_matches: int
+    location_outliers: int
     review_needed: int
     tracked_applications: int
     new_jobs: int
@@ -68,6 +69,7 @@ class ReportSnapshot:
     summary: ReportSnapshotSummary
     top_matches: list[ReportSnapshotJob]
     potential_top_matches: list[ReportSnapshotJob]
+    location_outliers: list[ReportSnapshotJob]
     review_needed: list[ReportSnapshotJob]
     tracked_applications: list[ReportSnapshotJob]
     new_jobs: list[ReportSnapshotJob]
@@ -102,6 +104,7 @@ def build_report_snapshot(report: ScanReport) -> ReportSnapshot:
             generated_at=report.generated_at,
             top_matches=len(view_model.top_matches),
             potential_top_matches=len(view_model.potential_top_matches),
+            location_outliers=len(view_model.location_outliers),
             review_needed=len(view_model.review_needed),
             tracked_applications=len(view_model.tracked_applications),
             new_jobs=report.jobs_new,
@@ -111,6 +114,7 @@ def build_report_snapshot(report: ScanReport) -> ReportSnapshot:
         potential_top_matches=_build_snapshot_jobs(
             view_model.potential_top_matches
         ),
+        location_outliers=_build_snapshot_jobs(view_model.location_outliers),
         review_needed=_build_snapshot_jobs(view_model.review_needed),
         tracked_applications=_build_snapshot_jobs(
             view_model.tracked_applications
@@ -147,12 +151,16 @@ def load_report_snapshot(snapshot_path: str | Path) -> ReportSnapshot:
         summary=ReportSnapshotSummary(
             **{
                 "potential_top_matches": 0,
+                "location_outliers": 0,
                 **raw_snapshot["summary"],
             }
         ),
         top_matches=_load_snapshot_jobs(raw_snapshot["top_matches"]),
         potential_top_matches=_load_snapshot_jobs(
             raw_snapshot.get("potential_top_matches", [])
+        ),
+        location_outliers=_load_snapshot_jobs(
+            raw_snapshot.get("location_outliers", [])
         ),
         review_needed=_load_snapshot_jobs(raw_snapshot["review_needed"]),
         tracked_applications=_load_snapshot_jobs(

@@ -16,6 +16,7 @@ def make_scored_posting(
     title: str,
     top_match_eligible: bool = False,
     potential_top_match_eligible: bool = False,
+    location_outlier_eligible: bool = False,
     review_needed_eligible: bool = False,
     tracked: bool = False,
     score_reasons: list[str] | None = None,
@@ -58,6 +59,7 @@ def make_scored_posting(
         ],
         top_match_eligible=top_match_eligible,
         potential_top_match_eligible=potential_top_match_eligible,
+        location_outlier_eligible=location_outlier_eligible,
         top_match_reasons=top_match_reasons,
         review_needed_eligible=review_needed_eligible,
         eligibility=eligibility,
@@ -163,6 +165,32 @@ def test_build_report_view_model_applies_email_limit() -> None:
 
     assert len(view.top_matches) == 12
     assert len(view.email_top_matches) == 10
+
+
+def test_location_outlier_has_one_separate_review_group() -> None:
+    outlier = make_scored_posting(
+        title="Strong Role Outside Selected Locations",
+        potential_top_match_eligible=True,
+        location_outlier_eligible=True,
+        review_needed_eligible=True,
+        eligibility=EligibilityResult(
+            status="not_eligible",
+            reasons=(
+                EligibilityReason(
+                    code="specific_location_outside_selected_areas",
+                    message="The confirmed location is outside selected areas.",
+                ),
+            ),
+        ),
+    )
+
+    view = build_report_view_model(scored_postings=[outlier])
+
+    assert view.location_outliers == [outlier]
+    assert view.potential_top_matches == []
+    assert view.review_needed == []
+    assert view.email_potential_top_matches == []
+    assert view.email_review_needed == []
 
 
 def test_unconfigured_industry_terms_do_not_create_global_risk() -> None:

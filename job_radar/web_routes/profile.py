@@ -359,6 +359,9 @@ def register_profile_routes(
                 ),
                 travel_percentage=request.form.get("travel_percentage", ""),
                 exclusions=request.form.get("exclusions", ""),
+                include_strong_location_outliers=(
+                    request.form.get("include_strong_location_outliers") == "1"
+                ),
                 base_directory=base_directory,
             )
         except (ConfigError, ProfileStorageError, ValueError) as error:

@@ -1,9 +1,9 @@
 """Keep the tester-facing release-candidate build label in one place."""
 
-RELEASE_CANDIDATE = 5
-BUILD_NUMBER = 1
-BUILD_LABEL = f"RC{RELEASE_CANDIDATE} Build {BUILD_NUMBER}"
-BUILD_SLUG = f"RC{RELEASE_CANDIDATE}-build-{BUILD_NUMBER}"
+RELEASE_LABEL = "SP5"
+BUILD_NUMBER = "1.1"
+BUILD_LABEL = f"{RELEASE_LABEL} Build {BUILD_NUMBER}"
+BUILD_SLUG = f"{RELEASE_LABEL}-build-{BUILD_NUMBER}"
 
 
 def display_version(application_version: str) -> str:

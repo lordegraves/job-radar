@@ -32,8 +32,8 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     postings: list[JobPosting] = []
     seen: set[str] = set()
 
-    for page_index in range(max_pages):
-        start = page_index * page_size
+    start = 0
+    for _page_index in range(max_pages):
         try:
             response = get_response(
                 f"{source_url}/api/pcsx/search",
@@ -82,7 +82,11 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         count = data.get("count") if isinstance(data, dict) else None
         if isinstance(count, int) and len(postings) >= count:
             break
-        if len(raw_positions) < page_size:
+        # Eightfold may enforce a smaller server-side page size than Junior
+        # requests. Advance by what the server actually returned so valid jobs
+        # on later pages are not silently skipped.
+        start += len(raw_positions)
+        if not isinstance(count, int) and len(raw_positions) < page_size:
             break
 
     return postings
@@ -113,7 +117,9 @@ def _build_posting(
         detail.get("jobDescription") or raw_position.get("jobDescription")
     )
     remote_status = str(
-        detail.get("workLocationOption")
+        detail.get("efcustomTextJobRequisitionWorkstyle")
+        or raw_position.get("efcustomTextJobRequisitionWorkstyle")
+        or detail.get("workLocationOption")
         or raw_position.get("workLocationOption")
         or ""
     ).strip() or None

@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC5 Build 1`
+- Current field-test build: `SP5 Build 1.1`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -279,7 +279,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC5-build-1.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.1.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
@@ -434,6 +434,11 @@ Each profile owns its own company search list. The Companies workspace shows onl
 
 Junior does not present its local Employer Catalog as a comprehensive recommendation system. Users choose the employers they want to monitor. The Companies workflow is designed to make that addition easy: enter an ordinary company name or public careers-page URL, review Junior's detected match or supported career platform, confirm it, and begin scanning. Junior does not invent employer names, silently add companies, broadly crawl the public web, or claim to know the full market for a profession or region. Its source-discovery fallback is limited to locating and validating the public job site for the employer the user explicitly submitted. Existing recommendation metadata and Administration services remain available for compatibility and technical maintenance, but they are not part of the normal-user company workflow.
 
+An optional profile setting can surface exceptional matches outside the user's
+selected locations. It is off by default. A role must already satisfy Junior's
+strong-match rules and have location as its only blocker. These roles appear in
+a separate review group and never become Top Matches automatically.
+
 ## Settings and Administration boundary
 
 Settings remains the normal-user home for safe personal and product preferences. Its About page shows the installed version, release channel, user-data location, database and profile schema versions, and safe support guidance without exposing profile contents or credentials. A manual update check reads only the latest stable release from Junior's official GitHub project and reports the result; it never downloads or installs software, runs migrations, or changes user data. Email setup stores credentials through the operating system rather than ordinary settings or SQLite. The global Company Discovery setting can optionally allow a Bing lookup only after Junior's direct company-source checks fail. It defaults to Off, is not required for normal scans or direct source detection, and explains the exact public company information sent and the provider-visible network information before the user enables it. Scan schedule setup stores an enabled state, local start time, selected weekdays, and email-delivery choice; it shows the calculated next run and safe status from the most recent scheduled scan. On Windows, the same page manages Junior's single `\Junior Scheduled Scan` Task Scheduler entry with normal user permissions and no stored Windows password. Junior's window may be closed and the computer may be locked, but the Windows user must remain signed in and the computer must be awake and powered on at the scheduled time. On Linux, it atomically manages only the marked `junior-scan.service` and `junior-scan.timer` files in the current user's systemd directory and refuses to overwrite similarly named files it does not own. Both platforms start the same `job-radar-scheduled` entry point and shared scan service. The Linux user timer can also run under a dedicated server service account with that account's explicit Junior data root; full logged-out service installation guidance remains part of the later Linux operations milestone. Administration is a separate, session-scoped safety boundary for installation-wide and technical controls. Unlocking Administration requires typing `ADMIN`; this is an explicit confirmation, not a password or protection from someone who already controls the local computer. Administration unlock state is limited to the current browser session and Junior process, and restarting Junior invalidates it. The Flask session signing key is generated locally under the user-owned database runtime directory. It is never committed or stored in YAML or SQLite; deleting it invalidates existing browser sessions.
@@ -457,6 +462,12 @@ Scans started from the GUI run in the background. The rest of junior remains ava
 SMTP passwords must not be stored in YAML, SQLite, logs, reports, previews, bootstrap files, packages, or source control. Junior can store desktop credentials in the operating system's credential manager through the packaged `keyring` adapter; settings retain only the non-secret `smtp_credential_key` reference. The established `smtp_password_env` environment-variable reference remains supported for existing installations, servers, containers, and automated deployments. If the operating system has no usable secure credential backend, Junior reports that credential storage is unavailable and does not fall back to a plain-text file.
 
 Settings includes an Email Setup page with Gmail, Outlook, and Custom SMTP choices, username and password entry, sender and recipient delivery details, and a clear credential-storage status. Gmail and Outlook use their standard SMTP server, port, and transport-security defaults; provider policy may require an app password or separately enabled SMTP access. Saving validates a complete replacement settings file before atomically activating it, preserves unrelated and newer settings keys, and writes a newly entered password only to the operating-system credential manager. **Test Connection** connects, negotiates TLS when configured, and authenticates without sending a message, launching a scan, or producing a normal report. A session-scoped status card shows the tested provider, result, time, credential-storage method, and a short reason. Ordinary results are limited to Connected, Not configured, Authentication failed, Server unreachable, or TLS negotiation failed; the browser session contains no password or raw SMTP failure.
+
+The downloadable `junior-last-scan.log` records the newest scan's stages,
+collector types, counts, safe failure categories, and elapsed time.
+`junior-diagnostics.log` retains a bounded operational history. Neither log
+contains job listings, employer names, submitted URLs, profile settings, or
+résumé contents.
 
 ## Database upgrade recovery
 

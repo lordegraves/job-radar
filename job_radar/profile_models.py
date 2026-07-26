@@ -127,6 +127,7 @@ class ProfilePreferences:
     travel_tolerance: str | None = None
     on_call_preference: str = "Review each job"
     clearance_preference: str = "Review each job"
+    include_strong_location_outliers: bool = False
 
     def __post_init__(self) -> None:
         list_fields = (
@@ -183,6 +184,8 @@ class ProfilePreferences:
             "Review each job",
         }:
             raise ValueError("unsupported clearance_preference")
+        if not isinstance(self.include_strong_location_outliers, bool):
+            raise ValueError("include_strong_location_outliers must be a boolean")
 
 
 @dataclass(frozen=True)

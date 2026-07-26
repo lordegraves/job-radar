@@ -68,6 +68,7 @@ def make_profile(
             clearance_preference=(
                 "Exclude jobs requiring an existing active clearance"
             ),
+            include_strong_location_outliers=True,
         ),
         resume=build_managed_resume(".pdf"),
         company_ids=("example_company", "second_company"),

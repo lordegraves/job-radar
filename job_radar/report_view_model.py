@@ -148,6 +148,7 @@ class ReportViewModel:
     report_scored_postings: list[ScoredPosting]
     top_matches: list[ScoredPosting]
     potential_top_matches: list[ScoredPosting]
+    location_outliers: list[ScoredPosting]
     review_needed: list[ScoredPosting]
     tracked_applications: list[ScoredPosting]
     email_scored_postings: list[ScoredPosting]
@@ -174,6 +175,11 @@ def build_report_view_model(
         scored_posting
         for scored_posting in report_scored_postings
         if is_potential_top_match_report_posting(scored_posting)
+    ]
+    location_outliers = [
+        scored_posting
+        for scored_posting in report_scored_postings
+        if scored_posting.location_outlier_eligible
     ]
     review_needed = [
         scored_posting
@@ -211,6 +217,7 @@ def build_report_view_model(
         report_scored_postings=report_scored_postings,
         top_matches=top_matches,
         potential_top_matches=potential_top_matches,
+        location_outliers=location_outliers,
         review_needed=review_needed,
         tracked_applications=tracked_applications,
         email_scored_postings=email_scored_postings,
@@ -233,7 +240,8 @@ def is_potential_top_match_report_posting(
     """Keep strong candidates visible when only practical facts are unresolved."""
 
     return (
-        _is_actionable_posting(scored_posting)
+        not scored_posting.location_outlier_eligible
+        and _is_actionable_posting(scored_posting)
         and (
             scored_posting.top_match_eligible
             or scored_posting.potential_top_match_eligible
@@ -253,6 +261,10 @@ def is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
     if _is_top_match_display_posting(scored_posting):
         return False
     if is_potential_top_match_report_posting(scored_posting):
+        return False
+    if scored_posting.location_outlier_eligible:
+        return False
+    if scored_posting.location_outlier_eligible:
         return False
 
     eligibility_needs_review = (

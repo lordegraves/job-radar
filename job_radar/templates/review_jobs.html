@@ -58,6 +58,12 @@
         <strong>{{ review_inbox.potential_top_matches }}</strong>
         <span>Potential Top Matches to Review</span>
     </a>
+    {% if review_inbox.location_outliers %}
+    <a class="review-card" href="{{ url_for('report_section_view', section_name='location_outliers') }}">
+        <strong>{{ review_inbox.location_outliers }}</strong>
+        <span>Outside Your Usual Locations</span>
+    </a>
+    {% endif %}
     <a class="review-card" href="{{ url_for('report_section_view', section_name='review_needed') }}">
         <strong>{{ review_inbox.review_needed }}</strong>
         <span>Other Jobs to Review</span>

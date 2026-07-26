@@ -23,6 +23,10 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
         '{"event":"job_decision","status":"success"}',
         encoding="utf-8",
     )
+    (tmp_path / "junior-last-scan.log").write_text(
+        '{"event":"scan_completed"}',
+        encoding="utf-8",
+    )
     (tmp_path / "junior-20260723T120000000000Z.log").write_text(
         "safe dated",
         encoding="utf-8",
@@ -34,6 +38,7 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
 
     assert {log.name for log in logs} == {
         "junior-actions.log",
+        "junior-last-scan.log",
         "startup-errors.log",
         "junior-20260723T120000000000Z.log",
     }

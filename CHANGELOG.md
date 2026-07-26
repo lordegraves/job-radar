@@ -6,7 +6,18 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
-- Label field-test packages and every application page as `RC5 Build 1`, and
+- Added an off-by-default profile option for exceptional matches outside the
+  user's selected locations. Eligible roles must already satisfy Junior's
+  strong-match rules and have location as their only blocker; they appear in a
+  separate review group and never become Top Matches automatically.
+- Added bounded, privacy-safe scan diagnostics. The downloadable
+  `junior-last-scan.log` explains the latest scan's stages, collector types,
+  counts, safe failure categories, and elapsed time without storing employer
+  names, job listings, URLs, profile settings, or résumé contents. A bounded
+  general diagnostic history is retained separately.
+- Fixed Eightfold collection when the server returns smaller pages than Junior
+  requests, and preserved an employer's explicit Flex workplace field.
+- Label field-test packages and every application page as `SP5 Build 1.1`, and
   include the same build identity in diagnostics and generated reports.
 - Add an explicit Flex workplace arrangement to profile creation and editing.
   Junior recognizes explicit flex-workplace wording without treating flexible
