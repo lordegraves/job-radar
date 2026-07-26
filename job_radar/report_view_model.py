@@ -260,10 +260,12 @@ def is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
         and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
     )
 
-    # Practical unknowns belong in Review Needed even when the legacy keyword
-    # score is weak. Calling the job "not recommended" while its own action says
-    # "Needs review" hides exactly the uncertainty the user must resolve.
-    return scored_posting.review_needed_eligible or eligibility_needs_review
+    # Practical unknowns can escalate a relevant job for review, but location,
+    # compensation, or other eligibility facts must never make unrelated work
+    # relevant to the profile.
+    return scored_posting.review_needed_eligible or (
+        eligibility_needs_review and _has_occupational_relevance(scored_posting)
+    )
 
 
 def is_email_top_match_posting(scored_posting: ScoredPosting) -> bool:
@@ -304,4 +306,42 @@ def is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
     ):
         return False
 
-    return scored_posting.review_needed_eligible or eligibility_needs_review
+    return scored_posting.review_needed_eligible or (
+        eligibility_needs_review and _has_occupational_relevance(scored_posting)
+    )
+
+
+def _has_occupational_relevance(scored_posting: ScoredPosting) -> bool:
+    """Require actual work-fit evidence before practical unknowns trigger review."""
+
+    if (
+        scored_posting.top_match_eligible
+        or scored_posting.potential_top_match_eligible
+        or scored_posting.review_needed_eligible
+    ):
+        return True
+
+    if (
+        scored_posting.resume_match is not None
+        and scored_posting.resume_match.label in {"Medium", "Strong", "Very Strong"}
+    ):
+        return True
+
+    positive_title_signals = 0
+    positive_body_keywords: set[str] = set()
+
+    for reason in scored_posting.score_reasons:
+        if not reason.startswith("+") or ":" not in reason:
+            continue
+
+        signal = reason.split(maxsplit=1)[-1]
+        source, keyword = signal.split(":", maxsplit=1)
+
+        if source == "title":
+            positive_title_signals += 1
+        elif source == "body" and keyword:
+            positive_body_keywords.add(keyword)
+
+    # One configured title match is deliberate evidence. Body text is noisier,
+    # so require two distinct profile-owned signals when the title is unfamiliar.
+    return positive_title_signals >= 1 or len(positive_body_keywords) >= 2

@@ -293,6 +293,59 @@ def test_practical_unknown_is_review_needed_even_below_legacy_score_gate() -> No
     assert _is_storage_relevant_posting(posting)
 
 
+def test_location_alone_does_not_make_unrelated_work_review_worthy() -> None:
+    posting = make_scored_posting(
+        title="Courtesy Clerk / Grocery Bagger",
+        score_reasons=["+0 location_allowed:fort collins"],
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="work_arrangement_unknown",
+                    message="The posting does not clearly identify a workplace arrangement.",
+                ),
+                EligibilityReason(
+                    code="compensation_unknown",
+                    message="The posting does not provide usable compensation.",
+                ),
+            ),
+        ),
+    )
+
+    view = build_report_view_model(scored_postings=[posting])
+
+    assert view.top_matches == []
+    assert view.potential_top_matches == []
+    assert view.review_needed == []
+    assert view.email_review_needed == []
+    assert not _is_storage_relevant_posting(posting)
+
+
+def test_one_incidental_body_signal_does_not_make_unrelated_work_review_worthy() -> None:
+    posting = make_scored_posting(
+        title="Produce Department Leader",
+        score_reasons=[
+            "+10 body:operations",
+            "+0 location_allowed:fort collins",
+        ],
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="employment_type_unknown",
+                    message="The posting does not clearly identify an employment type.",
+                ),
+            ),
+        ),
+    )
+
+    view = build_report_view_model(scored_postings=[posting])
+
+    assert view.review_needed == []
+    assert view.email_review_needed == []
+    assert not _is_storage_relevant_posting(posting)
+
+
 def test_strong_role_with_unresolved_location_is_potential_top_match() -> None:
     posting = make_scored_posting(
         title="Senior Infrastructure Engineer",

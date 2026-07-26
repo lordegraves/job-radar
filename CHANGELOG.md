@@ -6,6 +6,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added an occupational-relevance gate before practical eligibility review.
+  An allowed location, missing compensation, or other unresolved logistics can
+  no longer place unrelated work in Review Jobs without profile-owned title,
+  responsibility, or résumé evidence.
 - Separated Review Jobs from Reports. Review Jobs now acts as an undecided
   inbox: saved, applied, and passed jobs leave every review group immediately
   and remain resolved after later scans. Reports now contains the current
