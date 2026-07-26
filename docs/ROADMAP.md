@@ -271,11 +271,31 @@ packaged collector catalog before contacting an external search provider.
 | Complete report exports | Completed | Reports provides direct downloads for current and retained readable reports plus a compressed plain-text raw scan containing every public posting collected in the run. New installations retain 10 successful report runs by default, existing saved policies remain unchanged, and normal pages do not render thousands of raw job cards. |
 | Practical-detail extraction | Completed | Conservative parsing fills missing ATS fields only from explicit workplace, employment-type, and annual-pay wording, including common HTML pay headings, encoded dash characters, and USD range labels. Concrete cities, named offices, and city/state title suffixes are evaluated as location-bound unless the posting explicitly states remote work; arrangement and location are shown separately on review cards. Missing schedule wording is neutral while explicit conflicts remain enforced. Jobs meeting existing top-match score and strong-signal rules with unresolved practical facts appear as Potential Top Matches with evidence and waiting-on explanations; thresholds remain unchanged. |
 
+## Planned RC6 distribution and support improvements
+
+RC6 is reserved for stabilization work discovered during RC5 field testing and
+the following distribution and support improvements. These items are planned;
+they are not part of SP5 Build 1.1:
+
+| RC6 work item | Status | Required result |
+|---|---|---|
+| Build-aware update checking | Planned | Extend the existing manual **Check for updates** action so it can identify a newer field-test build, such as SP5 Build 1.2 replacing SP5 Build 1.1, even when both use application version `0.2.0`. Show the available version, channel, and build in plain language; open only the official download location; and never download, install, migrate, or change user data without explicit user approval. Keep Microsoft Store and direct GitHub update paths clearly distinguished. |
+| Privacy-safe support workflow | Planned | Add a **Contact support** action that prepares a sanitized diagnostic bundle, opens the user's default email client with the approved support address, subject, installed build, operating system, and safe instructions pre-filled, and tells the user exactly which file to attach. Never attach or send anything automatically. Explicitly warn users not to send résumés, databases, credentials, tokens, profile contents, or other private data. |
+| Microsoft Store and MSIX distribution | Planned | Create and validate an MSIX distribution suitable for Microsoft Store certification while keeping Junior free to users. Use Microsoft-managed Store signing and update delivery where available. Verify first install, launch, icon and desktop behavior, external links, notifications, clean shutdown, user-data paths, SQLite access, credentials, scheduled scans, upgrade, rollback/recovery, and uninstall without risking existing user-owned data. Keep the GitHub distribution channel available. |
+| GitHub release signing | Planned | Apply for the free SignPath Foundation open-source signing program and design a verifiable GitHub Actions build-and-sign workflow that satisfies its review, identity, provenance, approval, privacy-policy, and code-signing-policy requirements. If Junior is not accepted, reassess Microsoft Artifact Signing before purchasing a commercial certificate. Do not treat checksums as a replacement for code signing. |
+| Release authenticity and signing gate | Planned | Document the publisher identity, official download locations, checksum verification, signing policy, certificate ownership, timestamping, key custody, renewal, revocation, and recovery behavior. Test signed installation, in-place upgrade, repair, uninstall, and signature verification before making signing a stable-release requirement. |
+
+The Microsoft Store path must use MSIX if Junior is to receive Store-managed
+signing without purchasing a separate certificate. Submitting the existing EXE
+installer directly would still require Junior to provide its own trusted
+Authenticode signature. Store distribution must not replace the open-source
+repository or the direct GitHub release channel.
+
 ## Planned RC7 language assistance
 
-RC6 remains available for stabilization and corrections discovered during RC5
-field testing. RC7 introduces one deliberately narrow language-model
-capability under this governing product rule:
+After the RC6 stabilization and distribution work, RC7 introduces one
+deliberately narrow language-model capability under this governing product
+rule:
 
 > **Junior explains. Junior does not decide.**
 

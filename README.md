@@ -119,6 +119,46 @@ preview, compressed raw-scan download, and retained report history. New
 installations retain the latest 10 successful report runs by default. Existing
 installations keep their current retention setting until the user changes it.
 
+### Planned RC6 distribution and support improvements
+
+RC6 is planned to improve distribution and tester support without weakening
+Junior's local-first or user-controlled behavior:
+
+- The existing manual **Check for updates** action will become build-aware. It
+  will be able to report that a newer field-test package, such as SP5 Build
+  1.2, supersedes SP5 Build 1.1 even when both packages use application version
+  `0.2.0`. It will show the available version, channel, and build and open only
+  the official download location. It will not silently download, install,
+  migrate, or change user data.
+- Diagnostics will gain a **Contact support** action. Junior will prepare a
+  sanitized diagnostic bundle, open the user's default email application with
+  safe version and operating-system context pre-filled, and tell the user which
+  file to attach. Junior will not attach or send anything automatically, and
+  the workflow will warn against sending résumés, databases, credentials,
+  tokens, profile contents, or other private information.
+- Junior will add and validate an MSIX package for Microsoft Store
+  distribution. The Store version is intended to remain free to users and use
+  Microsoft-managed package signing and updates. The existing open-source
+  repository and direct GitHub release channel will remain available.
+- The project will apply to the SignPath Foundation open-source program for
+  free signing of GitHub-distributed releases. This requires a verifiable
+  GitHub Actions build, explicit signing approvals, documented project roles,
+  and public privacy and code-signing policies. If Junior is not accepted,
+  Microsoft Artifact Signing will be reassessed before purchasing a commercial
+  certificate.
+
+MSIX readiness requires more than converting the installer format. Store
+acceptance work must verify first installation, launch, icons, external links,
+notifications, clean shutdown, user-data paths, SQLite and credentials,
+scheduled scans, upgrades, rollback and recovery, and uninstall behavior.
+Existing user-owned data must remain outside the application package and must
+not be removed by an update, repair, or uninstall.
+
+These are planned RC6 capabilities and are not implemented in SP5 Build 1.1.
+The current update button checks stable GitHub releases only, and the current
+diagnostics page requires the user to download and attach a sanitized log
+manually.
+
 ### Planned RC7 language assistance
 
 RC7 is governed by one product rule:
