@@ -508,11 +508,11 @@ def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
     assert 'href="/history"' in html
     assert "Application History" in html
     assert "Active Applications dashboard" in html
-    assert "Tracked applications" in html
-    assert "Need action" in html
-    assert "Need review" in html
-    assert "Active pipeline" in html
-    assert "Closed" in html
+    assert "Tracked applications" not in html
+    assert "Applications needing action" in html
+    assert "Applications needing cleanup" in html
+    assert "Active applications" in html
+    assert "Application history" in html
     assert "Latest scan" in html
     assert "Needs attention" in html
     assert "Support Junior" in html
@@ -555,14 +555,31 @@ def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:
             outcome="Interview Scheduled",
         ),
     )
-    upsert_application(
+    upsert_job_history_record(
         database_file,
-        ApplicationRecord(
+        JobHistoryRecord(
+            history_type="Pipeline",
+            company="ClosedCo",
+            role="Linux Engineer",
+            source="Junior Tracker",
+            ats_platform=None,
+            work_arrangement=None,
+            location=None,
+            comp_range=None,
+            event_date="2026-01-02",
+            status="Applied",
+            outcome_category="Rejected - No Interview",
+            recruiter_contact=None,
+            technical_match=None,
+            hiring_probability=None,
+            skills_signals=None,
+            primary_blocker=None,
+            secondary_blocker=None,
+            revisit=None,
+            include_in_job_radar=True,
+            import_key="job-radar-id:jr-closed-12345678",
+            notes=None,
             job_radar_id="jr-closed-12345678",
-            company_name="ClosedCo",
-            role_title="Linux Engineer",
-            status="rejected",
-            outcome="Rejected - No Interview",
         ),
     )
 
@@ -575,22 +592,18 @@ def test_index_page_shows_tracker_dashboard_counts(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Active Applications dashboard" in html
-    assert '<a class="dashboard-card" href="/tracker?filter=all">' in normalized_html
-    assert '<strong>3</strong> <span class="muted">Tracked applications</span>' in normalized_html
+    assert "Tracked applications" not in normalized_html
     assert '<a class="dashboard-card is-action" href="/tracker?filter=needs_action">' in normalized_html
-    assert '<strong>2</strong> <span class="muted">Need action</span>' in normalized_html
+    assert '<strong>2</strong> <span class="muted">Applications needing action</span>' in normalized_html
     assert '<a class="dashboard-card" href="/tracker?filter=needs_review">' in normalized_html
-    assert '<strong>0</strong> <span class="muted">Need review</span>' in normalized_html
+    assert '<strong>0</strong> <span class="muted">Applications needing cleanup</span>' in normalized_html
     assert '<a class="dashboard-card" href="/tracker?filter=active">' in normalized_html
-    assert '<strong>2</strong> <span class="muted">Active pipeline</span>' in normalized_html
-    assert '<a class="dashboard-card" href="/tracker?filter=closed">' in normalized_html
-    assert '<strong>1</strong> <span class="muted">Closed</span>' in normalized_html
+    assert '<strong>2</strong> <span class="muted">Active applications</span>' in normalized_html
+    assert '<a class="dashboard-card" href="/history">' in normalized_html
+    assert '<strong>1</strong> <span class="muted">Application history</span>' in normalized_html
     assert "Latest scan" in html
-    assert "Top Matches" in html
-    assert "Review Needed" in html
-    assert "Tracked Applications" in html
-    assert "New Jobs" in html
-    assert "Collector Errors" in html
+    assert "Top matches" in html
+    assert "Other matching jobs" in html
     assert "Needs attention" in html
     assert "ActionCo — SRE" in html
     assert 'href="/tracker/jr-action-12345678/edit?filter=needs_review"' in html
@@ -638,11 +651,11 @@ def test_index_page_links_to_profile_owned_saved_and_reviewed_jobs(
 
     assert '<a class="dashboard-card" href="/job-decisions">' in normalized_html
     assert (
-        '<strong>2</strong> <span class="muted">Saved / reviewed jobs</span>'
+        '<strong>2</strong> <span class="muted">Saved / passed jobs</span>'
         in normalized_html
     )
     assert "1 saved" in normalized_html
-    assert "1 reviewed" in normalized_html
+    assert "1 passed" in normalized_html
 
 
 def test_index_page_surfaces_dashboard_follow_up_work(tmp_path: Path) -> None:
@@ -773,19 +786,14 @@ def test_index_page_summarizes_latest_scan_report(tmp_path: Path) -> None:
     normalized_html = " ".join(html.split())
 
     assert response.status_code == 200
-    assert "Generated at 2026-07-11 11:57 UTC" in html
-    assert '<a href="/reports">Review jobs</a>' in html
+    assert "Latest scan completed 2026-07-11 11:57 UTC" in html
+    assert '<a class="button-link" href="/review-jobs">Review Jobs</a>' in html
     assert '<a class="scan-card" href="/reports/section/top_matches">' in normalized_html
-    assert '<strong>1</strong> <span class="muted">Top Matches</span>' in normalized_html
+    assert '<strong>1</strong> <span class="muted">Top matches</span>' in normalized_html
     assert '<a class="scan-card" href="/reports/section/review_needed">' in normalized_html
-    assert '<strong>2</strong> <span class="muted">Review Needed</span>' in normalized_html
-    assert '<a class="scan-card" href="/reports/section/tracked_applications">' in normalized_html
-    assert '<strong>1</strong> <span class="muted">Tracked Applications</span>' in normalized_html
-    assert '<a class="scan-card" href="/reports/section/new_jobs">' in normalized_html
-    assert '<strong>3</strong> <span class="muted">New Jobs</span>' in normalized_html
+    assert '<strong>2</strong> <span class="muted">Other matching jobs</span>' in normalized_html
     assert "Actionable stored" not in html
-    assert '<a class="scan-card" href="/reports/section/collector_errors">' in normalized_html
-    assert '<strong>0</strong> <span class="muted">Collector Errors</span>' in normalized_html
+    assert "jobs still need your decision" in html
 
 
 def test_report_section_view_shows_structured_job_cards_for_requested_section(tmp_path: Path) -> None:
@@ -876,9 +884,10 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "The posting includes an on-call requirement." in html
     assert "Recommended action" in html
     assert "Apply" in html
-    assert "Why this is worth acting on" in html
+    assert "Why Junior surfaced this job" in html
+    assert "Junior's recommendation" in html
     assert "Clean apply: very strong role fit" in html
-    assert "Matched because" in html
+    assert "What needs your review" in html
     assert "linux, infrastructure, sre, gpu, observability" in html
     assert "Role fit" in html
     assert "Very Strong" in html
@@ -950,9 +959,9 @@ def test_potential_top_matches_show_evidence_and_unresolved_facts(
     ).get_data(as_text=True)
 
     assert "Potential Top Matches" in html
-    assert "Strong evidence" in html
+    assert "Why Junior surfaced this job" in html
     assert "linux, kubernetes, reliability" in html
-    assert "Waiting on" in html
+    assert "What needs your review" in html
     assert "The posting does not provide usable compensation." in html
     assert "The workplace arrangement is unclear." in html
     assert "I applied" in html
@@ -964,7 +973,7 @@ def test_potential_top_matches_show_evidence_and_unresolved_facts(
     assert "Score:" not in html
 
 
-def test_potential_top_matches_keep_total_and_show_review_progress(
+def test_potential_top_matches_show_only_jobs_awaiting_a_decision(
     tmp_path: Path,
 ) -> None:
     settings_file = tmp_path / "settings.yaml"
@@ -1037,22 +1046,17 @@ def test_potential_top_matches_keep_total_and_show_review_progress(
     client = create_app(settings_path=str(settings_file)).test_client()
 
     dashboard_html = " ".join(
-        client.get("/reports").get_data(as_text=True).split()
+        client.get("/review-jobs").get_data(as_text=True).split()
     )
     section_html = client.get(
         "/reports/section/potential_top_matches"
     ).get_data(as_text=True)
 
-    assert "<strong>4</strong> <span>Potential Top Matches</span>" in dashboard_html
-    assert "1 need your review" in dashboard_html
-    assert "1 applied" in dashboard_html
-    assert "1 saved" in dashboard_html
-    assert "1 passed" in dashboard_html
-    assert section_html.index("Needs Decision") < section_html.index("Saved Role")
-    assert section_html.index("Saved Role") < section_html.index("Applied Role")
-    assert "Saved for later" in section_html
-    assert "Open in Active Applications" in section_html
-    assert "Reviewed and passed" in section_html
+    assert "<strong>1</strong> <span>Potential Top Matches to Review</span>" in dashboard_html
+    assert "Needs Decision" in section_html
+    assert "Saved Role" not in section_html
+    assert "Applied Role" not in section_html
+    assert "Passed Role" not in section_html
     assert section_html.count("Select this job") == 1
 
 
@@ -3143,8 +3147,10 @@ def test_index_page_links_to_reports(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert 'href="/reports"' in html
+    assert 'href="/review-jobs"' in html
     assert ">Review Jobs</a>" in html
+    assert 'href="/reports"' in html
+    assert ">Reports</a>" in html
 
 
 def test_reports_page_lists_only_current_scan_outputs(
@@ -3181,7 +3187,7 @@ def test_reports_page_lists_only_current_scan_outputs(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Review Jobs" in html
+    assert "Reports" in html
     assert "View or download reports" in html
     assert "target-scan.html" in html
     assert "/reports/view/target-scan.html" in html
@@ -3195,7 +3201,7 @@ def test_reports_page_lists_only_current_scan_outputs(
     assert "job_radar.sqlite3" not in html
     assert "Additional files" not in html
     assert "Report files shown:" not in html
-    assert "Review decisions are made in the job groups above." in html
+    assert "Review decisions are made on the Review Jobs page." in html
 
 
 def test_reports_page_shows_primary_outputs_in_display_order(
@@ -3261,7 +3267,6 @@ def test_reports_page_handles_missing_reports_directory(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "No scan results are available yet. Run a scan first." in html
-    assert "No report exports are available yet." in html
     assert "Additional files" not in html
     assert "Report files shown:" not in html
 
@@ -5336,6 +5341,7 @@ candidate:
         "/tracker",
         "/history",
         "/profile",
+        "/review-jobs",
         "/reports",
         "/scan",
     ]:
@@ -5354,8 +5360,10 @@ candidate:
         assert 'href="/profile"' in normalized_html
         assert ">Profile / Resume</a>" in normalized_html
         assert ">Search Preferences</a>" not in normalized_html
-        assert 'href="/reports"' in normalized_html
+        assert 'href="/review-jobs"' in normalized_html
         assert ">Review Jobs</a>" in normalized_html
+        assert 'href="/reports"' in normalized_html
+        assert ">Reports</a>" in normalized_html
         assert 'href="/scan"' in normalized_html
         assert ">Scan</a>" in normalized_html
         assert "active-nav" in normalized_html
@@ -5408,9 +5416,13 @@ candidate:
             '<a class="active-nav" href="/profile" '
             'aria-current="page">Profile / Resume</a>'
         ),
+        "/review-jobs": (
+            '<a class="active-nav" href="/review-jobs" '
+            'aria-current="page">Review Jobs</a>'
+        ),
         "/reports": (
             '<a class="active-nav" href="/reports" '
-            'aria-current="page">Review Jobs</a>'
+            'aria-current="page">Reports</a>'
         ),
         "/scan": (
             '<a class="active-nav" href="/scan" '

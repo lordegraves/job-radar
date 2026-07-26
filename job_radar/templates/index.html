@@ -178,99 +178,71 @@
 {% block content %}
 <section class="hero">
     <h1>junior</h1>
-    <p>Review scanned roles, track active applications, inspect archived history, and open generated reports from one
-        local dashboard.</p>
+    <p>See what needs your attention today, review new opportunities, and keep
+        your active applications moving.</p>
 </section>
 
 <section class="dashboard-grid" aria-label="Active Applications dashboard">
-    <a class="dashboard-card" href="{{ url_for('tracker', filter='all') }}">
-        <strong>{{ tracker_summary.total }}</strong>
-        <span class="muted">Tracked applications</span>
-    </a>
-
     <a class="dashboard-card is-action" href="{{ url_for('tracker', filter='needs_action') }}">
         <strong>{{ tracker_summary.needs_action }}</strong>
-        <span class="muted">Need action</span>
+        <span class="muted">Applications needing action</span>
     </a>
 
     <a class="dashboard-card" href="{{ url_for('tracker', filter='needs_review') }}">
         <strong>{{ tracker_summary.needs_review }}</strong>
-        <span class="muted">Need review</span>
+        <span class="muted">Applications needing cleanup</span>
     </a>
 
     <a class="dashboard-card" href="{{ url_for('tracker', filter='active') }}">
         <strong>{{ tracker_summary.active }}</strong>
-        <span class="muted">Active pipeline</span>
+        <span class="muted">Active applications</span>
     </a>
 
-    <a class="dashboard-card" href="{{ url_for('tracker', filter='closed') }}">
-        <strong>{{ tracker_summary.closed }}</strong>
-        <span class="muted">Closed</span>
+    <a class="dashboard-card" href="{{ url_for('history') }}">
+        <strong>{{ application_history_count }}</strong>
+        <span class="muted">Application history</span>
     </a>
 
     <a class="dashboard-card" href="{{ url_for('job_decisions') }}">
         <strong>{{ job_decision_summary.total }}</strong>
-        <span class="muted">Saved / reviewed jobs</span>
+        <span class="muted">Saved / passed jobs</span>
         <span class="muted dashboard-card-meta">
             {{ job_decision_summary.saved }} saved ·
-            {{ job_decision_summary.reviewed }} reviewed
+            {{ job_decision_summary.reviewed }} passed
         </span>
     </a>
-</section>
-
-<section class="panel support-panel" aria-labelledby="support-junior-heading">
-    <div>
-        <h2 id="support-junior-heading">Support Junior</h2>
-        <p>
-            Tell us how Junior has helped your job search or support continued
-            development with an optional donation. Donations never change
-            Junior's features or how the application works.
-        </p>
-    </div>
-    <div class="support-actions">
-        <a href="mailto:claytonmgraves@outlook.com?subject=My%20Junior%20story">Share your story</a>
-        <a class="button-link" href="https://account.venmo.com/u/LordGraves" target="_blank" rel="noopener noreferrer">Donate with Venmo</a>
-    </div>
 </section>
 
 <section class="dashboard-layout" aria-label="Dashboard overview">
     <div class="panel">
         <div class="panel-header">
             <div>
-                <h2>Latest scan</h2>
+                <h2>Unreviewed jobs from the latest scan</h2>
                 {% if latest_report.generated_at %}
-                <p>Generated at {{ latest_report.generated_at }}</p>
+                <p>
+                    Latest scan completed {{ latest_report.generated_at }}.
+                    {{ review_inbox.top_matches + review_inbox.potential_top_matches + review_inbox.review_needed }}
+                    jobs still need your decision.
+                </p>
                 {% else %}
-                <p>Latest generated report summary.</p>
+                <p>Latest scan results will appear here after a successful scan.</p>
                 {% endif %}
             </div>
-            <a href="{{ url_for('reports') }}">Review jobs</a>
+            <a class="button-link" href="{{ url_for('review_jobs') }}">Review Jobs</a>
         </div>
 
-        <div class="scan-grid" aria-label="Latest scan summary">
+        <div class="scan-grid" aria-label="Jobs awaiting review">
             <a class="scan-card" href="{{ url_for('report_section_view', section_name='top_matches') }}">
-                <strong>{{ latest_report.top_matches }}</strong>
-                <span class="muted">Top Matches</span>
+                <strong>{{ review_inbox.top_matches }}</strong>
+                <span class="muted">Top matches</span>
             </a>
             <a class="scan-card" href="{{ url_for('report_section_view', section_name='potential_top_matches') }}">
-                <strong>{{ latest_report.potential_top_matches }}</strong>
-                <span class="muted">Potential Top Matches</span>
+                <strong>{{ review_inbox.potential_top_matches }}</strong>
+                <span class="muted">Potential top matches</span>
             </a>
             <a class="scan-card" href="{{ url_for('report_section_view', section_name='review_needed') }}">
-                <strong>{{ latest_report.review_needed }}</strong>
-                <span class="muted">Review Needed</span>
-            </a>
-            <a class="scan-card" href="{{ url_for('report_section_view', section_name='tracked_applications') }}">
-                <strong>{{ latest_report.tracked_applications }}</strong>
-                <span class="muted">Tracked Applications</span>
-            </a>
-            <a class="scan-card" href="{{ url_for('report_section_view', section_name='new_jobs') }}">
-                <strong>{{ latest_report.new_jobs }}</strong>
-                <span class="muted">New Jobs</span>
-            </a>
-            <a class="scan-card" href="{{ url_for('report_section_view', section_name='collector_errors') }}">
-                <strong>{{ latest_report.collector_errors }}</strong>
-                <span class="muted">Collector Errors</span>
+                <strong>{{ review_inbox.review_needed }}</strong>
+                <span class="muted">Other matching jobs</span>
             </a>
         </div>
     </div>
@@ -304,6 +276,21 @@
         {% else %}
         <p class="muted">No tracker records need attention right now.</p>
         {% endif %}
+    </div>
+</section>
+
+<section class="panel support-panel" aria-labelledby="support-junior-heading">
+    <div>
+        <h2 id="support-junior-heading">Support Junior</h2>
+        <p>
+            Tell us how Junior has helped your job search or support continued
+            development with an optional donation. Donations never change
+            Junior's features or how the application works.
+        </p>
+    </div>
+    <div class="support-actions">
+        <a href="mailto:claytonmgraves@outlook.com?subject=My%20Junior%20story">Share your story</a>
+        <a class="button-link" href="https://account.venmo.com/u/LordGraves" target="_blank" rel="noopener noreferrer">Donate with Venmo</a>
     </div>
 </section>
 

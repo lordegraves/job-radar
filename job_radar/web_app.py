@@ -24,13 +24,17 @@ from job_radar.job_decision_service import (
 from job_radar.employer_import import import_pending_legacy_employers
 from job_radar.scan_service import handle_scan
 from job_radar.setup_progress_service import incomplete_setup_destination
-from job_radar.storage import initialize_database
+from job_radar.storage import (
+    fetch_included_job_history_records,
+    initialize_database,
+)
 from job_radar.web_routes.companies import register_company_routes
 from job_radar.web_routes.administration import register_administration_routes
 from job_radar.web_routes.history import register_history_routes
 from job_radar.web_routes.profile import register_profile_routes
 from job_radar.web_routes.reports import (
     build_latest_report_summary,
+    build_review_inbox_summary,
     register_report_routes,
 )
 from job_radar.web_routes.scan import register_scan_routes
@@ -118,11 +122,22 @@ def create_app(
             profile_id=profile_id,
         )
         tracker_summary = build_tracker_summary(applications)
+        application_history_count = len(
+            fetch_included_job_history_records(
+                database_path,
+                profile_id=profile_id,
+            )
+        )
         attention_applications = get_dashboard_attention_applications(
             applications
         )
         latest_report = build_latest_report_summary(
             _get_runtime_paths(app).reports_path
+        )
+        review_inbox = build_review_inbox_summary(
+            _get_runtime_paths(app).reports_path,
+            database_path,
+            profile_id=profile_id,
         )
         job_decisions = (
             list_job_decisions(database_path, profile_id=profile_id)
@@ -142,8 +157,10 @@ def create_app(
         return render_template(
             "index.html",
             tracker_summary=tracker_summary,
+            application_history_count=application_history_count,
             attention_applications=attention_applications,
             latest_report=latest_report,
+            review_inbox=review_inbox,
             job_decision_summary=job_decision_summary,
         )
 

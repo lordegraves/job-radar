@@ -398,7 +398,8 @@
 
     <div class="section-actions">
         <a href="{{ url_for('index') }}">Back to dashboard</a>
-        <a href="{{ url_for('reports') }}">Open reports</a>
+        <a href="{{ url_for('review_jobs') }}">Back to Review Jobs</a>
+        <a href="{{ url_for('reports') }}">Open Reports</a>
         <a href="{{ url_for('job_decisions') }}">Saved and reviewed jobs</a>
         {% if html_report_exists %}
         <a href="{{ url_for('report_view', report_name=html_report_name) }}">Open full HTML report</a>
@@ -545,29 +546,23 @@
             <summary>Review details and individual actions</summary>
             <div>
         {% endif %}
-        {% if job.action_rationale %}
-        <section class="job-section">
-            <h2>Why this is worth acting on</h2>
-            <p>{{ job.action_rationale }}</p>
-        </section>
-        {% endif %}
-
         {% if job.why_matched %}
         <section class="job-section">
-            <h2>
-                {% if section_name == 'potential_top_matches' %}
-                Strong evidence
-                {% else %}
-                Matched because
-                {% endif %}
-            </h2>
+            <h2>Why Junior surfaced this job</h2>
             <p>{{ job.why_matched }}</p>
         </section>
         {% endif %}
 
-        {% if section_name == 'potential_top_matches' and job.eligibility_reasons %}
+        {% if job.action_rationale %}
         <section class="job-section">
-            <h2>Waiting on</h2>
+            <h2>Junior's recommendation</h2>
+            <p>{{ job.action_rationale }}</p>
+        </section>
+        {% endif %}
+
+        {% if job.eligibility_reasons %}
+        <section class="job-section">
+            <h2>What needs your review</h2>
             <ul class="eligibility-reasons">
                 {% for reason in job.eligibility_reasons %}
                 <li>{{ reason }}</li>

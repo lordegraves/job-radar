@@ -26,7 +26,7 @@ junior currently provides:
 - profile-owned scoring, occupation-neutral recommendation policy, compensation checks, and resume/profile matching
 - structured scan snapshots and HTML reports
 - plain-text and HTML email previews with guarded SMTP delivery
-- a local Flask GUI with Home, Scan, Review Jobs, Active Applications, Application History, Profile / Resume, Companies, and Settings pages
+- a local Flask GUI with Home, Scan, Review Jobs, Reports, Active Applications, Application History, Profile / Resume, Companies, and Settings pages
 - GUI-managed profile creation, editing, selection, guarded deletion, and app-owned resume storage
 - profile-owned related-role discovery with evidence explanations and explicit user approval
 - unified Profile / Resume workflow for profile creation, résumé management, profile-owned role, location, workplace, schedule, compensation, and travel selections, and occupation-neutral scoring ownership for newly created managed profiles
@@ -93,9 +93,12 @@ actually applied for. Junior's recommendation label **Needs your review** is
 not the same as the user's saved state.
 Home shows the active profile's combined Saved and Reviewed count, breaks it
 down into saved and reviewed totals, and links directly to that workspace.
-Scan completion now opens **Review Jobs**, where interactive Top Matches,
-Potential Top Matches, Review Needed, and New Jobs groups are the primary
-workflow. Top Matches retain confirmed practical eligibility. Potential Top
+Scan completion now opens **Review Jobs**, an inbox containing only jobs from
+the latest scan that still need the user's decision. Saving, applying, or
+passing removes the job from this inbox, and later scans do not reset that
+durable profile-owned action. Interactive Top Matches, Potential Top Matches,
+Review Needed, and New Jobs groups remain organized by the scan's
+classification. Top Matches retain confirmed practical eligibility. Potential Top
 Matches already satisfy the profile's existing top-match score and strong-signal
 rules but list the practical facts still awaiting confirmation; no threshold is
 lowered and no internal score is shown. Each group loads at most 20 full job
@@ -108,10 +111,10 @@ employment-type, and annual-pay wording in a description can fill a missing ATS
 field. An omitted schedule does not imply a conflict, while an explicit night,
 evening, weekend, or on-call requirement is still enforced.
 Creating an application from Review Jobs returns to the same review group and
-marks that scan job as applied. Potential Top Matches keep the scan's complete
-category count while showing how many still need a decision and which were
-saved, applied, or passed. The generated HTML report and email preview remain
-available as secondary, read-only exports.
+marks that scan job as applied. Home and Review Jobs counts show undecided work
+remaining, rather than repeating jobs already saved, applied, or passed.
+**Reports** is a separate page for the latest generated HTML report, email
+preview, and any report history the user explicitly chose to retain.
 
 ### Planned RC7 language assistance
 
@@ -444,7 +447,7 @@ The Settings page keeps runtime paths read-only while providing normal-user cont
 
 Every state-changing web form and background action uses a session-bound CSRF token. Junior rejects missing, invalid, or stale tokens before route business logic runs, so the attempted change is not written. Normal forms receive a plain-language recovery page; background requests receive a bounded JSON error. Refreshing the page creates or loads the current token and allows the user to review and resubmit. GET routes remain read-only.
 
-A successful scan writes fixed-name outputs in the user-owned `reports` directory. The latest HTML report, structured snapshot, and email preview keep stable filenames. Settings can retain only the latest run, the latest plus the previous run, or a chosen total from 1 through 50. Before a successful scan replaces the current files, Junior copies and verifies the prior complete set in its marked `reports/archive` directory; the Review Jobs page lists retained HTML reports and email previews as read-only exports below the interactive job-review workflow. The same Settings page limits recognized dated Junior logs while preserving the active startup log and unrelated files. Reduced limits are enforced on the next successful scan.
+A successful scan writes fixed-name outputs in the user-owned `reports` directory. The latest HTML report, structured snapshot, and email preview keep stable filenames. By default, this raw scan result is retained only until the next successful scan replaces it. A failed or interrupted scan does not replace the last valid result. Profile-owned actions taken from scan data persist separately: saved jobs, passed jobs, tracked applications, and application history remain after the report is replaced and continue to suppress already-decided jobs from Review Jobs. Settings can optionally retain the latest plus the previous run, or a chosen total from 1 through 50. Before a successful scan replaces the current files, Junior copies and verifies the prior complete set in its marked `reports/archive` directory. The separate Reports page lists the current HTML report and email preview plus any explicitly retained history as read-only exports. The same Settings page limits recognized dated Junior logs while preserving the active startup log and unrelated files. Reduced limits are enforced on the next successful scan.
 
 Scans started from the GUI run in the background. The rest of junior remains available while a scan is running, and every page monitors the same durable scan status. An app-wide notification reports completion, completion with source warnings, or failure and links to the appropriate results or details.
 

@@ -1,0 +1,88 @@
+{# Shows only jobs from the latest scan that still need a user decision. #}
+{% extends "base.html" %}
+
+{% block title %}Review Jobs - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .review-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        margin: 18px 0;
+    }
+
+    .review-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+        padding: 18px;
+        text-decoration: none;
+    }
+
+    .review-card:hover {
+        background: var(--surface-hover);
+        border-color: var(--link);
+        color: var(--text);
+    }
+
+    .review-card strong {
+        color: var(--link);
+        display: block;
+        font-size: 1.65rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-card">
+    <h1 class="page-title">Review Jobs</h1>
+    <p class="muted">
+        These jobs from the latest scan still need your decision. Saving,
+        applying, or passing removes a job from this inbox and keeps your
+        decision after later scans.
+    </p>
+    {% if latest_report.generated_at %}
+    <p class="muted">Latest scan completed {{ latest_report.generated_at }}.</p>
+    {% endif %}
+</div>
+
+{% if latest_report.generated_at %}
+<div class="review-grid" aria-label="Jobs awaiting review">
+    <a class="review-card" href="{{ url_for('report_section_view', section_name='top_matches') }}">
+        <strong>{{ review_inbox.top_matches }}</strong>
+        <span>Top Matches to Review</span>
+    </a>
+    <a class="review-card" href="{{ url_for('report_section_view', section_name='potential_top_matches') }}">
+        <strong>{{ review_inbox.potential_top_matches }}</strong>
+        <span>Potential Top Matches to Review</span>
+    </a>
+    <a class="review-card" href="{{ url_for('report_section_view', section_name='review_needed') }}">
+        <strong>{{ review_inbox.review_needed }}</strong>
+        <span>Other Jobs to Review</span>
+    </a>
+    <a class="review-card" href="{{ url_for('report_section_view', section_name='new_jobs') }}">
+        <strong>{{ review_inbox.new_jobs }}</strong>
+        <span>New Jobs Awaiting Review</span>
+    </a>
+    <a class="review-card" href="{{ url_for('job_decisions') }}">
+        <strong>Open</strong>
+        <span>Saved and Reviewed Jobs</span>
+    </a>
+</div>
+{% else %}
+<div class="page-card">
+    <p>No scan results are available yet. Run a scan first.</p>
+</div>
+{% endif %}
+
+<div class="page-card">
+    <h2>Latest scan files</h2>
+    <p class="muted">
+        The scan itself is replaced by the next successful scan. Open Reports
+        to view or download the current files.
+    </p>
+    <a class="button-link button-secondary" href="{{ url_for('reports') }}">Open Reports</a>
+</div>
+{% endblock %}

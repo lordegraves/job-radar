@@ -1,7 +1,7 @@
-{# Lists current report outputs and provides access to saved report files. #}
+{# Lists the latest scan exports and optional retained report files. #}
 {% extends "base.html" %}
 
-{% block title %}Review Jobs - junior{% endblock %}
+{% block title %}Reports - junior{% endblock %}
 
 {% block page_styles %}
 <style>
@@ -10,41 +10,6 @@
         gap: 12px;
         grid-template-columns: repeat(2, minmax(220px, 1fr));
         margin: 18px 0;
-    }
-
-    .review-grid {
-        display: grid;
-        gap: 14px;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-        margin: 18px 0;
-    }
-
-    .review-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        color: var(--text);
-        padding: 18px;
-        text-decoration: none;
-    }
-
-    .review-card:hover {
-        background: var(--surface-hover);
-        border-color: var(--link);
-        color: var(--text);
-    }
-
-    .review-card strong {
-        color: var(--link);
-        display: block;
-        font-size: 1.65rem;
-    }
-
-    .review-card small {
-        color: var(--muted);
-        display: block;
-        line-height: 1.4;
-        margin-top: 8px;
     }
 
     .report-exports {
@@ -76,11 +41,12 @@
 
 {% block content %}
 <div class="page-card">
-    <h1 class="page-title">Review Jobs</h1>
+    <h1 class="page-title">Reports</h1>
 
     <p class="muted">
-        Review the latest scan, save promising jobs, pass on jobs you do not
-        want to see again, or move an application into the tracker.
+        View or download the latest scan report and email preview. By default,
+        the next successful scan replaces these files; your saved, applied,
+        and passed decisions remain.
     </p>
 
     {% if latest_report.generated_at %}
@@ -88,46 +54,11 @@
     {% endif %}
 </div>
 
-{% if latest_report.generated_at %}
-<div class="review-grid" aria-label="Latest scan job groups">
-    <a class="review-card" href="{{ url_for('report_section_view', section_name='top_matches') }}">
-        <strong>{{ latest_report.top_matches }}</strong>
-        <span>Top Matches</span>
-    </a>
-    <a class="review-card" href="{{ url_for('report_section_view', section_name='potential_top_matches') }}">
-        <strong>{{ latest_report.potential_top_matches }}</strong>
-        <span>Potential Top Matches</span>
-        <small>
-            {{ potential_top_progress.needs_review }} need your review
-            {% if potential_top_progress.applied %} &middot; {{ potential_top_progress.applied }} applied{% endif %}
-            {% if potential_top_progress.saved %} &middot; {{ potential_top_progress.saved }} saved{% endif %}
-            {% if potential_top_progress.passed %} &middot; {{ potential_top_progress.passed }} passed{% endif %}
-        </small>
-    </a>
-    <a class="review-card" href="{{ url_for('report_section_view', section_name='review_needed') }}">
-        <strong>{{ latest_report.review_needed }}</strong>
-        <span>Review Needed</span>
-    </a>
-    <a class="review-card" href="{{ url_for('report_section_view', section_name='new_jobs') }}">
-        <strong>{{ latest_report.new_jobs }}</strong>
-        <span>New Jobs</span>
-    </a>
-    <a class="review-card" href="{{ url_for('job_decisions') }}">
-        <strong>Open</strong>
-        <span>Saved and Reviewed Jobs</span>
-    </a>
-</div>
-{% else %}
-<div class="page-card">
-    <p>No scan results are available yet. Run a scan first.</p>
-</div>
-{% endif %}
-
 <section class="report-exports">
 <h2>View or download reports</h2>
 <p class="muted">
     These are read-only copies for sharing, printing, or troubleshooting.
-    Review decisions are made in the job groups above.
+    Review decisions are made on the Review Jobs page.
 </p>
 {% if primary_report_files %}
 <div class="primary-output-grid" aria-label="Report export shortcuts">
@@ -164,7 +95,7 @@
 </table>
 {% else %}
 <div class="page-card">
-    <p>No report exports are available yet.</p>
+    <p>No scan results are available yet. Run a scan first.</p>
 </div>
 {% endif %}
 

@@ -251,6 +251,8 @@ def register_report_routes(
                     profile_id=profile_id,
                 )
             }
+            # The latest scan is temporary evidence. Durable user actions decide
+            # whether a job still belongs in the Review Jobs inbox.
             all_job_cards = [
                 _build_report_job_card(
                     job,
@@ -262,24 +264,10 @@ def register_report_routes(
                 )
                 for job in snapshot_jobs
                 if (
-                    section_name == "potential_top_matches"
-                    or (
-                        job.job_radar_id not in decided_job_ids
-                        and job.job_radar_id not in tracked_job_ids
-                    )
+                    job.job_radar_id not in decided_job_ids
+                    and job.job_radar_id not in tracked_job_ids
                 )
             ]
-            if section_name == "potential_top_matches":
-                # Preserve the scan's full Potential Top Matches list while
-                # keeping jobs that still need a decision at the front.
-                all_job_cards.sort(
-                    key=lambda card: {
-                        "needs_review": 0,
-                        "saved": 1,
-                        "applied": 2,
-                        "passed": 3,
-                    }.get(card.review_state, 4)
-                )
             eligibility_counts = _count_eligibility_labels(all_job_cards)
             total_jobs = len(all_job_cards)
             total_pages = max(
@@ -330,13 +318,21 @@ def register_report_routes(
             "reports.html",
             reports_path=reports_path,
             latest_report=build_latest_report_summary(reports_path),
-            potential_top_progress=_build_potential_top_progress(
+            primary_report_files=primary_report_files,
+            retained_report_runs=list_retained_report_runs(reports_path),
+        )
+
+    @app.get("/review-jobs")
+    def review_jobs() -> str:
+        reports_path = get_reports_path()
+        return render_template(
+            "review_jobs.html",
+            latest_report=build_latest_report_summary(reports_path),
+            review_inbox=build_review_inbox_summary(
                 reports_path,
                 get_database_path(),
                 profile_id=get_profile_id(),
             ),
-            primary_report_files=primary_report_files,
-            retained_report_runs=list_retained_report_runs(reports_path),
         )
 
     @app.post("/reports/jobs/<path:job_radar_id>/decision")
@@ -610,6 +606,59 @@ def build_latest_report_summary(
     )
 
 
+def build_review_inbox_summary(
+    reports_path: str | Path,
+    database_path: str | Path,
+    *,
+    profile_id: str | None,
+) -> LatestReportSummaryView:
+    """Count only scan jobs that still need a decision from this profile."""
+    reports_path = Path(reports_path)
+    latest = build_latest_report_summary(reports_path)
+    snapshot_path = reports_path / "target-scan.json"
+    if not snapshot_path.is_file():
+        return latest
+
+    decided_job_ids = (
+        {
+            decision.job_radar_id
+            for decision in list_job_decisions(
+                database_path,
+                profile_id=profile_id,
+            )
+        }
+        if profile_id is not None
+        else set()
+    )
+    tracked_job_ids = {
+        application.job_radar_id
+        for application in list_applications(
+            database_path,
+            profile_id=profile_id,
+        )
+    }
+    resolved_job_ids = decided_job_ids | tracked_job_ids
+    snapshot = load_report_snapshot(snapshot_path)
+
+    def unresolved_count(section_name: str) -> int:
+        return sum(
+            job.job_radar_id not in resolved_job_ids
+            for job in getattr(snapshot, section_name)
+        )
+
+    return LatestReportSummaryView(
+        generated_at=latest.generated_at,
+        html_report_name=latest.html_report_name,
+        html_report_exists=latest.html_report_exists,
+        top_matches=unresolved_count("top_matches"),
+        potential_top_matches=unresolved_count("potential_top_matches"),
+        review_needed=unresolved_count("review_needed"),
+        tracked_applications=latest.tracked_applications,
+        new_jobs=unresolved_count("new_jobs"),
+        collector_errors=latest.collector_errors,
+    )
+
+
 def _load_latest_snapshot(reports_path: str | Path):
     snapshot_path = Path(reports_path).resolve() / "target-scan.json"
     if not snapshot_path.is_file():
@@ -847,52 +896,3 @@ def _build_report_job_card(
             else decision or "needs_review"
         ),
     )
-
-
-def _build_potential_top_progress(
-    reports_path: str | Path,
-    database_path: str | Path,
-    *,
-    profile_id: str | None,
-) -> dict[str, int]:
-    snapshot_path = Path(reports_path) / "target-scan.json"
-    progress = {
-        "needs_review": 0,
-        "saved": 0,
-        "applied": 0,
-        "passed": 0,
-    }
-    if not snapshot_path.is_file():
-        return progress
-
-    snapshot = load_report_snapshot(snapshot_path)
-    decisions_by_job_id = (
-        {
-            decision.job_radar_id: decision.decision
-            for decision in list_job_decisions(
-                database_path,
-                profile_id=profile_id,
-            )
-        }
-        if profile_id is not None
-        else {}
-    )
-    tracked_job_ids = {
-        application.job_radar_id
-        for application in list_applications(
-            database_path,
-            profile_id=profile_id,
-        )
-    }
-
-    for job in snapshot.potential_top_matches:
-        if job.job_radar_id in tracked_job_ids:
-            progress["applied"] += 1
-        elif decisions_by_job_id.get(job.job_radar_id) == DECISION_SAVED:
-            progress["saved"] += 1
-        elif decisions_by_job_id.get(job.job_radar_id) == DECISION_PASSED:
-            progress["passed"] += 1
-        else:
-            progress["needs_review"] += 1
-
-    return progress

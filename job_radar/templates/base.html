@@ -574,7 +574,8 @@
                 <a class="{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application'] %}active-nav{% endif %}" href="{{ url_for('tracker') }}"{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application'] %} aria-current="page"{% endif %}>Active Applications</a>
                 <a class="{% if request.endpoint in ['history', 'edit_history_record'] %}active-nav{% endif %}" href="{{ url_for('history') }}"{% if request.endpoint in ['history', 'edit_history_record'] %} aria-current="page"{% endif %}>Application History</a>
                 <a class="{% if request.endpoint in ['profile', 'new_profile_page', 'edit_profile_page', 'profile_fit_board_page', 'role_discovery_page', 'edit_legacy_profile_page', 'preferences', 'upload_resume', 'upload_managed_resume'] %}active-nav{% endif %}" href="{{ url_for('profile') }}"{% if request.endpoint in ['profile', 'new_profile_page', 'edit_profile_page', 'profile_fit_board_page', 'role_discovery_page', 'edit_legacy_profile_page', 'preferences', 'upload_resume', 'upload_managed_resume'] %} aria-current="page"{% endif %}>Profile / Resume</a>
-                <a class="{% if request.endpoint and (request.endpoint == 'reports' or request.endpoint.startswith('report_')) %}active-nav{% endif %}" href="{{ url_for('reports') }}"{% if request.endpoint and (request.endpoint == 'reports' or request.endpoint.startswith('report_')) %} aria-current="page"{% endif %}>Review Jobs</a>
+                <a class="{% if request.endpoint in ['review_jobs', 'report_section_view', 'save_report_job_decision', 'save_bulk_report_job_decisions', 'job_decisions'] %}active-nav{% endif %}" href="{{ url_for('review_jobs') }}"{% if request.endpoint in ['review_jobs', 'report_section_view', 'save_report_job_decision', 'save_bulk_report_job_decisions', 'job_decisions'] %} aria-current="page"{% endif %}>Review Jobs</a>
+                <a class="{% if request.endpoint in ['reports', 'report_view', 'report_file'] %}active-nav{% endif %}" href="{{ url_for('reports') }}"{% if request.endpoint in ['reports', 'report_view', 'report_file'] %} aria-current="page"{% endif %}>Reports</a>
                 <a class="{% if request.endpoint in ['companies', 'company_detail', 'add_company_page'] %}active-nav{% endif %}" href="{{ url_for('companies') }}"{% if request.endpoint in ['companies', 'company_detail', 'add_company_page'] %} aria-current="page"{% endif %}>Companies</a>
                 <a class="{% if request.endpoint in ['scan', 'run_scan'] %}active-nav{% endif %}" href="{{ url_for('scan') }}"{% if request.endpoint in ['scan', 'run_scan'] %} aria-current="page"{% endif %}>Scan</a>
                 <a class="{% if request.endpoint and (request.endpoint == 'settings' or request.endpoint.startswith('settings_')) %}active-nav{% endif %}" href="{{ url_for('settings') }}"{% if request.endpoint and (request.endpoint == 'settings' or request.endpoint.startswith('settings_')) %} aria-current="page"{% endif %}>Settings</a>
@@ -602,7 +603,7 @@
     <aside id="scan-notification" class="scan-notification" role="alert" hidden>
         <p id="scan-notification-message"></p>
         <div class="scan-notification-actions">
-            <a id="scan-notification-link" class="button-link" href="{{ url_for('reports') }}">Review jobs</a>
+            <a id="scan-notification-link" class="button-link" href="{{ url_for('review_jobs') }}">Review jobs</a>
             <button id="scan-notification-dismiss" class="button-secondary" type="button">Dismiss</button>
         </div>
     </aside>
@@ -653,7 +654,7 @@
 
         (() => {
             const statusUrl = "{{ url_for('scan_status') }}";
-            const reportsUrl = "{{ url_for('reports') }}";
+            const reportsUrl = "{{ url_for('review_jobs') }}";
             const scanPageUrl = "{{ url_for('scan') }}";
             const statusBox = document.getElementById("global-scan-status");
             const statusText = document.getElementById("global-scan-status-text");

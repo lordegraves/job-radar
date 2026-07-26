@@ -168,14 +168,14 @@
     >
         <p><strong>Latest scan completed.</strong> Review the jobs from the latest successful scan.</p>
         <div class="latest-output-links">
-            <a href="{{ url_for('reports') }}">Review jobs</a>
+            <a href="{{ url_for('review_jobs') }}">Review jobs</a>
             <a href="{{ url_for('report_view', report_name='target-scan.html') }}">Read-only HTML report</a>
             <a href="{{ url_for('report_view', report_name='target-email-preview.txt') }}">Email preview</a>
         </div>
     </div>
 
     <p>After running a scan, use the latest scan links here or open
-        <a href="{{ url_for('reports') }}">Review Jobs</a>.
+        <a href="{{ url_for('review_jobs') }}">Review Jobs</a>.
     </p>
 </div>
 
