@@ -235,7 +235,7 @@ def test_update_download_verifies_checksum_before_replacing_file(
     installer = b"verified installer"
     update = _installable_update(installer)
     checksum = (
-        f"{hashlib.sha256(installer).hexdigest()}  {update.installer_name}\n"
+        f"{hashlib.sha256(installer).hexdigest()}  {update.installer_name}\r\n"
     ).encode()
 
     def request_get(url: str, **kwargs):

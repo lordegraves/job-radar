@@ -132,7 +132,7 @@ def _bounded_content(response: Any, maximum: int) -> bytes:
 
 def _digest_for_file(checksum_text: str, installer_name: str) -> str:
     pattern = re.compile(
-        rf"^(?P<digest>[0-9a-fA-F]{{64}})\s+\*?{re.escape(installer_name)}$",
+        rf"^(?P<digest>[0-9a-fA-F]{{64}})\s+\*?{re.escape(installer_name)}\r?$",
         re.MULTILINE,
     )
     match = pattern.search(checksum_text)
