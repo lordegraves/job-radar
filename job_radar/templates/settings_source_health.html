@@ -150,10 +150,14 @@
     const results = document.getElementById("source-test-results");
     if (!container || !status || !percent || !meter || !step || !results) return;
 
+    const rowsByEmployer = new Map(
+        Array.from(document.querySelectorAll("tr[data-employer-id]")).map(
+            (row) => [row.dataset.employerId, row]
+        )
+    );
+
     const updateResult = (result) => {
-        const row = document.querySelector(
-            `tr[data-employer-id="${CSS.escape(result.employer_id)}"]`
-        );
+        const row = rowsByEmployer.get(result.employer_id);
         if (!row) return;
         row.querySelector("[data-source-state]").textContent =
             result.state === "success" ? "Connected" : "Needs attention";
@@ -201,7 +205,8 @@
             }
         } catch {
             status.textContent =
-                "Junior could not refresh test progress. Reload this page to check the results.";
+                "Junior is still testing, but this page could not refresh yet. Retrying…";
+            window.setTimeout(poll, 1500);
         }
     };
     poll();

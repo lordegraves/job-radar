@@ -6,7 +6,15 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
-- Label field-test packages and every application page as `SP5 Build 1.7`.
+- Label field-test packages and every application page as `SP5 Build 1.8`.
+- Put Company Source Health directly in the Companies workflow with clear
+  working, warning, and untested counts.
+- Keep background source-test progress refreshing after a temporary page
+  refresh failure instead of requiring the user to leave and reopen the page.
+- Explain when USAJobs sources cannot run because local USAJobs API access is
+  not configured, rather than showing a generic source-setup warning.
+- Relaunch Junior after an automatic Windows update completes while preserving
+  the optional launch choice for normal interactive installation.
 - Prevent the Windows updater from invoking Restart Manager after Junior has
   already completed its clean update handoff.
 - Keep Diagnostics information cards within their grid rows and give the

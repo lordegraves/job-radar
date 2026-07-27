@@ -39,6 +39,7 @@ from job_radar.employer_review_service import (
     list_profile_review_states,
     mark_configured_new,
 )
+from job_radar.source_health_service import build_source_health_items
 
 
 def register_company_routes(
@@ -54,6 +55,7 @@ def register_company_routes(
         workspace = build_company_workspace(get_database_path())
 
         if workspace.active_profile is not None:
+            source_health = build_source_health_items(get_database_path())
             return render_template(
                 "companies.html",
                 workspace=workspace,
@@ -63,6 +65,11 @@ def register_company_routes(
                     get_database_path(),
                     workspace.active_profile.profile_id,
                 ),
+                source_health_counts={
+                    "working": sum(item.state == "success" for item in source_health),
+                    "attention": sum(item.state == "error" for item in source_health),
+                    "untested": sum(item.state == "not_tested" for item in source_health),
+                },
             )
 
         return render_template(

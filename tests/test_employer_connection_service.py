@@ -133,6 +133,32 @@ def test_configuration_problem_does_not_call_collector(
     assert reloaded == result
 
 
+def test_usajobs_missing_local_api_access_has_specific_safe_guidance(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    record = create_employer(
+        database_path,
+        name="Example Federal Agency",
+        source_type="usajobs",
+        source_config={"organization": "EX"},
+        notes="Fictional test agency.",
+    )
+    monkeypatch.delenv("USAJOBS_USER_AGENT", raising=False)
+    monkeypatch.delenv("USAJOBS_AUTHORIZATION_KEY", raising=False)
+
+    result = run_employer_connection_test(
+        database_path,
+        record.employer.employer_id,
+    )
+
+    assert result.state == "error"
+    assert result.category == "configuration"
+    assert "USAJobs API access is not configured" in (result.message or "")
+    assert "USAJOBS_AUTHORIZATION_KEY" not in (result.message or "")
+
+
 def test_source_edit_clears_stale_connection_health(
     tmp_path: Path,
     monkeypatch,

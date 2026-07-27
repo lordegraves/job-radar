@@ -157,7 +157,6 @@
 
 <div class="actions">
     <a class="button-link" href="{{ url_for('add_company_page') }}">Add company</a>
-    <a class="button-link secondary" href="{{ url_for('settings_source_health') }}">Company Source Health</a>
 </div>
 
 <section class="company-summary-grid" aria-label="Company workspace summary">
@@ -173,6 +172,14 @@
         <strong>{{ workspace.paused_companies }}</strong>
         <span class="muted">Paused</span>
     </div>
+    <a class="company-summary-card" href="{{ url_for('settings_source_health') }}">
+        <strong>{{ source_health_counts.attention }}</strong>
+        <span>Company Source Health</span>
+        <span class="source-cell-detail">
+            {{ source_health_counts.working }} working ·
+            {{ source_health_counts.untested }} not tested
+        </span>
+    </a>
 </section>
 
 {% if review_states %}

@@ -1,5 +1,6 @@
 """Test one employer collector without importing jobs or exposing raw failures."""
 
+import os
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,10 +56,26 @@ def test_employer_connection(
         raise EmployerConnectionError("That employer no longer exists.")
 
     issues = validate_source_configuration(employer)
-    if issues:
+    if employer.source_type == "usajobs" and not all(
+        os.environ.get(name)
+        for name in ("USAJOBS_USER_AGENT", "USAJOBS_AUTHORIZATION_KEY")
+    ):
         health = _error_health(
             "configuration",
-            "Complete and validate the employer's source settings, then try again.",
+            "USAJobs API access is not configured on this computer. Junior "
+            "needs a USAJobs contact email and authorization key before it can "
+            "test or scan federal sources.",
+        )
+    elif issues:
+        message = (
+            "This USAJobs source is missing its federal organization code. "
+            "Complete the source setup, then test it again."
+            if employer.source_type == "usajobs"
+            else "Complete and validate the employer's source settings, then try again."
+        )
+        health = _error_health(
+            "configuration",
+            message,
         )
     else:
         try:

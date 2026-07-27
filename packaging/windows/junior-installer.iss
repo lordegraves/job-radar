@@ -1,7 +1,7 @@
 #define AppName "Junior"
 #define AppVersion "0.2.0"
-#define BuildLabel "SP5 Build 1.7"
-#define BuildSlug "SP5-build-1.7"
+#define BuildLabel "SP5 Build 1.8"
+#define BuildSlug "SP5-build-1.8"
 #define AppPublisher "Junior"
 #define AppExeName "Junior.exe"
 
@@ -47,25 +47,28 @@ Name: "{group}\Junior"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
 Name: "{autodesktop}\Junior"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "Launch Junior"; Flags: nowait postinstall; Check: ShouldLaunchJunior
+Filename: "{app}\{#AppExeName}"; Description: "Launch Junior"; Flags: nowait postinstall; Check: ShouldOfferInteractiveLaunch
+Filename: "{app}\{#AppExeName}"; Flags: nowait; Check: IsAutomaticUpdate
 
 [Code]
-function ShouldLaunchJunior(): Boolean;
+function IsAutomaticUpdate(): Boolean;
 var
   Index: Integer;
 begin
-  { Interactive installs retain the normal launch checkbox. Silent validation
-    does not open Junior, while an update requested by Junior explicitly does. }
-  Result := not WizardSilent;
-  if Result then
-    Exit;
-
+  Result := False;
   for Index := 1 to ParamCount do
     if CompareText(ParamStr(Index), '/AUTOLAUNCH') = 0 then
     begin
       Result := True;
       Exit;
     end;
+end;
+
+function ShouldOfferInteractiveLaunch(): Boolean;
+begin
+  { Interactive installs retain the normal launch checkbox. Automatic updates
+    use their own unconditional run entry after the silent install succeeds. }
+  Result := (not WizardSilent) and (not IsAutomaticUpdate());
 end;
 
 function InitializeSetup(): Boolean;
