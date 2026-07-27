@@ -244,8 +244,12 @@ def register_settings_routes(
         shutdown_event = current_app.config.get(
             "JOB_RADAR_DESKTOP_SHUTDOWN_EVENT"
         )
+        update_exit_event = current_app.config.get(
+            "JOB_RADAR_DESKTOP_UPDATE_EXIT_EVENT"
+        )
         if not (
             shutdown_event is not None
+            and update_exit_event is not None
             and current_app.config.get("JOB_RADAR_DESKTOP_UPDATE_AVAILABLE")
         ):
             flash(
@@ -285,7 +289,11 @@ def register_settings_routes(
             return redirect(url_for("settings_diagnostics"))
 
         # Give the response time to reach the native window before closing it.
-        timer = threading.Timer(1.0, shutdown_event.set)
+        def close_for_update() -> None:
+            update_exit_event.set()
+            shutdown_event.set()
+
+        timer = threading.Timer(1.0, close_for_update)
         timer.daemon = True
         timer.start()
         return render_template(

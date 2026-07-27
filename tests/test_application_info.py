@@ -309,7 +309,9 @@ def test_update_launcher_uses_no_command_shell(tmp_path: Path) -> None:
     )
     helper_path = tmp_path / "junior-update-handoff.ps1"
     helper_text = helper_path.read_text(encoding="utf-8")
-    assert "Wait-Process -Id $ParentProcessId" in helper_text
+    assert "$ShutdownDeadline = (Get-Date).AddSeconds(45)" in helper_text
+    assert "Get-Process -Id $ParentProcessId" in helper_text
+    assert "the update was not installed" in helper_text
     assert "Start-Sleep -Milliseconds 1000" in helper_text
     assert "Start-Process -FilePath $InstallerPath" in helper_text
     assert "-PassThru -Wait" in helper_text
@@ -328,7 +330,9 @@ def test_desktop_update_downloads_verifies_launches_and_closes(
     _write_settings(settings_path, database_path)
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
     shutdown_event = type("_Event", (), {"set": lambda self: None})()
+    update_exit_event = type("_Event", (), {"set": lambda self: None})()
     app.config["JOB_RADAR_DESKTOP_SHUTDOWN_EVENT"] = shutdown_event
+    app.config["JOB_RADAR_DESKTOP_UPDATE_EXIT_EVENT"] = update_exit_event
     app.config["JOB_RADAR_DESKTOP_UPDATE_AVAILABLE"] = True
     update = _installable_update(b"installer")
     launched = []

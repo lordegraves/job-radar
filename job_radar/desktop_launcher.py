@@ -411,6 +411,7 @@ def launch_desktop() -> None:
     window_state_path = (
         settings_path.parent.parent / "runtime" / WINDOW_STATE_NAME
     )
+    update_exit_event = threading.Event()
 
     with DesktopInstanceLock(lock_path, url) as instance:
         if not instance.acquired:
@@ -441,6 +442,7 @@ def launch_desktop() -> None:
         )
         shutdown_event = threading.Event()
         app.config["JOB_RADAR_DESKTOP_SHUTDOWN_EVENT"] = shutdown_event
+        app.config["JOB_RADAR_DESKTOP_UPDATE_EXIT_EVENT"] = update_exit_event
         app.config["JOB_RADAR_DESKTOP_UPDATE_AVAILABLE"] = bool(
             os.name == "nt" and getattr(sys, "frozen", False)
         )
@@ -466,6 +468,19 @@ def launch_desktop() -> None:
             # its durable database/report writes finish instead of allowing a
             # second launcher to open the same workspace during shutdown.
             app.extensions["junior_scan_runner"].wait()
+
+    if update_exit_event.is_set():
+        # pywebview/WebView2 can retain platform threads after its visible
+        # window closes. At this point protected scan writes have finished and
+        # the instance lock is released, so an approved updater handoff may
+        # terminate the wrapper without risking user data.
+        _exit_for_verified_update()
+
+
+def _exit_for_verified_update() -> None:
+    """Guarantee that the verified Windows installer can observe process exit."""
+
+    os._exit(0)
 
 
 def _lock_stream(stream: BinaryIO) -> None:

@@ -6,7 +6,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
-- Label field-test packages and every application page as `SP5 Build 1.9`.
+- Label field-test packages and every application page as `SP5 Build 1.10`.
+- Guarantee that an approved desktop update releases protected writes and the
+  single-instance lock before terminating wrapper threads that could otherwise
+  prevent Windows Setup from starting.
+- Stop updater handoffs after a bounded shutdown wait, preserve the existing
+  installation, reopen Junior, and show a durable failure result instead of
+  waiting indefinitely while claiming an update is installing.
 - Keep selected-company scans on Company Source Health with their own live
   progress, safe result summary, and automatic retry while the new scan starts.
 - Treat a successful real scan as the newest source-health evidence so a

@@ -2755,7 +2755,7 @@ def test_update_result_remains_visible_until_dismissed(tmp_path: Path) -> None:
     app = create_app(settings_path=str(settings_file))
     app.config["JOB_RADAR_UPDATE_RESULT"] = {
         "status": "success",
-        "message": "Junior was updated successfully to SP5 Build 1.9.",
+        "message": "Junior was updated successfully to SP5 Build 1.10.",
     }
     client = app.test_client()
 
@@ -5105,7 +5105,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "SP5 Build 1.9" in html
+    assert "SP5 Build 1.10" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

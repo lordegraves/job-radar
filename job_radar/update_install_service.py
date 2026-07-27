@@ -136,7 +136,22 @@ param(
 )
 
 try {
-    Wait-Process -Id $ParentProcessId -ErrorAction SilentlyContinue
+    # A desktop wrapper can occasionally leave a hidden process behind after
+    # its window closes. Never wait forever or pretend Setup was launched.
+    $ShutdownDeadline = (Get-Date).AddSeconds(45)
+    while (Get-Process -Id $ParentProcessId -ErrorAction SilentlyContinue) {
+        if ((Get-Date) -ge $ShutdownDeadline) {
+            @{
+                status = 'error'
+                message = 'Junior could not close cleanly, so the update was not installed. Your existing installation and data were not changed.'
+            } | ConvertTo-Json -Compress | Set-Content -LiteralPath $ResultPath -Encoding UTF8
+            if (Test-Path -LiteralPath $ApplicationPath) {
+                Start-Process -FilePath $ApplicationPath
+            }
+            return
+        }
+        Start-Sleep -Milliseconds 250
+    }
     # Give Windows a brief moment to release the desktop executable after the
     # verified parent process exits. Setup must never force-close Junior.
     Start-Sleep -Milliseconds 1000

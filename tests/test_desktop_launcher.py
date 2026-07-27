@@ -224,6 +224,11 @@ def test_main_bootstraps_starts_native_job_radar(
             }
         ),
     )
+    monkeypatch.setattr(
+        desktop_launcher,
+        "_exit_for_verified_update",
+        lambda: pytest.fail("normal window close must not force process exit"),
+    )
 
     desktop_launcher.launch_desktop()
 
@@ -242,6 +247,46 @@ def test_main_bootstraps_starts_native_job_radar(
         / desktop_launcher.WINDOW_STATE_NAME,
         "scan_waited": True,
     }
+
+
+def test_main_guarantees_process_exit_after_verified_update(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+    calls: dict[str, Any] = {}
+    fake_app = SimpleNamespace(
+        config={},
+        extensions={"junior_scan_runner": SimpleNamespace(wait=lambda: None)},
+    )
+
+    monkeypatch.setattr(sys, "argv", ["job-radar-desktop"])
+    monkeypatch.setattr(desktop_launcher, "is_job_radar_running", lambda _url: False)
+    monkeypatch.setattr(
+        desktop_launcher,
+        "ensure_desktop_workspace",
+        lambda: settings_path,
+    )
+    monkeypatch.setattr(
+        desktop_launcher,
+        "create_app",
+        lambda **_kwargs: fake_app,
+    )
+    monkeypatch.setattr(desktop_launcher, "make_server", lambda *_args: object())
+
+    def request_update_exit(*_args, **_kwargs) -> None:
+        fake_app.config["JOB_RADAR_DESKTOP_UPDATE_EXIT_EVENT"].set()
+
+    monkeypatch.setattr(desktop_launcher, "run_native_window", request_update_exit)
+    monkeypatch.setattr(
+        desktop_launcher,
+        "_exit_for_verified_update",
+        lambda: calls.update({"exited": True}),
+    )
+
+    desktop_launcher.launch_desktop()
+
+    assert calls == {"exited": True}
 
 
 def test_main_no_browser_starts_without_opening_browser(
@@ -413,7 +458,7 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
     )
 
     title, url, options = calls["window"]
-    assert title == "Junior — SP5 Build 1.9"
+    assert title == "Junior — SP5 Build 1.10"
     assert url == "http://127.0.0.1:5000/"
     assert options["resizable"] is True
     assert options["min_size"] == (960, 640)
