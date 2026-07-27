@@ -113,6 +113,7 @@ def launch_windows_installer(
                 "/SILENT",
                 "/CLOSEAPPLICATIONS",
                 "/NORESTART",
+                "/AUTOLAUNCH",
             ],
             close_fds=True,
         )

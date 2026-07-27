@@ -292,6 +292,7 @@ def test_update_launcher_uses_no_command_shell(tmp_path: Path) -> None:
                     "/SILENT",
                     "/CLOSEAPPLICATIONS",
                     "/NORESTART",
+                    "/AUTOLAUNCH",
                 ],
             ),
             {"close_fds": True},

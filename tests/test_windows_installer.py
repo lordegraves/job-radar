@@ -20,11 +20,10 @@ def test_inno_installer_is_per_user_and_preserves_user_data() -> None:
     assert "LocalAppData\\JobRadar" in script_text
     assert "[UninstallDelete]" not in script_text
     assert "{localappdata}\\JobRadar" not in script_text
-    assert (
-        'Flags: nowait postinstall\n'
-        in script_text.replace("\r\n", "\n")
-    )
+    assert "Flags: nowait postinstall; Check: ShouldLaunchJunior" in script_text
     assert "postinstall skipifsilent" not in script_text
+    assert "function ShouldLaunchJunior(): Boolean;" in script_text
+    assert "'/AUTOLAUNCH'" in script_text
 
 
 def test_installer_build_script_requires_verified_bundle_first() -> None:

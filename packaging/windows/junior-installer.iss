@@ -45,9 +45,27 @@ Name: "{group}\Junior"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
 Name: "{autodesktop}\Junior"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "Launch Junior"; Flags: nowait postinstall
+Filename: "{app}\{#AppExeName}"; Description: "Launch Junior"; Flags: nowait postinstall; Check: ShouldLaunchJunior
 
 [Code]
+function ShouldLaunchJunior(): Boolean;
+var
+  Index: Integer;
+begin
+  { Interactive installs retain the normal launch checkbox. Silent validation
+    does not open Junior, while an update requested by Junior explicitly does. }
+  Result := not WizardSilent;
+  if Result then
+    Exit;
+
+  for Index := 1 to ParamCount do
+    if CompareText(ParamStr(Index), '/AUTOLAUNCH') = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
 function InitializeSetup(): Boolean;
 begin
   { User data lives under LocalAppData\JobRadar and is deliberately outside
