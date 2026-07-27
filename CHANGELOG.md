@@ -6,11 +6,22 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Clarified Diagnostics as Junior's overall health and troubleshooting
+  workspace while Company Source Health owns per-company connection tests and
+  targeted rescans. Source results now show their safe explanations directly
+  instead of hiding them in hover text.
+- Added human-readable names and descriptions for sanitized logs, enabled
+  normal attachment downloads in the desktop shell, and labeled each log view
+  by its actual purpose.
+- Added safe company identifiers and bounded failure explanations to scan
+  diagnostics. Common HTTP outcomes now distinguish access denial, missing
+  source addresses, request limiting, and temporary recruiting-service
+  failures without recording raw exceptions or responses.
 - Added an explicit, checksum-verified Windows desktop update workflow. Checking
   remains read-only; a separate confirmation downloads the exact official
   installer and checksum, rejects mismatches, closes Junior cleanly, installs
   the update, and reopens without moving or replacing user-owned data.
-- Label field-test packages and every application page as `SP5 Build 1.4`.
+- Label field-test packages and every application page as `SP5 Build 1.5`.
 - Added reusable TalentBrew discovery so branded career sites such as Ford can
   lead Junior to their verified public job-search page without a company-only
   exception.

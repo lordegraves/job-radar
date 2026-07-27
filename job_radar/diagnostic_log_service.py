@@ -29,6 +29,8 @@ class DiagnosticLogError(ValueError):
 @dataclass(frozen=True)
 class DiagnosticLogFile:
     name: str
+    title: str
+    description: str
     modified_at: str
     size_bytes: int
 
@@ -36,6 +38,8 @@ class DiagnosticLogFile:
 @dataclass(frozen=True)
 class DiagnosticLogView:
     name: str
+    title: str
+    description: str
     content: str
     truncated: bool
     size_bytes: int
@@ -57,6 +61,8 @@ def list_diagnostic_logs(logs_path: str | Path) -> tuple[DiagnosticLogFile, ...]
     return tuple(
         DiagnosticLogFile(
             name=path.name,
+            title=_log_title(path.name),
+            description=_log_description(path.name),
             modified_at=datetime.fromtimestamp(path.stat().st_mtime).strftime(
                 "%Y-%m-%d %I:%M %p"
             ),
@@ -87,6 +93,8 @@ def read_diagnostic_log(
         )
     return DiagnosticLogView(
         name=path.name,
+        title=_log_title(path.name),
+        description=_log_description(path.name),
         content=content,
         truncated=truncated,
         size_bytes=size,
@@ -167,3 +175,46 @@ def _resolve_owned_log(logs_path: str | Path, log_name: str) -> Path:
     if directory not in path.parents or not path.is_file():
         raise DiagnosticLogError("That diagnostic log is not available.")
     return path
+
+
+def _log_title(log_name: str) -> str:
+    return {
+        "junior-actions.log": "User action history",
+        "junior-last-scan.log": "Latest scan activity",
+        "junior-company-discovery.log": "Company discovery activity",
+        "junior-diagnostics.log": "Operational diagnostics",
+    }.get(
+        log_name,
+        (
+            "Startup problem details"
+            if log_name.startswith("startup-errors")
+            else "Junior diagnostic history"
+        ),
+    )
+
+
+def _log_description(log_name: str) -> str:
+    descriptions = {
+        "junior-actions.log": (
+            "Safe records of Save, Pass, Apply, and other deliberate job "
+            "decisions. Job descriptions and profile contents are excluded."
+        ),
+        "junior-last-scan.log": (
+            "A step-by-step operational record of the newest scan, including "
+            "safe company-source outcomes and totals but no job listings."
+        ),
+        "junior-company-discovery.log": (
+            "Safe outcomes from attempts to identify a company's public "
+            "recruiting platform. Probe responses are not retained."
+        ),
+        "junior-diagnostics.log": (
+            "Bounded operational history across recent scans. It contains "
+            "safe status fields rather than raw exceptions."
+        ),
+    }
+    if log_name.startswith("startup-errors"):
+        return "Sanitized information recorded when Junior could not start."
+    return descriptions.get(
+        log_name,
+        "A bounded, sanitized Junior-owned troubleshooting record.",
+    )

@@ -16,6 +16,56 @@ Kubernetes deployment with shared services and persistent storage
 
 These surfaces must share the same service and storage layers rather than becoming separate products.
 
+## Supported 1.x architecture and native 2.0 direction
+
+The Flask interface and pywebview desktop shell remain the supported Junior
+1.x architecture through the stable 1.0 release and its maintenance period.
+They are not disposable: field-test fixes, data protections, collector
+reliability, diagnostics, packaging, and update safety continue to ship there.
+
+Native desktop 2.0 is a potential parallel product-evolution project, not an
+approved implementation or immediate replacement. Its purpose would be to
+improve desktop integration, responsiveness, accessibility, consistent
+controls, downloads, dialogs, notifications, and long-term interface
+maintainability without changing Junior's user-visible workflows or
+duplicating business rules. The go/no-go decision follows the stable 1.0
+release and a structured review of real-world evidence.
+
+The architectural split is:
+
+```text
+Shared Python application services and SQLite storage
+    |
+    +-- Junior 1.x Flask routes and templates
+    |       +-- pywebview desktop shell
+    |       +-- browser/server mode
+    |
+    +-- CLI, scheduling, container, and Kubernetes entry points
+    |
+    +-- Planned Junior 2.0 native desktop interface
+            +-- operating-system integrations
+            +-- the same application services and data contracts
+```
+
+The leading native-interface candidate is Qt Quick/QML because it can provide
+one maintained desktop implementation across Windows, Linux, and macOS while
+calling Python services. That is a starting hypothesis, not a final selection.
+The architecture audit and prototypes must compare accessibility, packaging,
+updates, background tasks, memory, startup performance, and platform behavior
+before the toolkit is approved.
+
+The native work must begin with an inventory and parity specification. It must
+not translate Flask route code screen by screen while leaving business rules
+embedded in web handlers. Services that are still coupled to Flask request
+state, Jinja display assumptions, or pywebview behavior must first receive a
+stable interface that both desktop implementations can call.
+
+Junior 1.x remains supported until native 2.0 passes the migration,
+cross-platform, parity, performance, privacy, packaging, and recovery gates in
+`docs/ROADMAP.md`. User-owned data remains the compatibility contract between
+releases. Migration is rehearsed on copies, preserves a verified prior state,
+and never requires deletion of a working 1.x database or profile.
+
 ## Entry points and operating modes
 
 - `job-radar` / `job_radar.cli`: developer, automation, validation, scan, history, database, and tracker commands.

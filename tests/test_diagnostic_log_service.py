@@ -55,6 +55,13 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
         "startup-errors.log",
         "junior-20260723T120000000000Z.log",
     }
+    titles = {log.name: log.title for log in logs}
+    assert titles["junior-actions.log"] == "User action history"
+    assert titles["junior-last-scan.log"] == "Latest scan activity"
+    assert titles["junior-company-discovery.log"] == (
+        "Company discovery activity"
+    )
+    assert all(log.description for log in logs)
 
     content = (tmp_path / "junior-company-discovery.log").read_text(
         encoding="utf-8"
@@ -94,6 +101,8 @@ def test_large_log_view_reads_only_bounded_tail(tmp_path: Path) -> None:
 
     view = read_diagnostic_log(tmp_path, path.name)
 
+    assert view.title == "Startup problem details"
+    assert view.description
     assert view.truncated
     assert "Earlier log entries are hidden" in view.content
     assert "old private-looking fixture" not in view.content

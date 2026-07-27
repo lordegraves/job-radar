@@ -211,20 +211,20 @@ def _installable_update(installer: bytes) -> UpdateCheckResult:
     del installer
     return UpdateCheckResult(
         status="available",
-        message="SP5 Build 1.4 is available.",
+        message="SP5 Build 1.5 is available.",
         available_version="0.2.0",
         available_build="1.4",
         release_url=(
             "https://github.com/lordegraves/job-radar/releases/tag/v0.2.0-rc5"
         ),
-        installer_name="Junior-Setup-0.2.0-SP5-build-1.4.exe",
+        installer_name="Junior-Setup-0.2.0-SP5-build-1.5.exe",
         installer_url=(
             "https://github.com/lordegraves/job-radar/releases/download/"
-            "v0.2.0-rc5/Junior-Setup-0.2.0-SP5-build-1.4.exe"
+            "v0.2.0-rc5/Junior-Setup-0.2.0-SP5-build-1.5.exe"
         ),
         checksum_url=(
             "https://github.com/lordegraves/job-radar/releases/download/"
-            "v0.2.0-rc5/SHA256-SP5-build-1.4.txt"
+            "v0.2.0-rc5/SHA256-SP5-build-1.5.txt"
         ),
     )
 

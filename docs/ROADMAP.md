@@ -107,6 +107,55 @@ Junior is guided by these principles:
 | 70 | Planned | Publish the first fully productized stable release with installer downloads, checksums, release notes, screenshots, supported-platform details, upgrade instructions, known limitations, and verified documentation. |
 | 71 | In Progress | Finalize the product finish line: a user can download Job Radar, run the installer, launch the application, complete guided setup, add their own profile and companies, run and schedule scans, review reports, manage applications, preserve and back up their data, upgrade safely, and use the product daily without editing code or YAML. |
 
+## Junior 1.x and native 2.0 product lifecycle
+
+Junior will use a staged hybrid path. The current Flask and pywebview product
+remains the supported 1.x application while a native desktop 2.0 is evaluated
+and built against explicit parity and migration gates. Short-term development
+cost is acceptable, but Junior must not strand users, split product rules
+between interfaces, or replace a working release with an incomplete rewrite.
+
+This document records a potential long-term architectural direction, not an approved implementation plan. The go/no-go decision will be made after the 1.0 release and a structured post-release architecture review based on real-world user feedback, maintenance experience, performance data, and desktop integration requirements.
+
+| Lifecycle stage | Status | Required result |
+| --- | --- | --- |
+| Stabilize the current product through 1.0 | In Progress | Finish RC field testing, correct reliability and usability defects, complete release protections, and publish a dependable 1.0 using the current shared Python services and pywebview interface. Do not delay essential safety, data-integrity, scanning, company-source, review, tracker, diagnostics, update, or packaging fixes merely because 2.0 is planned. |
+| Maintain Junior 1.x | Planned | After 1.0, keep the current application supported with security, compatibility, collector, data-integrity, and release-blocking bug fixes. Avoid large new interface frameworks or duplicate business rules that would increase migration cost without improving the stable product. |
+| Audit the 1.x architecture before rebuilding | Planned | Inventory every route, template, service, storage boundary, background task, platform integration, workflow, test, package, and user-data contract. Identify performance bottlenecks, tightly coupled web assumptions, and reusable service APIs. The audit must describe the current product as implemented rather than designing from filenames or assumptions. |
+| Define native 2.0 parity and architecture | Planned | Produce a screen-by-screen and workflow-by-workflow parity specification. Select the native cross-platform toolkit only after prototypes compare Windows, Linux, and macOS behavior, accessibility, packaging, update support, background operation, startup time, memory use, and long-term maintenance. Qt Quick/QML is the leading candidate; the evaluation must still document why the final choice wins. |
+| Extract shared application services | Planned | Preserve one Python service and storage layer for scanning, scoring, profiles, companies, decisions, tracker, history, reports, diagnostics, updates, scheduling, backup, and migration. Browser/server, CLI, scheduling, containers, Kubernetes, Junior 1.x, and native 2.0 must call these shared rules rather than reimplementing them. |
+| Build native 2.0 in parallel | Planned | Implement the native desktop interface in reviewable vertical slices while 1.x remains usable. A slice is complete only when behavior, validation, accessibility, error handling, and data ownership match the approved parity specification. |
+| Prove data migration and rollback | Planned | Native 2.0 must open or migrate supported 1.x user data without losing profiles, résumés, companies, source health, decisions, applications, history, reports, logs, credentials references, schedules, or backups. Rehearse upgrades on copies, retain the prior valid state, validate the result, and provide a documented rollback path. |
+| Validate native 2.0 across platforms | Planned | Test clean install, first run, daily workflows, large datasets, long-running scans, notifications, file dialogs, keyboard behavior, window state, updates, repair, backup, restore, uninstall, accessibility, and offline operation on Windows, Linux, and macOS. Platform-native chrome may differ; Junior workflows and product behavior may not. |
+| Release native 2.0 only after its gates pass | Planned | Keep 2.0 in private or public field testing until parity, migration, recovery, cross-platform, performance, privacy, packaging, and documentation gates pass. Users must be able to remain on supported 1.x until 2.0 is demonstrably safer or better. |
+
+### Native 2.0 acceptance gates
+
+Native 2.0 is deployable only when all of the following are verified:
+
+- A normal user can complete every supported 1.x GUI workflow without a
+  terminal, localhost address, YAML editing, repository, or Python setup.
+- Scanning, scoring, recommendations, and profile behavior still come from the
+  shared service layer. A native screen must not create a second interpretation
+  of Junior's product rules.
+- Existing user data migrates transactionally from tested 1.x versions, with a
+  verified backup, validation, failure recovery, and rollback.
+- Windows, Linux, and macOS use one maintained interface implementation except
+  for natural operating-system integrations such as window chrome, file
+  dialogs, notifications, credential storage, scheduling, and app packaging.
+- Browser/server, CLI, unattended scheduling, containers, and Kubernetes remain
+  supported through the same application services where they are part of the
+  supported product.
+- Startup time, memory use, scan responsiveness, large-data behavior, installer
+  size, and update behavior meet documented release targets and are not merely
+  assumed to improve because the interface is native.
+- Privacy, diagnostics, release authenticity, licensing, accessibility,
+  documentation, and support workflows are at least as complete as the current
+  stable release.
+- Field testers confirm that the native application preserves familiar
+  workflows. Visible differences must provide a measurable usability,
+  reliability, accessibility, performance, or platform-integration benefit.
+
 ## RC5 field-test acceptance requirements
 
 These corrections must be implemented and verified before RC5 is accepted:
@@ -275,7 +324,7 @@ packaged collector catalog before contacting an external search provider.
 
 RC6 is reserved for stabilization work discovered during RC5 field testing and
 the following distribution and support improvements. These items are planned;
-they are not part of SP5 Build 1.4 unless marked Completed:
+they are not part of SP5 Build 1.5 unless marked Completed:
 
 | RC6 work item | Status | Required result |
 |---|---|---|

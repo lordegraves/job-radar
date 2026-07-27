@@ -9,6 +9,7 @@ import requests
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.database import connect_database
+from job_radar.diagnostic_service import classify_collector_failure
 from job_radar.employer_admin_service import validate_source_configuration
 from job_radar.employer_storage import get_employer_source
 from job_radar.storage import initialize_database
@@ -125,26 +126,8 @@ def get_employer_connection_health(
 
 
 def _collector_error_health(error: CollectorError) -> EmployerConnectionHealth:
-    cause: BaseException | None = error
-    while cause is not None:
-        if isinstance(cause, (requests.Timeout, requests.ConnectionError)):
-            return _error_health(
-                "network",
-                "Junior could not reach the job source. Check the network "
-                "connection and try again.",
-            )
-        if isinstance(cause, requests.HTTPError):
-            return _error_health(
-                "source_response",
-                "The job source rejected or could not complete the request. "
-                "Verify the public source address and try again.",
-            )
-        cause = cause.__cause__
-    return _error_health(
-        "collector",
-        "Junior reached the configured source but could not read its job "
-        "list. Verify the source type and settings, then try again.",
-    )
+    outcome = classify_collector_failure(error)
+    return _error_health(outcome.category, outcome.message)
 
 
 def _error_health(category: str, message: str) -> EmployerConnectionHealth:

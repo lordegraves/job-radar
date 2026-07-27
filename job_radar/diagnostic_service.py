@@ -29,6 +29,7 @@ class HealthCard:
     summary: str
     next_step: str
     endpoint: str | None = None
+    action_label: str = "View details"
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,34 @@ def classify_collector_failure(error: CollectorError) -> DiagnosticOutcome:
                 "Check the network connection and try the source again.",
             )
         if isinstance(cause, requests.HTTPError):
+            status_code = (
+                cause.response.status_code if cause.response is not None else None
+            )
+            if status_code in {401, 403}:
+                return _outcome(
+                    "collector",
+                    "The company job source denied Junior's public request.",
+                    "The recruiting platform may be blocking automated access. "
+                    "Test the source again later or review its collector setup.",
+                )
+            if status_code == 404:
+                return _outcome(
+                    "collector",
+                    "The configured company job-source address was not found.",
+                    "Review the public careers address and collector setup.",
+                )
+            if status_code == 429:
+                return _outcome(
+                    "network",
+                    "The company job source temporarily limited Junior's requests.",
+                    "Wait before testing or scanning this source again.",
+                )
+            if status_code is not None and status_code >= 500:
+                return _outcome(
+                    "network",
+                    "The company recruiting service reported a temporary problem.",
+                    "Try the source again later.",
+                )
             return _outcome(
                 "collector",
                 "The company job source rejected or could not complete the request.",
@@ -122,6 +151,7 @@ def _scan_health_card(database_path: Path) -> HealthCard:
             summary="Junior has no completed or failed scan to review.",
             next_step="Run a scan when the profile and company sources are ready.",
             endpoint="settings_scan_diagnostics",
+            action_label="Review latest scan",
         )
 
     status = str(row["status"])
@@ -139,6 +169,7 @@ def _scan_health_card(database_path: Path) -> HealthCard:
             ),
             next_step=_next_step_for_category(category),
             endpoint="settings_scan_diagnostics",
+            action_label="Review latest scan",
         )
     if status == "completed_with_warnings":
         categories = _scan_error_categories(database_path, int(row["id"]))
@@ -154,6 +185,7 @@ def _scan_health_card(database_path: Path) -> HealthCard:
             ),
             next_step="Open scan details to review the affected companies.",
             endpoint="settings_scan_diagnostics",
+            action_label="Review latest scan warnings",
         )
 
     email_status = str(row["email_status"] or "not_requested")
@@ -166,6 +198,7 @@ def _scan_health_card(database_path: Path) -> HealthCard:
             summary="The latest report completed, but email was not delivered.",
             next_step="Review Email Setup and use Test Connection.",
             endpoint="settings_scan_diagnostics",
+            action_label="Review latest scan",
         )
     return HealthCard(
         title="Latest scan",
@@ -175,6 +208,7 @@ def _scan_health_card(database_path: Path) -> HealthCard:
         summary="The latest scan completed successfully.",
         next_step="No action is needed.",
         endpoint="settings_scan_diagnostics",
+        action_label="Review latest scan",
     )
 
 
@@ -220,6 +254,7 @@ def _source_health_card(database_path: Path) -> HealthCard:
             summary="No company sources are configured yet.",
             next_step="Add companies before running a targeted scan.",
             endpoint="settings_source_health",
+            action_label="Open Company Source Health",
         )
     if failing:
         category = "network" if "network" in categories else "collector"
@@ -234,6 +269,7 @@ def _source_health_card(database_path: Path) -> HealthCard:
             ),
             next_step="Open source health and review the affected companies.",
             endpoint="settings_source_health",
+            action_label="Open Company Source Health",
         )
     tone = "success" if healthy else "warning"
     state = "Healthy" if healthy and not untested else "Testing incomplete"
@@ -252,6 +288,7 @@ def _source_health_card(database_path: Path) -> HealthCard:
             else "Test enabled company sources before relying on scheduled scans."
         ),
         endpoint="settings_source_health",
+        action_label="Open Company Source Health",
     )
 
 

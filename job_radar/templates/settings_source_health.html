@@ -4,14 +4,19 @@
 {% block title %}Company Source Health - junior{% endblock %}
 
 {% block content %}
-<p><a href="{{ url_for('settings_diagnostics') }}">&larr; Diagnostics</a></p>
+<p>
+    <a href="{{ url_for('companies') }}">&larr; Companies</a>
+    <span aria-hidden="true"> · </span>
+    <a href="{{ url_for('settings_diagnostics') }}">Diagnostics summary</a>
+</p>
 <h1 class="page-title">Company Source Health</h1>
 
 <section class="page-card">
     <p>
-        A normal scan and a separate connection test answer different questions.
-        A scan collects and scores jobs. A connection test only confirms that
-        Junior can read the public source; it does not import jobs.
+        This is the working area for testing the recruiting sources used by
+        your companies. A normal scan collects and scores jobs. A connection
+        test only confirms that Junior can read one public source; it does not
+        import jobs.
     </p>
     <p class="muted">
         “Not separately tested” does not mean a source is broken. The latest-scan
@@ -54,8 +59,10 @@
                         <th><input id="select-all-sources" type="checkbox" aria-label="Select all sources"></th>
                         <th>Company</th>
                         <th>Platform</th>
-                        <th>Latest scan</th>
-                        <th>Separate test</th>
+                        <th>Latest scan result</th>
+                        <th>Latest scan details</th>
+                        <th>Connection test</th>
+                        <th>Test details</th>
                         <th>Last checked</th>
                         <th>Jobs returned</th>
                     </tr>
@@ -74,8 +81,10 @@
                         </td>
                         <td><a href="{{ url_for('company_detail', company_key=source.employer_id) }}">{{ source.employer_name }}</a></td>
                         <td>{{ source.source_label }}</td>
-                        <td title="{{ source.latest_scan_message }}">{{ source.latest_scan_state }}</td>
-                        <td title="{{ source.message }}">{{ source.state_label }}</td>
+                        <td>{{ source.latest_scan_state }}</td>
+                        <td>{{ source.latest_scan_message }}</td>
+                        <td>{{ source.state_label }}</td>
+                        <td>{{ source.message }}</td>
                         <td>{{ source.tested_at or "Not separately tested" }}</td>
                         <td>{{ source.job_count if source.job_count is not none else "—" }}</td>
                     </tr>

@@ -381,6 +381,8 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
             calls["destroyed"] = True
 
     class FakeWebview:
+        settings: dict[str, object] = {}
+
         @staticmethod
         def create_window(title: str, url: str, **kwargs: Any) -> FakeWindow:
             calls["window"] = (title, url, kwargs)
@@ -411,7 +413,7 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
     )
 
     title, url, options = calls["window"]
-    assert title == "Junior — SP5 Build 1.4"
+    assert title == "Junior — SP5 Build 1.5"
     assert url == "http://127.0.0.1:5000/"
     assert options["resizable"] is True
     assert options["min_size"] == (960, 640)
@@ -425,6 +427,7 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
         "icon": str(icon_path),
         "private_mode": True,
     }
+    assert FakeWebview.settings["ALLOW_DOWNLOADS"] is True
     assert shutdown_event.is_set()
     assert server_stopped.is_set()
 
@@ -520,6 +523,8 @@ def test_native_window_restores_and_saves_geometry(
             pass
 
     class FakeWebview:
+        settings: dict[str, object] = {}
+
         @staticmethod
         def create_window(title: str, url: str, **kwargs: Any) -> FakeWindow:
             calls["window"] = (title, url, kwargs)

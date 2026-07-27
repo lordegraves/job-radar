@@ -25,8 +25,10 @@ def test_last_scan_log_is_replaced_and_private_fields_are_dropped(
         event="company_collection_completed",
         scan_run_id=7,
         company_number=1,
+        company_id="example-employer",
         source_type="eightfold",
         jobs_found=12,
+        failure_reason="The public source temporarily limited requests.",
         company_name="Private Employer",
         job_title="Private Job",
         source_url="https://example.invalid/private",
@@ -38,7 +40,11 @@ def test_last_scan_log_is_replaced_and_private_fields_are_dropped(
     ).splitlines()
     payload = json.loads(lines[-1])
     assert payload["source_type"] == "eightfold"
+    assert payload["company_id"] == "example-employer"
     assert payload["jobs_found"] == 12
+    assert payload["failure_reason"] == (
+        "The public source temporarily limited requests."
+    )
     assert "company_name" not in payload
     assert "job_title" not in payload
     assert "source_url" not in payload

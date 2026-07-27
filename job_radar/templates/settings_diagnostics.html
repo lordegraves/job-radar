@@ -56,7 +56,16 @@
 <h1 class="page-title">Diagnostics</h1>
 
 <div class="page-card">
-    <p>See what is healthy and what needs attention without reading technical logs.</p>
+    <h2>Junior health and troubleshooting</h2>
+    <p>
+        Confirm that Junior's major functions are ready, see what needs
+        attention, and collect safe information for troubleshooting.
+    </p>
+    <p>
+        Company-specific connection tests and targeted rescans belong in
+        Company Source Health. Diagnostics summarizes their health and links
+        to that workspace.
+    </p>
     <p class="muted">
         Categories distinguish configuration, collector, network, email, and
         unexpected application problems. Raw exceptions, credentials, profile
@@ -75,24 +84,28 @@
         <p>{{ card.summary }}</p>
         <p class="health-next-step"><strong>Next step:</strong> {{ card.next_step }}</p>
         {% if card.endpoint %}
-        <p><a href="{{ url_for(card.endpoint) }}">View details</a></p>
+        <p><a href="{{ url_for(card.endpoint) }}">{{ card.action_label }}</a></p>
         {% endif %}
     </section>
     {% endfor %}
 </div>
 
 <div class="page-card">
-    <h2>Need more detail?</h2>
+    <h2>Sanitized troubleshooting logs</h2>
     {% if diagnostic_logs %}
     <p>Open or download a sanitized Junior log. <strong>junior-last-scan.log</strong> explains the most recent scan step by step without including job listings, profile settings, or résumé contents.</p>
     <p class="muted">Only the newest {{ diagnostic_logs|length }} recognized log(s) are listed. These text files can be attached to a support email.</p>
     <table>
         <caption class="visually-hidden">Available diagnostic logs</caption>
-        <thead><tr><th>Log</th><th>Modified</th><th>Size</th><th>Action</th></tr></thead>
+        <thead><tr><th>Log</th><th>What it contains</th><th>Modified</th><th>Size</th><th>Action</th></tr></thead>
         <tbody>
             {% for log in diagnostic_logs %}
             <tr>
-                <td><a href="{{ url_for('settings_diagnostic_log', log_name=log.name) }}">{{ log.name }}</a></td>
+                <td>
+                    <a href="{{ url_for('settings_diagnostic_log', log_name=log.name) }}">{{ log.title }}</a>
+                    <div class="muted"><code>{{ log.name }}</code></div>
+                </td>
+                <td>{{ log.description }}</td>
                 <td>{{ log.modified_at }}</td>
                 <td>{{ log.size_bytes }} bytes</td>
                 <td><a href="{{ url_for('settings_diagnostic_log_download', log_name=log.name) }}">Download</a></td>

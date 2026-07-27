@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 import requests
 
 from job_radar.collectors.greenhouse import CollectorError
@@ -43,6 +44,37 @@ def test_collector_failure_distinguishes_network_without_raw_text() -> None:
     assert outcome.category == "network"
     assert outcome.category_label == "Network"
     assert "could not reach" in outcome.message
+    assert "private" not in outcome.message
+    assert "token" not in outcome.message
+
+
+@pytest.mark.parametrize(
+    ("status_code", "category", "message_fragment"),
+    (
+        (403, "collector", "denied"),
+        (404, "collector", "not found"),
+        (429, "network", "limited"),
+        (503, "network", "temporary problem"),
+    ),
+)
+def test_collector_failure_explains_safe_http_categories(
+    status_code: int,
+    category: str,
+    message_fragment: str,
+) -> None:
+    response = requests.Response()
+    response.status_code = status_code
+    cause = requests.HTTPError(
+        "private response body and token",
+        response=response,
+    )
+    error = CollectorError("private collector response")
+    error.__cause__ = cause
+
+    outcome = classify_collector_failure(error)
+
+    assert outcome.category == category
+    assert message_fragment in outcome.message
     assert "private" not in outcome.message
     assert "token" not in outcome.message
 

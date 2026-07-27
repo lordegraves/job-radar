@@ -353,6 +353,19 @@ Each card shows its current state, problem category, summary, and next step. Cat
 
 The page also lists up to 20 recognized sanitized Junior logs. Opening one shows only the newest 200,000 bytes so an unexpectedly large file cannot overwhelm the browser. Arbitrary filenames and nested paths are rejected. **Copy details** copies version, schema, data-location, and health state without copying log text or private profile information. **Open Data Directory** opens the workspace that owns the active settings; it does not expose arbitrary server paths through the browser.
 
+Open **Companies > Company Source Health** when one company needs attention,
+when sources have not been tested, or when selected companies should be
+rescanned without replacing the latest full-scan report. This workspace keeps
+the latest full-scan result separate from the latest connection test and shows
+the safe explanation for each result directly. Common explanations distinguish
+an unreachable source, denied public request, missing address, temporary
+request limit, recruiting-service problem, and a collector that could not
+interpret the returned job list.
+
+The recognized sanitized logs use plain-language names and descriptions.
+Download saves one of these text files through the operating system's normal
+download workflow. Arbitrary filenames and nested paths remain rejected.
+
 ## Reports
 
 The Reports page opens the latest successful scan outputs.
@@ -664,8 +677,10 @@ Common situations:
 - **The window does not open:** close any stale Junior process through Task
   Manager, then try once more. If Windows reports a web-rendering component
   problem, repair or install Microsoft Edge WebView2 Runtime.
-- **A company source fails:** open Companies or Diagnostics and review the
-  plain-language source status. Other healthy companies can still complete.
+- **A company source fails:** open **Companies > Company Source Health** and
+  compare the latest scan result with the separate connection test. Test that
+  source again or run a targeted scan. Other healthy companies can still
+  complete.
 - **A scheduled scan did not run:** confirm scheduling is enabled, at least one
   weekday is selected, and **Apply schedule to Windows** reports the
   `\Junior Scheduled Scan` task as installed. The current task runs only while

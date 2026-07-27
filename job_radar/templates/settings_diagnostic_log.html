@@ -1,7 +1,7 @@
 {# Displays only a bounded, allowlisted Junior diagnostic log. #}
 {% extends "base.html" %}
 
-{% block title %}{{ log_view.name }} - Diagnostics - junior{% endblock %}
+{% block title %}{{ log_view.title }} - Diagnostics - junior{% endblock %}
 
 {% block page_styles %}
 <style>
@@ -15,13 +15,17 @@
 
 {% block content %}
 <p><a href="{{ url_for('settings_diagnostics') }}">&larr; Diagnostics</a></p>
-<h1 class="page-title">Diagnostic log</h1>
+<h1 class="page-title">{{ log_view.title }}</h1>
 
 <div class="page-card">
-    <p><strong>Viewing:</strong> <code>{{ log_view.name }}</code></p>
+    <p>{{ log_view.description }}</p>
+    <p><strong>File:</strong> <code>{{ log_view.name }}</code></p>
     <p class="muted">
         This view is read-only and limited to sanitized logs Junior recognizes.
         {% if log_view.truncated %}Earlier entries are hidden because the file is large.{% endif %}
+    </p>
+    <p>
+        <a class="button" href="{{ url_for('settings_diagnostic_log_download', log_name=log_view.name) }}">Download this log</a>
     </p>
     <pre class="diagnostic-log">{{ log_view.content }}</pre>
 </div>

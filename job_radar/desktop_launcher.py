@@ -225,6 +225,9 @@ def run_native_window(
     server_thread.start()
     try:
         wait_until_ready(url)
+        # pywebview disables attachment downloads by default. Junior enables
+        # them so Download links use the platform's normal download workflow.
+        webview_module.settings["ALLOW_DOWNLOADS"] = True
         window_state = load_window_state(window_state_path)
         window = webview_module.create_window(
             f"Junior — {__build__}",

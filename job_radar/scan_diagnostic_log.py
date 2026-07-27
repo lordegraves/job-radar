@@ -15,6 +15,7 @@ _SAFE_FIELDS = {
     "trigger",
     "stage",
     "company_number",
+    "company_id",
     "companies_requested",
     "companies_scanned",
     "source_type",
@@ -32,6 +33,7 @@ _SAFE_FIELDS = {
     "report_status",
     "email_status",
     "failure_category",
+    "failure_reason",
     "elapsed_seconds",
 }
 
