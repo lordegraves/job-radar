@@ -1,7 +1,7 @@
 #define AppName "Junior"
 #define AppVersion "0.2.0"
-#define BuildLabel "SP5 Build 1.6"
-#define BuildSlug "SP5-build-1.6"
+#define BuildLabel "SP5 Build 1.7"
+#define BuildSlug "SP5-build-1.7"
 #define AppPublisher "Junior"
 #define AppExeName "Junior.exe"
 
@@ -24,7 +24,9 @@ UninstallDisplayIcon={app}\{#AppExeName}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-CloseApplications=yes
+; Junior's external update handoff waits for the desktop process to exit.
+; Restart Manager must not force-close pywebview/.NET processes during setup.
+CloseApplications=no
 RestartApplications=no
 ChangesEnvironment=no
 

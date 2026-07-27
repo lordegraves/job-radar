@@ -6,7 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
-- Label field-test packages and every application page as `SP5 Build 1.6`.
+- Label field-test packages and every application page as `SP5 Build 1.7`.
+- Prevent the Windows updater from invoking Restart Manager after Junior has
+  already completed its clean update handoff.
+- Keep Diagnostics information cards within their grid rows and give the
+  troubleshooting-log table readable column widths.
 - Prevent the Windows update installer from racing Junior's still-running
   desktop process. A detached handoff now waits for Junior to close cleanly
   before starting the already verified installer and reopening the app.

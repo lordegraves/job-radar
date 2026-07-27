@@ -126,9 +126,13 @@ param(
 
 try {
     Wait-Process -Id $ParentProcessId -ErrorAction SilentlyContinue
+    # Give Windows a brief moment to release the desktop executable after the
+    # verified parent process exits. Setup must never force-close Junior.
+    Start-Sleep -Milliseconds 1000
     Start-Process -FilePath $InstallerPath -ArgumentList @(
         '/SILENT',
         '/NORESTART',
+        '/NOCLOSEAPPLICATIONS',
         '/AUTOLAUNCH'
     )
 }

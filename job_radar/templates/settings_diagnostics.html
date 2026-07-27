@@ -20,7 +20,7 @@
         margin-top: 18px;
     }
     .diagnostic-info-card {
-        height: 100%;
+        box-sizing: border-box;
     }
     .diagnostic-info-card h2 {
         margin-top: 0;
@@ -81,6 +81,23 @@
         max-height: 320px;
         overflow: auto;
         white-space: pre-wrap;
+    }
+    .diagnostic-log-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    .diagnostic-log-table th,
+    .diagnostic-log-table td {
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+    .diagnostic-log-table .log-name { width: 20%; }
+    .diagnostic-log-table .log-description { width: auto; }
+    .diagnostic-log-table .log-modified { width: 170px; }
+    .diagnostic-log-table .log-size { width: 105px; }
+    .diagnostic-log-table .log-action {
+        white-space: nowrap;
+        width: 105px;
     }
     @media (max-width: 800px) {
         .diagnostics-grid,
@@ -244,8 +261,15 @@
     {% if diagnostic_logs %}
     <p>Open or download a sanitized Junior log. <strong>junior-last-scan.log</strong> explains the most recent scan step by step without including job listings, profile settings, or résumé contents.</p>
     <p class="muted">Only the newest {{ diagnostic_logs|length }} recognized log(s) are listed. These text files can be attached to a support email.</p>
-    <table>
+    <table class="diagnostic-log-table">
         <caption class="visually-hidden">Available diagnostic logs</caption>
+        <colgroup>
+            <col class="log-name">
+            <col class="log-description">
+            <col class="log-modified">
+            <col class="log-size">
+            <col class="log-action">
+        </colgroup>
         <thead><tr><th>Log</th><th>What it contains</th><th>Modified</th><th>Size</th><th>Action</th></tr></thead>
         <tbody>
             {% for log in diagnostic_logs %}

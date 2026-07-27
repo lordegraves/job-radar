@@ -309,8 +309,9 @@ def test_update_launcher_uses_no_command_shell(tmp_path: Path) -> None:
     helper_path = tmp_path / "junior-update-handoff.ps1"
     helper_text = helper_path.read_text(encoding="utf-8")
     assert "Wait-Process -Id $ParentProcessId" in helper_text
+    assert "Start-Sleep -Milliseconds 1000" in helper_text
     assert "Start-Process -FilePath $InstallerPath" in helper_text
-    assert "'/CLOSEAPPLICATIONS'" not in helper_text
+    assert "'/NOCLOSEAPPLICATIONS'" in helper_text
 
 
 def test_desktop_update_downloads_verifies_launches_and_closes(
