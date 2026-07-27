@@ -6,8 +6,8 @@
 {% block content %}
 <p>
     <a href="{{ url_for('companies') }}">&larr; Companies</a>
-    <span aria-hidden="true"> · </span>
-    <a href="{{ url_for('settings_diagnostics') }}">Diagnostics summary</a>
+    <span aria-hidden="true"> &middot; </span>
+    <a href="{{ url_for('settings_diagnostics') }}">Diagnostics</a>
 </p>
 <h1 class="page-title">Company Source Health</h1>
 
@@ -15,12 +15,12 @@
     <p>
         This is the working area for testing the recruiting sources used by
         your companies. A normal scan collects and scores jobs. A connection
-        test only confirms that Junior can read one public source; it does not
-        import jobs.
+        test only confirms that Junior can read a small sample from one public
+        source; it does not import jobs.
     </p>
     <p class="muted">
         “Not separately tested” does not mean a source is broken. The latest-scan
-        column shows whether the most recent scan recorded a warning.
+        result shows whether the most recent scan recorded a warning.
     </p>
     <p>
         <a href="{{ url_for('settings_job_platforms') }}">View the read-only Collector Catalog</a>
@@ -30,46 +30,76 @@
 <section class="page-card" id="source-test-progress" data-status-url="{{ url_for('settings_source_health_status') }}">
     <h2>Test company sources</h2>
     <p>Tests run one at a time in the background so Junior remains usable.</p>
-    <p id="source-test-status">
-        {% if test_status.running %}
-        Testing {{ test_status.completed }} of {{ test_status.total }} source(s).
-        {% else %}
-        No source test is currently running.
-        {% endif %}
-    </p>
+
+    <div class="source-test-summary" aria-live="polite">
+        <div class="source-test-summary-header">
+            <strong id="source-test-status">
+                {% if test_status.running %}
+                Testing {{ test_status.completed }} of {{ test_status.total }} source(s).
+                {% elif test_status.total %}
+                Testing finished: {{ test_status.completed }} checked,
+                {{ test_status.failed }} need attention.
+                {% else %}
+                No source test is currently running.
+                {% endif %}
+            </strong>
+            <span id="source-test-percent">
+                {% if test_status.total %}
+                {{ ((test_status.completed * 100) / test_status.total)|round|int }}%
+                {% else %}
+                0%
+                {% endif %}
+            </span>
+        </div>
+        <progress
+            id="source-test-meter"
+            max="{{ test_status.total or 1 }}"
+            value="{{ test_status.completed }}"
+        ></progress>
+        <p id="source-test-step" class="muted">
+            {{ test_status.current_step or "Select one or more sources to begin." }}
+        </p>
+        <div id="source-test-results" class="source-test-results">
+            {% for result in test_status.results %}
+            <p class="source-test-result source-test-result-{{ result.state }}">
+                <strong>{{ result.employer_name }}:</strong> {{ result.message }}
+            </p>
+            {% endfor %}
+        </div>
+    </div>
+
     <form method="post" action="{{ url_for('settings_source_health_test') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" name="test_scope" value="untested">Test all untested sources</button>
-        <button class="button-secondary" type="submit" name="test_scope" value="selected">Test selected sources</button>
-        <button
-            class="button-secondary"
-            type="submit"
-            formaction="{{ url_for('run_selected_scan') }}"
-        >Scan selected companies</button>
+        <div class="button-row">
+            <button type="submit" name="test_scope" value="untested">Test all untested sources</button>
+            <button class="button-secondary" type="submit" name="test_scope" value="selected">Test selected sources</button>
+            <button
+                class="button-secondary"
+                type="submit"
+                formaction="{{ url_for('run_selected_scan') }}"
+            >Scan selected companies</button>
+        </div>
         <p class="muted">
             A selected-company scan imports and scores current jobs but writes a
             separate targeted report. It does not replace the latest full-scan report.
         </p>
 
-        <div class="table-wrap">
+        <div class="table-wrap source-health-table">
             <table>
                 <caption class="visually-hidden">Company source health and connection-test results</caption>
                 <thead>
                     <tr>
                         <th><input id="select-all-sources" type="checkbox" aria-label="Select all sources"></th>
-                        <th>Company</th>
-                        <th>Platform</th>
+                        <th>Company and platform</th>
                         <th>Latest scan result</th>
-                        <th>Latest scan details</th>
                         <th>Connection test</th>
-                        <th>Test details</th>
                         <th>Last checked</th>
                         <th>Jobs returned</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for source in sources %}
-                    <tr>
+                    <tr data-employer-id="{{ source.employer_id }}">
                         <td>
                             <input
                                 class="source-select"
@@ -79,14 +109,20 @@
                                 aria-label="Select {{ source.employer_name }}"
                             >
                         </td>
-                        <td><a href="{{ url_for('company_detail', company_key=source.employer_id) }}">{{ source.employer_name }}</a></td>
-                        <td>{{ source.source_label }}</td>
-                        <td>{{ source.latest_scan_state }}</td>
-                        <td>{{ source.latest_scan_message }}</td>
-                        <td>{{ source.state_label }}</td>
-                        <td>{{ source.message }}</td>
-                        <td>{{ source.tested_at or "Not separately tested" }}</td>
-                        <td>{{ source.job_count if source.job_count is not none else "—" }}</td>
+                        <td>
+                            <a href="{{ url_for('company_detail', company_key=source.employer_id) }}">{{ source.employer_name }}</a>
+                            <span class="source-cell-detail">{{ source.source_label }}</span>
+                        </td>
+                        <td>
+                            <strong>{{ source.latest_scan_state }}</strong>
+                            <span class="source-cell-detail">{{ source.latest_scan_message }}</span>
+                        </td>
+                        <td>
+                            <strong data-source-state>{{ source.state_label }}</strong>
+                            <span class="source-cell-detail" data-source-message>{{ source.message }}</span>
+                        </td>
+                        <td data-source-checked>{{ source.tested_at or "Not separately tested" }}</td>
+                        <td data-source-jobs>{{ source.job_count if source.job_count is not none else "—" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -108,22 +144,64 @@
 
     const container = document.getElementById("source-test-progress");
     const status = document.getElementById("source-test-status");
-    if (!container || !status) return;
-    let observedRunning = {{ "true" if test_status.running else "false" }};
+    const percent = document.getElementById("source-test-percent");
+    const meter = document.getElementById("source-test-meter");
+    const step = document.getElementById("source-test-step");
+    const results = document.getElementById("source-test-results");
+    if (!container || !status || !percent || !meter || !step || !results) return;
+
+    const updateResult = (result) => {
+        const row = document.querySelector(
+            `tr[data-employer-id="${CSS.escape(result.employer_id)}"]`
+        );
+        if (!row) return;
+        row.querySelector("[data-source-state]").textContent =
+            result.state === "success" ? "Connected" : "Needs attention";
+        row.querySelector("[data-source-message]").textContent = result.message;
+        row.querySelector("[data-source-checked]").textContent =
+            result.tested_at || "Test completed";
+        row.querySelector("[data-source-jobs]").textContent =
+            result.job_count ?? "—";
+    };
+
+    const renderResults = (items) => {
+        results.replaceChildren();
+        items.forEach((item) => {
+            updateResult(item);
+            const message = document.createElement("p");
+            message.className = `source-test-result source-test-result-${item.state}`;
+            const name = document.createElement("strong");
+            name.textContent = `${item.employer_name}: `;
+            message.append(name, document.createTextNode(item.message));
+            results.append(message);
+        });
+    };
+
     const poll = async () => {
         try {
             const response = await fetch(container.dataset.statusUrl, {cache: "no-store"});
+            if (!response.ok) throw new Error("status request failed");
             const result = await response.json();
+            const completedPercent = result.total
+                ? Math.round((result.completed / result.total) * 100)
+                : 0;
+            meter.max = result.total || 1;
+            meter.value = result.completed;
+            percent.textContent = `${completedPercent}%`;
+            step.textContent = result.current_label
+                ? `${result.current_label}: ${result.current_step}`
+                : result.current_step || "Select one or more sources to begin.";
+            renderResults(result.results || []);
             if (result.running) {
-                observedRunning = true;
                 status.textContent = `Testing ${result.completed} of ${result.total} source(s).`;
                 window.setTimeout(poll, 1000);
-            } else if (result.total && observedRunning) {
-                status.textContent = `Testing finished: ${result.completed} checked, ${result.failed} need attention.`;
-                window.setTimeout(() => window.location.reload(), 800);
+            } else if (result.total) {
+                status.textContent =
+                    `Testing finished: ${result.completed} checked, ${result.failed} need attention.`;
             }
         } catch {
-            status.textContent = "Junior could not refresh test progress. Reload this page to check the results.";
+            status.textContent =
+                "Junior could not refresh test progress. Reload this page to check the results.";
         }
     };
     poll();

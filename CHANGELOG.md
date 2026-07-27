@@ -6,6 +6,20 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Label field-test packages and every application page as `SP5 Build 1.6`.
+- Prevent the Windows update installer from racing Junior's still-running
+  desktop process. A detached handoff now waits for Junior to close cleanly
+  before starting the already verified installer and reopening the app.
+- Promote Diagnostics to a top-level health and troubleshooting workspace.
+  Settings now contains only editable user controls, while Diagnostics owns
+  installed-build details, runtime paths, scan defaults, health summaries,
+  and sanitized troubleshooting logs.
+- Add live company-source test progress with the current company, current
+  step, percentage complete, safe per-source results, and an automatically
+  refreshed readable results table.
+- Bound Eightfold connection tests to a small source sample so health checks
+  do not trigger thousands of detail requests or create avoidable rate-limit
+  failures. Normal Eightfold scans retain full collection behavior.
 - Clarified Diagnostics as Junior's overall health and troubleshooting
   workspace while Company Source Health owns per-company connection tests and
   targeted rescans. Source results now show their safe explanations directly

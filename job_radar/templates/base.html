@@ -227,6 +227,60 @@
             color: var(--muted);
         }
 
+        .source-test-summary {
+            background: var(--surface-muted);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin: 14px 0 18px;
+            padding: 14px 16px;
+        }
+
+        .source-test-summary-header {
+            align-items: center;
+            display: flex;
+            gap: 16px;
+            justify-content: space-between;
+        }
+
+        #source-test-meter {
+            accent-color: var(--accent);
+            display: block;
+            height: 14px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .source-test-results {
+            display: grid;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .source-test-result {
+            border-left: 4px solid var(--border);
+            margin: 0;
+            padding: 7px 10px;
+        }
+
+        .source-test-result-success {
+            border-left-color: var(--link);
+        }
+
+        .source-test-result-failed {
+            border-left-color: var(--danger-border);
+        }
+
+        .source-cell-detail {
+            color: var(--muted);
+            display: block;
+            margin-top: 5px;
+            min-width: 12rem;
+        }
+
+        [data-source-checked] {
+            min-width: 9rem;
+        }
+
         .visually-hidden {
             clip: rect(0 0 0 0);
             clip-path: inset(50%);
@@ -522,12 +576,7 @@
             gap: 8px;
         }
 
-        @media (max-width: 800px) {
-            .app-header {
-                padding: 12px 16px;
-                position: static;
-            }
-
+        @media (max-width: 1280px) {
             .app-header-inner {
                 align-items: flex-start;
                 flex-direction: column;
@@ -536,6 +585,13 @@
 
             .site-nav {
                 justify-content: flex-start;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .app-header {
+                padding: 12px 16px;
+                position: static;
             }
 
             .page {
@@ -586,7 +642,8 @@
                 <a class="{% if request.endpoint in ['reports', 'report_view', 'report_file'] %}active-nav{% endif %}" href="{{ url_for('reports') }}"{% if request.endpoint in ['reports', 'report_view', 'report_file'] %} aria-current="page"{% endif %}>Reports</a>
                 <a class="{% if request.endpoint in ['companies', 'company_detail', 'add_company_page'] %}active-nav{% endif %}" href="{{ url_for('companies') }}"{% if request.endpoint in ['companies', 'company_detail', 'add_company_page'] %} aria-current="page"{% endif %}>Companies</a>
                 <a class="{% if request.endpoint in ['scan', 'run_scan'] %}active-nav{% endif %}" href="{{ url_for('scan') }}"{% if request.endpoint in ['scan', 'run_scan'] %} aria-current="page"{% endif %}>Scan</a>
-                <a class="{% if request.endpoint and (request.endpoint == 'settings' or request.endpoint.startswith('settings_')) %}active-nav{% endif %}" href="{{ url_for('settings') }}"{% if request.endpoint and (request.endpoint == 'settings' or request.endpoint.startswith('settings_')) %} aria-current="page"{% endif %}>Settings</a>
+                <a class="{% if request.endpoint in ['settings_diagnostics', 'settings_source_health', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'] %}active-nav{% endif %}" href="{{ url_for('settings_diagnostics') }}"{% if request.endpoint in ['settings_diagnostics', 'settings_source_health', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'] %} aria-current="page"{% endif %}>Diagnostics</a>
+                <a class="{% if request.endpoint and (request.endpoint == 'settings' or (request.endpoint.startswith('settings_') and request.endpoint not in ['settings_diagnostics', 'settings_source_health', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'])) %}active-nav{% endif %}" href="{{ url_for('settings') }}"{% if request.endpoint and (request.endpoint == 'settings' or (request.endpoint.startswith('settings_') and request.endpoint not in ['settings_diagnostics', 'settings_source_health', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'])) %} aria-current="page"{% endif %}>Settings</a>
                 {% if admin_mode_active %}
                 <a class="{% if request.endpoint and request.endpoint.startswith('administration') %}active-nav{% endif %}" href="{{ url_for('administration') }}"{% if request.endpoint and request.endpoint.startswith('administration') %} aria-current="page"{% endif %}>Administration</a>
                 {% endif %}

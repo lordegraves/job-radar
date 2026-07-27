@@ -47,9 +47,15 @@ def test_connection_success_stores_count_without_importing_jobs(
         source_url="https://example.invalid/jobs/1",
         content_hash="example-hash",
     )
+    received_config = {}
+
+    def collect(config):
+        received_config.update(config)
+        return [posting]
+
     monkeypatch.setattr(
         "job_radar.employer_connection_service.collect_jobs_for_company",
-        lambda config: [posting],
+        collect,
     )
 
     result = run_employer_connection_test(database_path, employer_id)
@@ -59,6 +65,8 @@ def test_connection_success_stores_count_without_importing_jobs(
     assert result.last_success_at is not None
     assert result.last_error_at is None
     assert result.message == "Connection succeeded and returned 1 job."
+    assert received_config["max_pages"] == 1
+    assert received_config["connection_test"] is True
     with sqlite3.connect(database_path) as connection:
         assert connection.execute(
             "SELECT COUNT(*) FROM job_postings"

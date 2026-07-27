@@ -1,4 +1,4 @@
-{# Shows the active storage, scan, report, and email settings without editing them. #}
+{# Keeps editable user settings separate from operational diagnostics. #}
 {% extends "base.html" %}
 
 {% block title %}Settings - junior{% endblock %}
@@ -6,10 +6,11 @@
 {% block page_styles %}
 <style>
     .settings-grid {
+        align-items: stretch;
         display: grid;
-        gap: 16px;
+        gap: 18px;
         grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        margin-top: 16px;
+        margin-top: 18px;
     }
 
     .settings-card {
@@ -17,7 +18,7 @@
         border: 1px solid var(--border);
         border-radius: 14px;
         box-shadow: var(--shadow);
-        padding: 18px 20px;
+        padding: 20px 22px;
     }
 
     .settings-card h2 {
@@ -57,119 +58,16 @@
 <h1 class="page-title">Settings</h1>
 
 <div class="page-card">
-    <p>Review Junior's active runtime information or update the available settings below. Runtime paths remain read-only.</p>
+    <p>Configure Junior's reports, email, scan schedule, and optional external company lookup.</p>
     <p>
-        Installation-wide and advanced controls belong in Administration.
-        <a href="{{ url_for('administration_unlock') }}">Unlock Administration</a>
+        Health checks, version information, runtime paths, and logs belong in
+        <a href="{{ url_for('settings_diagnostics') }}">Diagnostics</a>.
+        Installation-wide controls belong in
+        <a href="{{ url_for('administration_unlock') }}">Unlock Administration</a>.
     </p>
 </div>
 
 <div class="settings-grid">
-    <section class="settings-card">
-        <h2>About junior and updates</h2>
-        <ul class="settings-list">
-            <li>
-                <span class="settings-label">Installed version</span>
-                <span class="settings-value">{{ application_info.version }}</span>
-            </li>
-            <li>
-                <span class="settings-label">Tester build</span>
-                <span class="settings-value">{{ application_info.build_label }}</span>
-            </li>
-            <li>
-                <span class="settings-label">Release channel</span>
-                <span class="settings-value">{{ application_info.release_channel }}</span>
-            </li>
-            <li>
-                <span class="settings-label">Database / profile schema</span>
-                <span class="settings-value">{{ application_info.database_schema_version }} / {{ application_info.profile_schema_version }}</span>
-            </li>
-        </ul>
-        <p class="muted">Junior checks only when you ask. It never downloads or installs an update without your approval.</p>
-        <form method="post" action="{{ url_for('settings_about_check_updates') }}">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Check for updates</button>
-        </form>
-        {% if update_check %}
-        <div class="notice {{ 'success' if update_check.status == 'current' else 'warning' }}">
-            <p><strong>{{ update_check.message }}</strong></p>
-            {% if update_check.release_url %}
-            <p><a href="{{ update_check.release_url }}" target="_blank" rel="noopener noreferrer">View the verified release on GitHub</a></p>
-            {% endif %}
-            {% if update_check.status == 'available' and update_install_available and update_check.installer_url and update_check.checksum_url %}
-            <p>
-                Installing will close Junior. The verified installer will update
-                the application and reopen it. Your profiles, résumé, companies,
-                applications, and history remain unchanged.
-            </p>
-            <form method="post" action="{{ url_for('settings_install_update') }}" data-update-install-form>
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" data-update-install-button>Download and install update</button>
-            </form>
-            {% elif update_check.status == 'available' and update_install_available %}
-            <p class="muted">This release is missing a verified installer or checksum. Junior will not install it.</p>
-            {% endif %}
-        </div>
-        {% endif %}
-        <p class="muted">GPL-3.0-only. Early field testing: Dawn Peacock.</p>
-    </section>
-
-    <section class="settings-card">
-        <h2>Runtime paths</h2>
-        <ul class="settings-list">
-            <li>
-                <span class="settings-label">Active settings file</span>
-                <code class="settings-value">{{ settings_view.settings_path }}</code>
-            </li>
-            <li>
-                <span class="settings-label">Database path</span>
-                <code class="settings-value">{{ settings_view.database_path }}</code>
-            </li>
-            <li>
-                <span class="settings-label">Reports path</span>
-                <code class="settings-value">{{ settings_view.reports_path }}</code>
-            </li>
-            <li>
-                <span class="settings-label">Logs path</span>
-                <code class="settings-value">{{ settings_view.logs_path }}</code>
-            </li>
-            <li>
-                <span class="settings-label">Candidate profile path</span>
-                {% if settings_view.candidate_profile_path %}
-                <code class="settings-value">{{ settings_view.candidate_profile_path }}</code>
-                {% else %}
-                <span class="muted">Not configured</span>
-                {% endif %}
-            </li>
-        </ul>
-    </section>
-
-    <section class="settings-card">
-        <h2>GUI scan defaults</h2>
-        <ul class="settings-list">
-            <li>
-                <span class="settings-label">Scan config path</span>
-                <code class="settings-value">{{ settings_view.scan_config_path }}</code>
-            </li>
-            <li>
-                <span class="settings-label">Scan settings path</span>
-                <code class="settings-value">{{ settings_view.scan_settings_path }}</code>
-            </li>
-            <li>
-                <span class="settings-label">Scoring path</span>
-                <code class="settings-value">{{ settings_view.scan_scoring_path }}</code>
-            </li>
-            <li>
-                <span class="settings-label">HTML report path</span>
-                <code class="settings-value">{{ settings_view.scan_report_path }}</code>
-            </li>
-            <li>
-                <span class="settings-label">Email preview path</span>
-                <code class="settings-value">{{ settings_view.scan_email_preview_path }}</code>
-            </li>
-        </ul>
-    </section>
-
     <section class="settings-card">
         <h2>Report history</h2>
         <ul class="settings-list">
@@ -201,38 +99,20 @@
         <h2>Scan schedule</h2>
         <p>Choose when Junior should run unattended scans.</p>
         <p><a href="{{ url_for('settings_schedule') }}">Set up scan scheduling</a></p>
-        <p class="muted">Operating-system scheduling is connected in the next milestone.</p>
-    </section>
-
-    <section class="settings-card">
-        <h2>Diagnostics</h2>
-        <p>Review safe health summaries for Junior, scans, company sources, and email.</p>
-        <p><a href="{{ url_for('settings_diagnostics') }}">View diagnostics</a></p>
-        <p class="muted">Private contents, credentials, and raw exception text are never shown.</p>
-    </section>
-
-    <section class="settings-card">
-        <h2>Collector Catalog</h2>
-        <p>Review the global ATS and careers-site collectors built into this Junior installation.</p>
-        <p><a href="{{ url_for('settings_job_platforms') }}">View Collector Catalog</a></p>
-        <p class="muted">This global list is available even when the Employer Catalog is empty.</p>
+        <p class="muted">
+            Scheduled scans use the operating system and do not require the
+            Junior window to remain open.
+        </p>
     </section>
 
     <section class="settings-card">
         <h2>External company lookup</h2>
-        <p>Control whether Junior may ask Bing to locate a separate public careers system after local checks fail.</p>
+        <p>
+            Control whether Junior may ask Bing to locate a separate public
+            careers system after local checks fail.
+        </p>
         <p><a href="{{ url_for('settings_company_discovery') }}">Manage external lookup privacy</a></p>
         <p class="muted">The default is Off. Bing is never required for normal scans.</p>
     </section>
-
 </div>
-<script>
-    document.querySelectorAll("[data-update-install-form]").forEach((form) => {
-        form.addEventListener("submit", () => {
-            const button = form.querySelector("[data-update-install-button]");
-            button.disabled = true;
-            button.textContent = "Downloading and verifying update…";
-        });
-    });
-</script>
 {% endblock %}

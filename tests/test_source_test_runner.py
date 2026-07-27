@@ -6,8 +6,11 @@ from job_radar.source_test_runner import SourceTestRunner
 
 
 class _Health:
-    def __init__(self, state: str) -> None:
+    def __init__(self, state: str, message: str, job_count: int | None) -> None:
         self.state = state
+        self.message = message
+        self.job_count = job_count
+        self.tested_at = "2026-07-27 15:00:00"
 
 
 def test_source_test_runner_reports_completion_and_failures() -> None:
@@ -15,11 +18,16 @@ def test_source_test_runner_reports_completion_and_failures() -> None:
 
     def run_test(employer_id: str) -> _Health:
         tested.append(employer_id)
-        return _Health("error" if employer_id == "broken" else "success")
+        if employer_id == "broken":
+            return _Health("error", "The source rejected the request.", None)
+        return _Health("success", "Connection succeeded and returned 12 jobs.", 12)
 
     runner = SourceTestRunner(run_test)
 
-    assert runner.start(["working", "broken"]) is True
+    assert runner.start(
+        ["working", "broken"],
+        labels={"working": "Working Company", "broken": "Broken Company"},
+    ) is True
     for _ in range(100):
         if not runner.status()["running"]:
             break
@@ -32,4 +40,24 @@ def test_source_test_runner_reports_completion_and_failures() -> None:
         "total": 2,
         "failed": 1,
         "current": None,
+        "current_label": None,
+        "current_step": "Testing finished with source failures.",
+        "results": (
+            {
+                "employer_id": "working",
+                "employer_name": "Working Company",
+                "state": "success",
+                "message": "Connection succeeded and returned 12 jobs.",
+                "job_count": 12,
+                "tested_at": "2026-07-27 15:00:00",
+            },
+            {
+                "employer_id": "broken",
+                "employer_name": "Broken Company",
+                "state": "failed",
+                "message": "The source rejected the request.",
+                "job_count": None,
+                "tested_at": "2026-07-27 15:00:00",
+            },
+        ),
     }

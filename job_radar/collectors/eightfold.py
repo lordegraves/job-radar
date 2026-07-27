@@ -29,6 +29,7 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     domain = str(company_config["domain"])
     page_size = get_page_size(company_config, default=DEFAULT_PAGE_SIZE)
     max_pages = get_max_pages(company_config, default=DEFAULT_MAX_PAGES)
+    connection_test = company_config.get("connection_test") is True
     postings: list[JobPosting] = []
     seen: set[str] = set()
 
@@ -70,6 +71,7 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
                 source_url=source_url,
                 domain=domain,
                 raw_position=raw_position,
+                fetch_details=not connection_test,
             )
             if posting is None:
                 continue
@@ -81,6 +83,10 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
 
         count = data.get("count") if isinstance(data, dict) else None
         if isinstance(count, int) and len(postings) >= count:
+            break
+        if max_pages == 1:
+            # Source-health checks deliberately sample one result page. A
+            # normal scan retains the configured multi-page behavior.
             break
         # Eightfold may enforce a smaller server-side page size than Junior
         # requests. Advance by what the server actually returned so valid jobs
@@ -99,6 +105,7 @@ def _build_posting(
     source_url: str,
     domain: str,
     raw_position: dict[str, Any],
+    fetch_details: bool = True,
 ) -> JobPosting | None:
     position_id = str(raw_position.get("id") or "").strip()
     title = str(raw_position.get("name") or "").strip()
@@ -106,10 +113,14 @@ def _build_posting(
     if not position_id or not title or not position_path:
         return None
 
-    detail = _fetch_position_detail(
-        source_url=source_url,
-        domain=domain,
-        position_id=position_id,
+    detail = (
+        _fetch_position_detail(
+            source_url=source_url,
+            domain=domain,
+            position_id=position_id,
+        )
+        if fetch_details
+        else {}
     )
     locations = detail.get("locations") or raw_position.get("locations") or []
     location = ", ".join(str(item) for item in locations if item) or None

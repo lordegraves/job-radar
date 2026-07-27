@@ -2625,40 +2625,41 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    response = client.get("/settings")
+    settings_response = client.get("/settings")
+    settings_html = settings_response.get_data(as_text=True)
+    response = client.get("/settings/diagnostics")
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Settings" in html
-    assert "Runtime paths remain read-only." in html
+    assert "Diagnostics" in html
     assert "Runtime paths" in html
     assert "Active settings file" in html
-    assert f"<code class=\"settings-value\">{settings_file}</code>" in html
+    assert str(settings_file) in html
     assert "Database path" in html
-    assert f"<code class=\"settings-value\">{database_file}</code>" in html
+    assert str(database_file) in html
     assert "Reports path" in html
-    assert f"<code class=\"settings-value\">{reports_path}</code>" in html
+    assert str(reports_path) in html
     assert "Logs path" in html
-    assert f"<code class=\"settings-value\">{tmp_path}</code>" in html
+    assert str(tmp_path) in html
     assert "Candidate profile path" in html
-    assert f"<code class=\"settings-value\">{profile_file}</code>" in html
+    assert str(profile_file) in html
     assert "GUI scan defaults" in html
     assert "config/target-companies.yaml" in html
     assert "config/scoring.yaml" in html
     assert "reports/target-scan.html" in html
     assert "reports/target-email-preview.txt" in html
-    assert "Report history" in html
-    assert "Latest scan only" in html
-    assert "The latest filenames remain stable." in html
-    assert "Manage report and log retention" in html
-    assert "report_retention_days" not in html
-    assert "raw_capture_enabled" not in html
-    assert "Email" in html
-    assert "Disabled" in html
-    assert "Secrets are not shown on this page." in html
-    assert "View diagnostics" in html
-    assert "Exit Junior" not in html
-    assert "Save" not in html
+    assert "Report history" in settings_html
+    assert "Latest scan only" in settings_html
+    assert "The latest filenames remain stable." in settings_html
+    assert "Manage report and log retention" in settings_html
+    assert "report_retention_days" not in settings_html
+    assert "raw_capture_enabled" not in settings_html
+    assert "Email" in settings_html
+    assert "Disabled" in settings_html
+    assert "Secrets are not shown on this page." in settings_html
+    assert "Health checks, version information" in settings_html
+    assert "Exit Junior" not in settings_html
+    assert "Save" not in settings_html
 
 
 def test_desktop_settings_requests_clean_shutdown(tmp_path: Path) -> None:
@@ -5072,7 +5073,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "SP5 Build 1.5" in html
+    assert "SP5 Build 1.6" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html
@@ -5577,8 +5578,8 @@ candidate:
             'aria-current="page">Scan</a>'
         ),
         "/settings/diagnostics": (
-            '<a class="active-nav" href="/settings" '
-            'aria-current="page">Settings</a>'
+            '<a class="active-nav" href="/settings/diagnostics" '
+            'aria-current="page">Diagnostics</a>'
         ),
         "/settings/email": (
             '<a class="active-nav" href="/settings" '
@@ -5635,12 +5636,12 @@ def test_supported_job_platforms_are_visible_without_employers(
     app = create_app(settings_path=str(settings_file), base_directory=tmp_path)
     client = app.test_client()
 
-    settings_html = client.get("/settings").get_data(as_text=True)
+    diagnostics_html = client.get("/settings/diagnostics").get_data(as_text=True)
     response = client.get("/settings/job-platforms")
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "View Collector Catalog" in settings_html
+    assert "Company Source Health" in diagnostics_html
     assert "Collector Catalog" in html
     assert "separate from the" in html
     assert "global Employer Catalog" in html

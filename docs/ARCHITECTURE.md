@@ -54,6 +54,13 @@ The architecture audit and prototypes must compare accessibility, packaging,
 updates, background tasks, memory, startup performance, and platform behavior
 before the toolkit is approved.
 
+The post-1.0 review must also maintain the issue-by-issue desktop architecture
+evidence register in `docs/ROADMAP.md`. For every wrapper-adjacent defect, the
+review records whether it was fixed, its verified root cause, whether the
+wrapper contributed, whether a native interface would prevent it, and the test
+or evidence supporting that conclusion. This prevents ordinary application or
+service bugs from being incorrectly counted as reasons to replace pywebview.
+
 The native work must begin with an inventory and parity specification. It must
 not translate Flask route code screen by screen while leaving business rules
 embedded in web handlers. Services that are still coupled to Flask request

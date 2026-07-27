@@ -3,6 +3,7 @@
 from collections.abc import Callable
 import hashlib
 import hmac
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -102,24 +103,71 @@ def download_verified_update(
 def launch_windows_installer(
     installer_path: Path,
     *,
+    parent_process_id: int | None = None,
     popen: Callable[..., Any] = subprocess.Popen,
 ) -> None:
-    """Start the verified installer without invoking a command shell."""
+    """Start a detached handoff that waits for Junior to close first."""
 
+    process_id = parent_process_id or os.getpid()
+    helper_path = installer_path.with_name("junior-update-handoff.ps1")
+    powershell_path = (
+        Path(os.environ.get("SystemRoot", r"C:\Windows"))
+        / "System32"
+        / "WindowsPowerShell"
+        / "v1.0"
+        / "powershell.exe"
+    )
+    helper_script = """\
+param(
+    [Parameter(Mandatory = $true)][int]$ParentProcessId,
+    [Parameter(Mandatory = $true)][string]$InstallerPath,
+    [Parameter(Mandatory = $true)][string]$HelperPath
+)
+
+try {
+    Wait-Process -Id $ParentProcessId -ErrorAction SilentlyContinue
+    Start-Process -FilePath $InstallerPath -ArgumentList @(
+        '/SILENT',
+        '/NORESTART',
+        '/AUTOLAUNCH'
+    )
+}
+finally {
+    Start-Sleep -Milliseconds 500
+    Remove-Item -LiteralPath $HelperPath -Force -ErrorAction SilentlyContinue
+}
+"""
     try:
+        helper_path.write_text(helper_script, encoding="utf-8")
         popen(
             [
+                str(powershell_path),
+                "-NoLogo",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(helper_path),
+                "-ParentProcessId",
+                str(process_id),
+                "-InstallerPath",
                 str(installer_path),
-                "/SILENT",
-                "/CLOSEAPPLICATIONS",
-                "/NORESTART",
-                "/AUTOLAUNCH",
+                "-HelperPath",
+                str(helper_path),
             ],
             close_fds=True,
+            creationflags=(
+                subprocess.CREATE_NEW_PROCESS_GROUP
+                | subprocess.DETACHED_PROCESS
+                | subprocess.CREATE_NO_WINDOW
+            ),
         )
     except OSError as error:
+        helper_path.unlink(missing_ok=True)
         raise UpdateInstallError(
-            "Junior verified the update but Windows could not start the installer."
+            "Junior verified the update but Windows could not prepare the "
+            "installer handoff."
         ) from error
 
 

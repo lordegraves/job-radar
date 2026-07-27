@@ -116,19 +116,10 @@ def register_settings_routes(
     @app.get("/settings")
     def settings() -> str:
         settings_view = _build_settings_view(settings_path)
-        runtime_paths = get_runtime_paths()
 
         return render_template(
             "settings.html",
             settings_view=settings_view,
-            application_info=build_application_info(
-                database_path=runtime_paths.database_path,
-                user_data_location=runtime_paths.user_data_directory,
-            ),
-            update_check=session.pop("update_check", None),
-            update_install_available=bool(
-                current_app.config.get("JOB_RADAR_DESKTOP_UPDATE_AVAILABLE")
-            ),
         )
 
     @app.post("/settings/shutdown")
@@ -149,7 +140,7 @@ def register_settings_routes(
     def settings_about():
         """Keep old bookmarks working after About moved onto Settings."""
 
-        return redirect(url_for("settings"))
+        return redirect(url_for("settings_diagnostics"))
 
     @app.get("/settings/job-platforms")
     def settings_job_platforms() -> str:
@@ -184,7 +175,13 @@ def register_settings_routes(
         selected = [item for item in requested if item in available]
         if not selected:
             flash("Select at least one company source to test.", "error")
-        elif source_test_runner.start(selected):
+        elif source_test_runner.start(
+            selected,
+            labels={
+                employer_id: available[employer_id].employer_name
+                for employer_id in selected
+            },
+        ):
             flash(
                 f"Testing {len(selected)} company source(s) in the background.",
                 "success",
@@ -235,7 +232,7 @@ def register_settings_routes(
             release_label=RELEASE_LABEL,
             release_tag=RELEASE_TAG,
         ).as_session_value()
-        return redirect(url_for("settings"))
+        return redirect(url_for("settings_diagnostics"))
 
     @app.post("/settings/install-update")
     def settings_install_update():
@@ -251,7 +248,7 @@ def register_settings_routes(
                 "desktop app only.",
                 "error",
             )
-            return redirect(url_for("settings"))
+            return redirect(url_for("settings_diagnostics"))
 
         update = check_for_update(
             __version__,
@@ -267,7 +264,7 @@ def register_settings_routes(
             launch_windows_installer(installer_path)
         except UpdateInstallError as error:
             flash(str(error), "error")
-            return redirect(url_for("settings"))
+            return redirect(url_for("settings_diagnostics"))
 
         # Give the response time to reach the native window before closing it.
         timer = threading.Timer(1.0, shutdown_event.set)
@@ -292,6 +289,12 @@ def register_settings_routes(
         return render_template(
             "settings_diagnostics.html",
             diagnostics=diagnostics,
+            settings_view=_build_settings_view(settings_path),
+            application_info=application_info,
+            update_check=session.pop("update_check", None),
+            update_install_available=bool(
+                current_app.config.get("JOB_RADAR_DESKTOP_UPDATE_AVAILABLE")
+            ),
             diagnostic_logs=list_diagnostic_logs(runtime_paths.logs_path),
             support_summary=build_support_summary(
                 application_info,

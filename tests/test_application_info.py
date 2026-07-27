@@ -2,6 +2,7 @@
 
 import hashlib
 from pathlib import Path
+import subprocess
 
 import job_radar.web_routes.settings as settings_routes
 from job_radar import __version__
@@ -60,17 +61,17 @@ def test_application_info_reads_current_schema_without_user_content(
     assert info.user_data_location == str(tmp_path.resolve())
 
 
-def test_settings_page_shows_safe_version_and_update_details(tmp_path: Path) -> None:
+def test_diagnostics_page_shows_safe_version_and_update_details(tmp_path: Path) -> None:
     settings_path = tmp_path / "config" / "settings.yaml"
     database_path = tmp_path / "data" / "junior.sqlite3"
     _write_settings(settings_path, database_path)
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
 
-    response = app.test_client().get("/settings")
+    response = app.test_client().get("/settings/diagnostics")
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "About junior and updates" in html
+    assert "About Junior and updates" in html
     assert __version__ in html
     assert "Database / profile schema" in html
     assert "Check for updates" in html
@@ -281,23 +282,35 @@ def test_update_launcher_uses_no_command_shell(tmp_path: Path) -> None:
 
     launch_windows_installer(
         installer,
+        parent_process_id=4123,
         popen=lambda *args, **kwargs: calls.append((args, kwargs)),
     )
 
-    assert calls == [
-        (
-            (
-                [
-                    str(installer),
-                    "/SILENT",
-                    "/CLOSEAPPLICATIONS",
-                    "/NORESTART",
-                    "/AUTOLAUNCH",
-                ],
-            ),
-            {"close_fds": True},
-        )
+    assert len(calls) == 1
+    command = calls[0][0][0]
+    assert command[0].endswith(r"WindowsPowerShell\v1.0\powershell.exe")
+    assert command[1:7] == [
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
     ]
+    assert "-ParentProcessId" in command
+    assert command[command.index("-ParentProcessId") + 1] == "4123"
+    assert command[command.index("-InstallerPath") + 1] == str(installer)
+    assert calls[0][1]["close_fds"] is True
+    assert calls[0][1]["creationflags"] == (
+        subprocess.CREATE_NEW_PROCESS_GROUP
+        | subprocess.DETACHED_PROCESS
+        | subprocess.CREATE_NO_WINDOW
+    )
+    helper_path = tmp_path / "junior-update-handoff.ps1"
+    helper_text = helper_path.read_text(encoding="utf-8")
+    assert "Wait-Process -Id $ParentProcessId" in helper_text
+    assert "Start-Process -FilePath $InstallerPath" in helper_text
+    assert "'/CLOSEAPPLICATIONS'" not in helper_text
 
 
 def test_desktop_update_downloads_verifies_launches_and_closes(
@@ -363,4 +376,8 @@ def test_diagnostics_links_to_read_only_source_and_scan_details(
     assert "Company Source Health" in source_health
     assert "View the read-only Collector Catalog" in source_health
     assert "Scan selected companies" in source_health
+    assert 'id="source-test-meter"' in source_health
+    assert "Company and platform" in source_health
+    assert "Latest scan details</th>" not in source_health
+    assert "source-test-results" in source_health
     assert "No company-source warnings" in scan_details

@@ -82,6 +82,50 @@ def test_microsoft_url_detects_eightfold_source() -> None:
     assert result.source_config["display_name"] == "Microsoft"
 
 
+def test_eightfold_connection_test_reads_only_one_search_page(monkeypatch) -> None:
+    calls = []
+
+    def fake_get_response(url, **kwargs):
+        calls.append((url, kwargs))
+        return _Response(
+            {
+                "data": {
+                    "count": 1,
+                    "positions": [
+                        {
+                            "id": 123,
+                            "displayJobId": "JR-123",
+                            "name": "Platform Engineer",
+                            "locations": ["Colorado, United States"],
+                            "positionUrl": "/careers/job/123",
+                        }
+                    ],
+                }
+            }
+        )
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+
+    jobs = collect_eightfold_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_type": "eightfold",
+            "source_url": "https://apply.example.com",
+            "domain": "example.com",
+            "max_pages": 1,
+            "connection_test": True,
+        }
+    )
+
+    assert len(jobs) == 1
+    assert len(calls) == 1
+    assert calls[0][0].endswith("/api/pcsx/search")
+
+
 def test_eightfold_uses_actual_server_page_size_and_keeps_fetching(
     monkeypatch,
 ) -> None:

@@ -129,6 +129,27 @@ This document records a potential long-term architectural direction, not an appr
 | Validate native 2.0 across platforms | Planned | Test clean install, first run, daily workflows, large datasets, long-running scans, notifications, file dialogs, keyboard behavior, window state, updates, repair, backup, restore, uninstall, accessibility, and offline operation on Windows, Linux, and macOS. Platform-native chrome may differ; Junior workflows and product behavior may not. |
 | Release native 2.0 only after its gates pass | Planned | Keep 2.0 in private or public field testing until parity, migration, recovery, cross-platform, performance, privacy, packaging, and documentation gates pass. Users must be able to remain on supported 1.x until 2.0 is demonstrably safer or better. |
 
+### Post-1.0 desktop architecture evidence
+
+The post-1.0 architecture review must record every desktop-shell-related issue,
+including issues fixed before 1.0. Each issue receives its own row. The review
+must separate the observed symptom from its verified root cause and must test
+whether a native interface would actually prevent the problem. A problem must
+not be attributed to pywebview merely because it appeared in the desktop
+application.
+
+| Issue | Fixed? | Root cause | Wrapper-related? | Would native solve it? | Evidence or required test |
+| --- | --- | --- | --- | --- | --- |
+| Save dialog behavior | Yes; reverify after 1.0 | Missing desktop bridge in the affected workflow | Mostly | Yes | Repeat save and download workflows in packaged 1.x and the native prototype. |
+| Orphaned Junior processes after closing the window | In Progress | Shutdown and update-handoff investigation | Unknown | Maybe | Reproduce clean close, close during work, and update shutdown; record the owning process and lifecycle boundary. |
+| Download behavior | Yes; reverify after 1.0 | Browser/webview download limitation in the affected workflow | Yes | Yes | Compare packaged 1.x downloads with native file-save behavior on every supported desktop platform. |
+| Update handoff and restart | In Progress | Shutdown and installer handoff investigation | Unknown | Maybe | Verify the application fully exits before installation and restarts exactly once without an orphaned process. |
+
+The table is a living evidence register for the post-1.0 review. New
+wrapper-adjacent defects must be added rather than summarized away. “No; this
+would also fail in the proposed native toolkit” is a valid and important
+conclusion.
+
 ### Native 2.0 acceptance gates
 
 Native 2.0 is deployable only when all of the following are verified:

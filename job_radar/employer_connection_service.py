@@ -62,7 +62,12 @@ def test_employer_connection(
         )
     else:
         try:
-            jobs = collect_jobs_for_company(employer.to_company_config())
+            source_config = employer.to_company_config()
+            # A health check proves that the source is readable; it must not
+            # perform the full, potentially thousands-of-jobs scan.
+            source_config["max_pages"] = 1
+            source_config["connection_test"] = True
+            jobs = collect_jobs_for_company(source_config)
         except CollectorError as error:
             health = _collector_error_health(error)
         except requests.RequestException:
