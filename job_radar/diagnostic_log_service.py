@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+import json
 import os
 from pathlib import Path
 import re
@@ -43,6 +44,17 @@ class DiagnosticLogView:
     content: str
     truncated: bool
     size_bytes: int
+    entries: tuple["DiagnosticLogEntry", ...]
+
+
+@dataclass(frozen=True)
+class DiagnosticLogEntry:
+    """Present one allowlisted JSON log event in readable operational terms."""
+
+    timestamp: str
+    title: str
+    summary: str
+    details: tuple[str, ...]
 
 
 def list_diagnostic_logs(logs_path: str | Path) -> tuple[DiagnosticLogFile, ...]:
@@ -98,7 +110,33 @@ def read_diagnostic_log(
         content=content,
         truncated=truncated,
         size_bytes=size,
+        entries=_parse_log_entries(content),
     )
+
+
+def build_readable_log_download(log_view: DiagnosticLogView) -> bytes:
+    """Return a human-readable support file while retaining structured facts."""
+
+    lines = [
+        f"Junior — {log_view.title}",
+        log_view.description,
+        "",
+    ]
+    for entry in log_view.entries:
+        lines.append(f"[{entry.timestamp}] {entry.title}")
+        lines.append(entry.summary)
+        lines.extend(f"- {detail}" for detail in entry.details)
+        lines.append("")
+    if not log_view.entries:
+        lines.append("No readable diagnostic events were found in this log.")
+    return "\n".join(lines).encode("utf-8")
+
+
+def diagnostic_download_name(log_view: DiagnosticLogView) -> str:
+    """Create an email-friendly filename that identifies when it was saved."""
+
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return f"{Path(log_view.name).stem}-{stamp}.txt"
 
 
 def get_diagnostic_log_download(
@@ -218,3 +256,82 @@ def _log_description(log_name: str) -> str:
         log_name,
         "A bounded, sanitized Junior-owned troubleshooting record.",
     )
+
+
+def _parse_log_entries(content: str) -> tuple[DiagnosticLogEntry, ...]:
+    entries: list[DiagnosticLogEntry] = []
+    for line in content.splitlines():
+        if not line.strip() or line.startswith("[Earlier log entries"):
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            entries.append(
+                DiagnosticLogEntry(
+                    timestamp="Time not recorded",
+                    title="Diagnostic note",
+                    summary=line,
+                    details=(),
+                )
+            )
+            continue
+        if not isinstance(value, dict):
+            continue
+        event = str(value.get("event") or "diagnostic_event")
+        timestamp = _display_timestamp(value.get("timestamp"))
+        summary, used = _event_summary(event, value)
+        details = tuple(
+            f"{key.replace('_', ' ').title()}: {item}"
+            for key, item in value.items()
+            if key not in used | {"event", "timestamp"} and item is not None
+        )
+        entries.append(
+            DiagnosticLogEntry(
+                timestamp=timestamp,
+                title=event.replace("_", " ").title(),
+                summary=summary,
+                details=details,
+            )
+        )
+    return tuple(entries)
+
+
+def _display_timestamp(value: object) -> str:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return str(value or "Time not recorded")
+    return parsed.astimezone().strftime("%Y-%m-%d %I:%M:%S %p")
+
+
+def _event_summary(
+    event: str,
+    value: dict[str, object],
+) -> tuple[str, set[str]]:
+    if event == "scan_started":
+        return (
+            f"Junior started a scan of {value.get('companies_requested', 0)} "
+            "company source(s).",
+            {"companies_requested"},
+        )
+    if event == "company_collection_completed":
+        return (
+            f"{value.get('company_id', 'Company source')} worked and returned "
+            f"{value.get('jobs_found', 0)} job(s).",
+            {"company_id", "jobs_found"},
+        )
+    if event == "company_collection_failed":
+        return (
+            f"{value.get('company_id', 'Company source')} failed during "
+            f"collection: {value.get('failure_reason', 'No reason recorded.')}",
+            {"company_id", "failure_reason"},
+        )
+    if event == "scan_completed":
+        return (
+            f"Scan completed: {value.get('jobs_found', 0)} found, "
+            f"{value.get('jobs_stored', 0)} kept for review, "
+            f"{value.get('jobs_omitted', 0)} omitted, and "
+            f"{value.get('collector_errors', 0)} source error(s).",
+            {"jobs_found", "jobs_stored", "jobs_omitted", "collector_errors"},
+        )
+    return (event.replace("_", " ").capitalize() + ".", set())

@@ -6,7 +6,17 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
-- Label field-test packages and every application page as `SP5 Build 1.8`.
+- Label field-test packages and every application page as `SP5 Build 1.9`.
+- Keep selected-company scans on Company Source Health with their own live
+  progress, safe result summary, and automatic retry while the new scan starts.
+- Treat a successful real scan as the newest source-health evidence so a
+  working source no longer remains red because an older connection test failed.
+- Give source-health rows consistent green, yellow, red, and neutral state
+  indicators with readable status text and descriptions.
+- Present sanitized diagnostic events as readable, timestamped steps and
+  download them with dated support-friendly filenames.
+- Wait for the verified Windows installer to finish, reopen Junior explicitly,
+  and keep a plain-language success or failure result visible until dismissed.
 - Put Company Source Health directly in the Companies workflow with clear
   working, warning, and untested counts.
 - Keep background source-test progress refreshing after a temporary page

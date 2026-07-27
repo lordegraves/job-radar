@@ -103,12 +103,20 @@ def download_verified_update(
 def launch_windows_installer(
     installer_path: Path,
     *,
+    application_path: Path | None = None,
+    result_path: Path | None = None,
+    expected_build: str = "the new build",
     parent_process_id: int | None = None,
     popen: Callable[..., Any] = subprocess.Popen,
 ) -> None:
     """Start a detached handoff that waits for Junior to close first."""
 
     process_id = parent_process_id or os.getpid()
+    executable_path = application_path or Path(os.path.abspath(os.sys.executable))
+    update_result_path = result_path or installer_path.with_name(
+        "last-update-result.json"
+    )
+    update_result_path.parent.mkdir(parents=True, exist_ok=True)
     helper_path = installer_path.with_name("junior-update-handoff.ps1")
     powershell_path = (
         Path(os.environ.get("SystemRoot", r"C:\Windows"))
@@ -121,7 +129,10 @@ def launch_windows_installer(
 param(
     [Parameter(Mandatory = $true)][int]$ParentProcessId,
     [Parameter(Mandatory = $true)][string]$InstallerPath,
-    [Parameter(Mandatory = $true)][string]$HelperPath
+    [Parameter(Mandatory = $true)][string]$HelperPath,
+    [Parameter(Mandatory = $true)][string]$ApplicationPath,
+    [Parameter(Mandatory = $true)][string]$ResultPath,
+    [Parameter(Mandatory = $true)][string]$ExpectedBuild
 )
 
 try {
@@ -129,12 +140,36 @@ try {
     # Give Windows a brief moment to release the desktop executable after the
     # verified parent process exits. Setup must never force-close Junior.
     Start-Sleep -Milliseconds 1000
-    Start-Process -FilePath $InstallerPath -ArgumentList @(
+    $Installer = Start-Process -FilePath $InstallerPath -ArgumentList @(
         '/SILENT',
         '/NORESTART',
-        '/NOCLOSEAPPLICATIONS',
-        '/AUTOLAUNCH'
-    )
+        '/NOCLOSEAPPLICATIONS'
+    ) -PassThru -Wait
+    if ($Installer.ExitCode -eq 0) {
+        $Result = @{
+            status = 'success'
+            message = "Junior was updated successfully to $ExpectedBuild."
+        }
+    }
+    else {
+        $Result = @{
+            status = 'error'
+            message = "The Junior update failed with installer exit code $($Installer.ExitCode). Your existing data was not removed."
+        }
+    }
+    $Result | ConvertTo-Json -Compress | Set-Content -LiteralPath $ResultPath -Encoding UTF8
+    if (Test-Path -LiteralPath $ApplicationPath) {
+        Start-Process -FilePath $ApplicationPath
+    }
+}
+catch {
+    @{
+        status = 'error'
+        message = 'Windows could not complete the Junior update. Your existing data was not removed.'
+    } | ConvertTo-Json -Compress | Set-Content -LiteralPath $ResultPath -Encoding UTF8
+    if (Test-Path -LiteralPath $ApplicationPath) {
+        Start-Process -FilePath $ApplicationPath
+    }
 }
 finally {
     Start-Sleep -Milliseconds 500
@@ -159,6 +194,12 @@ finally {
                 str(installer_path),
                 "-HelperPath",
                 str(helper_path),
+                "-ApplicationPath",
+                str(executable_path),
+                "-ResultPath",
+                str(update_result_path),
+                "-ExpectedBuild",
+                expected_build,
             ],
             close_fds=True,
             creationflags=(

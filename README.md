@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `SP5 Build 1.8`
+- Current field-test build: `SP5 Build 1.9`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -146,10 +146,12 @@ Junior's local-first or user-controlled behavior:
   Windows desktop app, a separate **Download and install update** action
   downloads only the exact installer and checksum published on Junior's
   official GitHub release, verifies the SHA-256 checksum, closes Junior, runs
-  the installer, and reopens the app. Checking alone never downloads or
-  installs anything. Browser, server, and development modes provide the
-  verified release link instead of self-updating. Profiles, résumés, companies,
-  applications, and history remain in the separate user-data directory.
+  the installer, waits for its result, and explicitly reopens the app. Junior
+  then keeps a plain-language success or failure notice visible until the user
+  dismisses it. Checking alone never downloads or installs anything. Browser,
+  server, and development modes provide the verified release link instead of
+  self-updating. Profiles, résumés, companies, applications, and history remain
+  in the separate user-data directory.
 - Diagnostics will gain a **Contact support** action. Junior will prepare a
   sanitized diagnostic bundle, open the user's default email application with
   safe version and operating-system context pre-filled, and tell the user which
@@ -174,11 +176,12 @@ scheduled scans, upgrades, rollback and recovery, and uninstall behavior.
 Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
-The remaining items above are planned RC6 capabilities and are not implemented
-in SP5 Build 1.8. Diagnostics still requires the user to download and attach a
-sanitized log manually. Interactive company-source discovery writes a separate
-bounded `junior-company-discovery.log` containing only public hostnames,
-collector families, safe outcomes, counts, and timestamps.
+The Contact support, MSIX, and signing items above remain planned RC6
+capabilities and are not implemented in SP5 Build 1.9. Diagnostics still
+requires the user to download and attach a sanitized log manually. Interactive
+company-source discovery writes a separate bounded
+`junior-company-discovery.log` containing only public hostnames, collector
+families, safe outcomes, counts, and timestamps.
 
 ### Planned RC7 language assistance
 
@@ -340,7 +343,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.8.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.9.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
@@ -514,14 +517,25 @@ Every unlocked Administration subpage includes an explicit **Back to Administrat
 
 The Settings page keeps runtime paths read-only while providing normal-user controls for email, scheduling, retention, and safe diagnostics. Its Diagnostics page summarizes application configuration, the latest scan, company sources, and email delivery with green, yellow, red, or neutral status cards. Problems are categorized as configuration, collector, network, email, or unexpected application failures and include a plain-language next step. The same page lists only recognized sanitized Junior logs, limits each on-screen view to the newest 200,000 bytes, provides direct downloads of those recognized logs for support, provides a bounded copyable troubleshooting summary, and can open the resolved Junior data directory through the operating system. It is not a general file browser: nested paths, arbitrary logs, editing, deletion, and unrestricted downloads are rejected. Raw exceptions, credentials, profile contents, and résumé contents are neither stored as scan diagnostics nor displayed. Administration includes the global Employer Catalog, where an unlocked administrator can create and edit structured employer-source settings, run bounded local validation, test the real collector connection without importing jobs, and enable, disable, or retire an employer. A connection test records the last attempt, last success, last problem, returned-job count, and a safe troubleshooting category. It never stores raw collector or network error text, and editing source settings clears stale connection health. The employer detail page can assign an available, validated employer to any managed profile or remove one profile's assignment without affecting another profile or deleting collected history. Permanent deletion requires typing `DELETE` and is permitted only when no profile assignment or collected job references the employer; otherwise the administrator must disable or retire it. The Employer Review Queue lets unresolved profile submissions be matched to an existing employer, used to prefill a new employer, assigned after availability checks, or closed as unsupported, rejected, or duplicate. Recommendation Administration provides employer/profile diagnostics, global employer recommendation metadata and eligibility, profile-specific feedback inspection and guarded reset, and explicitly bounded rebuilds for one profile, one employer, or every profile. Recommendation maintenance has a sanitized audit and does not silently override profile feedback. Review decisions have a sanitized audit trail. New and edited employers must validate before they can be globally enabled. Disabling or retiring preserves profile assignments and collected history; an unavailable employer is omitted from scans until it is enabled again. Packaged company defaults are empty for new installations. Existing legacy definitions import only once into the active profile, never replace a user-edited database employer with the same stable ID, and remain separate from later user-owned catalog changes. Other Administration categories remain planned.
 
+Diagnostics translates allowlisted scan and action events into dated,
+plain-language steps instead of displaying raw JSON lines. Downloaded copies
+use timestamped text filenames so testers can identify and email the correct
+run without exposing job listings, profile settings, résumé contents, secrets,
+or raw exception text.
+
 Company Source Health is linked directly from Companies because it is the
 normal working area for source testing and targeted rescans. Diagnostics
 summarizes its overall state and links there when action is needed. The source
 workspace distinguishes warnings from the latest full scan from separate
 connection-test results, displays each safe explanation directly, links to the
 read-only Collector Catalog, and can test selected or previously untested
-sources in the background. A selected-company scan can retry up to 25 enabled
-companies without replacing the latest full-scan report. Safe failure
+sources in the background. Its progress and individual results refresh on that
+same page. A selected-company scan can retry up to 25 enabled companies,
+displays its own live progress on Company Source Health, and does not replace
+the latest full-scan report. A successful real scan supersedes an older failed
+connection test for the same source. Green means working, yellow means
+incomplete or needs review, red means an actual source failure, and neutral
+means not yet tested or not included in the latest scan. Safe failure
 explanations distinguish an unreachable source, denied public request, missing
 address, temporary request limit, recruiting-service problem, and a collector
 that could not interpret the returned job list.

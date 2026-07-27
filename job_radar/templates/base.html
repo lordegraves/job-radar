@@ -674,6 +674,16 @@
     </aside>
 
     <main id="main-content" class="page" tabindex="-1">
+{% if junior_update_result %}
+        <div class="page-card flash-message{% if junior_update_result.status == 'error' %} validation-message{% endif %}" role="{% if junior_update_result.status == 'error' %}alert{% else %}status{% endif %}">
+            <strong>{{ junior_update_result.message }}</strong>
+            <form method="post" action="{{ url_for('dismiss_update_result') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                <button class="flash-dismiss" type="submit" aria-label="Dismiss update result">&times;</button>
+            </form>
+        </div>
+{% endif %}
 {% if admin_mode_active and request.endpoint and request.endpoint.startswith('administration') and request.endpoint != 'administration' %}
         <nav class="admin-return" aria-label="Administration navigation">
             <a href="{{ url_for('administration') }}">&larr; Back to Administration</a>

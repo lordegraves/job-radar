@@ -147,6 +147,39 @@ def get_employer_connection_health(
     )
 
 
+def record_scan_connection_result(
+    database_path: str | Path,
+    employer_id: str,
+    *,
+    job_count: int | None = None,
+    failure_category: str | None = None,
+    failure_message: str | None = None,
+) -> None:
+    """Make a real scan the newest source-health evidence.
+
+    A successful collection is stronger evidence than an older standalone
+    connection test. Recording it here prevents a working source from staying
+    red after Junior has demonstrably collected jobs from it.
+    """
+
+    if failure_message:
+        health = EmployerConnectionHealth(
+            state=ERROR,
+            category=failure_category or "collector",
+            message=failure_message,
+        )
+    else:
+        count = int(job_count or 0)
+        noun = "job" if count == 1 else "jobs"
+        health = EmployerConnectionHealth(
+            state=SUCCESS,
+            category="connected",
+            message=f"Scan succeeded and returned {count} {noun}.",
+            job_count=count,
+        )
+    _store_health(database_path, employer_id, health)
+
+
 def _collector_error_health(error: CollectorError) -> EmployerConnectionHealth:
     outcome = classify_collector_failure(error)
     return _error_health(outcome.category, outcome.message)
@@ -169,9 +202,7 @@ def _store_health(
     success_time = (
         "CURRENT_TIMESTAMP" if health.state == SUCCESS else "last_connection_success_at"
     )
-    error_time = (
-        "CURRENT_TIMESTAMP" if health.state == ERROR else "last_connection_error_at"
-    )
+    error_time = "CURRENT_TIMESTAMP" if health.state == ERROR else "NULL"
     with connect_database(db_path) as connection:
         connection.execute(
             f"""

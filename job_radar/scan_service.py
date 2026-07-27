@@ -18,6 +18,7 @@ from job_radar.diagnostic_service import (
 )
 from job_radar.eligibility import evaluate_practical_eligibility
 from job_radar.employer_resolution import resolve_scan_companies
+from job_radar.employer_connection_service import record_scan_connection_result
 from job_radar.email_summary import (
     build_email_body,
     build_email_html_body,
@@ -362,6 +363,12 @@ def _handle_scan_unlocked(
                 postings = collect_jobs_for_company(company)
             except CollectorError as error:
                 diagnostic = classify_collector_failure(error)
+                record_scan_connection_result(
+                    database_path,
+                    company_key,
+                    failure_category=diagnostic.category,
+                    failure_message=diagnostic.message,
+                )
                 collector_errors.append(
                     ScanError(
                         company_key=company_key,
@@ -406,6 +413,11 @@ def _handle_scan_unlocked(
                 continue
 
             total_jobs += len(postings)
+            record_scan_connection_result(
+                database_path,
+                company_key,
+                job_count=len(postings),
+            )
             collected_postings.extend(postings)
             companies_scanned += 1
             update_scan_run_progress(

@@ -3,6 +3,9 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+import io
+from pathlib import Path
+import sys
 import threading
 
 from flask import (
@@ -30,6 +33,8 @@ from job_radar.company_discovery_settings_service import (
 from job_radar.config import load_settings
 from job_radar.diagnostic_service import build_diagnostics_view
 from job_radar.diagnostic_log_service import (
+    build_readable_log_download,
+    diagnostic_download_name,
     DiagnosticLogError,
     build_support_summary,
     get_diagnostic_log_download,
@@ -261,7 +266,20 @@ def register_settings_routes(
                 update,
                 get_runtime_paths().user_data_directory / "updates",
             )
-            launch_windows_installer(installer_path)
+            launch_windows_installer(
+                installer_path,
+                application_path=Path(sys.executable),
+                result_path=(
+                    get_runtime_paths().user_data_directory
+                    / "updates"
+                    / "last-update-result.json"
+                ),
+                expected_build=(
+                    f"{RELEASE_LABEL} Build {update.available_build}"
+                    if update.available_build
+                    else str(update.available_version)
+                ),
+            )
         except UpdateInstallError as error:
             flash(str(error), "error")
             return redirect(url_for("settings_diagnostics"))
@@ -274,6 +292,14 @@ def register_settings_routes(
             "update_installing.html",
             update=update,
         )
+
+    @app.post("/settings/update-result/dismiss")
+    def dismiss_update_result():
+        current_app.config["JOB_RADAR_UPDATE_RESULT"] = None
+        destination = request.form.get("next", "").strip()
+        if not destination.startswith("/") or destination.startswith("//"):
+            destination = url_for("settings_diagnostics")
+        return redirect(destination)
 
     @app.get("/settings/diagnostics")
     def settings_diagnostics() -> str:
@@ -319,17 +345,15 @@ def register_settings_routes(
     def settings_diagnostic_log_download(log_name: str):
         runtime_paths = get_runtime_paths()
         try:
-            log_path = get_diagnostic_log_download(
-                runtime_paths.logs_path,
-                log_name,
-            )
+            get_diagnostic_log_download(runtime_paths.logs_path, log_name)
+            log_view = read_diagnostic_log(runtime_paths.logs_path, log_name)
         except DiagnosticLogError as error:
             flash(str(error), "error")
             return redirect(url_for("settings_diagnostics"))
         return send_file(
-            log_path,
+            io.BytesIO(build_readable_log_download(log_view)),
             as_attachment=True,
-            download_name=log_path.name,
+            download_name=diagnostic_download_name(log_view),
             mimetype="text/plain",
         )
 

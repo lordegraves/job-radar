@@ -10,6 +10,7 @@ from job_radar.employer_admin_service import create_employer
 from job_radar.employer_admin_service import update_employer
 from job_radar.employer_connection_service import (
     get_employer_connection_health,
+    record_scan_connection_result,
     test_employer_connection as run_employer_connection_test,
 )
 from job_radar.models import JobPosting
@@ -109,6 +110,31 @@ def test_connection_failure_sanitizes_raw_network_error(
             (employer_id,),
         ).fetchone()[0]
     assert secret_text not in stored
+
+
+def test_successful_scan_replaces_an_older_connection_failure(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    employer_id = _create_test_employer(
+        database_path,
+        source_slug="example-kitchens",
+    )
+    record_scan_connection_result(
+        database_path,
+        employer_id,
+        failure_category="network",
+        failure_message="The public source could not be reached.",
+    )
+
+    record_scan_connection_result(database_path, employer_id, job_count=14)
+    result = get_employer_connection_health(database_path, employer_id)
+
+    assert result.state == "success"
+    assert result.job_count == 14
+    assert result.message == "Scan succeeded and returned 14 jobs."
+    assert result.last_success_at is not None
+    assert result.last_error_at is None
 
 
 def test_configuration_problem_does_not_call_collector(

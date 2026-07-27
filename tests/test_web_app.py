@@ -2748,6 +2748,34 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     assert rejected_download.status_code == 302
 
 
+def test_update_result_remains_visible_until_dismissed(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file))
+    app.config["JOB_RADAR_UPDATE_RESULT"] = {
+        "status": "success",
+        "message": "Junior was updated successfully to SP5 Build 1.9.",
+    }
+    client = app.test_client()
+
+    assert "updated successfully" in client.get(
+        "/settings/diagnostics"
+    ).get_data(as_text=True)
+    assert "updated successfully" in client.get(
+        "/settings/diagnostics"
+    ).get_data(as_text=True)
+
+    response = client.post(
+        "/settings/update-result/dismiss",
+        data={"next": "/settings/diagnostics"},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "updated successfully" not in response.get_data(as_text=True)
+
+
 def test_diagnostics_open_data_uses_resolved_runtime_root(
     tmp_path: Path,
     monkeypatch,
@@ -3003,8 +3031,9 @@ def test_scan_status_endpoint_returns_durable_progress(
         "jobs_found": 275,
         "collector_errors": 2,
         "has_results": False,
-        "failure_summary": None,
-    }
+            "failure_summary": None,
+            "trigger_source": "manual",
+        }
 
 
 def test_scan_status_endpoint_exposes_completed_report_links(
@@ -3143,6 +3172,9 @@ def test_selected_scan_uses_separate_reports_and_only_selected_companies(
     )
 
     assert response.status_code == 302
+    assert response.headers["Location"].endswith(
+        "/settings/diagnostics/sources?targeted_scan=started"
+    )
     assert scan_started.wait(timeout=2)
     assert calls == [
         {
@@ -5073,7 +5105,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "SP5 Build 1.8" in html
+    assert "SP5 Build 1.9" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

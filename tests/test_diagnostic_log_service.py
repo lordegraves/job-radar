@@ -8,7 +8,9 @@ from job_radar.application_info_service import ApplicationInfo
 from job_radar.diagnostic_log_service import (
     MAX_LOG_VIEW_BYTES,
     DiagnosticLogError,
+    build_readable_log_download,
     build_support_summary,
+    diagnostic_download_name,
     get_diagnostic_log_download,
     list_diagnostic_logs,
     read_diagnostic_log,
@@ -107,6 +109,26 @@ def test_large_log_view_reads_only_bounded_tail(tmp_path: Path) -> None:
     assert "Earlier log entries are hidden" in view.content
     assert "old private-looking fixture" not in view.content
     assert "new safe entry" in view.content
+
+
+def test_json_scan_log_is_presented_and_downloaded_in_plain_language(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "junior-last-scan.log"
+    path.write_text(
+        '{"event":"company_collection_completed","timestamp":'
+        '"2026-07-27T18:14:03+00:00","company_id":"nasa_usajobs",'
+        '"jobs_found":14}\n',
+        encoding="utf-8",
+    )
+
+    view = read_diagnostic_log(tmp_path, path.name)
+    download = build_readable_log_download(view).decode("utf-8")
+
+    assert view.entries[0].title == "Company Collection Completed"
+    assert "nasa_usajobs worked and returned 14 job(s)" in download
+    assert diagnostic_download_name(view).startswith("junior-last-scan-")
+    assert diagnostic_download_name(view).endswith(".txt")
 
 
 def test_support_summary_contains_only_bounded_health_facts() -> None:

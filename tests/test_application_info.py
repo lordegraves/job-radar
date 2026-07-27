@@ -3,6 +3,7 @@
 import hashlib
 from pathlib import Path
 import subprocess
+import sys
 
 import job_radar.web_routes.settings as settings_routes
 from job_radar import __version__
@@ -311,7 +312,11 @@ def test_update_launcher_uses_no_command_shell(tmp_path: Path) -> None:
     assert "Wait-Process -Id $ParentProcessId" in helper_text
     assert "Start-Sleep -Milliseconds 1000" in helper_text
     assert "Start-Process -FilePath $InstallerPath" in helper_text
+    assert "-PassThru -Wait" in helper_text
+    assert "Start-Process -FilePath $ApplicationPath" in helper_text
+    assert "Set-Content -LiteralPath $ResultPath" in helper_text
     assert "'/NOCLOSEAPPLICATIONS'" in helper_text
+    assert "'/AUTOLAUNCH'" not in helper_text
 
 
 def test_desktop_update_downloads_verifies_launches_and_closes(
@@ -336,7 +341,7 @@ def test_desktop_update_downloads_verifies_launches_and_closes(
     monkeypatch.setattr(
         settings_routes,
         "launch_windows_installer",
-        lambda path: launched.append(path),
+        lambda path, **kwargs: launched.append((path, kwargs)),
     )
     monkeypatch.setattr(
         settings_routes.threading,
@@ -352,7 +357,11 @@ def test_desktop_update_downloads_verifies_launches_and_closes(
 
     assert response.status_code == 200
     assert "Installing Junior update" in response.get_data(as_text=True)
-    assert launched == [tmp_path / update.installer_name]
+    assert launched[0][0] == tmp_path / update.installer_name
+    assert launched[0][1]["application_path"] == Path(sys.executable)
+    assert launched[0][1]["expected_build"] == (
+        f"SP5 Build {update.available_build}"
+    )
 
 
 def test_diagnostics_links_to_read_only_source_and_scan_details(

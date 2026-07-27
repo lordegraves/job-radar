@@ -1,6 +1,7 @@
 """Create and launch the Job Radar web interface with safe startup diagnostics."""
 
 import argparse
+import json
 import secrets
 import sys
 import traceback
@@ -72,12 +73,39 @@ def create_app(
     )
     # This marker makes an Administration unlock valid only for this process.
     app.config["JOB_RADAR_ADMIN_SESSION_MARKER"] = secrets.token_urlsafe(32)
+    update_result_path = (
+        runtime_paths.user_data_directory / "updates" / "last-update-result.json"
+    )
+    update_result = None
+    if update_result_path.is_file():
+        try:
+            candidate = json.loads(update_result_path.read_text(encoding="utf-8-sig"))
+            if (
+                isinstance(candidate, dict)
+                and candidate.get("status") in {"success", "error"}
+                and isinstance(candidate.get("message"), str)
+            ):
+                update_result = candidate
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            update_result = {
+                "status": "error",
+                "message": (
+                    "Junior restarted, but the update result could not be read. "
+                    "Check the installed build in Diagnostics."
+                ),
+            }
+        update_result_path.unlink(missing_ok=True)
+    app.config["JOB_RADAR_UPDATE_RESULT"] = update_result
 
     @app.context_processor
     def inject_build_label() -> dict[str, str]:
         """Make the exact tester build visible on every GUI page."""
 
-        return {"junior_build_label": __build__}
+        return {
+            "junior_build_label": __build__,
+            # Keep the result visible until the user explicitly dismisses it.
+            "junior_update_result": app.config.get("JOB_RADAR_UPDATE_RESULT"),
+        }
 
     initialize_database(runtime_paths.database_path)
     # Complete the protected one-time employer migration before any profile,

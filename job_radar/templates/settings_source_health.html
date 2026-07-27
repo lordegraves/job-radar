@@ -3,6 +3,26 @@
 
 {% block title %}Company Source Health - junior{% endblock %}
 
+{% block page_styles %}
+<style>
+    .source-health-row-success { box-shadow: inset 4px 0 #55d6a3; }
+    .source-health-row-warning { box-shadow: inset 4px 0 #f5c451; }
+    .source-health-row-error { box-shadow: inset 4px 0 #ff6477; }
+    .source-health-row-neutral { box-shadow: inset 4px 0 #8b949e; }
+    .source-health-table table { table-layout: fixed; }
+    .source-health-table th:first-child { width: 42px; }
+    .source-health-table th:nth-child(2) { width: 21%; }
+    .source-health-table th:nth-child(3),
+    .source-health-table th:nth-child(4) { width: 30%; }
+    .source-health-table th:nth-child(5) { width: 150px; }
+    .source-health-table th:nth-child(6) { width: 100px; }
+    .source-health-table th,
+    .source-health-table td { overflow-wrap: normal; word-break: normal; }
+    .source-cell-detail { color: var(--muted); display: block; margin-top: 5px; }
+    .scan-progress-panel[hidden] { display: none; }
+</style>
+{% endblock %}
+
 {% block content %}
 <p>
     <a href="{{ url_for('companies') }}">&larr; Companies</a>
@@ -24,6 +44,24 @@
     </p>
     <p>
         <a href="{{ url_for('settings_job_platforms') }}">View the read-only Collector Catalog</a>
+    </p>
+</section>
+
+<section
+    class="page-card scan-progress-panel"
+    id="targeted-scan-progress"
+    data-active="{{ 'true' if request.args.get('targeted_scan') == 'started' else 'false' }}"
+    data-status-url="{{ url_for('scan_status') }}"
+    {% if request.args.get('targeted_scan') != 'started' %}hidden{% endif %}
+>
+    <h2>Scan selected companies</h2>
+    <div class="source-test-summary-header">
+        <strong id="targeted-scan-status">Starting the selected-company scan.</strong>
+        <span id="targeted-scan-percent">0%</span>
+    </div>
+    <progress id="targeted-scan-meter" max="100" value="0"></progress>
+    <p id="targeted-scan-step" class="muted" aria-live="polite">
+        Junior is preparing the selected sources.
     </p>
 </section>
 
@@ -99,7 +137,7 @@
                 </thead>
                 <tbody>
                     {% for source in sources %}
-                    <tr data-employer-id="{{ source.employer_id }}">
+                    <tr class="source-health-row-{{ source.tone }}" data-employer-id="{{ source.employer_id }}">
                         <td>
                             <input
                                 class="source-select"
@@ -210,6 +248,52 @@
         }
     };
     poll();
+
+    const scanPanel = document.getElementById("targeted-scan-progress");
+    if (scanPanel?.dataset.active === "true") {
+        const scanStatus = document.getElementById("targeted-scan-status");
+        const scanPercent = document.getElementById("targeted-scan-percent");
+        const scanMeter = document.getElementById("targeted-scan-meter");
+        const scanStep = document.getElementById("targeted-scan-step");
+        let targetedScanSeen = false;
+        const pollScan = async () => {
+            try {
+                const response = await fetch(scanPanel.dataset.statusUrl, {cache: "no-store"});
+                if (!response.ok) throw new Error("scan status request failed");
+                const result = await response.json();
+                if (!targetedScanSeen && result.trigger_source !== "manual:selected") {
+                    scanMeter.value = 0;
+                    scanPercent.textContent = "Starting";
+                    scanStatus.textContent = "Starting the selected-company scan.";
+                    scanStep.textContent = "Junior is preparing the selected sources.";
+                    window.setTimeout(pollScan, 500);
+                    return;
+                }
+                targetedScanSeen = true;
+                const value = result.progress_determinate ? result.progress_percent : 0;
+                scanMeter.value = value;
+                scanPercent.textContent = result.progress_determinate ? `${value}%` : "Working";
+                scanStatus.textContent = result.is_running
+                    ? `Scanning ${result.companies_scanned} of ${result.companies_enabled || "the selected"} source(s).`
+                    : result.status === "failed"
+                        ? "The selected-company scan failed."
+                        : "Selected-company scan complete.";
+                scanStep.textContent = result.failure_summary || (
+                    result.is_running
+                        ? result.stage_label
+                        : `${result.jobs_found} jobs collected; ${result.collector_errors} source error(s).`
+                );
+                if (result.is_running || result.status === "idle") {
+                    window.setTimeout(pollScan, 1000);
+                }
+            } catch {
+                scanStatus.textContent = "Junior is still working.";
+                scanStep.textContent = "This page could not refresh yet. Retrying automatically.";
+                window.setTimeout(pollScan, 1500);
+            }
+        };
+        pollScan();
+    }
 })();
 </script>
 {% endblock %}

@@ -26,6 +26,7 @@ class SourceHealthItem:
     tested_at: str | None
     latest_scan_state: str
     latest_scan_message: str
+    tone: str
 
 
 @dataclass(frozen=True)
@@ -86,12 +87,23 @@ def build_source_health_items(
         if warning:
             scan_state = "Warning"
             scan_message = warning[1]
+            tone = "error"
         elif employer.employer_id in latest_profile_companies:
-            scan_state = "No warning"
-            scan_message = "No source warning was recorded in the latest scan."
+            scan_state = "Working"
+            scan_message = "The latest scan completed without a source error."
+            tone = "success"
         else:
             scan_state = "Not in latest scan"
             scan_message = "This source was not part of the latest profile scan."
+            tone = "neutral"
+        if warning is None and health.state == "success":
+            tone = "success"
+        elif warning is None and health.state == "error":
+            tone = (
+                "warning"
+                if health.category in {"configuration", "authentication"}
+                else "error"
+            )
 
         items.append(
             SourceHealthItem(
@@ -108,6 +120,7 @@ def build_source_health_items(
                 tested_at=health.tested_at,
                 latest_scan_state=scan_state,
                 latest_scan_message=scan_message,
+                tone=tone,
             )
         )
     return tuple(items)

@@ -140,7 +140,12 @@ def register_scan_routes(
             )
         else:
             flash("A scan is already running.", "error")
-        return redirect(url_for("scan"))
+        return redirect(
+            url_for(
+                "settings_source_health",
+                targeted_scan="started" if started else "busy",
+            )
+        )
 
 
 def _build_scan_status_payload(
@@ -237,6 +242,7 @@ def _build_scan_status_payload(
         "collector_errors": int(scan_run["collector_errors"] or 0),
         "has_results": has_results,
         "failure_summary": scan_run["failure_summary"],
+        "trigger_source": scan_run["trigger_source"],
     }
 
 

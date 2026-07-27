@@ -5,11 +5,14 @@
 
 {% block page_styles %}
 <style>
-    .diagnostic-log {
-        max-height: 70vh;
-        overflow: auto;
-        white-space: pre-wrap;
+    .diagnostic-event {
+        border-top: 1px solid var(--border);
+        padding: 16px 0;
     }
+    .diagnostic-event:first-child { border-top: 0; }
+    .diagnostic-event h3 { margin: 0 0 6px; }
+    .diagnostic-event-time { color: var(--muted); font-size: 0.9rem; }
+    .diagnostic-event ul { margin-bottom: 0; }
 </style>
 {% endblock %}
 
@@ -27,6 +30,23 @@
     <p>
         <a class="button" href="{{ url_for('settings_diagnostic_log_download', log_name=log_view.name) }}">Download this log</a>
     </p>
-    <pre class="diagnostic-log">{{ log_view.content }}</pre>
+    {% if log_view.entries %}
+    <div class="diagnostic-events">
+        {% for entry in log_view.entries %}
+        <section class="diagnostic-event">
+            <h3>{{ entry.title }}</h3>
+            <p class="diagnostic-event-time">{{ entry.timestamp }}</p>
+            <p>{{ entry.summary }}</p>
+            {% if entry.details %}
+            <ul>
+                {% for detail in entry.details %}<li>{{ detail }}</li>{% endfor %}
+            </ul>
+            {% endif %}
+        </section>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No readable diagnostic events were found in this log.</p>
+    {% endif %}
 </div>
 {% endblock %}
