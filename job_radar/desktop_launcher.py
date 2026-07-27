@@ -438,6 +438,9 @@ def launch_desktop() -> None:
         )
         shutdown_event = threading.Event()
         app.config["JOB_RADAR_DESKTOP_SHUTDOWN_EVENT"] = shutdown_event
+        app.config["JOB_RADAR_DESKTOP_UPDATE_AVAILABLE"] = bool(
+            os.name == "nt" and getattr(sys, "frozen", False)
+        )
         server = make_server(args.host, args.port, app)
 
         try:

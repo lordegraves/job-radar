@@ -20,6 +20,11 @@ def test_inno_installer_is_per_user_and_preserves_user_data() -> None:
     assert "LocalAppData\\JobRadar" in script_text
     assert "[UninstallDelete]" not in script_text
     assert "{localappdata}\\JobRadar" not in script_text
+    assert (
+        'Flags: nowait postinstall\n'
+        in script_text.replace("\r\n", "\n")
+    )
+    assert "postinstall skipifsilent" not in script_text
 
 
 def test_installer_build_script_requires_verified_bundle_first() -> None:
@@ -31,7 +36,7 @@ def test_installer_build_script_requires_verified_bundle_first() -> None:
     assert "packaging\\windows\\junior-installer.iss" in script_text
     assert "ISCC.exe" in script_text
     assert (
-        "artifacts\\installer\\Junior-Setup-0.2.0-SP5-build-1.3.exe"
+        "artifacts\\installer\\Junior-Setup-0.2.0-SP5-build-1.4.exe"
         in script_text
     )
     validation_text = (
@@ -44,7 +49,7 @@ def test_installer_build_script_requires_verified_bundle_first() -> None:
         PROJECT_ROOT / "scripts" / "validate_release.ps1"
     ).read_text(encoding="utf-8")
     expected_installer = (
-        "artifacts\\installer\\Junior-Setup-0.2.0-SP5-build-1.3.exe"
+        "artifacts\\installer\\Junior-Setup-0.2.0-SP5-build-1.4.exe"
     )
     assert expected_installer in validation_text
     assert expected_installer in clean_validation_text
@@ -95,7 +100,7 @@ def test_windows_bundle_embeds_product_version_details() -> None:
     assert "junior-version-info.txt" in spec_text
     assert 'StringStruct("ProductName", "junior")' in version_text
     assert (
-        'StringStruct("ProductVersion", "0.2.0 - SP5 Build 1.3")'
+        'StringStruct("ProductVersion", "0.2.0 - SP5 Build 1.4")'
         in version_text
     )
     assert 'StringStruct("FileVersion", "0.2.0.1")' in version_text

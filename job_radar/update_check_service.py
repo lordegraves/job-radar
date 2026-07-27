@@ -1,4 +1,4 @@
-"""Check for a newer stable Junior release without changing the installation."""
+"""Find a newer official Junior release and its verified installer assets."""
 
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -29,6 +29,9 @@ class UpdateCheckResult:
     available_version: str | None = None
     release_url: str | None = None
     available_build: str | None = None
+    installer_name: str | None = None
+    installer_url: str | None = None
+    checksum_url: str | None = None
 
     def as_session_value(self) -> dict[str, str | None]:
         return asdict(self)
@@ -140,15 +143,23 @@ def check_for_update(
     if release_url is None or installed is None or available is None:
         return _unavailable_result()
     if available > installed:
+        installer = _installer_assets(
+            payload.get("assets"),
+            installed_version,
+            release_label,
+            build,
+        )
         return UpdateCheckResult(
             status="available",
             message=(
-                f"{release_label} Build {build} is available. Junior will not "
-                "download or install it automatically."
+                f"{release_label} Build {build} is available."
             ),
             available_version=installed_version,
             available_build=build,
             release_url=release_url,
+            installer_name=installer[0] if installer else None,
+            installer_url=installer[1] if installer else None,
+            checksum_url=installer[2] if installer else None,
         )
     return UpdateCheckResult(
         status="current",
@@ -189,6 +200,35 @@ def _latest_build_from_assets(value: object, release_label: str) -> str | None:
     return max(builds)[1] if builds else None
 
 
+def _installer_assets(
+    value: object,
+    version: str,
+    release_label: str,
+    build: str,
+) -> tuple[str, str, str] | None:
+    """Return only the exact installer and checksum from Junior's release."""
+
+    if not isinstance(value, list):
+        return None
+    expected_installer = (
+        f"Junior-Setup-{version}-{release_label}-build-{build}.exe"
+    )
+    expected_checksum = f"SHA256-{release_label}-build-{build}.txt"
+    urls: dict[str, str] = {}
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        url = _safe_asset_url(item.get("browser_download_url"))
+        if isinstance(name, str) and url is not None:
+            urls[name.casefold()] = url
+    installer_url = urls.get(expected_installer.casefold())
+    checksum_url = urls.get(expected_checksum.casefold())
+    if installer_url is None or checksum_url is None:
+        return None
+    return expected_installer, installer_url, checksum_url
+
+
 def _build_tuple(value: str | None) -> tuple[int, ...] | None:
     if not isinstance(value, str) or not re.fullmatch(r"\d+(?:\.\d+)+", value):
         return None
@@ -222,6 +262,21 @@ def _safe_release_url(value: object) -> str | None:
         parsed.scheme != "https"
         or parsed.netloc.lower() != "github.com"
         or not parsed.path.startswith("/lordegraves/job-radar/releases/tag/")
+    ):
+        return None
+    return value
+
+
+def _safe_asset_url(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    parsed = urlparse(value)
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc.lower() != "github.com"
+        or not parsed.path.startswith(
+            "/lordegraves/job-radar/releases/download/"
+        )
     ):
         return None
     return value

@@ -1,7 +1,7 @@
 #define AppName "Junior"
 #define AppVersion "0.2.0"
-#define BuildLabel "SP5 Build 1.3"
-#define BuildSlug "SP5-build-1.3"
+#define BuildLabel "SP5 Build 1.4"
+#define BuildSlug "SP5-build-1.4"
 #define AppPublisher "Junior"
 #define AppExeName "Junior.exe"
 
@@ -45,7 +45,7 @@ Name: "{group}\Junior"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
 Name: "{autodesktop}\Junior"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "Launch Junior"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExeName}"; Description: "Launch Junior"; Flags: nowait postinstall
 
 [Code]
 function InitializeSetup(): Boolean;

@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `SP5 Build 1.3`
+- Current field-test build: `SP5 Build 1.4`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -127,11 +127,14 @@ installations keep their current retention setting until the user changes it.
 RC6 is planned to improve distribution and tester support without weakening
 Junior's local-first or user-controlled behavior:
 
-- The manual **Check for updates** action is build-aware. It can report that a
-  newer field-test package supersedes the installed build even when both use
-  application version `0.2.0`. It checks only Junior's official GitHub release
-  channel, opens only the verified release page, and never downloads, installs,
-  migrates, or changes user data.
+- The manual **Check for updates** action is build-aware. In the installed
+  Windows desktop app, a separate **Download and install update** action
+  downloads only the exact installer and checksum published on Junior's
+  official GitHub release, verifies the SHA-256 checksum, closes Junior, runs
+  the installer, and reopens the app. Checking alone never downloads or
+  installs anything. Browser, server, and development modes provide the
+  verified release link instead of self-updating. Profiles, résumés, companies,
+  applications, and history remain in the separate user-data directory.
 - Diagnostics will gain a **Contact support** action. Junior will prepare a
   sanitized diagnostic bundle, open the user's default email application with
   safe version and operating-system context pre-filled, and tell the user which
@@ -157,7 +160,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The remaining items above are planned RC6 capabilities and are not implemented
-in SP5 Build 1.3. Diagnostics still requires the user to download and attach a
+in SP5 Build 1.4. Diagnostics still requires the user to download and attach a
 sanitized log manually. Interactive company-source discovery writes a separate
 bounded `junior-company-discovery.log` containing only public hostnames,
 collector families, safe outcomes, counts, and timestamps.
@@ -322,7 +325,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.3.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.4.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

@@ -69,11 +69,19 @@ privacy policy.
 
 ## Update checks
 
-Junior does not download or install updates automatically. When the user clicks
-**Check for updates**, Junior requests the latest stable release record from
-GitHub's public API. The request identifies the installed Junior version in its
-User-Agent. GitHub can observe the user's IP address and normal connection
-metadata. No profile, résumé, job, or application data is sent.
+Junior does not check, download, or install updates without a user action. When
+the user clicks **Check for updates**, Junior requests its current release
+record from GitHub's public API. The request identifies the installed Junior
+version and build in its User-Agent. GitHub can observe the user's IP address
+and normal connection metadata. No profile, résumé, job, or application data is
+sent.
+
+In the installed Windows desktop app, the user may separately choose
+**Download and install update**. Junior then downloads the exact installer and
+checksum from the official GitHub release into the local user-data `updates`
+directory, verifies the SHA-256 checksum, starts the installer, closes, and
+reopens after installation. Browser, server, and development modes do not
+self-update.
 
 ## Logs and diagnostics
 

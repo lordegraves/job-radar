@@ -1,0 +1,19 @@
+{# Shown briefly while the verified Windows installer takes over. #}
+{% extends "base.html" %}
+
+{% block title %}Installing update - junior{% endblock %}
+
+{% block content %}
+<section class="page-card narrow-card">
+    <h1>Installing Junior update</h1>
+    <p>
+        Junior verified {{ update.available_build and "SP5 Build " ~ update.available_build or update.available_version }}
+        and started the Windows installer.
+    </p>
+    <p>
+        This window will close. Junior will reopen when installation finishes.
+        Your profiles, résumé, companies, applications, and history remain in
+        their existing user-data location.
+    </p>
+</section>
+{% endblock %}

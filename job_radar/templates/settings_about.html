@@ -25,7 +25,7 @@
         <h3>Updates</h3>
         <p>
             Junior checks this installed release channel only when you ask. It
-            never downloads or installs an update automatically.
+            never downloads or installs an update without your approval.
         </p>
         <form method="post" action="{{ url_for('settings_about_check_updates') }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">

@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+import threading
 
 from flask import (
     Flask,
@@ -74,6 +75,11 @@ from job_radar.source_health_service import (
 )
 from job_radar.source_test_runner import SourceTestRunner
 from job_radar.update_check_service import check_for_update
+from job_radar.update_install_service import (
+    UpdateInstallError,
+    download_verified_update,
+    launch_windows_installer,
+)
 
 
 @dataclass(frozen=True)
@@ -120,6 +126,9 @@ def register_settings_routes(
                 user_data_location=runtime_paths.user_data_directory,
             ),
             update_check=session.pop("update_check", None),
+            update_install_available=bool(
+                current_app.config.get("JOB_RADAR_DESKTOP_UPDATE_AVAILABLE")
+            ),
         )
 
     @app.post("/settings/shutdown")
@@ -227,6 +236,47 @@ def register_settings_routes(
             release_tag=RELEASE_TAG,
         ).as_session_value()
         return redirect(url_for("settings"))
+
+    @app.post("/settings/install-update")
+    def settings_install_update():
+        shutdown_event = current_app.config.get(
+            "JOB_RADAR_DESKTOP_SHUTDOWN_EVENT"
+        )
+        if not (
+            shutdown_event is not None
+            and current_app.config.get("JOB_RADAR_DESKTOP_UPDATE_AVAILABLE")
+        ):
+            flash(
+                "Automatic updates are available from the installed Windows "
+                "desktop app only.",
+                "error",
+            )
+            return redirect(url_for("settings"))
+
+        update = check_for_update(
+            __version__,
+            installed_build=__build__.removeprefix(f"{RELEASE_LABEL} Build "),
+            release_label=RELEASE_LABEL,
+            release_tag=RELEASE_TAG,
+        )
+        try:
+            installer_path = download_verified_update(
+                update,
+                get_runtime_paths().user_data_directory / "updates",
+            )
+            launch_windows_installer(installer_path)
+        except UpdateInstallError as error:
+            flash(str(error), "error")
+            return redirect(url_for("settings"))
+
+        # Give the response time to reach the native window before closing it.
+        timer = threading.Timer(1.0, shutdown_event.set)
+        timer.daemon = True
+        timer.start()
+        return render_template(
+            "update_installing.html",
+            update=update,
+        )
 
     @app.get("/settings/diagnostics")
     def settings_diagnostics() -> str:

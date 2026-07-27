@@ -6,6 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added an explicit, checksum-verified Windows desktop update workflow. Checking
+  remains read-only; a separate confirmation downloads the exact official
+  installer and checksum, rejects mismatches, closes Junior cleanly, installs
+  the update, and reopens without moving or replacing user-owned data.
+- Label field-test packages and every application page as `SP5 Build 1.4`.
 - Added reusable TalentBrew discovery so branded career sites such as Ford can
   lead Junior to their verified public job-search page without a company-only
   exception.
@@ -24,8 +29,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   background, and run a targeted scan for selected companies without replacing
   the latest full-scan report.
 - Made the manual update check field-test-build aware. It compares the installed
-  SP5 build with installer assets on Junior's verified RC5 GitHub release and
-  never downloads, installs, migrates, or changes user data.
+  SP5 build with installer assets on Junior's verified RC5 GitHub release.
 - Added an off-by-default profile option for exceptional matches outside the
   user's selected locations. Eligible roles must already satisfy Junior's
   strong-match rules and have location as their only blocker; they appear in a

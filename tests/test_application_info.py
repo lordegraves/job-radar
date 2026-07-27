@@ -1,5 +1,6 @@
 """Verify About shows safe installed-version and schema information."""
 
+import hashlib
 from pathlib import Path
 
 import job_radar.web_routes.settings as settings_routes
@@ -8,13 +9,19 @@ from job_radar.application_info_service import build_application_info
 from job_radar.storage import initialize_database
 from job_radar.web_app import create_app
 from job_radar.update_check_service import (
+    UpdateCheckResult,
     check_for_stable_update,
     check_for_update,
+)
+from job_radar.update_install_service import (
+    UpdateInstallError,
+    download_verified_update,
+    launch_windows_installer,
 )
 
 
 class _ReleaseResponse:
-    def __init__(self, payload: dict[str, str]) -> None:
+    def __init__(self, payload) -> None:
         self.payload = payload
 
     def raise_for_status(self) -> None:
@@ -67,7 +74,7 @@ def test_settings_page_shows_safe_version_and_update_details(tmp_path: Path) -> 
     assert __version__ in html
     assert "Database / profile schema" in html
     assert "Check for updates" in html
-    assert "never downloads or installs" in html
+    assert "never downloads or installs an update without your approval" in html
     assert "Dawn Peacock" in html
     assert "GPL-3.0-only" in html
     assert app.test_client().get("/settings/about").status_code == 302
@@ -120,8 +127,22 @@ def test_update_check_reports_newer_field_test_build() -> None:
                     "releases/tag/v0.2.0-rc5"
                 ),
                 "assets": [
-                    {"name": "Junior-Setup-0.2.0-SP5-build-1.2.exe"},
-                    {"name": "SHA256.txt"},
+                    {
+                        "name": "Junior-Setup-0.2.0-SP5-build-1.2.exe",
+                        "browser_download_url": (
+                            "https://github.com/lordegraves/job-radar/releases/"
+                            "download/v0.2.0-rc5/"
+                            "Junior-Setup-0.2.0-SP5-build-1.2.exe"
+                        ),
+                    },
+                    {
+                        "name": "SHA256-SP5-build-1.2.txt",
+                        "browser_download_url": (
+                            "https://github.com/lordegraves/job-radar/releases/"
+                            "download/v0.2.0-rc5/"
+                            "SHA256-SP5-build-1.2.txt"
+                        ),
+                    },
                 ],
             }
         ),
@@ -130,6 +151,9 @@ def test_update_check_reports_newer_field_test_build() -> None:
     assert result.status == "available"
     assert result.available_build == "1.2"
     assert "SP5 Build 1.2 is available" in result.message
+    assert result.installer_name == "Junior-Setup-0.2.0-SP5-build-1.2.exe"
+    assert result.installer_url is not None
+    assert result.checksum_url is not None
 
 
 def test_about_update_check_is_manual_and_displays_safe_result(
@@ -168,7 +192,152 @@ def test_about_update_check_is_manual_and_displays_safe_result(
     assert "Junior 0.3.0 is available" not in before_check
     assert response.status_code == 200
     assert "Junior 0.3.0 is available" in after_check
-    assert "will not download or install it automatically" in after_check
+    assert "Junior 0.3.0 is available" in after_check
+
+
+class _DownloadResponse:
+    def __init__(self, content: bytes) -> None:
+        self.content = content
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def iter_content(self, *, chunk_size: int):
+        del chunk_size
+        yield self.content
+
+
+def _installable_update(installer: bytes) -> UpdateCheckResult:
+    del installer
+    return UpdateCheckResult(
+        status="available",
+        message="SP5 Build 1.4 is available.",
+        available_version="0.2.0",
+        available_build="1.4",
+        release_url=(
+            "https://github.com/lordegraves/job-radar/releases/tag/v0.2.0-rc5"
+        ),
+        installer_name="Junior-Setup-0.2.0-SP5-build-1.4.exe",
+        installer_url=(
+            "https://github.com/lordegraves/job-radar/releases/download/"
+            "v0.2.0-rc5/Junior-Setup-0.2.0-SP5-build-1.4.exe"
+        ),
+        checksum_url=(
+            "https://github.com/lordegraves/job-radar/releases/download/"
+            "v0.2.0-rc5/SHA256-SP5-build-1.4.txt"
+        ),
+    )
+
+
+def test_update_download_verifies_checksum_before_replacing_file(
+    tmp_path: Path,
+) -> None:
+    installer = b"verified installer"
+    update = _installable_update(installer)
+    checksum = (
+        f"{hashlib.sha256(installer).hexdigest()}  {update.installer_name}\n"
+    ).encode()
+
+    def request_get(url: str, **kwargs):
+        del kwargs
+        return _DownloadResponse(
+            checksum if "SHA256" in url else installer
+        )
+
+    result = download_verified_update(
+        update,
+        tmp_path,
+        request_get=request_get,
+    )
+
+    assert result.read_bytes() == installer
+    assert not result.with_suffix(".exe.part").exists()
+
+
+def test_update_download_rejects_checksum_mismatch(tmp_path: Path) -> None:
+    installer = b"untrusted installer"
+    update = _installable_update(installer)
+
+    def request_get(url: str, **kwargs):
+        del kwargs
+        if "SHA256" in url:
+            return _DownloadResponse(
+                f"{'0' * 64}  {update.installer_name}\n".encode()
+            )
+        return _DownloadResponse(installer)
+
+    try:
+        download_verified_update(update, tmp_path, request_get=request_get)
+    except UpdateInstallError as error:
+        assert "did not match" in str(error)
+    else:
+        raise AssertionError("checksum mismatch should be rejected")
+    assert not (tmp_path / update.installer_name).exists()
+
+
+def test_update_launcher_uses_no_command_shell(tmp_path: Path) -> None:
+    installer = tmp_path / "Junior.exe"
+    calls = []
+
+    launch_windows_installer(
+        installer,
+        popen=lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    assert calls == [
+        (
+            (
+                [
+                    str(installer),
+                    "/SILENT",
+                    "/CLOSEAPPLICATIONS",
+                    "/NORESTART",
+                ],
+            ),
+            {"close_fds": True},
+        )
+    ]
+
+
+def test_desktop_update_downloads_verifies_launches_and_closes(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+    database_path = tmp_path / "data" / "junior.sqlite3"
+    _write_settings(settings_path, database_path)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    shutdown_event = type("_Event", (), {"set": lambda self: None})()
+    app.config["JOB_RADAR_DESKTOP_SHUTDOWN_EVENT"] = shutdown_event
+    app.config["JOB_RADAR_DESKTOP_UPDATE_AVAILABLE"] = True
+    update = _installable_update(b"installer")
+    launched = []
+    monkeypatch.setattr(settings_routes, "check_for_update", lambda *a, **k: update)
+    monkeypatch.setattr(
+        settings_routes,
+        "download_verified_update",
+        lambda *a, **k: tmp_path / update.installer_name,
+    )
+    monkeypatch.setattr(
+        settings_routes,
+        "launch_windows_installer",
+        lambda path: launched.append(path),
+    )
+    monkeypatch.setattr(
+        settings_routes.threading,
+        "Timer",
+        lambda *a, **k: type(
+            "_Timer",
+            (),
+            {"daemon": False, "start": lambda self: None},
+        )(),
+    )
+
+    response = app.test_client().post("/settings/install-update")
+
+    assert response.status_code == 200
+    assert "Installing Junior update" in response.get_data(as_text=True)
+    assert launched == [tmp_path / update.installer_name]
 
 
 def test_diagnostics_links_to_read_only_source_and_scan_details(
