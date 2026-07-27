@@ -37,6 +37,18 @@ def test_installer_build_script_requires_verified_bundle_first() -> None:
     validation_text = (
         PROJECT_ROOT / "scripts" / "validate_windows_upgrade.ps1"
     ).read_text(encoding="utf-8")
+    clean_validation_text = (
+        PROJECT_ROOT / "scripts" / "validate_clean_windows_package.ps1"
+    ).read_text(encoding="utf-8")
+    release_validation_text = (
+        PROJECT_ROOT / "scripts" / "validate_release.ps1"
+    ).read_text(encoding="utf-8")
+    expected_installer = (
+        "artifacts\\installer\\Junior-Setup-0.2.0-SP5-build-1.3.exe"
+    )
+    assert expected_installer in validation_text
+    assert expected_installer in clean_validation_text
+    assert expected_installer in release_validation_text
     assert 'Join-Path $installRoot "LICENSE"' in validation_text
 
 
