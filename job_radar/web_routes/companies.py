@@ -11,6 +11,7 @@ from job_radar.company_assignment_service import (
 )
 from job_radar.company_catalog_query_service import build_company_catalog_view
 from job_radar.company_workspace_service import build_company_workspace
+from job_radar.company_discovery_log import record_company_discovery_event
 from job_radar.config import load_settings
 from job_radar.domain_errors import (
     EmployerNotFoundError,
@@ -349,6 +350,7 @@ def register_company_routes(
         allow_external_lookup = load_settings(
             settings_path
         ).company_discovery.external_lookup_enabled
+        logs_path = load_settings(settings_path).logs_path
         resolution = resolve_employer_submission(
             get_database_path(),
             profile_id=workspace.active_profile.profile_id,
@@ -356,6 +358,9 @@ def register_company_routes(
             careers_url=careers_url,
             confirm_detected=True,
             allow_external_lookup=allow_external_lookup,
+            discovery_observer=lambda stage, fields: (
+                record_company_discovery_event(logs_path, stage, fields)
+            ),
         )
         if resolution.status in {CREATED_SCAN_READY, ALREADY_ASSIGNED}:
             if retry_request_id and resolution.employer_id:

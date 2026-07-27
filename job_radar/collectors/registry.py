@@ -53,6 +53,9 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
 
     if source_type == "html":
         return collect_html_jobs(company_config)
+
+    if source_type == "talentbrew":
+        return collect_html_jobs(company_config)
     
     if source_type == "jobsyn":
         return collect_jobsyn_jobs(company_config)

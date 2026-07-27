@@ -146,6 +146,12 @@ COLLECTOR_CAPABILITIES = (
         "Additional setup may be required",
         "Scans supported public career pages that do not use a known platform.",
     ),
+    CollectorCapability(
+        "talentbrew",
+        "TalentBrew",
+        "Automatic from a TalentBrew-powered careers URL",
+        "Recognizes TalentBrew career sites and scans their public job listings.",
+    ),
 )
 
 

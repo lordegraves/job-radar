@@ -6,6 +6,18 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added reusable TalentBrew discovery so branded career sites such as Ford can
+  lead Junior to their verified public job-search page without a company-only
+  exception.
+- Added a bounded, sanitized company-discovery log that records which collector
+  family and public hostname Junior tested, whether jobs were verified, and
+  whether optional external lookup was used. URLs, profile data, résumés,
+  credentials, and raw exceptions are excluded.
+- Kept company-source testing visibly active with an elapsed-time indicator,
+  and aligned the company confirmation field and action.
+- Moved installed build, schema, and manual update information onto the main
+  Settings page. Removed the redundant Exit card while preserving the desktop
+  shell's protected clean-shutdown mechanism.
 - Added clickable latest-scan and company-source Diagnostics details. Normal
   users can review sanitized per-company collector warnings, open the global
   read-only Collector Catalog, test selected or all untested sources in the
@@ -25,7 +37,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   general diagnostic history is retained separately.
 - Fixed Eightfold collection when the server returns smaller pages than Junior
   requests, and preserved an employer's explicit Flex workplace field.
-- Label field-test packages and every application page as `SP5 Build 1.2`, and
+- Label field-test packages and every application page as `SP5 Build 1.3`, and
   include the same build identity in diagnostics and generated reports.
 - Add an explicit Flex workplace arrangement to profile creation and editing.
   Junior recognizes explicit flex-workplace wording without treating flexible

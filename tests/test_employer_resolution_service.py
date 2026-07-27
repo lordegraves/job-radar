@@ -24,6 +24,7 @@ from job_radar.employer_resolution_service import (
     MATCHED_EXISTING,
     PENDING_REVIEW,
     _eightfold_detection_from_html,
+    _talentbrew_detection_from_html,
     detect_employer_source,
     normalize_careers_url,
     normalize_company_name,
@@ -38,6 +39,21 @@ from job_radar.employer_storage import (
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_storage import create_profile
 from job_radar.storage import initialize_database
+
+
+def test_talentbrew_markers_create_reusable_job_search_detection() -> None:
+    detection = _talentbrew_detection_from_html(
+        source_url="https://careers.example.test/",
+        careers_url="https://careers.example.test/",
+        html='<script src="https://tbcdn.talentbrew.com/site.js"></script>',
+    )
+
+    assert detection is not None
+    assert detection.source_type == "talentbrew"
+    assert detection.source_config["source_url"] == (
+        "https://careers.example.test/search-jobs"
+    )
+    assert detection.source_config["job_link_patterns"] == ["/job/"]
 
 
 def create_test_profile(

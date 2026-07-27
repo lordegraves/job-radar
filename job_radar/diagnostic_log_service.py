@@ -15,7 +15,8 @@ from job_radar.diagnostic_service import DiagnosticsView
 MAX_VISIBLE_LOGS = 20
 MAX_LOG_VIEW_BYTES = 200_000
 _OWNED_LOG_PATTERN = re.compile(
-    r"^(?:junior-actions\.log|junior-diagnostics\.log|junior-last-scan\.log|"
+    r"^(?:junior-actions\.log|junior-company-discovery\.log|"
+    r"junior-diagnostics\.log|junior-last-scan\.log|"
     r"startup-errors\.log|(?:junior|startup-errors)-"
     r"\d{8}T\d{12}Z\.log)$"
 )

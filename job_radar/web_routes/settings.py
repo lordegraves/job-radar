@@ -110,14 +110,16 @@ def register_settings_routes(
     @app.get("/settings")
     def settings() -> str:
         settings_view = _build_settings_view(settings_path)
+        runtime_paths = get_runtime_paths()
 
         return render_template(
             "settings.html",
             settings_view=settings_view,
-            desktop_shutdown_available=(
-                current_app.config.get("JOB_RADAR_DESKTOP_SHUTDOWN_EVENT")
-                is not None
+            application_info=build_application_info(
+                database_path=runtime_paths.database_path,
+                user_data_location=runtime_paths.user_data_directory,
             ),
+            update_check=session.pop("update_check", None),
         )
 
     @app.post("/settings/shutdown")
@@ -135,16 +137,10 @@ def register_settings_routes(
         return render_template("shutdown.html")
 
     @app.get("/settings/about")
-    def settings_about() -> str:
-        runtime_paths = get_runtime_paths()
-        return render_template(
-            "settings_about.html",
-            application_info=build_application_info(
-                database_path=runtime_paths.database_path,
-                user_data_location=runtime_paths.user_data_directory,
-            ),
-            update_check=session.pop("update_check", None),
-        )
+    def settings_about():
+        """Keep old bookmarks working after About moved onto Settings."""
+
+        return redirect(url_for("settings"))
 
     @app.get("/settings/job-platforms")
     def settings_job_platforms() -> str:
@@ -230,7 +226,7 @@ def register_settings_routes(
             release_label=RELEASE_LABEL,
             release_tag=RELEASE_TAG,
         ).as_session_value()
-        return redirect(url_for("settings_about"))
+        return redirect(url_for("settings"))
 
     @app.get("/settings/diagnostics")
     def settings_diagnostics() -> str:

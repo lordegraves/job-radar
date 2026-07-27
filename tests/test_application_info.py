@@ -53,30 +53,24 @@ def test_application_info_reads_current_schema_without_user_content(
     assert info.user_data_location == str(tmp_path.resolve())
 
 
-def test_about_page_shows_safe_support_and_version_details(tmp_path: Path) -> None:
+def test_settings_page_shows_safe_version_and_update_details(tmp_path: Path) -> None:
     settings_path = tmp_path / "config" / "settings.yaml"
     database_path = tmp_path / "data" / "junior.sqlite3"
     _write_settings(settings_path, database_path)
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
 
-    response = app.test_client().get("/settings/about")
+    response = app.test_client().get("/settings")
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "About junior" in html
+    assert "About junior and updates" in html
     assert __version__ in html
-    assert str(tmp_path.resolve()) in html
-    assert "Database schema version" in html
-    assert "Profile/configuration schema version" in html
-    assert "claytonmgraves@outlook.com" in html
-    assert "Do not include passwords" in html
+    assert "Database / profile schema" in html
     assert "Check for updates" in html
     assert "never downloads or installs" in html
-    assert "Beta testers" in html
     assert "Dawn Peacock" in html
-    assert "GNU General Public License v3.0 only" in html
     assert "GPL-3.0-only" in html
-    assert "github.com/lordegraves/job-radar/blob/HEAD/LICENSE" in html
+    assert app.test_client().get("/settings/about").status_code == 302
 
 
 def test_update_check_reports_newer_verified_stable_release() -> None:
@@ -164,7 +158,7 @@ def test_about_update_check_is_manual_and_displays_safe_result(
     )
 
     client = app.test_client()
-    before_check = client.get("/settings/about").get_data(as_text=True)
+    before_check = client.get("/settings").get_data(as_text=True)
     response = client.post(
         "/settings/about/check-updates",
         follow_redirects=True,

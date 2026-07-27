@@ -25,6 +25,15 @@
         margin-top: 16px;
     }
     .resolution-card { border-left: 4px solid var(--accent); margin: 18px 0; }
+    .company-confirm {
+        align-items: end;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(240px, 350px) auto;
+        max-width: 580px;
+    }
+    .company-confirm label { display: grid; gap: 6px; }
+    .company-confirm .company-checking { grid-column: 1 / -1; }
     .company-checking[hidden] { display: none; }
     .company-checking {
         align-items: center;
@@ -44,7 +53,8 @@
         to { opacity: 1; transform: scale(1.15); }
     }
     @media (max-width: 640px) {
-        .catalog-search { grid-template-columns: 1fr; }
+        .catalog-search,
+        .company-confirm { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
@@ -125,7 +135,7 @@
         credible job postings.
     </p>
     {% endif %}
-    <form method="post" action="{{ url_for('confirm_detected_company') }}">
+    <form class="company-confirm" method="post" action="{{ url_for('confirm_detected_company') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="careers_url" value="{{ resolution.careers_url }}">
         <input type="hidden" name="retry_request_id" value="{{ retry_request_id or '' }}">
@@ -152,6 +162,10 @@
             Confirm and add company
             {% endif %}
         </button>
+        <div class="company-checking" role="status" hidden>
+            <span class="company-checking-dot" aria-hidden="true"></span>
+            <span data-company-progress>Preparing to test public job sources…</span>
+        </div>
     </form>
     {% elif resolution.status == 'CREATED_SCAN_READY' %}
     <p><a href="{{ url_for('companies') }}">Return to Your Companies</a></p>
@@ -259,12 +273,21 @@ document.getElementById("company-source-form")?.addEventListener("submit", (even
 document.querySelectorAll("form[action$='/confirm-detected']").forEach((form) => {
     form.addEventListener("submit", () => {
         const button = form.querySelector("button[type='submit']");
-        const status = document.getElementById("company-checking");
+        const status = form.querySelector(".company-checking");
+        const progress = form.querySelector("[data-company-progress]");
+        let elapsed = 0;
         if (button) {
             button.disabled = true;
             button.textContent = "Testing job source...";
         }
         if (status) status.hidden = false;
+        if (progress) {
+            progress.textContent = "Testing public job sources… 0 seconds";
+            window.setInterval(() => {
+                elapsed += 1;
+                progress.textContent = `Testing public job sources… ${elapsed} seconds. Junior may check several recruiting platforms.`;
+            }, 1000);
+        }
     });
 });
 </script>

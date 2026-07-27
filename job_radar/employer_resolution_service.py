@@ -5,6 +5,7 @@ import json
 import re
 import sqlite3
 import unicodedata
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 from html import unescape
@@ -123,6 +124,7 @@ def resolve_employer_submission(
     careers_url: str = "",
     confirm_detected: bool = False,
     allow_external_lookup: bool = False,
+    discovery_observer: Callable[[str, Mapping[str, object]], None] | None = None,
 ) -> EmployerResolutionResult:
     """Resolve, safely create, or queue one company for a managed profile."""
 
@@ -215,6 +217,7 @@ def resolve_employer_submission(
                 display_name
                 or _display_name_from_detection(normalized_url, detection)
             ),
+            discovery_observer=discovery_observer,
         )
         if tested_source is None:
             return _source_test_failed()
@@ -249,6 +252,7 @@ def resolve_employer_submission(
             normalized_name=normalized_name,
             normalized_url=normalized_url,
             allow_external_lookup=allow_external_lookup,
+            discovery_observer=discovery_observer,
         )
     return _create_pending_review(
         db_path,
@@ -767,6 +771,7 @@ def _create_and_assign_generic(
     normalized_name: str,
     normalized_url: str,
     allow_external_lookup: bool,
+    discovery_observer: Callable[[str, Mapping[str, object]], None] | None,
 ) -> EmployerResolutionResult:
     """Enable an unfamiliar public careers page only after extracting real jobs."""
 
@@ -776,6 +781,7 @@ def _create_and_assign_generic(
         display_name=display_name,
         normalized_url=normalized_url,
         allow_external_lookup=allow_external_lookup,
+        discovery_observer=discovery_observer,
     )
     try:
         source_result = future.result(timeout=_COMPANY_DISCOVERY_TIMEOUT_SECONDS)
@@ -815,6 +821,7 @@ def _resolve_generic_source(
     display_name: str,
     normalized_url: str,
     allow_external_lookup: bool,
+    discovery_observer: Callable[[str, Mapping[str, object]], None] | None,
 ) -> EmployerResolutionResult | tuple[DetectedEmployerSource, int]:
     """Run bounded network-only discovery without writing application data."""
 
@@ -830,6 +837,7 @@ def _resolve_generic_source(
     tested_source = _first_working_source(
         discoveries,
         display_name=display_name,
+        discovery_observer=discovery_observer,
     )
     if tested_source is None:
         lookup_fields = _public_lookup_request_fields(
@@ -837,6 +845,12 @@ def _resolve_generic_source(
             careers_url=normalized_url,
         )
         if not allow_external_lookup:
+            _observe_discovery(
+                discovery_observer,
+                "external_lookup",
+                external_lookup_enabled=False,
+                outcome="skipped",
+            )
             return EmployerResolutionResult(
                 status=EXTERNAL_LOOKUP_DISABLED,
                 message=(
@@ -856,6 +870,12 @@ def _resolve_generic_source(
             display_name=display_name,
             careers_url=normalized_url,
         )
+        _observe_discovery(
+            discovery_observer,
+            "external_lookup",
+            external_lookup_enabled=True,
+            outcome=lookup_attempt.state,
+        )
         if lookup_attempt.state == "unavailable":
             return EmployerResolutionResult(
                 status=EXTERNAL_LOOKUP_UNAVAILABLE,
@@ -872,6 +892,7 @@ def _resolve_generic_source(
         tested_source = _first_working_source(
             list(lookup_attempt.discoveries),
             display_name=display_name,
+            discovery_observer=discovery_observer,
         )
         if tested_source is None:
             return EmployerResolutionResult(
@@ -899,11 +920,12 @@ def _first_working_source(
     discoveries: list[DetectedEmployerSource],
     *,
     display_name: str,
+    discovery_observer: Callable[[str, Mapping[str, object]], None] | None = None,
 ) -> tuple[DetectedEmployerSource, int] | None:
     """Probe derived collector configurations and keep the first real job feed."""
 
     seen: set[tuple[str | None, str]] = set()
-    for discovery in discoveries:
+    for candidate_number, discovery in enumerate(discoveries, start=1):
         config_key = (
             discovery.source_type,
             json.dumps(discovery.source_config, sort_keys=True),
@@ -923,9 +945,35 @@ def _first_working_source(
         try:
             postings = collect_jobs_for_company(candidate_config)
         except (CollectorError, OSError, ValueError, requests.RequestException):
+            _observe_discovery(
+                discovery_observer,
+                "candidate_test",
+                candidate_number=candidate_number,
+                candidate_host=_source_host(discovery),
+                source_type=discovery.source_type or "unknown",
+                outcome="failed",
+            )
             continue
         if postings:
+            _observe_discovery(
+                discovery_observer,
+                "candidate_test",
+                candidate_number=candidate_number,
+                candidate_host=_source_host(discovery),
+                source_type=discovery.source_type or "unknown",
+                outcome="verified",
+                job_count=len(postings),
+            )
             return discovery, len(postings)
+        _observe_discovery(
+            discovery_observer,
+            "candidate_test",
+            candidate_number=candidate_number,
+            candidate_host=_source_host(discovery),
+            source_type=discovery.source_type or "unknown",
+            outcome="no_jobs",
+            job_count=0,
+        )
     return None
 
 
@@ -991,6 +1039,13 @@ def _discover_branded_sources(
     )
     if custom_eightfold is not None:
         discoveries.append(custom_eightfold)
+    talentbrew = _talentbrew_detection_from_html(
+        source_url=response.url,
+        careers_url=careers_url,
+        html=html,
+    )
+    if talentbrew is not None:
+        discoveries.append(talentbrew)
     identity_tokens = _company_identity_tokens("", careers_url)
     custom_platform_candidates: list[str] = []
     for advertised_url in advertised_urls:
@@ -1118,6 +1173,52 @@ def _eightfold_detection_from_html(
         },
         scan_ready=True,
     )
+
+
+def _talentbrew_detection_from_html(
+    *,
+    source_url: str,
+    careers_url: str,
+    html: str,
+) -> DetectedEmployerSource | None:
+    """Recognize TalentBrew sites and test their standard job-search page."""
+
+    lowered = html.casefold()
+    if "talentbrew" not in lowered and "tbcdn." not in lowered:
+        return None
+    parsed = urlsplit(source_url)
+    if not parsed.hostname:
+        return None
+    source_root = urlunsplit((parsed.scheme, parsed.netloc, "", "", ""))
+    return DetectedEmployerSource(
+        source_type="talentbrew",
+        source_identifier=f"talentbrew:{parsed.hostname.casefold()}",
+        source_config={
+            "source_url": urljoin(source_root, "/search-jobs"),
+            "careers_url": careers_url,
+            "job_link_patterns": ["/job/"],
+        },
+        scan_ready=True,
+    )
+
+
+def _source_host(discovery: DetectedEmployerSource) -> str:
+    source_url = str(discovery.source_config.get("source_url", ""))
+    return (urlsplit(source_url).hostname or "unknown").casefold()
+
+
+def _observe_discovery(
+    observer: Callable[[str, Mapping[str, object]], None] | None,
+    stage: str,
+    **fields: object,
+) -> None:
+    if observer is not None:
+        try:
+            observer(stage, fields)
+        except OSError:
+            # Diagnostics are helpful, but a log-write problem must never stop
+            # Junior from validating an otherwise usable company source.
+            return
 
 
 def _discover_public_job_sources(

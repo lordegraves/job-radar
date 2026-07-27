@@ -15,6 +15,7 @@ from job_radar.diagnostic_log_service import (
 )
 from job_radar.diagnostic_service import DiagnosticsView, HealthCard
 from job_radar.decision_event_log import record_decision_event
+from job_radar.company_discovery_log import record_company_discovery_event
 
 
 def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
@@ -26,6 +27,17 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
     (tmp_path / "junior-last-scan.log").write_text(
         '{"event":"scan_completed"}',
         encoding="utf-8",
+    )
+    record_company_discovery_event(
+        tmp_path,
+        "candidate_test",
+        {
+            "candidate_host": "careers.example.test",
+            "source_type": "talentbrew",
+            "outcome": "verified",
+            "job_count": 3,
+            "unsafe_url": "https://private.example.test/query",
+        },
     )
     (tmp_path / "junior-20260723T120000000000Z.log").write_text(
         "safe dated",
@@ -39,9 +51,17 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
     assert {log.name for log in logs} == {
         "junior-actions.log",
         "junior-last-scan.log",
+        "junior-company-discovery.log",
         "startup-errors.log",
         "junior-20260723T120000000000Z.log",
     }
+
+    content = (tmp_path / "junior-company-discovery.log").read_text(
+        encoding="utf-8"
+    )
+    assert "careers.example.test" in content
+    assert "talentbrew" in content
+    assert "unsafe_url" not in content
 
 
 def test_rejects_arbitrary_and_nested_log_paths(tmp_path: Path) -> None:

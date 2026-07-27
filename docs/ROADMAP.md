@@ -275,7 +275,7 @@ packaged collector catalog before contacting an external search provider.
 
 RC6 is reserved for stabilization work discovered during RC5 field testing and
 the following distribution and support improvements. These items are planned;
-they are not part of SP5 Build 1.2 unless marked Completed:
+they are not part of SP5 Build 1.3 unless marked Completed:
 
 | RC6 work item | Status | Required result |
 |---|---|---|

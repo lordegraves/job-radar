@@ -2673,7 +2673,7 @@ def test_desktop_settings_requests_clean_shutdown(tmp_path: Path) -> None:
     page = client.get("/settings")
     response = client.post("/settings/shutdown")
 
-    assert "Exit Junior" in page.get_data(as_text=True)
+    assert "Exit Junior" not in page.get_data(as_text=True)
     assert response.status_code == 200
     assert "Junior is closing" in response.get_data(as_text=True)
     assert shutdown_event.is_set()
@@ -5072,7 +5072,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "SP5 Build 1.2" in html
+    assert "SP5 Build 1.3" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html
@@ -5575,10 +5575,6 @@ candidate:
         "/scan": (
             '<a class="active-nav" href="/scan" '
             'aria-current="page">Scan</a>'
-        ),
-        "/settings/about": (
-            '<a class="active-nav" href="/settings" '
-            'aria-current="page">Settings</a>'
         ),
         "/settings/diagnostics": (
             '<a class="active-nav" href="/settings" '
