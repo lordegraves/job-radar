@@ -12,7 +12,6 @@ from flask import (
     Flask,
     current_app,
     flash,
-    jsonify,
     redirect,
     render_template,
     request,
@@ -49,7 +48,6 @@ from job_radar.email_settings_service import (
     test_email_connection,
 )
 from job_radar.email_sender import get_email_readiness
-from job_radar.employer_connection_service import test_employer_connection
 from job_radar.runtime_paths import (
     DEFAULT_COMPANY_CONFIG_PATH,
     DEFAULT_EMAIL_PREVIEW_PATH,
@@ -74,11 +72,7 @@ from job_radar.scheduler_integration import (
     inspect_scheduler,
     remove_scheduler,
 )
-from job_radar.source_health_service import (
-    build_latest_scan_warnings,
-    build_source_health_items,
-)
-from job_radar.source_test_runner import SourceTestRunner
+from job_radar.source_health_service import build_latest_scan_warnings
 from job_radar.update_check_service import check_for_update
 from job_radar.update_install_service import (
     UpdateInstallError,
@@ -111,13 +105,6 @@ def register_settings_routes(
     get_runtime_paths: Callable[[], RuntimePaths],
 ) -> None:
     """Register normal-user settings and read-only application information."""
-    source_test_runner = SourceTestRunner(
-        lambda employer_id: test_employer_connection(
-            get_runtime_paths().database_path,
-            employer_id,
-        )
-    )
-
     @app.get("/settings")
     def settings() -> str:
         settings_view = _build_settings_view(settings_path)
@@ -155,49 +142,10 @@ def register_settings_routes(
         )
 
     @app.get("/settings/diagnostics/sources")
-    def settings_source_health() -> str:
-        runtime_paths = get_runtime_paths()
-        return render_template(
-            "settings_source_health.html",
-            sources=build_source_health_items(runtime_paths.database_path),
-            test_status=source_test_runner.status(),
-        )
+    def settings_source_health():
+        """Keep old bookmarks working after source health moved to Companies."""
 
-    @app.post("/settings/diagnostics/sources/test")
-    def settings_source_health_test():
-        runtime_paths = get_runtime_paths()
-        available = {
-            item.employer_id: item
-            for item in build_source_health_items(runtime_paths.database_path)
-        }
-        requested = request.form.getlist("employer_id")
-        if request.form.get("test_scope") == "untested":
-            requested = [
-                item.employer_id
-                for item in available.values()
-                if item.enabled and item.state == "not_tested"
-            ]
-        selected = [item for item in requested if item in available]
-        if not selected:
-            flash("Select at least one company source to test.", "error")
-        elif source_test_runner.start(
-            selected,
-            labels={
-                employer_id: available[employer_id].employer_name
-                for employer_id in selected
-            },
-        ):
-            flash(
-                f"Testing {len(selected)} company source(s) in the background.",
-                "success",
-            )
-        else:
-            flash("A company-source test is already running.", "error")
-        return redirect(url_for("settings_source_health"))
-
-    @app.get("/settings/diagnostics/sources/status")
-    def settings_source_health_status():
-        return jsonify(source_test_runner.status())
+        return redirect(url_for("companies", _anchor="company-sources"))
 
     @app.get("/settings/diagnostics/latest-scan")
     def settings_scan_diagnostics() -> str:

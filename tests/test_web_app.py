@@ -2755,7 +2755,7 @@ def test_update_result_remains_visible_until_dismissed(tmp_path: Path) -> None:
     app = create_app(settings_path=str(settings_file))
     app.config["JOB_RADAR_UPDATE_RESULT"] = {
         "status": "success",
-        "message": "Junior was updated successfully to SP5 Build 1.10.",
+        "message": "Junior was updated successfully to SP5 Build 1.11.",
     }
     client = app.test_client()
 
@@ -2903,18 +2903,61 @@ email:
     assert "Ready to send" in html
 
 
-def test_scan_page_shows_manual_scan_command(
+def test_scan_page_shows_user_scan_controls_and_results_summary(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
 
-    write_settings_file(settings_file, database_file)
+    write_settings_file(settings_file, database_file, reports_path)
+    reports_path.mkdir()
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-27T14:30:00+00:00",
+        top_matches=[
+            make_report_snapshot_job(
+                title="Top match",
+                url="https://example.com/top",
+                company="Example Company",
+            )
+        ],
+        review_needed=[
+            make_report_snapshot_job(
+                title="Review job",
+                url="https://example.com/review",
+                company="Example Company",
+            )
+        ],
+        collector_errors=[
+            {
+                "company_key": "example-company",
+                "company_name": "Example Company",
+                "source_type": "greenhouse",
+                "message": "The public job source did not respond.",
+            }
+        ],
+    )
+    profile = ManagedProfile(
+        profile_id="profile_scanpage",
+        display_name="Scan Page Profile",
+        company_ids=("example-company",),
+    )
+    create_profile(database_file, profile)
+    set_active_profile(database_file, profile.profile_id)
+    upsert_employer_source(
+        database_file,
+        EmployerSource(
+            employer_id="example-company",
+            name="Example Company",
+            source_type="greenhouse",
+            source_config={"source_slug": "example-company"},
+        ),
+    )
     monkeypatch.chdir(tmp_path)
 
     app = create_app(settings_path=str(settings_file))
-    runtime_paths = app.config["JOB_RADAR_RUNTIME_PATHS"]
     client = app.test_client()
 
     response = client.get("/scan")
@@ -2925,27 +2968,23 @@ def test_scan_page_shows_manual_scan_command(
 
     assert "Scan" in html
     assert "Review the current scan settings or start a manual scan." in normalized_html
-    assert "<summary>Show technical scan details</summary>" in normalized_html
     assert "<h2>Run scan</h2>" in normalized_html
     assert "Email sending is disabled for manual scans started here." in normalized_html
     assert 'id="scan-submit-button"' in html
     assert "> Run scan </button>" in normalized_html
+    assert "<summary>Scan selected companies</summary>" in normalized_html
+    assert "Select all companies" in html
+    assert "<summary>Latest scan problems</summary>" in normalized_html
+    assert "1 company source problem needs attention." in normalized_html
+    assert "Example Company" in html
+    assert "The public job source did not respond." in html
     assert "Run scan from GUI" not in html
     assert "Scan is running. This may take a few minutes." in normalized_html
     assert "Some company/source errors are temporary." in normalized_html
     assert "After running a scan, use the latest scan links here" in normalized_html
-    assert "python -m job_radar scan" in html
-    assert f"--config {runtime_paths.company_config_path}" in html
-    assert f"--settings {runtime_paths.settings_path}" in html
-    assert (
-        f"--report {runtime_paths.resolve('reports/target-scan.html')}"
-        in html
-    )
-    assert (
-        "--email-preview "
-        f"{runtime_paths.resolve('reports/target-email-preview.txt')}"
-        in html
-    )
+    assert "python -m job_radar scan" not in html
+    assert "Manual scan command" not in html
+    assert "Command paths" not in html
 
 
 def test_scan_page_restores_active_scan_progress(
@@ -3173,7 +3212,7 @@ def test_selected_scan_uses_separate_reports_and_only_selected_companies(
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith(
-        "/settings/diagnostics/sources?targeted_scan=started"
+        "/scan?targeted_scan=started"
     )
     assert scan_started.wait(timeout=2)
     assert calls == [
@@ -5105,7 +5144,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "SP5 Build 1.10" in html
+    assert "SP5 Build 1.11" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html
@@ -5673,7 +5712,7 @@ def test_supported_job_platforms_are_visible_without_employers(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Company Source Health" in diagnostics_html
+    assert "Company sources" in diagnostics_html
     assert "Collector Catalog" in html
     assert "separate from the" in html
     assert "global Employer Catalog" in html

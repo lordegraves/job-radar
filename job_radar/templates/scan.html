@@ -43,7 +43,7 @@
         gap: 10px;
     }
 
-    .technical-scan-details {
+    .scan-details {
         background: rgba(31, 31, 35, 0.94);
         border: 1px solid var(--border);
         border-radius: 14px;
@@ -51,12 +51,31 @@
         padding: 14px 18px;
     }
 
-    .technical-scan-details > summary {
+    .scan-details > summary {
         font-weight: 650;
     }
 
-    .technical-scan-details pre {
-        max-width: 100%;
+    .selected-company-table {
+        margin: 14px 0;
+        max-height: 420px;
+        overflow-y: auto;
+    }
+
+    .selected-company-table table {
+        margin: 0;
+        width: 100%;
+    }
+
+    .selected-company-table th:first-child,
+    .selected-company-table td:first-child {
+        text-align: center;
+        width: 56px;
+    }
+
+    .scan-success-summary {
+        border-left: 4px solid #55d6a3;
+        margin: 18px 0;
+        padding: 10px 14px;
     }
 </style>
 {% endblock %}
@@ -73,40 +92,6 @@
     <p><strong>Scan failed.</strong> {{ scan_error }}</p>
     {% endif %}
 </div>
-
-<details class="technical-scan-details">
-    <summary>Show technical scan details</summary>
-
-    <h2>Manual scan command</h2>
-    <pre><code>{{ scan_command }}</code></pre>
-
-    <h2>Command paths</h2>
-    <table>
-        <caption class="visually-hidden">Junior command paths</caption>
-        <tbody>
-            <tr>
-                <th>Company config</th>
-                <td><code>{{ scan_config_path }}</code></td>
-            </tr>
-            <tr>
-                <th>Settings</th>
-                <td><code>{{ scan_settings_path }}</code></td>
-            </tr>
-            <tr>
-                <th>Scoring config</th>
-                <td><code>{{ scan_scoring_path }}</code></td>
-            </tr>
-            <tr>
-                <th>HTML report</th>
-                <td><code>{{ scan_report_path }}</code></td>
-            </tr>
-            <tr>
-                <th>Email preview</th>
-                <td><code>{{ scan_email_preview_path }}</code></td>
-            </tr>
-        </tbody>
-    </table>
-</details>
 
 <h2>Run scan</h2>
 
@@ -179,6 +164,97 @@
     </p>
 </div>
 
+<details class="scan-details" id="selected-company-scan">
+    <summary>Scan selected companies</summary>
+    <h2>Scan only the companies you choose</h2>
+    <p>
+        Junior will collect and score current jobs from these companies and
+        add new results to Review Jobs.
+    </p>
+    <p class="muted">
+        This does not replace the latest full-scan report. Stable job identity
+        prevents duplicates, and existing Save, Pass, and Apply decisions stay
+        in effect.
+    </p>
+    {% if company_workspace.companies %}
+    <form id="selected-scan-form" method="post" action="{{ url_for('run_selected_scan') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="selected-company-table">
+            <table>
+                <caption class="visually-hidden">Companies available for a selected scan</caption>
+                <thead>
+                    <tr>
+                        <th>
+                            <input
+                                id="select-all-companies"
+                                type="checkbox"
+                                aria-label="Select all companies"
+                            >
+                        </th>
+                        <th>Company</th>
+                        <th>Recruiting platform</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for company in company_workspace.companies if company.scanning %}
+                    <tr>
+                        <td>
+                            <input
+                                type="checkbox"
+                                name="employer_id"
+                                value="{{ company.company_key }}"
+                                aria-label="Select {{ company.name }}"
+                            >
+                        </td>
+                        <td><strong>{{ company.name }}</strong></td>
+                        <td>{{ company.source_label }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <button id="selected-scan-button" type="submit">Scan selected companies</button>
+    </form>
+    {% else %}
+    <p>No scanning companies are available in the active profile.</p>
+    {% endif %}
+</details>
+
+{% if scan_summary.available and scan_summary.errors %}
+<details class="scan-details" id="latest-scan-summary" open>
+    <summary>Latest scan problems</summary>
+    <p>
+        <strong>
+            {{ scan_summary.errors|length }} company source
+            problem{% if scan_summary.errors|length != 1 %}s need{% else %} needs{% endif %}
+            attention.
+        </strong>
+    </p>
+    <h3>Company source warnings</h3>
+    <ul>
+        {% for error in scan_summary.errors %}
+        <li>
+            <strong>{{ error.company_name }}</strong>
+            ({{ error.source_type }}): {{ error.message }}
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="muted">
+        More troubleshooting information is available in
+        <a href="{{ url_for('settings_diagnostics') }}">Diagnostics</a>.
+    </p>
+</details>
+{% elif scan_summary.available %}
+<div class="scan-success-summary" id="latest-scan-summary">
+    <strong>Latest scan completed successfully.</strong>
+    No company-source problems were found.
+</div>
+{% else %}
+<div class="scan-success-summary" id="latest-scan-summary">
+    No completed scan information is available yet.
+</div>
+{% endif %}
+
 <script id="initial-scan-status" type="application/json">
     {{ scan_status|tojson }}
 </script>
@@ -189,6 +265,9 @@
     );
     const scanForm = document.getElementById("scan-form");
     const scanButton = document.getElementById("scan-submit-button");
+    const selectedScanForm = document.getElementById("selected-scan-form");
+    const selectedScanButton = document.getElementById("selected-scan-button");
+    const selectAllCompanies = document.getElementById("select-all-companies");
     const scanRunning = document.getElementById("scan-running");
     const scanStage = document.getElementById("scan-stage");
     const scanProgress = document.getElementById("scan-progress");
@@ -198,11 +277,25 @@
     const latestOutput = document.getElementById("latest-output");
     const csrfToken = scanForm.elements["_csrf_token"].value;
 
+    selectAllCompanies?.addEventListener("change", () => {
+        selectedScanForm
+            .querySelectorAll('input[name="employer_id"]')
+            .forEach((checkbox) => {
+                checkbox.checked = selectAllCompanies.checked;
+            });
+    });
+
     function renderScanStatus(status) {
         scanButton.disabled = status.is_running;
         scanButton.textContent = status.is_running
             ? "Scan running..."
             : "Run scan";
+        if (selectedScanButton) {
+            selectedScanButton.disabled = status.is_running;
+            selectedScanButton.textContent = status.is_running
+                ? "Scan running..."
+                : "Scan selected companies";
+        }
 
         scanRunning.hidden = !status.is_running;
         scanFailure.hidden = status.status !== "failed";
@@ -268,6 +361,47 @@
             scanFailure.hidden = false;
             scanFailureSummary.textContent =
                 "Junior could not start the scan. Try again or restart Junior.";
+        }
+    });
+
+    selectedScanForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const selected = new FormData(selectedScanForm);
+        if (!selected.getAll("employer_id").length) {
+            scanFailure.hidden = false;
+            scanFailureSummary.textContent =
+                "Select at least one company before starting this scan.";
+            return;
+        }
+
+        scanButton.disabled = true;
+        selectedScanButton.disabled = true;
+        selectedScanButton.textContent = "Scan running...";
+        scanRunning.hidden = false;
+        scanFailure.hidden = true;
+        scanStage.textContent = "Starting selected-company scan";
+        scanProgress.removeAttribute("value");
+        scanProgressDetails.textContent =
+            "Junior is preparing the selected company sources.";
+
+        try {
+            const response = await fetch(selectedScanForm.action, {
+                method: "POST",
+                headers: {"Accept": "application/json"},
+                body: selected,
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(
+                    payload.message || "Junior could not start the selected scan."
+                );
+            }
+            window.juniorScanMonitor.watch();
+        } catch (error) {
+            scanFailure.hidden = false;
+            scanFailureSummary.textContent = error.message;
+            selectedScanButton.disabled = false;
+            selectedScanButton.textContent = "Scan selected companies";
         }
     });
 

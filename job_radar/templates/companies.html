@@ -122,6 +122,34 @@
         gap: 8px;
     }
 
+    .company-health-table { table-layout: fixed; }
+    .company-health-table th:first-child { width: 42px; }
+    .company-health-table th:nth-child(2) { width: 25%; }
+    .company-health-table th:nth-child(3),
+    .company-health-table th:nth-child(4) { width: 24%; }
+    .company-health-table th:nth-child(5) { width: 17%; }
+    .company-health-table th,
+    .company-health-table td {
+        overflow-wrap: normal;
+        vertical-align: top;
+        word-break: normal;
+    }
+    .company-health-success { box-shadow: inset 4px 0 #55d6a3; }
+    .company-health-warning { box-shadow: inset 4px 0 #f5c451; }
+    .company-health-error { box-shadow: inset 4px 0 #ff6477; }
+    .company-health-neutral { box-shadow: inset 4px 0 #8b949e; }
+    .company-test-controls,
+    .company-inline-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .company-test-controls { margin: 14px 0; }
+    .company-remove-form {
+        margin: 0;
+    }
+
 </style>
 {% endblock %}
 
@@ -172,7 +200,7 @@
         <strong>{{ workspace.paused_companies }}</strong>
         <span class="muted">Paused</span>
     </div>
-    <a class="company-summary-card" href="{{ url_for('settings_source_health') }}">
+    <a class="company-summary-card" href="#company-sources">
         <strong>{{ source_health_counts.attention }}</strong>
         <span>Company Source Health</span>
         <span class="source-cell-detail">
@@ -218,30 +246,113 @@
 </section>
 {% endif %}
 
-<section>
-    <h2>Companies in this search</h2>
+<section class="page-card" id="company-sources">
+    <h2>Companies and source health</h2>
+    <p>
+        Manage the companies in this profile and confirm that Junior can read
+        their public recruiting sources.
+    </p>
+    <p class="muted">
+        A connection test reads a small sample and does not import jobs.
+        Actual selected-company scans belong on the Scan page.
+        <a href="{{ url_for('settings_job_platforms') }}">View the collector catalog</a>.
+    </p>
     {% if workspace.companies %}
-    <table>
-        <caption class="visually-hidden">Companies in this profile's search</caption>
+    <div
+        id="source-test-progress"
+        class="source-test-summary"
+        data-status-url="{{ url_for('company_source_test_status') }}"
+        aria-live="polite"
+    >
+        <div class="source-test-summary-header">
+            <strong id="source-test-status">
+                {% if source_test_status.running %}
+                Testing {{ source_test_status.completed }} of {{ source_test_status.total }} sources.
+                {% elif source_test_status.total %}
+                Testing finished: {{ source_test_status.completed }} checked,
+                {{ source_test_status.failed }} need attention.
+                {% else %}
+                No source test is currently running.
+                {% endif %}
+            </strong>
+            <span id="source-test-percent">
+                {% if source_test_status.total %}
+                {{ ((source_test_status.completed * 100) / source_test_status.total)|round|int }}%
+                {% else %}0%{% endif %}
+            </span>
+        </div>
+        <progress
+            id="source-test-meter"
+            max="{{ source_test_status.total or 1 }}"
+            value="{{ source_test_status.completed }}"
+        ></progress>
+        <p id="source-test-step" class="muted">
+            {{ source_test_status.current_step or "Select one or more companies to test." }}
+        </p>
+        <div id="source-test-results" class="source-test-results"></div>
+    </div>
+
+    <form id="company-source-test-form" method="post" action="{{ url_for('test_company_sources') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="company-test-controls">
+            <button type="submit" name="test_scope" value="untested">Test all untested sources</button>
+            <button class="button-secondary" type="submit" name="test_scope" value="selected">Test selected sources</button>
+        </div>
+    </form>
+
+    <div class="table-wrap">
+    <table class="company-health-table">
+        <caption class="visually-hidden">Companies, profile status, and source health</caption>
         <thead>
             <tr>
-                <th>Company</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th><input id="select-all-sources" type="checkbox" aria-label="Select all company sources"></th>
+                <th>Company and platform</th>
+                <th>Profile status</th>
+                <th>Connection health</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for company in workspace.companies %}
-            <tr>
-                <td><a href="{{ url_for('company_detail', company_key=company.company_key) }}">{{ company.name }}</a></td>
+            {% set health = source_health.get(company.company_key) %}
+            <tr class="company-health-{{ health.tone if health else 'neutral' }}" data-employer-id="{{ company.company_key }}">
+                <td>
+                    <input
+                        class="source-select"
+                        type="checkbox"
+                        name="employer_id"
+                        value="{{ company.company_key }}"
+                        form="company-source-test-form"
+                        aria-label="Select {{ company.name }}"
+                    >
+                </td>
+                <td>
+                    <a href="{{ url_for('company_detail', company_key=company.company_key) }}">{{ company.name }}</a>
+                    <span class="source-cell-detail">{{ company.source_label }}</span>
+                </td>
                 <td>
                     {% if company.scanning %}
                     <span class="workspace-status status-scanning">Scanning</span>
                     {% else %}
                     <span class="workspace-status status-paused">Paused</span>
                     {% endif %}
+                    {% if health %}
+                    <span class="source-cell-detail">Latest scan: {{ health.latest_scan_state }}</span>
+                    {% endif %}
                 </td>
-                <td class="company-row-actions">
+                <td>
+                    <strong data-source-state>{{ health.state_label if health else "Not tested" }}</strong>
+                    <span class="source-cell-detail" data-source-message>
+                        {{ health.message if health else "No connection test has run." }}
+                    </span>
+                    <span class="source-cell-detail" data-source-meta>
+                        {{ company.last_checked_label }}
+                        {% if health and health.job_count is not none %}
+                        &middot; {{ health.job_count }} jobs returned
+                        {% endif %}
+                    </span>
+                </td>
+                <td class="company-inline-actions">
                     <form class="company-action-form" method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                         {% if company.scanning %}
@@ -252,23 +363,24 @@
                         <button type="submit">Resume</button>
                         {% endif %}
                     </form>
-                    <form class="company-action-form" method="post" action="{{ url_for('remove_profile_company', company_key=company.company_key) }}">
+                    <form class="company-remove-form" method="post" action="{{ url_for('remove_profile_company', company_key=company.company_key) }}">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                         <button
-                            class="button-danger"
+                            class="button-secondary"
                             type="submit"
                             name="confirmation"
                             value="REMOVE"
                             data-company-name="{{ company.name }}"
                             data-profile-name="{{ workspace.active_profile.display_name }}"
                             onclick="return confirmCompanyRemoval(this.dataset.companyName, this.dataset.profileName)"
-                        >Remove from this profile</button>
+                        >Remove</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
     {% else %}
     <div class="page-card">
         <p>No companies have been added to this search yet.</p>
@@ -431,5 +543,136 @@
     </table>
 </section>
 {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if workspace is defined and workspace.active_profile %}
+<script>
+(() => {
+    const form = document.getElementById("company-source-test-form");
+    const container = document.getElementById("source-test-progress");
+    const status = document.getElementById("source-test-status");
+    const percent = document.getElementById("source-test-percent");
+    const meter = document.getElementById("source-test-meter");
+    const step = document.getElementById("source-test-step");
+    const results = document.getElementById("source-test-results");
+    const selectAll = document.getElementById("select-all-sources");
+    if (!form || !container || !status || !percent || !meter || !step || !results) return;
+
+    const rows = new Map(
+        Array.from(document.querySelectorAll("tr[data-employer-id]"))
+            .map((row) => [row.dataset.employerId, row])
+    );
+    let polling = false;
+
+    selectAll?.addEventListener("change", () => {
+        document.querySelectorAll(".source-select").forEach((checkbox) => {
+            checkbox.checked = selectAll.checked;
+        });
+    });
+
+    function renderResult(result) {
+        const row = rows.get(result.employer_id);
+        if (!row) return;
+        row.classList.remove(
+            "company-health-success",
+            "company-health-warning",
+            "company-health-error",
+            "company-health-neutral"
+        );
+        row.classList.add(
+            result.state === "success"
+                ? "company-health-success"
+                : "company-health-error"
+        );
+        row.querySelector("[data-source-state]").textContent =
+            result.state === "success" ? "Connected" : "Needs attention";
+        row.querySelector("[data-source-message]").textContent = result.message;
+        row.querySelector("[data-source-meta]").textContent =
+            result.job_count == null
+                ? (result.tested_at || "Test completed")
+                : `${result.tested_at || "Test completed"} · ${result.job_count} jobs returned`;
+    }
+
+    function renderResults(items) {
+        results.replaceChildren();
+        items.forEach((item) => {
+            renderResult(item);
+            const message = document.createElement("p");
+            message.className = `source-test-result source-test-result-${item.state}`;
+            const name = document.createElement("strong");
+            name.textContent = `${item.employer_name}: `;
+            message.append(name, document.createTextNode(item.message));
+            results.append(message);
+        });
+    }
+
+    async function poll() {
+        try {
+            const response = await fetch(container.dataset.statusUrl, {cache: "no-store"});
+            if (!response.ok) throw new Error("status request failed");
+            const current = await response.json();
+            const complete = current.total
+                ? Math.round((current.completed / current.total) * 100)
+                : 0;
+            meter.max = current.total || 1;
+            meter.value = current.completed;
+            percent.textContent = `${complete}%`;
+            step.textContent = current.current_label
+                ? `${current.current_label}: ${current.current_step}`
+                : current.current_step || "Select one or more companies to test.";
+            renderResults(current.results || []);
+            if (current.running) {
+                polling = true;
+                status.textContent =
+                    `Testing ${current.completed} of ${current.total} sources.`;
+                window.setTimeout(poll, 750);
+            } else {
+                polling = false;
+                if (current.total) {
+                    status.textContent =
+                        `Testing finished: ${current.completed} checked, ` +
+                        `${current.failed} need attention.`;
+                }
+            }
+        } catch {
+            status.textContent =
+                "Junior is still working, but this page could not refresh yet.";
+            polling = true;
+            window.setTimeout(poll, 1200);
+        }
+    }
+
+    async function startTest(formData) {
+        status.textContent = "Preparing company source tests.";
+        step.textContent = "Junior is building the test queue.";
+        meter.removeAttribute("value");
+        const response = await fetch(form.action, {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "X-Junior-Background-Test": "1",
+            },
+            body: formData,
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+            step.textContent = payload.message || "Junior could not start the test.";
+            return;
+        }
+        if (!polling) poll();
+    }
+
+    form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const data = new FormData(form);
+        data.set("test_scope", event.submitter?.value || "selected");
+        startTest(data);
+    });
+
+    poll();
+})();
+</script>
 {% endif %}
 {% endblock %}

@@ -2,7 +2,16 @@
 
 from collections.abc import Callable
 
-from flask import Flask, abort, flash, redirect, render_template, request, url_for
+from flask import (
+    Flask,
+    abort,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 from job_radar.company_assignment_service import (
     add_existing_company_to_profile,
@@ -40,6 +49,7 @@ from job_radar.employer_review_service import (
     mark_configured_new,
 )
 from job_radar.source_health_service import build_source_health_items
+from job_radar.source_test_runner import SourceTestRunner
 
 
 def register_company_routes(
@@ -49,13 +59,27 @@ def register_company_routes(
     settings_path: str,
 ) -> None:
     """Register profile-aware company management and safe source testing."""
+    source_test_runner = SourceTestRunner(
+        lambda employer_id: test_employer_connection(
+            get_database_path(),
+            employer_id,
+        )
+    )
 
     @app.get("/companies")
     def companies() -> str:
         workspace = build_company_workspace(get_database_path())
 
         if workspace.active_profile is not None:
-            source_health = build_source_health_items(get_database_path())
+            source_health = {
+                item.employer_id: item
+                for item in build_source_health_items(get_database_path())
+            }
+            profile_source_health = tuple(
+                source_health[company.company_key]
+                for company in workspace.companies
+                if company.company_key in source_health
+            )
             return render_template(
                 "companies.html",
                 workspace=workspace,
@@ -66,10 +90,18 @@ def register_company_routes(
                     workspace.active_profile.profile_id,
                 ),
                 source_health_counts={
-                    "working": sum(item.state == "success" for item in source_health),
-                    "attention": sum(item.state == "error" for item in source_health),
-                    "untested": sum(item.state == "not_tested" for item in source_health),
+                    "working": sum(
+                        item.state == "success" for item in profile_source_health
+                    ),
+                    "attention": sum(
+                        item.state == "error" for item in profile_source_health
+                    ),
+                    "untested": sum(
+                        item.state == "not_tested" for item in profile_source_health
+                    ),
                 },
+                source_health=source_health,
+                source_test_status=source_test_runner.status(),
             )
 
         return render_template(
@@ -77,6 +109,71 @@ def register_company_routes(
             workspace=workspace,
             profile_required=True,
         )
+
+    @app.post("/companies/test-sources")
+    def test_company_sources():
+        background_request = (
+            request.headers.get("X-Junior-Background-Test") == "1"
+        )
+        workspace = build_company_workspace(get_database_path())
+        if workspace.active_profile is None:
+            if not background_request:
+                flash("Select a profile before testing company sources.", "error")
+                return redirect(url_for("companies"))
+            return jsonify(
+                {"status": "error", "message": "Select a profile first."}
+            ), 400
+
+        available = {
+            company.company_key: company
+            for company in workspace.companies
+        }
+        requested = request.form.getlist("employer_id")
+        if request.form.get("test_scope") == "untested":
+            requested = [
+                company.company_key
+                for company in workspace.companies
+                if company.connection_health.state == "not_tested"
+            ]
+        selected = [company_id for company_id in requested if company_id in available]
+        if not selected:
+            if not background_request:
+                flash("Select at least one company source to test.", "error")
+                return redirect(url_for("companies"))
+            return jsonify(
+                {
+                    "status": "error",
+                    "message": "Select at least one company source to test.",
+                }
+            ), 400
+        if not source_test_runner.start(
+            selected,
+            labels={
+                company_id: available[company_id].name
+                for company_id in selected
+            },
+        ):
+            if not background_request:
+                flash("A company-source test is already running.", "warning")
+                return redirect(url_for("companies"))
+            return jsonify(
+                {
+                    "status": "busy",
+                    "message": "A company-source test is already running.",
+                }
+            ), 409
+        if not background_request:
+            flash(
+                f"Testing {len(selected)} company source"
+                f"{'' if len(selected) == 1 else 's'} in the background.",
+                "success",
+            )
+            return redirect(url_for("companies"))
+        return jsonify({"status": "starting", "total": len(selected)}), 202
+
+    @app.get("/companies/test-sources/status")
+    def company_source_test_status():
+        return jsonify(source_test_runner.status())
 
     @app.get("/companies/<company_key>")
     def company_detail(company_key: str) -> str:

@@ -6,15 +6,30 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
-- Label field-test packages and every application page as `SP5 Build 1.10`.
+- Label field-test packages and every application page as `SP5 Build 1.11`.
+- Keep the Scan page focused by showing a compact success message when all
+  company sources work and expanding specific company-source problems only
+  when attention is required.
+- Prevent company-source test forms from opening raw JSON when page scripting
+  is unavailable, and restore page-specific scripts needed for live progress.
+- Simplify company-row controls to side-by-side Pause and Remove actions while
+  preserving the guarded profile-removal confirmation.
 - Guarantee that an approved desktop update releases protected writes and the
   single-instance lock before terminating wrapper threads that could otherwise
   prevent Windows Setup from starting.
 - Stop updater handoffs after a bounded shutdown wait, preserve the existing
   installation, reopen Junior, and show a durable failure result instead of
   waiting indefinitely while claiming an update is installing.
-- Keep selected-company scans on Company Source Health with their own live
-  progress, safe result summary, and automatic retry while the new scan starts.
+- Merge profile company management and bounded connection testing into one
+  Companies table with live progress, collector details, source health, and
+  quieter profile-only removal controls.
+- Move actual selected-company scanning to a collapsible Scan-page workflow
+  that uses the normal live scan progress, imports new deduplicated jobs into
+  Review Jobs, preserves prior decisions, and writes a separate targeted
+  report without replacing the latest full-scan report.
+- Replace selected-company scan cards with a scalable selection table and
+  replace developer-oriented Scan-page details with a collapsible
+  plain-language results and company-warning summary.
 - Treat a successful real scan as the newest source-health evidence so a
   working source no longer remains red because an older connection test failed.
 - Give source-health rows consistent green, yellow, red, and neutral state

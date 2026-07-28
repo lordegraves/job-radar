@@ -106,6 +106,98 @@ def test_companies_page_shows_only_active_profile_employers(
     assert "https://law.invalid/jobs" not in html
     assert "Local legal employer." not in html
     assert "Add company" in html
+    assert "Companies and source health" in html
+    assert "Test all untested sources" in html
+    assert "Test selected sources" in html
+    assert 'class="button-secondary source-test-one"' not in html
+    assert "Scan selected companies" not in html
+    assert 'id="source-test-meter"' in html
+    assert 'X-Junior-Background-Test": "1"' in html
+    assert ">Remove</button>" in html
+    assert "<summary>More</summary>" not in html
+
+
+def test_company_source_test_normal_form_submission_returns_to_companies(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+        company_ids=("assigned_law",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="assigned_law",
+            name="Assigned Law Firm",
+            source_type="html",
+            source_config={"source_url": "https://law.invalid/jobs"},
+        ),
+    )
+
+    monkeypatch.setattr(
+        "job_radar.source_test_runner.SourceTestRunner.start",
+        lambda _self, *_args, **_kwargs: True,
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    response = client.post(
+        "/companies/test-sources",
+        data={"employer_id": "assigned_law", "test_scope": "selected"},
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/companies")
+
+
+def test_company_source_test_background_request_returns_status_json(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+        company_ids=("assigned_law",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="assigned_law",
+            name="Assigned Law Firm",
+            source_type="html",
+            source_config={"source_url": "https://law.invalid/jobs"},
+        ),
+    )
+
+    monkeypatch.setattr(
+        "job_radar.source_test_runner.SourceTestRunner.start",
+        lambda _self, *_args, **_kwargs: True,
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    response = client.post(
+        "/companies/test-sources",
+        data={"employer_id": "assigned_law", "test_scope": "selected"},
+        headers={"X-Junior-Background-Test": "1"},
+    )
+
+    assert response.status_code == 202
+    assert response.get_json() == {"status": "starting", "total": 1}
 
 
 def test_company_detail_rejects_employer_not_assigned_to_active_profile(

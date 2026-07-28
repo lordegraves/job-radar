@@ -642,8 +642,8 @@
                 <a class="{% if request.endpoint in ['reports', 'report_view', 'report_file'] %}active-nav{% endif %}" href="{{ url_for('reports') }}"{% if request.endpoint in ['reports', 'report_view', 'report_file'] %} aria-current="page"{% endif %}>Reports</a>
                 <a class="{% if request.endpoint in ['companies', 'company_detail', 'add_company_page'] %}active-nav{% endif %}" href="{{ url_for('companies') }}"{% if request.endpoint in ['companies', 'company_detail', 'add_company_page'] %} aria-current="page"{% endif %}>Companies</a>
                 <a class="{% if request.endpoint in ['scan', 'run_scan'] %}active-nav{% endif %}" href="{{ url_for('scan') }}"{% if request.endpoint in ['scan', 'run_scan'] %} aria-current="page"{% endif %}>Scan</a>
-                <a class="{% if request.endpoint in ['settings_diagnostics', 'settings_source_health', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'] %}active-nav{% endif %}" href="{{ url_for('settings_diagnostics') }}"{% if request.endpoint in ['settings_diagnostics', 'settings_source_health', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'] %} aria-current="page"{% endif %}>Diagnostics</a>
-                <a class="{% if request.endpoint and (request.endpoint == 'settings' or (request.endpoint.startswith('settings_') and request.endpoint not in ['settings_diagnostics', 'settings_source_health', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'])) %}active-nav{% endif %}" href="{{ url_for('settings') }}"{% if request.endpoint and (request.endpoint == 'settings' or (request.endpoint.startswith('settings_') and request.endpoint not in ['settings_diagnostics', 'settings_source_health', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'])) %} aria-current="page"{% endif %}>Settings</a>
+                <a class="{% if request.endpoint in ['settings_diagnostics', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'] %}active-nav{% endif %}" href="{{ url_for('settings_diagnostics') }}"{% if request.endpoint in ['settings_diagnostics', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'] %} aria-current="page"{% endif %}>Diagnostics</a>
+                <a class="{% if request.endpoint and (request.endpoint == 'settings' or (request.endpoint.startswith('settings_') and request.endpoint not in ['settings_diagnostics', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'])) %}active-nav{% endif %}" href="{{ url_for('settings') }}"{% if request.endpoint and (request.endpoint == 'settings' or (request.endpoint.startswith('settings_') and request.endpoint not in ['settings_diagnostics', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'])) %} aria-current="page"{% endif %}>Settings</a>
                 {% if admin_mode_active %}
                 <a class="{% if request.endpoint and request.endpoint.startswith('administration') %}active-nav{% endif %}" href="{{ url_for('administration') }}"{% if request.endpoint and request.endpoint.startswith('administration') %} aria-current="page"{% endif %}>Administration</a>
                 {% endif %}
@@ -871,6 +871,7 @@
             refresh();
         })();
     </script>
+    {% block scripts %}{% endblock %}
 </body>
 
 </html>

@@ -11,6 +11,8 @@ from job_radar.runtime_paths import (
     DEFAULT_REPORT_PATH,
     RuntimePaths,
 )
+from job_radar.company_workspace_service import build_company_workspace
+from job_radar.report_snapshot import load_report_snapshot
 from job_radar.scan_task_runner import ScanTaskRunner
 from job_radar.storage import fetch_active_scan_run, fetch_latest_scan_run
 
@@ -28,36 +30,28 @@ def register_scan_routes(
     @app.get("/scan")
     def scan() -> str:
         runtime_paths = get_runtime_paths()
-        settings_path = str(runtime_paths.settings_path)
-        company_config_path = str(runtime_paths.company_config_path)
-        scoring_config_path = str(runtime_paths.scoring_config_path)
-        report_path = str(runtime_paths.resolve(DEFAULT_REPORT_PATH))
-        email_preview_path = str(
-            runtime_paths.resolve(DEFAULT_EMAIL_PREVIEW_PATH)
-        )
-        scan_command = (
-            "python -m job_radar scan "
-            f"--config {company_config_path} "
-            f"--settings {settings_path} "
-            f"--report {report_path} "
-            f"--email-preview {email_preview_path}"
-        )
-
         scan_status = _build_scan_status_payload(
             runtime_paths.database_path
+        )
+        snapshot_name = (
+            "targeted-scan.json"
+            if scan_status.get("trigger_source") == "manual:selected"
+            else "target-scan.json"
+        )
+        scan_summary = _build_latest_scan_summary(
+            runtime_paths.reports_path / snapshot_name,
+            scan_status=scan_status,
         )
 
         return render_template(
             "scan.html",
-            scan_command=scan_command,
-            scan_config_path=company_config_path,
-            scan_settings_path=settings_path,
-            scan_scoring_path=scoring_config_path,
-            scan_report_path=report_path,
-            scan_email_preview_path=email_preview_path,
             scan_result=request.args.get("scan_result"),
             scan_error=request.args.get("scan_error", "").strip(),
             scan_status=scan_status,
+            scan_summary=scan_summary,
+            company_workspace=build_company_workspace(
+                runtime_paths.database_path
+            ),
         )
 
     @app.get("/scan/status")
@@ -107,17 +101,33 @@ def register_scan_routes(
             )
         )
         if not selected:
+            if request.accept_mimetypes.best == "application/json":
+                return jsonify(
+                    {
+                        "status": "error",
+                        "message": "Select at least one company to scan.",
+                    }
+                ), 400
             flash("Select at least one company to scan.", "error")
-            return redirect(url_for("settings_source_health"))
+            return redirect(url_for("scan"))
         if len(selected) > 25:
+            if request.accept_mimetypes.best == "application/json":
+                return jsonify(
+                    {
+                        "status": "error",
+                        "message": "Select no more than 25 companies.",
+                    }
+                ), 400
             flash(
                 "Select no more than 25 companies for one targeted scan.",
                 "error",
             )
-            return redirect(url_for("settings_source_health"))
+            return redirect(url_for("scan"))
         if fetch_active_scan_run(runtime_paths.database_path) is not None:
+            if request.accept_mimetypes.best == "application/json":
+                return jsonify({"status": "busy"}), 409
             flash("A scan is already running.", "error")
-            return redirect(url_for("settings_source_health"))
+            return redirect(url_for("scan"))
 
         targeted_report = runtime_paths.reports_path / "targeted-scan.html"
         targeted_email = runtime_paths.reports_path / "targeted-email-preview.txt"
@@ -140,12 +150,67 @@ def register_scan_routes(
             )
         else:
             flash("A scan is already running.", "error")
+        if request.accept_mimetypes.best == "application/json":
+            return (
+                jsonify(
+                    {
+                        "status": "starting" if started else "busy",
+                        "scan_type": "selected",
+                    }
+                ),
+                202 if started else 409,
+            )
         return redirect(
             url_for(
-                "settings_source_health",
+                "scan",
                 targeted_scan="started" if started else "busy",
             )
         )
+
+
+def _build_latest_scan_summary(
+    snapshot_path: str | Path,
+    *,
+    scan_status: dict[str, object],
+) -> dict[str, object]:
+    """Build a safe, plain-language summary from the latest full scan."""
+    path = Path(snapshot_path)
+    if not path.is_file():
+        return {
+            "available": False,
+            "generated_at": None,
+            "jobs_found": int(scan_status.get("jobs_found") or 0),
+            "errors": [],
+        }
+
+    try:
+        snapshot = load_report_snapshot(path)
+    except (KeyError, OSError, TypeError, ValueError):
+        # A damaged or older snapshot must not break the Scan page.
+        return {
+            "available": False,
+            "generated_at": None,
+            "jobs_found": int(scan_status.get("jobs_found") or 0),
+            "errors": [],
+        }
+
+    return {
+        "available": True,
+        "generated_at": snapshot.summary.generated_at,
+        "jobs_found": int(scan_status.get("jobs_found") or 0),
+        "top_matches": snapshot.summary.top_matches,
+        "potential_top_matches": snapshot.summary.potential_top_matches,
+        "review_needed": snapshot.summary.review_needed,
+        "new_jobs": snapshot.summary.new_jobs,
+        "errors": [
+            {
+                "company_name": error.company_name,
+                "source_type": error.source_type,
+                "message": error.message,
+            }
+            for error in snapshot.collector_errors
+        ],
+    }
 
 
 def _build_scan_status_payload(

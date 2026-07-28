@@ -378,20 +378,17 @@ def test_diagnostics_links_to_read_only_source_and_scan_details(
     client = app.test_client()
 
     diagnostics = client.get("/settings/diagnostics").get_data(as_text=True)
-    source_health = client.get(
+    source_health_response = client.get(
         "/settings/diagnostics/sources"
-    ).get_data(as_text=True)
+    )
     scan_details = client.get(
         "/settings/diagnostics/latest-scan"
     ).get_data(as_text=True)
 
-    assert "/settings/diagnostics/sources" in diagnostics
+    assert "/companies" in diagnostics
     assert "/settings/diagnostics/latest-scan" in diagnostics
-    assert "Company Source Health" in source_health
-    assert "View the read-only Collector Catalog" in source_health
-    assert "Scan selected companies" in source_health
-    assert 'id="source-test-meter"' in source_health
-    assert "Company and platform" in source_health
-    assert "Latest scan details</th>" not in source_health
-    assert "source-test-results" in source_health
+    assert source_health_response.status_code == 302
+    assert source_health_response.headers["Location"].endswith(
+        "/companies#company-sources"
+    )
     assert "No company-source warnings" in scan_details

@@ -253,8 +253,8 @@ def _source_health_card(database_path: Path) -> HealthCard:
             category="Configuration",
             summary="No company sources are configured yet.",
             next_step="Add companies before running a targeted scan.",
-            endpoint="settings_source_health",
-            action_label="Open Company Source Health",
+            endpoint="companies",
+            action_label="Open Companies",
         )
     if failing:
         category = "network" if "network" in categories else "collector"
@@ -268,8 +268,8 @@ def _source_health_card(database_path: Path) -> HealthCard:
                 "connection test."
             ),
             next_step="Open source health and review the affected companies.",
-            endpoint="settings_source_health",
-            action_label="Open Company Source Health",
+            endpoint="companies",
+            action_label="Open Companies",
         )
     tone = "success" if healthy else "warning"
     state = "Healthy" if healthy and not untested else "Testing incomplete"
@@ -287,8 +287,8 @@ def _source_health_card(database_path: Path) -> HealthCard:
             if tone == "success"
             else "Test enabled company sources before relying on scheduled scans."
         ),
-        endpoint="settings_source_health",
-        action_label="Open Company Source Health",
+        endpoint="companies",
+        action_label="Open Companies",
     )
 
 

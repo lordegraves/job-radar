@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `SP5 Build 1.10`
+- Current field-test build: `SP5 Build 1.11`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -177,7 +177,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in SP5 Build 1.10. Diagnostics still
+capabilities and are not implemented in SP5 Build 1.11. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -343,7 +343,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.10.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.11.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
@@ -523,22 +523,32 @@ use timestamped text filenames so testers can identify and email the correct
 run without exposing job listings, profile settings, résumé contents, secrets,
 or raw exception text.
 
-Company Source Health is linked directly from Companies because it is the
-normal working area for source testing and targeted rescans. Diagnostics
-summarizes its overall state and links there when action is needed. The source
-workspace distinguishes warnings from the latest full scan from separate
-connection-test results, displays each safe explanation directly, links to the
-read-only Collector Catalog, and can test selected or previously untested
-sources in the background. Its progress and individual results refresh on that
-same page. A selected-company scan can retry up to 25 enabled companies,
-displays its own live progress on Company Source Health, and does not replace
-the latest full-scan report. A successful real scan supersedes an older failed
-connection test for the same source. Green means working, yellow means
-incomplete or needs review, red means an actual source failure, and neutral
-means not yet tested or not included in the latest scan. Safe failure
-explanations distinguish an unreachable source, denied public request, missing
-address, temporary request limit, recruiting-service problem, and a collector
-that could not interpret the returned job list.
+Companies is the normal working area for both profile membership and company
+source health. Each row shows whether the company is scanning, which collector
+it uses, the latest scan result, and the latest bounded connection-test result.
+Users can pause or resume a company, test one or more sources without importing
+jobs, and remove a company from only the active profile without deleting its
+history. Connection-test progress and individual results refresh on that same
+page. Diagnostics summarizes overall source health and links directly to this
+workspace when action is needed.
+
+Actual selected-company scans belong on the Scan page, separately from
+connection tests. A user can expand **Scan selected companies**, choose up to
+25 enabled companies from a compact table, and run the same collection,
+deduplication, scoring, and Review Jobs import used by a full scan. The
+selected scan writes its own targeted report instead of replacing the latest
+full-scan report. Stable job identity prevents duplicate records, while
+existing Save, Pass, and Apply decisions continue to suppress already-decided
+jobs. A separate collapsible results summary shows the newest scan totals and
+plain-language company-source warnings. Runtime paths and developer command
+details remain in Diagnostics rather than the normal Scan workflow.
+
+Green means working, yellow means incomplete or needs review, red means an
+actual source failure, and neutral means not yet tested or not included in the
+latest scan. Safe
+failure explanations distinguish an unreachable source, denied public request,
+missing address, temporary request limit, recruiting-service problem, and a
+collector that could not interpret the returned job list.
 
 Every state-changing web form and background action uses a session-bound CSRF token. Junior rejects missing, invalid, or stale tokens before route business logic runs, so the attempted change is not written. Normal forms receive a plain-language recovery page; background requests receive a bounded JSON error. Refreshing the page creates or loads the current token and allows the user to review and resubmit. GET routes remain read-only.
 
