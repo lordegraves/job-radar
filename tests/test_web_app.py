@@ -1215,7 +1215,8 @@ def test_report_section_paginates_large_result_sets(
     assert 'href="/reports/section/review_needed?page=3">3</a>' in first_html
     assert "Expand all companies" in first_html
     assert "Collapse all companies" in first_html
-    assert '<details class="company-job-group" open>' in first_html
+    assert '<details class="company-job-group">' in first_html
+    assert '<details class="company-job-group" open>' not in first_html
     assert "20 on this page" in first_html
     assert "45 total" in first_html
     assert 'class="job-decision-form"' in first_html
@@ -1274,7 +1275,8 @@ def test_report_section_groups_current_page_by_company(
     ).get_data(as_text=True)
 
     assert html.index("Alpha Systems") < html.index("Zeta Systems")
-    assert html.count('<details class="company-job-group" open>') == 2
+    assert html.count('<details class="company-job-group">') == 2
+    assert '<details class="company-job-group" open>' not in html
     assert "2 on this page" in html
 
 
@@ -5200,7 +5202,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "SP5 Build 1.13" in html
+    assert "SP5 Build 1.14" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html
