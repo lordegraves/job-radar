@@ -5,6 +5,7 @@ from typing import Any
 
 from job_radar.models import JobPosting
 from job_radar.normalize import clean_text
+from job_radar.resume_match import ResumeMatchResult
 
 
 def evaluate_top_match_eligibility(
@@ -13,7 +14,19 @@ def evaluate_top_match_eligibility(
     score_reasons: list[str],
     location_status: str,
     scoring_config: dict[str, Any],
+    resume_match: ResumeMatchResult | None = None,
 ) -> tuple[bool, list[str]]:
+    if resume_match is not None:
+        if resume_match.has_critical_gap:
+            return False, ["critical_required_qualification_gap"]
+        # Preserve the supported CLI/YAML workflow when no résumé is configured.
+        # RC6's résumé gate applies only when Junior actually has résumé evidence
+        # to evaluate; an Unknown result must continue through the legacy rules.
+        if resume_match.label not in {"Unknown", "Strong", "Very Strong"}:
+            return False, [f"resume_match_not_strong:{resume_match.label}"]
+        if len(resume_match.gaps) > 1:
+            return False, ["more_than_one_resume_gap"]
+
     allowed_top_match_location_statuses = [
         "allowed",
         "allowed_with_travel",
@@ -61,6 +74,7 @@ def evaluate_potential_top_match_eligibility(
     score_reasons: list[str],
     location_status: str,
     scoring_config: dict[str, Any],
+    resume_match: ResumeMatchResult | None = None,
 ) -> bool:
     """Allow only unresolved location facts through the strict role-fit gate."""
 
@@ -73,6 +87,7 @@ def evaluate_potential_top_match_eligibility(
         score_reasons=score_reasons,
         location_status="allowed",
         scoring_config=scoring_config,
+        resume_match=resume_match,
     )
     return eligible_without_location
 
@@ -83,10 +98,14 @@ def evaluate_review_needed_eligibility(
     location_status: str,
     top_match_eligible: bool,
     scoring_config: dict[str, Any],
+    resume_match: ResumeMatchResult | None = None,
 ) -> bool:
     review_needed_config = scoring_config["review_needed"]
 
     if top_match_eligible:
+        return False
+
+    if resume_match is not None and resume_match.has_critical_gap:
         return False
 
     if score < review_needed_config["min_score"]:

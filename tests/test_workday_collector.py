@@ -192,3 +192,108 @@ def test_collect_workday_jobs_stops_at_configured_max_pages(
 
     assert captured_offsets == [0, 1]
     assert len(postings) == 2
+
+
+def test_collect_workday_jobs_ignores_false_zero_total_on_later_pages(
+    monkeypatch,
+) -> None:
+    company_config = {
+        "company_key": "example_company",
+        "name": "Example Company",
+        "source_type": "workday",
+        "source_url": (
+            "https://example.wd1.myworkdayjobs.com/"
+            "wday/cxs/example/External/jobs"
+        ),
+        "source_base_url": "https://example.wd1.myworkdayjobs.com/External",
+        "page_size": 1,
+        "max_pages": 5,
+    }
+    captured_offsets: list[int] = []
+
+    class FakeResponse:
+        def __init__(self, offset: int) -> None:
+            self.text = ""
+            self._offset = offset
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            job_number = self._offset + 1
+            return {
+                "total": 3 if self._offset == 0 else 0,
+                "jobPostings": [
+                    {
+                        "title": f"Infrastructure Engineer {job_number}",
+                        "externalPath": f"/job/Remote/Engineer_R{job_number}",
+                        "locationsText": "Remote",
+                        "bulletFields": [f"R{job_number}"],
+                    }
+                ],
+            }
+
+    def fake_post(url, json, headers, timeout):
+        captured_offsets.append(json["offset"])
+        return FakeResponse(json["offset"])
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.post",
+        fake_post,
+    )
+
+    postings = collect_workday_jobs(company_config)
+
+    assert captured_offsets == [0, 1, 2]
+    assert len(postings) == 3
+
+
+def test_collect_workday_jobs_stops_when_endpoint_repeats_a_page(
+    monkeypatch,
+) -> None:
+    company_config = {
+        "company_key": "example_company",
+        "name": "Example Company",
+        "source_type": "workday",
+        "source_url": (
+            "https://example.wd1.myworkdayjobs.com/"
+            "wday/cxs/example/External/jobs"
+        ),
+        "source_base_url": "https://example.wd1.myworkdayjobs.com/External",
+        "page_size": 1,
+        "max_pages": 5,
+    }
+    captured_offsets: list[int] = []
+
+    class FakeResponse:
+        text = ""
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "total": 100,
+                "jobPostings": [
+                    {
+                        "title": "Repeated Infrastructure Engineer",
+                        "externalPath": "/job/Remote/Engineer_R1",
+                        "locationsText": "Remote",
+                        "bulletFields": ["R1"],
+                    }
+                ],
+            }
+
+    def fake_post(url, json, headers, timeout):
+        captured_offsets.append(json["offset"])
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.post",
+        fake_post,
+    )
+
+    postings = collect_workday_jobs(company_config)
+
+    assert captured_offsets == [0, 1]
+    assert len(postings) == 1

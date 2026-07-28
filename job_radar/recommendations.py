@@ -124,6 +124,12 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
         return ACTION_TRACK_STATUS
 
     if (
+        scored_posting.resume_match is not None
+        and scored_posting.resume_match.has_critical_gap
+    ):
+        return ACTION_PASS
+
+    if (
         scored_posting.eligibility is not None
         and scored_posting.eligibility.status == ELIGIBILITY_NOT_ELIGIBLE
     ):
@@ -237,9 +243,26 @@ def _format_eligibility_reason_text(scored_posting: ScoredPosting) -> str:
     messages = [
         reason.message.strip()
         for reason in scored_posting.eligibility.reasons
-        if reason.message.strip()
+        if reason.message.strip() and _is_unresolved_eligibility_reason(reason.code)
     ]
     return " ".join(messages) if messages else "No practical eligibility concerns were recorded."
+
+
+def _is_unresolved_eligibility_reason(reason_code: str) -> bool:
+    """Positive facts belong in summary badges, not in the user's review list."""
+
+    positive_reason_codes = {
+        "active_clearance_requirement_accepted",
+        "employment_type_selected",
+        "on_call_requirement_accepted",
+        "schedule_matches_preference",
+        "travel_within_profile_limit",
+        "compensation_meets_floor",
+        "remote_arrangement_selected",
+        "remote_region_matches_selected_area",
+        "location_matches_selected_area",
+    }
+    return reason_code not in positive_reason_codes
 
 
 def _append_history_rationale(

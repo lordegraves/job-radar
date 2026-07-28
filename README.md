@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `SP5 Build 1.14`
+- Current field-test build: `RC6 Build 1.0`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -68,7 +68,7 @@ Application History is a permanent app-native feature. It is stored in SQLite an
 
 Managed profiles have separate Active Applications and Application History records. Switching profiles changes which records the GUI, scans, reports, and CLI use. Existing tracker and history records are assigned to the active managed profile during the protected database migration. A profile that owns tracker or history records cannot be deleted, preventing accidental loss of job-search data.
 
-The current RC5 work adds **Save for later**, **Pass / don't show again**, and
+The completed RC5 work adds **Save for later**, **Pass / don't show again**, and
 **I applied — track application** to every structured scan-result
 classification. Saved and
 passed jobs live in a separate profile-owned workspace; they do not become
@@ -141,6 +141,32 @@ preview, compressed raw-scan download, and retained report history. New
 installations retain the latest 10 successful report runs by default. Existing
 installations keep their current retention setting until the user changes it.
 
+### RC6 collection and evaluation
+
+RC6 Build 1.0 makes collection and job evaluation more complete and more
+trustworthy:
+
+- Workday collection no longer stops after 40 jobs when a later page
+  incorrectly reports a total of zero. Pagination continues until Junior
+  reaches the real end of the listing, while repeated-page detection prevents
+  endless collection. The same protection applies to Eightfold.
+- Junior evaluates required qualifications and the work described in the job
+  posting, not merely a loose collection of matching words. It distinguishes
+  required qualifications from preferred or bonus qualifications.
+- The active profile's target roles now participate directly in role-family
+  alignment. Clearly unrelated work and central missing disciplines become
+  critical gaps and are omitted instead of being sent to Review Jobs.
+- A Top Match requires strong or very strong résumé evidence, confirmed
+  practical eligibility, and no more than one non-critical gap. Strong jobs
+  with unresolved practical facts remain Potential Top Matches.
+- Safe scan diagnostics record per-company collection and evaluation totals,
+  including broad omission categories, without recording job descriptions,
+  profile contents, résumé contents, or credentials.
+
+These rules are occupation-neutral. They use each profile's own target roles,
+résumé evidence, gaps, and exclusions rather than globally hard-coded
+technology preferences.
+
 ### Distribution and support improvements
 
 RC6 is planned to improve distribution and tester support without weakening
@@ -184,7 +210,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in SP5 Build 1.14. Diagnostics still
+capabilities and are not implemented in RC6 Build 1.0. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -350,7 +376,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.14.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.0.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

@@ -183,6 +183,8 @@ def collect_workday_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         default=DEFAULT_WORKDAY_MAX_PAGES,
     )
     offset = 0
+    expected_total: int | None = None
+    seen_page_job_ids: set[tuple[str | None, str]] = set()
     postings: list[JobPosting] = []
 
     for _page_index in range(max_pages):
@@ -210,21 +212,37 @@ def collect_workday_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         if not isinstance(response_payload, dict):
             raise CollectorError("Workday response JSON must be an object")
 
-        page_postings = parse_workday_jobs(company_config, response_payload)
-        postings.extend(page_postings)
-
         total = response_payload.get("total")
         raw_jobs = response_payload.get("jobPostings")
 
         if not isinstance(raw_jobs, list):
             raise CollectorError("Workday payload does not contain a jobPostings list")
 
+        page_postings = parse_workday_jobs(company_config, response_payload)
+        page_identity = {
+            (posting.source_job_id, posting.source_url) for posting in page_postings
+        }
+
+        # Some Workday tenants report the correct total only on the first page
+        # and then return zero on later pages. Preserve the largest credible
+        # positive total instead of treating a later zero as end-of-results.
+        if isinstance(total, int) and total > 0:
+            expected_total = max(expected_total or 0, total)
+
+        # A misbehaving endpoint can ignore the requested offset and repeat the
+        # same page forever. Stop safely rather than duplicating jobs until the
+        # configured page limit is reached.
+        if page_identity and page_identity.issubset(seen_page_job_ids):
+            break
+
+        postings.extend(page_postings)
+        seen_page_job_ids.update(page_identity)
         offset += limit
 
         if not raw_jobs:
             break
 
-        if isinstance(total, int) and offset >= total:
+        if expected_total is not None and offset >= expected_total:
             break
 
         if len(raw_jobs) < limit:

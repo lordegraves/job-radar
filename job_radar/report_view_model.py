@@ -19,6 +19,7 @@ from job_radar.recommendations import (
     _get_recommended_action,
     _get_resume_match_label,
     _get_technical_match_label,
+    _is_unresolved_eligibility_reason,
     _is_actionable_posting,
     _is_top_match_display_posting,
 )
@@ -87,6 +88,7 @@ def build_job_output_view_model(
             reason.message
             for reason in scored_posting.eligibility.reasons
             if reason.message.strip()
+            and _is_unresolved_eligibility_reason(reason.code)
         )
         eligibility_reason_text = (
             "; ".join(eligibility_reasons)

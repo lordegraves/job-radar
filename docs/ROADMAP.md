@@ -341,14 +341,19 @@ packaged collector catalog before contacting an external search provider.
 | Complete report exports | Completed | Reports provides direct downloads for current and retained readable reports plus a compressed plain-text raw scan containing every public posting collected in the run. New installations retain 10 successful report runs by default, existing saved policies remain unchanged, and normal pages do not render thousands of raw job cards. |
 | Practical-detail extraction | Completed | Conservative parsing fills missing ATS fields only from explicit workplace, employment-type, and annual-pay wording, including common HTML pay headings, encoded dash characters, and USD range labels. Concrete cities, named offices, and city/state title suffixes are evaluated as location-bound unless the posting explicitly states remote work; arrangement and location are shown separately on review cards. Missing schedule wording is neutral while explicit conflicts remain enforced. Jobs meeting existing top-match score and strong-signal rules with unresolved practical facts appear as Potential Top Matches with evidence and waiting-on explanations; thresholds remain unchanged. |
 
-## Planned RC6 distribution and support improvements
+## RC6 collection, evaluation, and support improvements
 
-RC6 is reserved for stabilization work discovered during RC5 field testing and
-the following distribution and support improvements. These items are planned;
-they are not part of SP5 Build 1.5 unless marked Completed:
+RC6 is reserved for collection and evaluation reliability work discovered
+during RC5 field testing, followed by the distribution and support
+improvements below:
 
 | RC6 work item | Status | Required result |
 |---|---|---|
+| Complete collector pagination | Completed | Workday and Eightfold retain the largest credible total, ignore false zero totals on later pages, detect repeated pages, and continue until a verified end condition without looping forever. |
+| Required-qualification evaluation | Completed | Evaluate explicit required qualifications and central responsibilities separately from preferred or bonus qualifications. Critical missing disciplines and clearly unrelated work are omitted, while uncertain adjacent work remains reviewable. |
+| Profile-owned role alignment | Completed | Use each profile's target roles, résumé evidence, configured gaps, and avoided work to establish role-family alignment without occupation-specific global defaults. |
+| Top Match evidence gate | Completed | Require Strong or Very Strong résumé evidence, confirmed practical eligibility, and no more than one non-critical gap. Missing practical facts may create a Potential Top Match but never a Top Match. |
+| Per-company evaluation diagnostics | Completed | Record safe aggregate collection, actionable, omission, and broad omission-reason counts for each company without storing job descriptions, résumé contents, profile contents, or credentials. |
 | Build-aware update checking | Completed | Identify newer field-test builds even when the application version is unchanged. Checking remains read-only. In the installed Windows desktop app, a separate explicit user action downloads only the exact installer and checksum from Junior's official GitHub release, verifies the SHA-256 checksum, closes Junior, installs the update, and reopens it. Browser, server, and development modes use the verified release link instead. User-owned data remains outside the installation and is not replaced by the updater. Keep Microsoft Store and direct GitHub update paths clearly distinguished. |
 | Privacy-safe support workflow | Planned | Add a **Contact support** action that prepares a sanitized diagnostic bundle, opens the user's default email client with the approved support address, subject, installed build, operating system, and safe instructions pre-filled, and tells the user exactly which file to attach. Never attach or send anything automatically. Explicitly warn users not to send résumés, databases, credentials, tokens, profile contents, or other private data. |
 | Microsoft Store and MSIX distribution | Planned | Create and validate an MSIX distribution suitable for Microsoft Store certification while keeping Junior free to users. Use Microsoft-managed Store signing and update delivery where available. Verify first install, launch, icon and desktop behavior, external links, notifications, clean shutdown, user-data paths, SQLite access, credentials, scheduled scans, upgrade, rollback/recovery, and uninstall without risking existing user-owned data. Keep the GitHub distribution channel available. |

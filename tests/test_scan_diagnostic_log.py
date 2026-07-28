@@ -67,3 +67,38 @@ def test_last_scan_log_is_replaced_and_private_fields_are_dropped(
     assert '"scan_run_id": 8' in replacement
     assert '"scan_run_id": 7' in history
     assert '"scan_run_id": 8' in history
+
+
+def test_company_evaluation_counts_are_allowed_but_private_data_is_not(
+    tmp_path: Path,
+) -> None:
+    record_scan_diagnostic(
+        tmp_path,
+        event="company_evaluation_completed",
+        scan_run_id=9,
+        company_id="example-employer",
+        source_type="workday",
+        jobs_found=717,
+        jobs_decided=3,
+        jobs_actionable=12,
+        jobs_not_actionable=702,
+        omitted_critical_gap=41,
+        omitted_practical_mismatch=120,
+        omitted_profile_exclusion=7,
+        omitted_other_fit=534,
+        job_title="Private title",
+        profile_contents="Private profile data",
+    )
+
+    payload = json.loads(
+        (tmp_path / LAST_SCAN_LOG_NAME).read_text(encoding="utf-8")
+    )
+    assert payload["jobs_found"] == 717
+    assert payload["jobs_actionable"] == 12
+    assert payload["jobs_not_actionable"] == 702
+    assert payload["omitted_critical_gap"] == 41
+    assert payload["omitted_practical_mismatch"] == 120
+    assert payload["omitted_profile_exclusion"] == 7
+    assert payload["omitted_other_fit"] == 534
+    assert "job_title" not in payload
+    assert "profile_contents" not in payload

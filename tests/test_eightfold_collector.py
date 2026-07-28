@@ -178,3 +178,86 @@ def test_eightfold_uses_actual_server_page_size_and_keeps_fetching(
     assert len(jobs) == 20
     assert starts == [0, 10]
     assert all(job.remote_status == "Flex" for job in jobs)
+
+
+def test_eightfold_ignores_false_zero_total_on_later_page(monkeypatch) -> None:
+    starts = []
+
+    def fake_get_response(url, **kwargs):
+        if not url.endswith("/api/pcsx/search"):
+            raise AssertionError("Connection-test mode must not fetch details.")
+        start = kwargs["params"]["start"]
+        starts.append(start)
+        if start >= 30:
+            return _Response({"data": {"count": 0, "positions": []}})
+        positions = [
+            {
+                "id": start + offset + 1,
+                "name": f"Role {start + offset + 1}",
+                "positionUrl": f"/careers/job/{start + offset + 1}",
+            }
+            for offset in range(10)
+        ]
+        return _Response(
+            {
+                "data": {
+                    "count": 30 if start == 0 else 0,
+                    "positions": positions,
+                }
+            }
+        )
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+    jobs = collect_eightfold_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_type": "eightfold",
+            "source_url": "https://apply.example.com",
+            "domain": "example.com",
+            "connection_test": True,
+        }
+    )
+
+    assert len(jobs) == 30
+    assert starts == [0, 10, 20]
+
+
+def test_eightfold_stops_when_source_repeats_a_page(monkeypatch) -> None:
+    starts = []
+
+    def fake_get_response(url, **kwargs):
+        if not url.endswith("/api/pcsx/search"):
+            raise AssertionError("Connection-test mode must not fetch details.")
+        start = kwargs["params"]["start"]
+        starts.append(start)
+        positions = [
+            {
+                "id": offset + 1,
+                "name": f"Role {offset + 1}",
+                "positionUrl": f"/careers/job/{offset + 1}",
+            }
+            for offset in range(10)
+        ]
+        return _Response({"data": {"count": 50, "positions": positions}})
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+    jobs = collect_eightfold_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_type": "eightfold",
+            "source_url": "https://apply.example.com",
+            "domain": "example.com",
+            "connection_test": True,
+        }
+    )
+
+    assert len(jobs) == 10
+    assert starts == [0, 10]

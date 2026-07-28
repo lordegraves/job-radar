@@ -843,6 +843,44 @@ def test_profile_avoid_match_blocks_even_without_existing_role_family_mismatch()
     assert _get_recommended_action(scored_posting) == "Pass"
 
 
+def test_critical_required_gap_blocks_needs_review_recommendation() -> None:
+    from job_radar.recommendations import _get_recommended_action
+    from job_radar.resume_match import ResumeMatchResult
+
+    posting = make_posting(title="Principal Security Engineer")
+    scored_posting = ScoredPosting(
+        posting=posting,
+        score=180,
+        score_reasons=[
+            "+30 title:infrastructure",
+            "+10 body:linux",
+            "+100 location_allowed:remote",
+        ],
+        location_status="allowed",
+        top_match_eligible=False,
+        review_needed_eligible=False,
+        resume_match=ResumeMatchResult(
+            label="Poor Fit",
+            evidence=["Linux infrastructure"],
+            gaps=["central discipline requires security engineering experience"],
+            critical_gaps=[
+                "central discipline requires security engineering experience"
+            ],
+        ),
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="employment_type_unknown",
+                    message="The employment arrangement is not stated.",
+                ),
+            ),
+        ),
+    )
+
+    assert _get_recommended_action(scored_posting) == "Pass"
+
+
 def test_baker_role_has_no_unconfigured_industry_or_employer_risks() -> None:
     from job_radar.recommendations import _format_hiring_risk_flags
     from job_radar.recommendations import _get_recommended_action

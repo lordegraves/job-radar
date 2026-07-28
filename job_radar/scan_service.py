@@ -213,6 +213,90 @@ def _exclude_decided_postings(
     ]
 
 
+def _record_company_evaluation_diagnostics(
+    *,
+    logs_path: str,
+    scan_run_id: int,
+    companies: list[dict],
+    scored_postings: list[ScoredPosting],
+    decided_job_ids: set[str],
+) -> None:
+    """Record aggregate outcomes without persisting job or profile contents."""
+
+    for company in companies:
+        company_key = str(company["company_key"])
+        company_postings = [
+            item
+            for item in scored_postings
+            if item.posting.company_key == company_key
+        ]
+        undecided_postings = [
+            item
+            for item in company_postings
+            if item.posting.job_radar_id not in decided_job_ids
+        ]
+        actionable = [
+            item
+            for item in undecided_postings
+            if _is_storage_relevant_posting(item)
+        ]
+        omitted = [
+            item
+            for item in undecided_postings
+            if not _is_storage_relevant_posting(item)
+        ]
+
+        record_scan_diagnostic(
+            logs_path,
+            event="company_evaluation_completed",
+            scan_run_id=scan_run_id,
+            stage="scoring",
+            company_id=company_key,
+            source_type=str(company["source_type"]),
+            jobs_found=len(company_postings),
+            jobs_decided=len(company_postings) - len(undecided_postings),
+            jobs_actionable=len(actionable),
+            jobs_not_actionable=len(omitted),
+            omitted_critical_gap=sum(
+                bool(item.resume_match and item.resume_match.has_critical_gap)
+                for item in omitted
+            ),
+            omitted_practical_mismatch=sum(
+                bool(
+                    item.eligibility
+                    and item.eligibility.status == "not_eligible"
+                )
+                for item in omitted
+            ),
+            omitted_profile_exclusion=sum(
+                bool(item.profile_avoid_matches)
+                for item in omitted
+            ),
+            omitted_other_fit=sum(
+                not bool(item.resume_match and item.resume_match.has_critical_gap)
+                and not bool(
+                    item.eligibility
+                    and item.eligibility.status == "not_eligible"
+                )
+                and not bool(item.profile_avoid_matches)
+                for item in omitted
+            ),
+            top_matches=sum(
+                is_top_match_report_posting(item) for item in actionable
+            ),
+            potential_top_matches=sum(
+                is_potential_top_match_report_posting(item)
+                for item in actionable
+            ),
+            location_outliers=sum(
+                item.location_outlier_eligible for item in actionable
+            ),
+            review_needed=sum(
+                is_review_needed_report_posting(item) for item in actionable
+            ),
+        )
+
+
 def handle_scan(
     config_path: str,
     settings_path: str,
@@ -482,12 +566,18 @@ def _handle_scan_unlocked(
                 for evidence in score_evidence
             ]
             location_status = classify_location(posting, scoring_config)
+            resume_match = match_resume_to_posting(
+                posting=posting,
+                candidate_profile=candidate_profile,
+                resume_text=resume_text,
+            )
             top_match_eligible, top_match_reasons = evaluate_top_match_eligibility(
                 posting=posting,
                 score=score,
                 score_reasons=reasons,
                 location_status=location_status,
                 scoring_config=scoring_config,
+                resume_match=resume_match,
             )
 
             review_needed_eligible = evaluate_review_needed_eligibility(
@@ -496,6 +586,7 @@ def _handle_scan_unlocked(
                 location_status=location_status,
                 top_match_eligible=top_match_eligible,
                 scoring_config=scoring_config,
+                resume_match=resume_match,
             )
             potential_top_match_eligible = (
                 evaluate_potential_top_match_eligibility(
@@ -504,6 +595,7 @@ def _handle_scan_unlocked(
                     score_reasons=reasons,
                     location_status=location_status,
                     scoring_config=scoring_config,
+                    resume_match=resume_match,
                 )
             )
 
@@ -570,11 +662,7 @@ def _handle_scan_unlocked(
                     location_outlier_eligible=location_outlier_eligible,
                     review_needed_eligible=review_needed_eligible,
                     top_match_reasons=top_match_reasons,
-                    resume_match=match_resume_to_posting(
-                        posting=posting,
-                        candidate_profile=candidate_profile,
-                        resume_text=resume_text,
-                    ),
+                    resume_match=resume_match,
                     compensation=compensation,
                     eligibility=eligibility,
                     profile_avoid_matches=_find_profile_avoid_matches(
@@ -594,6 +682,13 @@ def _handle_scan_unlocked(
         decided_job_ids = get_decided_job_ids(
             database_path,
             profile_id=profile_id,
+        )
+        _record_company_evaluation_diagnostics(
+            logs_path=logs_path,
+            scan_run_id=scan_run_id,
+            companies=companies,
+            scored_postings=scored_postings,
+            decided_job_ids=decided_job_ids,
         )
         scored_postings = _exclude_decided_postings(
             scored_postings,

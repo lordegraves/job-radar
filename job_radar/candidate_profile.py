@@ -1,6 +1,6 @@
 """Load and validate the candidate profile, including its private resume paths."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +24,7 @@ class CandidateProfile:
     credible_adjacent: list[str]
     learning_or_gap: list[str]
     avoid: list[str]
+    target_roles: list[str] = field(default_factory=list)
 
 
 def load_candidate_profile(
@@ -68,6 +69,7 @@ def load_candidate_profile(
         ),
         learning_or_gap=_string_list(candidate.get("learning_or_gap"), "learning_or_gap"),
         avoid=_string_list(candidate.get("avoid"), "avoid"),
+        target_roles=_string_list(candidate.get("target_roles"), "target_roles"),
     )
 
 

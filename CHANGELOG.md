@@ -6,6 +6,22 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Begin RC6 with complete Workday and Eightfold pagination that ignores false
+  zero totals, detects repeated pages, and stops only at a verified boundary.
+- Evaluate required qualifications, central job disciplines, described
+  responsibilities, profile target roles, configured gaps, and explicitly
+  avoided work before surfacing a job. Preferred and bonus qualifications do
+  not become required gaps.
+- Omit clearly unrelated or critically mismatched jobs instead of sending them
+  to Review Jobs, while preserving uncertain and plausibly adjacent work for
+  human review.
+- Require Strong or Very Strong résumé evidence for Top Match, in addition to
+  confirmed practical eligibility and the existing gap limit.
+- Add privacy-safe per-company scan diagnostics for collected, actionable,
+  omitted, and broad omission-reason totals without storing job, profile, or
+  résumé contents.
+- Label the application, executable metadata, and installer consistently as
+  `RC6 Build 1.0`.
 - Group Review Jobs by company within each bounded result page, show
   page-specific and overall company counts, preserve selections when groups
   are collapsed, and add numbered navigation for direct page changes.

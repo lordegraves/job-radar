@@ -1,5 +1,7 @@
 """Tests how resume evidence and gaps are identified for a job posting."""
 
+from dataclasses import replace
+
 from job_radar.candidate_profile import CandidateProfile, CandidateResumeConfig
 from job_radar.models import JobPosting
 from job_radar.resume_match import match_resume_to_posting
@@ -24,6 +26,11 @@ def make_profile() -> CandidateProfile:
             "heavy software engineering",
         ],
         avoid=["frontend"],
+        target_roles=[
+            "Platform Engineer",
+            "Infrastructure Engineer",
+            "Site Reliability Engineer",
+        ],
     )
 
 
@@ -93,6 +100,47 @@ def test_match_resume_to_posting_reports_configured_gap_without_title_guessing()
     assert result.label == "Medium"
     assert result.evidence == ["Linux infrastructure"]
     assert result.gaps == ["security engineering"]
+    assert not result.has_critical_gap
+
+
+def test_match_resume_to_posting_rejects_required_go_for_non_software_profile() -> None:
+    posting = make_posting(
+        title="Software Engineer, Infrastructure",
+        description=(
+            "Required Qualifications\n"
+            "- Strong Go experience building production services\n"
+            "- Experience with distributed systems\n"
+            "Preferred Qualifications\n"
+            "- Rust experience"
+        ),
+    )
+    resume_text = "Linux infrastructure, HPC, Python automation, and SRE experience."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert "central discipline requires software engineering experience" in result.gaps
+    assert "required Go experience is not shown in the résumé" in result.gaps
+    assert "required Rust experience is not shown in the résumé" not in result.gaps
+    assert result.has_critical_gap
+
+
+def test_match_resume_to_posting_keeps_real_infrastructure_role_reviewable() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description=(
+            "Required Qualifications\n"
+            "- Experience operating Linux infrastructure and cluster systems\n"
+            "Preferred Qualifications\n"
+            "- Kubernetes ownership"
+        ),
+    )
+    resume_text = "Linux infrastructure, HPC operations, and cluster systems."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Medium"
+    assert not result.has_critical_gap
 
 
 def test_match_resume_to_posting_reports_security_gap_for_security_focused_role() -> None:
@@ -104,9 +152,239 @@ def test_match_resume_to_posting_reports_security_gap_for_security_focused_role(
 
     result = match_resume_to_posting(posting, make_profile(), resume_text)
 
-    assert result.label == "Medium"
+    assert result.label == "Poor Fit"
     assert result.evidence == ["Linux infrastructure"]
-    assert result.gaps == ["security engineering"]
+    assert result.gaps == [
+        "security engineering",
+        "central discipline requires security engineering experience",
+    ]
+    assert result.has_critical_gap
+
+
+def test_match_resume_to_posting_reads_required_qualifications_from_html() -> None:
+    posting = make_posting(
+        title="Network Site Reliability Engineer",
+        description=(
+            "&lt;p&gt;About the company and its infrastructure platform.&lt;/p&gt;"
+            "&lt;h3&gt;Required Qualifications&lt;/h3&gt;"
+            "&lt;ul&gt;&lt;li&gt;Strong Go experience building production services"
+            "&lt;/li&gt;&lt;li&gt;Linux infrastructure operations&lt;/li&gt;&lt;/ul&gt;"
+            "&lt;h3&gt;Preferred Qualifications&lt;/h3&gt;"
+            "&lt;li&gt;Rust experience&lt;/li&gt;"
+        ),
+    )
+    resume_text = "Linux infrastructure, Python automation, and SRE experience."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert "required Go experience is not shown in the résumé" in result.gaps
+    assert "required Rust experience is not shown in the résumé" not in result.gaps
+
+
+def test_match_resume_to_posting_rejects_unrelated_role_using_boilerplate_terms() -> None:
+    posting = make_posting(
+        title="Government Relations Representative",
+        description=(
+            "About the company\n"
+            "We build Linux infrastructure and GPU clusters.\n"
+            "About the Role\n"
+            "Build relationships with elected officials and regulators."
+        ),
+    )
+    resume_text = "Linux infrastructure, HPC operations, and cluster systems."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert result.evidence == []
+    assert (
+        "the job title and required work do not align with this profile's target work"
+        in result.gaps
+    )
+
+
+def test_match_resume_to_posting_respects_profile_excluded_role_family() -> None:
+    posting = make_posting(
+        title="Director of Product, Infrastructure",
+        description="Lead product strategy for an infrastructure platform.",
+    )
+    resume_text = "Linux infrastructure, HPC operations, and cluster systems."
+    profile = replace(
+        make_profile(),
+        avoid=["frontend", "product management"],
+    )
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label == "Poor Fit"
+    assert "the role is in the excluded product management job family" in result.gaps
+
+
+def test_match_resume_to_posting_does_not_require_every_technology_option() -> None:
+    posting = make_posting(
+        title="Infrastructure Engineer",
+        description=(
+            "Required Qualifications\n"
+            "- Experience with one of AWS, Azure, or GCP\n"
+            "- Linux infrastructure operations"
+        ),
+    )
+    resume_text = "Linux infrastructure and AWS operations experience."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert not any("required Azure" in gap for gap in result.gaps)
+    assert not any("required GCP" in gap for gap in result.gaps)
+
+
+def test_two_broad_resume_terms_do_not_rescue_unrelated_role() -> None:
+    posting = make_posting(
+        title="Director, Marketing Operations",
+        description=(
+            "About the Role\n"
+            "Lead marketing operations for an AI infrastructure company. "
+            "Partner with reliability teams."
+        ),
+    )
+    resume_text = "AI infrastructure and reliability engineering experience."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert (
+        "the job title and required work do not align with this profile's target work"
+        in result.gaps
+    )
+
+
+def test_configured_manager_exclusion_blocks_manager_title() -> None:
+    posting = make_posting(
+        title="Infrastructure Engineering Manager",
+        description="Manage Linux infrastructure engineers.",
+    )
+    resume_text = "Linux infrastructure and platform operations experience."
+    profile = replace(make_profile(), avoid=["Manager"])
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label == "Poor Fit"
+    assert "the role is in the excluded manager job family" in result.gaps
+
+
+def test_configured_management_exclusion_blocks_group_leader_title() -> None:
+    posting = make_posting(
+        title="HPC Storage Systems Group Leader",
+        description="Manage the storage systems group and its engineering staff.",
+    )
+    resume_text = "Linux infrastructure, HPC operations, and storage systems experience."
+    profile = replace(make_profile(), avoid=["Management"])
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label == "Poor Fit"
+    assert "the role is in the excluded manager job family" in result.gaps
+
+
+def test_configured_management_exclusion_does_not_block_technical_lead_title() -> None:
+    posting = make_posting(
+        title="Lead Senior Infrastructure Engineer",
+        description="Operate Linux infrastructure and HPC cluster systems.",
+    )
+    resume_text = "Linux infrastructure, HPC operations, and cluster systems experience."
+    profile = replace(make_profile(), avoid=["Management"])
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label != "Poor Fit"
+    assert "the role is in the excluded manager job family" not in result.gaps
+
+
+def test_management_exclusion_does_not_block_vulnerability_management_work() -> None:
+    posting = make_posting(
+        title="Infrastructure Vulnerability Management Engineer",
+        description="Operate Linux infrastructure and remediate vulnerabilities.",
+    )
+    resume_text = "Linux infrastructure and platform operations experience."
+    profile = replace(make_profile(), avoid=["Management"])
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert "the role is in the excluded manager job family" not in result.gaps
+
+
+def test_systems_administrator_aligns_with_infrastructure_profile() -> None:
+    posting = make_posting(
+        title="Senior Systems Administrator",
+        description=(
+            "Required Qualifications\n"
+            "- Experience operating Linux infrastructure and cluster systems"
+        ),
+    )
+    resume_text = "Linux infrastructure and cluster systems administration."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Medium"
+    assert not result.has_critical_gap
+
+
+def test_unfamiliar_title_with_responsibility_evidence_stays_below_top_match() -> None:
+    posting = make_posting(
+        title="Senior Technical Specialist",
+        description=(
+            "Operate Linux infrastructure, HPC operations, cluster systems, "
+            "and datacenter operations."
+        ),
+    )
+    resume_text = (
+        "Linux infrastructure, HPC operations, cluster systems, "
+        "and datacenter operations."
+    )
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Medium"
+    assert not result.has_critical_gap
+
+
+def test_match_resume_to_posting_rejects_supply_chain_discipline() -> None:
+    posting = make_posting(
+        title="Hardware Sourcing and Supply Chain Lead",
+        description="Own strategic sourcing, procurement, and supplier negotiations.",
+    )
+    resume_text = "Linux infrastructure, HPC operations, and hardware systems experience."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert "central discipline requires supply chain experience" in result.gaps
+
+
+def test_match_resume_to_posting_rejects_tax_discipline() -> None:
+    posting = make_posting(
+        title="Infrastructure Tax Lead",
+        description="Own tax accounting and tax compliance for infrastructure assets.",
+    )
+    resume_text = "Linux infrastructure and datacenter operations experience."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert "central discipline requires tax and accounting experience" in result.gaps
+
+
+def test_match_resume_to_posting_rejects_digital_forensics_discipline() -> None:
+    posting = make_posting(
+        title="Senior Digital Forensics Automation Specialist",
+        description="Required Qualifications\nDigital forensics and forensic analysis.",
+    )
+    resume_text = "Linux infrastructure and Python automation experience."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert "central discipline requires digital forensics experience" in result.gaps
 
 
 def test_match_resume_to_posting_returns_unknown_without_profile() -> None:

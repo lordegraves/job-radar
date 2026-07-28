@@ -32,6 +32,8 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     connection_test = company_config.get("connection_test") is True
     postings: list[JobPosting] = []
     seen: set[str] = set()
+    seen_pages: set[tuple[str, ...]] = set()
+    expected_total: int | None = None
 
     start = 0
     for _page_index in range(max_pages):
@@ -61,6 +63,14 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         raw_positions = data.get("positions") if isinstance(data, dict) else None
         if not isinstance(raw_positions, list) or not raw_positions:
             break
+        page_identity = tuple(
+            str(position.get("id") or position.get("positionUrl") or "")
+            for position in raw_positions
+            if isinstance(position, dict)
+        )
+        if page_identity in seen_pages:
+            break
+        seen_pages.add(page_identity)
 
         for raw_position in raw_positions:
             if not isinstance(raw_position, dict):
@@ -82,7 +92,11 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
             postings.append(posting)
 
         count = data.get("count") if isinstance(data, dict) else None
-        if isinstance(count, int) and len(postings) >= count:
+        # Some Eightfold tenants report an unstable total on later pages.
+        # Retain the largest positive total so a false zero cannot truncate a scan.
+        if isinstance(count, int) and count > 0:
+            expected_total = max(expected_total or 0, count)
+        if expected_total is not None and len(postings) >= expected_total:
             break
         if max_pages == 1:
             # Source-health checks deliberately sample one result page. A
@@ -92,7 +106,7 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         # requests. Advance by what the server actually returned so valid jobs
         # on later pages are not silently skipped.
         start += len(raw_positions)
-        if not isinstance(count, int) and len(raw_positions) < page_size:
+        if expected_total is None and len(raw_positions) < page_size:
             break
 
     return postings

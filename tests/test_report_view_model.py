@@ -149,6 +149,33 @@ def test_build_job_output_view_model_prepares_shared_display_values() -> None:
     )
 
 
+def test_review_reasons_exclude_positive_practical_facts() -> None:
+    scored_posting = make_scored_posting(
+        title="Infrastructure Engineer",
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="remote_arrangement_selected",
+                    message="This remote arrangement is accepted.",
+                ),
+                EligibilityReason(
+                    code="compensation_meets_floor",
+                    message="The compensation meets the profile minimum.",
+                ),
+                EligibilityReason(
+                    code="employment_type_unclear",
+                    message="The employment type is unclear.",
+                ),
+            ),
+        ),
+    )
+
+    job = build_job_output_view_model(scored_posting)
+
+    assert job.eligibility_reasons == ("The employment type is unclear.",)
+
+
 def test_build_report_view_model_applies_email_limit() -> None:
     top_matches = [
         make_scored_posting(

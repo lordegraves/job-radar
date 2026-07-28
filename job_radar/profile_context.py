@@ -93,6 +93,7 @@ def managed_profile_to_candidate_profile(
         credible_adjacent=list(profile.preferences.credible_adjacent),
         learning_or_gap=list(profile.preferences.learning_or_gap),
         avoid=list(profile.preferences.exclusions),
+        target_roles=list(profile.preferences.target_roles),
     )
 
 

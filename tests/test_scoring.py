@@ -10,6 +10,7 @@ from job_radar.recommendation_policy import (
     evaluate_review_needed_eligibility,
     evaluate_top_match_eligibility,
 )
+from job_radar.resume_match import ResumeMatchResult
 from job_radar.scoring import (
     ScoringConfigError,
     classify_location,
@@ -711,6 +712,100 @@ def test_potential_top_match_keeps_existing_role_fit_gate() -> None:
         location_status="unknown",
         scoring_config=make_scoring_config(),
     )
+
+
+def test_critical_resume_gap_blocks_every_recommendation_bucket() -> None:
+    posting = make_posting(
+        title="Principal Security Engineer",
+        description="Required security engineering experience.",
+        location="Remote",
+    )
+    config = make_scoring_config()
+    config["review_needed"] = {
+        "min_score": 100,
+        "excluded_location_statuses": ["blocked"],
+        "strong_signals": ["title:infrastructure"],
+    }
+    reasons = ["+30 title:infrastructure", "+10 body:linux"]
+    resume_match = ResumeMatchResult(
+        label="Poor Fit",
+        evidence=["Linux infrastructure"],
+        gaps=["central discipline requires security engineering experience"],
+        critical_gaps=["central discipline requires security engineering experience"],
+    )
+
+    top_match, _ = evaluate_top_match_eligibility(
+        posting=posting,
+        score=180,
+        score_reasons=reasons,
+        location_status="allowed",
+        scoring_config=config,
+        resume_match=resume_match,
+    )
+
+    assert not top_match
+    assert not evaluate_potential_top_match_eligibility(
+        posting=posting,
+        score=180,
+        score_reasons=reasons,
+        location_status="unknown",
+        scoring_config=config,
+        resume_match=resume_match,
+    )
+    assert not evaluate_review_needed_eligibility(
+        score=180,
+        score_reasons=reasons,
+        location_status="allowed",
+        top_match_eligible=False,
+        scoring_config=config,
+        resume_match=resume_match,
+    )
+
+
+def test_top_match_allows_no_more_than_one_noncritical_resume_gap() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Operate Linux infrastructure.",
+        location="Remote",
+    )
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=180,
+        score_reasons=["+30 title:infrastructure", "+10 body:linux"],
+        location_status="allowed",
+        scoring_config=make_scoring_config(),
+        resume_match=ResumeMatchResult(
+            label="Strong",
+            evidence=["Linux infrastructure", "cluster systems"],
+            gaps=["gap one", "gap two"],
+        ),
+    )
+
+    assert not eligible
+    assert reasons == ["more_than_one_resume_gap"]
+
+
+def test_top_match_requires_strong_resume_alignment() -> None:
+    posting = make_posting(
+        title="Senior Infrastructure Engineer",
+        description="Operate Linux infrastructure.",
+        location="Remote",
+    )
+    eligible, reasons = evaluate_top_match_eligibility(
+        posting=posting,
+        score=180,
+        score_reasons=["+30 title:infrastructure", "+10 body:linux"],
+        location_status="allowed",
+        scoring_config=make_scoring_config(),
+        resume_match=ResumeMatchResult(
+            label="Medium",
+            evidence=["Linux infrastructure", "SRE"],
+            gaps=[],
+        ),
+    )
+
+    assert not eligible
+    assert reasons == ["resume_match_not_strong:Medium"]
 
 
 def test_evaluate_top_match_eligibility_rejects_negative_title_match() -> None:

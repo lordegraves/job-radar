@@ -425,7 +425,7 @@ def test_desktop_update_downloads_verifies_launches_and_closes(
         tmp_path / "logs" / "junior-update.log"
     )
     assert launched[0][1]["expected_build"] == (
-        f"SP5 Build {update.available_build}"
+        f"RC6 Build {update.available_build}"
     )
 
 
