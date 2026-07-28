@@ -11,6 +11,16 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   are collapsed, and add numbered navigation for direct page changes.
 - Start Review Jobs company groups collapsed while preserving individual,
   Expand all, and Collapse all controls.
+- Replace separate troubleshooting-log cards and simplified prose exports with
+  one developer-oriented structured-log viewer and timestamped `.log`
+  downloads. Each line identifies its timestamp, severity, subsystem, event,
+  and detailed safe fields while retaining the existing privacy allowlist.
+- Wait for every packaged Junior process to release the installed executable,
+  then run the verified Windows update, record a sanitized
+  handoff/installer/restart log, and reopen Junior only after the durable
+  result is ready.
+- Align troubleshooting-log card content and actions while exposing update
+  activity alongside scan, operational, and user-action diagnostics.
 - Label the corrected final RC5 field-test package and every application page
   as `SP5 Build 1.14`.
 - Keep the Scan page focused by showing a compact success message when all

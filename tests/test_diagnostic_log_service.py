@@ -1,23 +1,23 @@
 """Verify log access stays bounded to sanitized Junior-owned files."""
 
+import json
 from pathlib import Path
 
 import pytest
 
 from job_radar.application_info_service import ApplicationInfo
+from job_radar.company_discovery_log import record_company_discovery_event
+from job_radar.decision_event_log import record_decision_event
 from job_radar.diagnostic_log_service import (
     MAX_LOG_VIEW_BYTES,
     DiagnosticLogError,
-    build_readable_log_download,
+    build_diagnostic_log_download,
     build_support_summary,
     diagnostic_download_name,
-    get_diagnostic_log_download,
     list_diagnostic_logs,
     read_diagnostic_log,
 )
 from job_radar.diagnostic_service import DiagnosticsView, HealthCard
-from job_radar.decision_event_log import record_decision_event
-from job_radar.company_discovery_log import record_company_discovery_event
 
 
 def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
@@ -28,6 +28,15 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
     )
     (tmp_path / "junior-last-scan.log").write_text(
         '{"event":"scan_completed"}',
+        encoding="utf-8",
+    )
+    (tmp_path / "junior-update.log").write_text(
+        '{"event":"update_installer_finished","status":"success",'
+        '"detail":"Installer exit code 0."}',
+        encoding="utf-8",
+    )
+    (tmp_path / "junior-company-discovery.log.previous").write_text(
+        '{"event":"company_discovery","outcome":"not_found"}',
         encoding="utf-8",
     )
     record_company_discovery_event(
@@ -54,6 +63,8 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
         "junior-actions.log",
         "junior-last-scan.log",
         "junior-company-discovery.log",
+        "junior-company-discovery.log.previous",
+        "junior-update.log",
         "startup-errors.log",
         "junior-20260723T120000000000Z.log",
     }
@@ -63,6 +74,10 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
     assert titles["junior-company-discovery.log"] == (
         "Company discovery activity"
     )
+    assert titles["junior-company-discovery.log.previous"] == (
+        "Previous company discovery activity"
+    )
+    assert titles["junior-update.log"] == "Update activity"
     assert all(log.description for log in logs)
 
     content = (tmp_path / "junior-company-discovery.log").read_text(
@@ -82,14 +97,18 @@ def test_rejects_arbitrary_and_nested_log_paths(tmp_path: Path) -> None:
         read_diagnostic_log(tmp_path, "../startup-errors.log")
 
 
-def test_download_resolves_only_a_recognized_owned_log(tmp_path: Path) -> None:
+def test_download_builds_text_only_for_a_recognized_owned_log(
+    tmp_path: Path,
+) -> None:
     owned = tmp_path / "junior-actions.log"
     owned.write_text('{"status":"completed"}\n', encoding="utf-8")
     (tmp_path / "personal.log").write_text("private", encoding="utf-8")
 
-    assert get_diagnostic_log_download(tmp_path, owned.name) == owned.resolve()
+    download = build_diagnostic_log_download(tmp_path, owned.name)
+    assert "time-not-recorded | INFO | junior | diagnostic_event" in download
+    assert "status=completed" in download
     with pytest.raises(DiagnosticLogError, match="not available"):
-        get_diagnostic_log_download(tmp_path, "personal.log")
+        build_diagnostic_log_download(tmp_path, "personal.log")
 
 
 def test_large_log_view_reads_only_bounded_tail(tmp_path: Path) -> None:
@@ -111,7 +130,7 @@ def test_large_log_view_reads_only_bounded_tail(tmp_path: Path) -> None:
     assert "new safe entry" in view.content
 
 
-def test_json_scan_log_is_presented_and_downloaded_in_plain_language(
+def test_json_scan_log_is_presented_as_structured_records(
     tmp_path: Path,
 ) -> None:
     path = tmp_path / "junior-last-scan.log"
@@ -123,12 +142,38 @@ def test_json_scan_log_is_presented_and_downloaded_in_plain_language(
     )
 
     view = read_diagnostic_log(tmp_path, path.name)
-    download = build_readable_log_download(view).decode("utf-8")
-
-    assert view.entries[0].title == "Company Collection Completed"
-    assert "nasa_usajobs worked and returned 14 job(s)" in download
+    assert (
+        "2026-07-27T18:14:03+00:00 | INFO | junior | "
+        "company_collection_completed"
+    ) in view.developer_content
+    assert "company_id=nasa_usajobs" in view.developer_content
+    assert "jobs_found=14" in view.developer_content
     assert diagnostic_download_name(view).startswith("junior-last-scan-")
-    assert diagnostic_download_name(view).endswith(".txt")
+    assert diagnostic_download_name(view).endswith(".log")
+    download = build_diagnostic_log_download(tmp_path, path.name)
+    assert download == view.developer_content
+    assert '{"event":' not in download
+
+
+def test_update_log_is_presented_without_paths_or_raw_errors(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "junior-update.log"
+    path.write_text(
+        '{"event":"update_installer_finished","status":"success",'
+        '"detail":"Installer exit code 0.","timestamp":'
+        '"2026-07-28T12:00:00+00:00"}\n',
+        encoding="utf-8",
+    )
+
+    view = read_diagnostic_log(tmp_path, path.name)
+    assert view.title == "Update activity"
+    assert (
+        "2026-07-28T12:00:00+00:00 | INFO | junior | "
+        "update_installer_finished"
+    ) in view.developer_content
+    assert 'detail="Installer exit code 0."' in view.developer_content
+    assert "C:\\" not in view.developer_content
 
 
 def test_support_summary_contains_only_bounded_health_facts() -> None:
@@ -176,3 +221,24 @@ def test_decision_log_failure_never_blocks_the_user_action(
     )
 
     assert written is False
+
+
+def test_decision_log_records_developer_metadata(tmp_path: Path) -> None:
+    written = record_decision_event(
+        tmp_path,
+        event="job_decision",
+        status="completed",
+        job_radar_id="jr-example-12345678",
+        source_view="review_jobs",
+        target_state="saved",
+    )
+
+    assert written is True
+    payload = json.loads(
+        (tmp_path / "junior-actions.log").read_text(encoding="utf-8")
+    )
+    assert payload["schema_version"] == 1
+    assert payload["application_version"]
+    assert payload["application_build"]
+    assert payload["subsystem"] == "job_decision"
+    assert payload["severity"] == "info"

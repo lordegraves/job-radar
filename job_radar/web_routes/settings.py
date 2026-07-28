@@ -1,12 +1,12 @@
 """Prepare and serve normal-user settings and application information."""
 
+import io
+import sys
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-import io
 from pathlib import Path
-import sys
-import threading
 
 from flask import (
     Flask,
@@ -21,8 +21,8 @@ from flask import (
 )
 
 from job_radar import __build__, __version__
-from job_radar.build_info import RELEASE_LABEL, RELEASE_TAG
 from job_radar.application_info_service import build_application_info
+from job_radar.build_info import RELEASE_LABEL, RELEASE_TAG
 from job_radar.collector_catalog import list_collector_capabilities
 from job_radar.company_discovery_settings_service import (
     CompanyDiscoverySettingsError,
@@ -30,35 +30,34 @@ from job_radar.company_discovery_settings_service import (
     save_company_discovery_settings,
 )
 from job_radar.config import load_settings
-from job_radar.diagnostic_service import build_diagnostics_view
 from job_radar.diagnostic_log_service import (
-    build_readable_log_download,
-    diagnostic_download_name,
     DiagnosticLogError,
+    build_diagnostic_log_download,
     build_support_summary,
-    get_diagnostic_log_download,
+    diagnostic_download_name,
     list_diagnostic_logs,
     open_data_directory,
     read_diagnostic_log,
 )
+from job_radar.diagnostic_service import build_diagnostics_view
+from job_radar.email_sender import get_email_readiness
 from job_radar.email_settings_service import (
     EmailSettingsError,
     load_email_settings_form,
     save_email_settings,
     test_email_connection,
 )
-from job_radar.email_sender import get_email_readiness
+from job_radar.retention_settings_service import (
+    RetentionSettingsError,
+    load_retention_settings_form,
+    save_retention_settings,
+)
 from job_radar.runtime_paths import (
     DEFAULT_COMPANY_CONFIG_PATH,
     DEFAULT_EMAIL_PREVIEW_PATH,
     DEFAULT_REPORT_PATH,
     DEFAULT_SCORING_CONFIG_PATH,
     RuntimePaths,
-)
-from job_radar.retention_settings_service import (
-    RetentionSettingsError,
-    load_retention_settings_form,
-    save_retention_settings,
 )
 from job_radar.schedule_service import (
     ScheduleError,
@@ -226,6 +225,9 @@ def register_settings_routes(
                     / "updates"
                     / "last-update-result.json"
                 ),
+                log_path=(
+                    get_runtime_paths().logs_path / "junior-update.log"
+                ),
                 expected_build=(
                     f"{RELEASE_LABEL} Build {update.available_build}"
                     if update.available_build
@@ -268,6 +270,19 @@ def register_settings_routes(
             database_path=runtime_paths.database_path,
             user_data_location=runtime_paths.user_data_directory,
         )
+        diagnostic_logs = list_diagnostic_logs(runtime_paths.logs_path)
+        selected_log_name = request.args.get("log", "").strip()
+        if not selected_log_name and diagnostic_logs:
+            selected_log_name = diagnostic_logs[0].name
+        selected_log = None
+        if selected_log_name:
+            try:
+                selected_log = read_diagnostic_log(
+                    runtime_paths.logs_path,
+                    selected_log_name,
+                )
+            except DiagnosticLogError:
+                selected_log_name = ""
         return render_template(
             "settings_diagnostics.html",
             diagnostics=diagnostics,
@@ -277,7 +292,9 @@ def register_settings_routes(
             update_install_available=bool(
                 current_app.config.get("JOB_RADAR_DESKTOP_UPDATE_AVAILABLE")
             ),
-            diagnostic_logs=list_diagnostic_logs(runtime_paths.logs_path),
+            diagnostic_logs=diagnostic_logs,
+            selected_log=selected_log,
+            selected_log_name=selected_log_name,
             support_summary=build_support_summary(
                 application_info,
                 diagnostics,
@@ -286,30 +303,31 @@ def register_settings_routes(
 
     @app.get("/settings/diagnostics/logs/<log_name>")
     def settings_diagnostic_log(log_name: str) -> str:
-        runtime_paths = get_runtime_paths()
-        try:
-            log_view = read_diagnostic_log(runtime_paths.logs_path, log_name)
-        except DiagnosticLogError as error:
-            flash(str(error), "error")
-            return redirect(url_for("settings_diagnostics"))
-        return render_template(
-            "settings_diagnostic_log.html",
-            log_view=log_view,
+        return redirect(
+            url_for(
+                "settings_diagnostics",
+                log=log_name,
+                _anchor="developer-logs",
+            )
         )
 
     @app.get("/settings/diagnostics/logs/<log_name>/download")
     def settings_diagnostic_log_download(log_name: str):
         runtime_paths = get_runtime_paths()
         try:
-            get_diagnostic_log_download(runtime_paths.logs_path, log_name)
+            download_content = build_diagnostic_log_download(
+                runtime_paths.logs_path,
+                log_name,
+            )
             log_view = read_diagnostic_log(runtime_paths.logs_path, log_name)
         except DiagnosticLogError as error:
             flash(str(error), "error")
             return redirect(url_for("settings_diagnostics"))
+        download_name = diagnostic_download_name(log_view)
         return send_file(
-            io.BytesIO(build_readable_log_download(log_view)),
+            io.BytesIO(download_content.encode("utf-8")),
             as_attachment=True,
-            download_name=diagnostic_download_name(log_view),
+            download_name=download_name,
             mimetype="text/plain",
         )
 

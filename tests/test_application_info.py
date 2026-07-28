@@ -1,15 +1,15 @@
 """Verify About shows safe installed-version and schema information."""
 
 import hashlib
-from pathlib import Path
+import json
 import subprocess
 import sys
+from pathlib import Path
 
 import job_radar.web_routes.settings as settings_routes
 from job_radar import __version__
 from job_radar.application_info_service import build_application_info
 from job_radar.storage import initialize_database
-from job_radar.web_app import create_app
 from job_radar.update_check_service import (
     UpdateCheckResult,
     check_for_stable_update,
@@ -20,6 +20,7 @@ from job_radar.update_install_service import (
     download_verified_update,
     launch_windows_installer,
 )
+from job_radar.web_app import create_app
 
 
 class _ReleaseResponse:
@@ -281,10 +282,20 @@ def test_update_launcher_uses_no_command_shell(tmp_path: Path) -> None:
     installer = tmp_path / "Junior.exe"
     calls = []
 
+    def record_launch(*args, **kwargs):
+        calls.append((args, kwargs))
+        command = args[0]
+        confirmation_path = Path(
+            command[command.index("-ConfirmationPath") + 1]
+        )
+        confirmation_path.write_text("started", encoding="utf-8")
+        return type("_Process", (), {"poll": lambda self: None})()
+
     launch_windows_installer(
         installer,
+        log_path=tmp_path / "junior-update.log",
         parent_process_id=4123,
-        popen=lambda *args, **kwargs: calls.append((args, kwargs)),
+        popen=record_launch,
     )
 
     assert len(calls) == 1
@@ -304,13 +315,13 @@ def test_update_launcher_uses_no_command_shell(tmp_path: Path) -> None:
     assert calls[0][1]["close_fds"] is True
     assert calls[0][1]["creationflags"] == (
         subprocess.CREATE_NEW_PROCESS_GROUP
-        | subprocess.DETACHED_PROCESS
         | subprocess.CREATE_NO_WINDOW
     )
     helper_path = tmp_path / "junior-update-handoff.ps1"
     helper_text = helper_path.read_text(encoding="utf-8")
     assert "$ShutdownDeadline = (Get-Date).AddSeconds(45)" in helper_text
     assert "Get-Process -Id $ParentProcessId" in helper_text
+    assert "Get-Process -Name 'Junior'" in helper_text
     assert "the update was not installed" in helper_text
     assert "Start-Sleep -Milliseconds 1000" in helper_text
     assert "Start-Process -FilePath $InstallerPath" in helper_text
@@ -319,6 +330,53 @@ def test_update_launcher_uses_no_command_shell(tmp_path: Path) -> None:
     assert "Set-Content -LiteralPath $ResultPath" in helper_text
     assert "'/NOCLOSEAPPLICATIONS'" in helper_text
     assert "'/AUTOLAUNCH'" not in helper_text
+    assert "Write-SafeUpdateEvent" in helper_text
+    assert "Set-Content -LiteralPath $ConfirmationPath" in helper_text
+    assert "-ConfirmationPath" in command
+    assert "-LogPath" in command
+    assert "-ApplicationVersion" in command
+    assert "schema_version = 1" in helper_text
+    assert "subsystem = 'update'" in helper_text
+    update_log = tmp_path / "junior-update.log"
+    assert update_log.is_file()
+    update_payload = json.loads(update_log.read_text(encoding="utf-8"))
+    assert update_payload["event"] == "update_handoff_prepared"
+    assert update_payload["subsystem"] == "update"
+    assert update_payload["severity"] == "info"
+    assert update_payload["schema_version"] == 1
+
+
+def test_update_launcher_rejects_a_helper_that_never_starts(
+    tmp_path: Path,
+) -> None:
+    installer = tmp_path / "Junior.exe"
+    update_log = tmp_path / "junior-update.log"
+
+    try:
+        launch_windows_installer(
+            installer,
+            log_path=update_log,
+            parent_process_id=4123,
+            popen=lambda *args, **kwargs: type(
+                "_Process",
+                (),
+                {"poll": lambda self: 0},
+            )(),
+        )
+    except UpdateInstallError as error:
+        assert "did not start the installer handoff" in str(error)
+    else:
+        raise AssertionError("a helper that never starts must be rejected")
+
+    events = [
+        json.loads(line)
+        for line in update_log.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [event["event"] for event in events] == [
+        "update_handoff_prepared",
+        "update_handoff_launch_failed",
+    ]
+    assert events[-1]["severity"] == "error"
 
 
 def test_desktop_update_downloads_verifies_launches_and_closes(
@@ -363,6 +421,9 @@ def test_desktop_update_downloads_verifies_launches_and_closes(
     assert "Installing Junior update" in response.get_data(as_text=True)
     assert launched[0][0] == tmp_path / update.installer_name
     assert launched[0][1]["application_path"] == Path(sys.executable)
+    assert launched[0][1]["log_path"] == (
+        tmp_path / "logs" / "junior-update.log"
+    )
     assert launched[0][1]["expected_build"] == (
         f"SP5 Build {update.available_build}"
     )

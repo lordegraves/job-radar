@@ -39,6 +39,11 @@ def test_last_scan_log_is_replaced_and_private_fields_are_dropped(
         encoding="utf-8"
     ).splitlines()
     payload = json.loads(lines[-1])
+    assert payload["schema_version"] == 1
+    assert payload["application_version"]
+    assert payload["application_build"]
+    assert payload["subsystem"] == "scan"
+    assert payload["severity"] == "info"
     assert payload["source_type"] == "eightfold"
     assert payload["company_id"] == "example-employer"
     assert payload["jobs_found"] == 12

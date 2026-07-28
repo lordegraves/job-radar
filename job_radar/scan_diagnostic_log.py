@@ -1,10 +1,11 @@
 """Record bounded, privacy-safe scan events without storing job or profile data."""
 
-from datetime import UTC, datetime
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from time import monotonic
 
+from job_radar import __build__, __version__
 
 DIAGNOSTIC_LOG_NAME = "junior-diagnostics.log"
 LAST_SCAN_LOG_NAME = "junior-last-scan.log"
@@ -86,6 +87,11 @@ def _write_event(
 ) -> bool:
     payload = {
         "timestamp": datetime.now(UTC).isoformat(),
+        "schema_version": 1,
+        "application_version": __version__,
+        "application_build": __build__,
+        "subsystem": "scan",
+        "severity": _event_severity(event, fields),
         "event": event,
         **{key: value for key, value in fields.items() if key in _SAFE_FIELDS},
     }
@@ -106,6 +112,14 @@ def _write_event(
         # Diagnostics must never make a scan fail.
         return False
     return True
+
+
+def _event_severity(event: str, fields: dict[str, object]) -> str:
+    if event.endswith("_failed") or fields.get("failure_category"):
+        return "error"
+    if fields.get("collector_errors"):
+        return "warning"
+    return "info"
 
 
 def _bound_existing_log(path: Path) -> None:

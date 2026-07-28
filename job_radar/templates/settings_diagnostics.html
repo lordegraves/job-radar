@@ -82,23 +82,36 @@
         overflow: auto;
         white-space: pre-wrap;
     }
-    .diagnostic-log-grid {
-        display: grid;
-        gap: 14px;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+    .developer-log-toolbar {
+        align-items: end;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 18px 0;
     }
-    .diagnostic-log-card {
+    .developer-log-picker {
+        flex: 1 1 420px;
+        margin: 0;
+    }
+    .developer-log-picker select { width: 100%; }
+    .developer-log-viewer {
+        background: #0d0f12;
         border: 1px solid var(--border);
-        border-radius: 12px;
+        border-radius: 10px;
+        box-sizing: border-box;
+        color: #dbe5ef;
+        font: 0.9rem/1.5 Consolas, "Cascadia Mono", "Courier New", monospace;
+        margin: 0;
+        max-height: 560px;
+        min-height: 320px;
+        overflow: auto;
         padding: 18px;
+        tab-size: 2;
+        white-space: pre;
     }
-    .diagnostic-log-card h3 { margin-top: 0; }
-    .diagnostic-log-meta { color: var(--muted); }
-    .diagnostic-log-actions { display: flex; gap: 10px; }
     @media (max-width: 800px) {
         .diagnostics-grid,
-        .diagnostic-info-grid,
-        .diagnostic-log-grid { grid-template-columns: 1fr; }
+        .diagnostic-info-grid { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
@@ -253,26 +266,49 @@
     {% endfor %}
 </div>
 
-<div class="page-card">
-    <h2>Sanitized troubleshooting logs</h2>
+<div class="page-card" id="developer-logs">
+    <h2>Developer logs</h2>
     {% if diagnostic_logs %}
-    <p>Open or download a sanitized Junior log. <strong>junior-last-scan.log</strong> explains the most recent scan step by step without including job listings, profile settings, or résumé contents.</p>
-    <p class="muted">Only the newest {{ diagnostic_logs|length }} recognized log(s) are listed. These text files can be attached to a support email.</p>
-    <div class="diagnostic-log-grid">
-        {% for log in diagnostic_logs %}
-        <section class="diagnostic-log-card">
-            <h3>{{ log.title }}</h3>
-            <p>{{ log.description }}</p>
-            <p class="diagnostic-log-meta">{{ log.modified_at }} &middot; {{ log.size_bytes }} bytes</p>
-            <div class="diagnostic-log-actions">
-                <a class="button secondary" href="{{ url_for('settings_diagnostic_log', log_name=log.name) }}">Open</a>
-                <a class="button secondary" href="{{ url_for('settings_diagnostic_log_download', log_name=log.name) }}">Download</a>
-            </div>
-        </section>
-        {% endfor %}
+    <p>
+        These structured text logs are intended for troubleshooting by a
+        developer. Each line includes its timestamp, severity, subsystem,
+        event, and every retained safe detail.
+    </p>
+    <p class="muted">
+        Logs exclude job descriptions, profile and résumé contents,
+        credentials, tokens, environment contents, request headers, and raw
+        exception text.
+    </p>
+    <div class="developer-log-toolbar">
+        <form class="developer-log-picker" method="get" action="{{ url_for('settings_diagnostics') }}">
+            <label for="developer-log-select">Log to inspect</label>
+            <select id="developer-log-select" name="log" onchange="this.form.submit()">
+                {% for log in diagnostic_logs %}
+                <option value="{{ log.name }}" {% if log.name == selected_log_name %}selected{% endif %}>
+                    {{ log.title }} — {{ log.modified_at }} — {{ log.size_bytes }} bytes
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+        {% if selected_log %}
+        <a class="button secondary" href="{{ url_for('settings_diagnostic_log_download', log_name=selected_log.name) }}">
+            Download selected log
+        </a>
+        {% endif %}
     </div>
+    {% if selected_log %}
+    <p>
+        <strong>{{ selected_log.title }}</strong> —
+        {{ selected_log.description }}
+        {% if selected_log.truncated %}
+        The viewer shows only the newest safe entries; download the file for
+        the complete retained log.
+        {% endif %}
+    </p>
+    <pre class="developer-log-viewer" tabindex="0">{{ selected_log.developer_content }}</pre>
+    {% endif %}
     {% else %}
-    <p>No sanitized Junior logs are available.</p>
+    <p>No Junior developer logs are available yet.</p>
     {% endif %}
 </div>
 

@@ -8,9 +8,10 @@ from io import BytesIO
 from pathlib import Path
 
 import job_radar.web_app as web_app_module
-
 from job_radar.config import load_settings
 from job_radar.database import connect_database
+from job_radar.employer_models import EmployerSource
+from job_radar.employer_storage import upsert_employer_source
 from job_radar.history_models import JobHistoryRecord
 from job_radar.job_decision_service import (
     DECISION_PASSED,
@@ -18,8 +19,6 @@ from job_radar.job_decision_service import (
     list_job_decisions,
     save_job_decision,
 )
-from job_radar.employer_models import EmployerSource
-from job_radar.employer_storage import upsert_employer_source
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_storage import (
     create_profile,
@@ -2757,7 +2756,9 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     database_file = tmp_path / "job_radar.sqlite3"
     write_settings_file(settings_file, database_file)
     (tmp_path / "startup-errors.log").write_text(
-        "[2026-07-23] sanitized startup entry",
+        "[2026-07-23] complete retained startup entry\n"
+        + ("x" * 210_000)
+        + "\n[2026-07-23] newest sanitized startup entry",
         encoding="utf-8",
     )
     app = create_app(settings_path=str(settings_file))
@@ -2776,6 +2777,9 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     assert "Raw exceptions" in html
     assert "No company sources are configured yet." in html
     assert "startup-errors.log" in html
+    assert "Developer logs" in html
+    assert "newest sanitized startup entry" in html
+    assert "complete retained startup entry" not in html
     assert (
         'href="/settings/diagnostics/logs/startup-errors.log/download"'
         in html
@@ -2787,16 +2791,20 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     log_response = client.get(
         "/settings/diagnostics/logs/startup-errors.log"
     )
-    log_html = log_response.get_data(as_text=True)
-    assert log_response.status_code == 200
-    assert "sanitized startup entry" in log_html
+    assert log_response.status_code == 302
+    assert (
+        "/settings/diagnostics?log=startup-errors.log#developer-logs"
+        in log_response.headers["Location"]
+    )
 
     download_response = client.get(
         "/settings/diagnostics/logs/startup-errors.log/download"
     )
     assert download_response.status_code == 200
-    assert b"sanitized startup entry" in download_response.data
+    assert b"complete retained startup entry" in download_response.data
+    assert b"newest sanitized startup entry" in download_response.data
     assert "attachment" in download_response.headers["Content-Disposition"]
+    assert ".log" in download_response.headers["Content-Disposition"]
 
     rejected = client.get("/settings/diagnostics/logs/personal.log")
     assert rejected.status_code == 302

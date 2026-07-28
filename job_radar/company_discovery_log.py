@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import json
+from collections.abc import Mapping
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Mapping
 
+from job_radar import __build__, __version__
 
 LOG_NAME = "junior-company-discovery.log"
 MAX_LOG_BYTES = 1_000_000
@@ -34,7 +35,12 @@ def record_company_discovery_event(
     if path.exists() and path.stat().st_size >= MAX_LOG_BYTES:
         path.replace(directory / f"{LOG_NAME}.previous")
     payload = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
+        "schema_version": 1,
+        "application_version": __version__,
+        "application_build": __build__,
+        "subsystem": "company_discovery",
+        "severity": _event_severity(fields),
         "event": "company_discovery",
         "stage": stage,
     }
@@ -47,3 +53,12 @@ def record_company_discovery_event(
     )
     with path.open("a", encoding="utf-8", newline="\n") as stream:
         stream.write(json.dumps(payload, sort_keys=True) + "\n")
+
+
+def _event_severity(fields: Mapping[str, object]) -> str:
+    outcome = str(fields.get("outcome") or "").lower()
+    if outcome in {"failed", "rejected", "unsupported"}:
+        return "error"
+    if outcome in {"not_found", "timeout", "inconclusive"}:
+        return "warning"
+    return "info"

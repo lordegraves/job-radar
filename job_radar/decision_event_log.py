@@ -1,9 +1,10 @@
 """Record bounded, privacy-safe job-decision events for troubleshooting."""
 
-from datetime import UTC, datetime
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
+from job_radar import __build__, __version__
 
 DECISION_LOG_NAME = "junior-actions.log"
 MAX_DECISION_LOG_BYTES = 1_000_000
@@ -25,6 +26,11 @@ def record_decision_event(
     """Append safe fields without ever blocking the user's requested action."""
     payload = {
         "timestamp": datetime.now(UTC).isoformat(),
+        "schema_version": 1,
+        "application_version": __version__,
+        "application_build": __build__,
+        "subsystem": "job_decision",
+        "severity": "error" if status == "failed" else "info",
         "event": event,
         "status": status,
         "job_id": job_radar_id,
