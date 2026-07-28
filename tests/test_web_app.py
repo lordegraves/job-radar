@@ -1211,6 +1211,13 @@ def test_report_section_paginates_large_result_sets(
     assert "Synthetic Review Role 20" in first_html
     assert "Synthetic Review Role 21" not in first_html
     assert 'href="/reports/section/review_needed?page=2">Next</a>' in first_html
+    assert 'aria-current="page">1</span>' in first_html
+    assert 'href="/reports/section/review_needed?page=3">3</a>' in first_html
+    assert "Expand all companies" in first_html
+    assert "Collapse all companies" in first_html
+    assert '<details class="company-job-group" open>' in first_html
+    assert "20 on this page" in first_html
+    assert "45 total" in first_html
     assert 'class="job-decision-form"' in first_html
     assert 'name="notes" maxlength="300"' in first_html
     assert "Notes are for you and do not affect scoring." in first_html
@@ -1220,6 +1227,55 @@ def test_report_section_paginates_large_result_sets(
     assert "Synthetic Review Role 41" in last_html
     assert "Synthetic Review Role 45" in last_html
     assert "Synthetic Review Role 40" not in last_html
+
+
+def test_report_section_groups_current_page_by_company(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(
+        settings_file,
+        database_file,
+        reports_path=reports_path,
+    )
+    jobs = [
+        make_report_snapshot_job(
+            title="Infrastructure Role",
+            url="https://example.invalid/zeta",
+            company="Zeta Systems",
+            job_radar_id="jr-group-zeta",
+        ),
+        make_report_snapshot_job(
+            title="Platform Role",
+            url="https://example.invalid/alpha-platform",
+            company="Alpha Systems",
+            job_radar_id="jr-group-alpha-platform",
+        ),
+        make_report_snapshot_job(
+            title="Linux Role",
+            url="https://example.invalid/alpha-linux",
+            company="Alpha Systems",
+            job_radar_id="jr-group-alpha-linux",
+        ),
+    ]
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-07-25T10:00:00+00:00",
+        review_needed=jobs,
+    )
+
+    html = create_app(
+        settings_path=str(settings_file)
+    ).test_client().get(
+        "/reports/section/review_needed",
+    ).get_data(as_text=True)
+
+    assert html.index("Alpha Systems") < html.index("Zeta Systems")
+    assert html.count('<details class="company-job-group" open>') == 2
+    assert "2 on this page" in html
 
 
 def test_review_needed_compact_view_is_bounded_and_keeps_controls(
@@ -2755,7 +2811,7 @@ def test_update_result_remains_visible_until_dismissed(tmp_path: Path) -> None:
     app = create_app(settings_path=str(settings_file))
     app.config["JOB_RADAR_UPDATE_RESULT"] = {
         "status": "success",
-        "message": "Junior was updated successfully to SP5 Build 1.11.",
+        "message": "Junior was updated successfully to SP5 Build 1.13.",
     }
     client = app.test_client()
 
@@ -5144,7 +5200,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "SP5 Build 1.11" in html
+    assert "SP5 Build 1.13" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

@@ -6,7 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
-- Label field-test packages and every application page as `SP5 Build 1.11`.
+- Group Review Jobs by company within each bounded result page, show
+  page-specific and overall company counts, preserve selections when groups
+  are collapsed, and add numbered navigation for direct page changes.
+- Label the final RC5 field-test package and every application page as
+  `SP5 Build 1.13`.
 - Keep the Scan page focused by showing a compact success message when all
   company sources work and expanding specific company-source problems only
   when attention is required.

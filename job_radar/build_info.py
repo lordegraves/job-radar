@@ -1,7 +1,7 @@
 """Keep the tester-facing release-candidate build label in one place."""
 
 RELEASE_LABEL = "SP5"
-BUILD_NUMBER = "1.11"
+BUILD_NUMBER = "1.13"
 RELEASE_TAG = "v0.2.0-rc5"
 BUILD_LABEL = f"{RELEASE_LABEL} Build {BUILD_NUMBER}"
 BUILD_SLUG = f"{RELEASE_LABEL}-build-{BUILD_NUMBER}"

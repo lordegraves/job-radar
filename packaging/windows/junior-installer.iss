@@ -1,7 +1,7 @@
 #define AppName "Junior"
 #define AppVersion "0.2.0"
-#define BuildLabel "SP5 Build 1.11"
-#define BuildSlug "SP5-build-1.11"
+#define BuildLabel "SP5 Build 1.13"
+#define BuildSlug "SP5-build-1.13"
 #define AppPublisher "Junior"
 #define AppExeName "Junior.exe"
 

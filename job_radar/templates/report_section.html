@@ -34,6 +34,36 @@
         gap: 18px;
     }
 
+    .company-job-group {
+        background: rgba(24, 24, 28, 0.72);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .company-job-group > summary {
+        align-items: center;
+        cursor: pointer;
+        display: flex;
+        font-size: 1.08rem;
+        font-weight: 700;
+        gap: 10px;
+        justify-content: space-between;
+        padding: 16px 20px;
+    }
+
+    .company-job-group > summary span {
+        color: var(--muted);
+        font-size: 0.88rem;
+        font-weight: 500;
+    }
+
+    .company-job-cards {
+        display: grid;
+        gap: 14px;
+        padding: 0 14px 14px;
+    }
+
     .job-card {
         background: rgba(31, 31, 35, 0.94);
         border: 1px solid var(--border);
@@ -275,7 +305,27 @@
 
     .pagination-actions {
         display: flex;
+        flex-wrap: wrap;
         gap: 8px;
+    }
+
+    .pagination-current {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #07141c;
+        font-weight: 700;
+    }
+
+    .pagination-gap {
+        align-self: center;
+        color: var(--muted);
+        padding: 0 2px;
+    }
+
+    .company-display-controls {
+        display: flex;
+        gap: 8px;
+        margin: 14px 0;
     }
 
     .review-display-controls,
@@ -472,14 +522,40 @@
         {% if current_page > 1 %}
         <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page - 1, view=view_query) }}">Previous</a>
         {% endif %}
+        {% for page_number in pagination_pages %}
+            {% if page_number is none %}
+            <span class="pagination-gap" aria-hidden="true">…</span>
+            {% elif page_number == current_page %}
+            <span class="button-link pagination-current" aria-current="page">{{ page_number }}</span>
+            {% else %}
+            <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=page_number, view=view_query) }}">{{ page_number }}</a>
+            {% endif %}
+        {% endfor %}
         {% if current_page < total_pages %}
         <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page + 1, view=view_query) }}">Next</a>
         {% endif %}
     </div>
 </nav>
 {% endif %}
+{% if job_groups %}
+<div class="company-display-controls">
+    <button id="expand-company-groups" class="button-secondary" type="button">Expand all companies</button>
+    <button id="collapse-company-groups" class="button-secondary" type="button">Collapse all companies</button>
+</div>
+{% endif %}
 <section class="job-card-grid" aria-label="{{ section_title }} job cards">
-    {% for job in job_cards %}
+    {% for group in job_groups %}
+    {% set company_loop = loop %}
+    <details class="company-job-group" open>
+        <summary>
+            {{ group.company }}
+            <span>
+                {{ group.jobs|length }} on this page
+                {% if group.total != group.jobs|length %}· {{ group.total }} total{% endif %}
+            </span>
+        </summary>
+        <div class="company-job-cards">
+        {% for job in group.jobs %}
     <article class="job-card{% if view_mode == 'compact' %} job-card-compact{% endif %}">
         {% if job.job_radar_id and decisions_enabled and job.review_state == "needs_review" %}
         <label class="job-selection">
@@ -656,13 +732,13 @@
                 <input type="hidden" name="page" value="{{ current_page }}">
                 <input type="hidden" name="view" value="{{ view_mode }}">
                 <div class="job-decision-field">
-                    <label for="review-notes-{{ loop.index }}">Notes for my review (optional)</label>
-                    <input id="review-notes-{{ loop.index }}" name="notes" maxlength="300" placeholder="Example: Three-month contract and on-site in California">
+                    <label for="review-notes-{{ company_loop.index }}-{{ loop.index }}">Notes for my review (optional)</label>
+                    <input id="review-notes-{{ company_loop.index }}-{{ loop.index }}" name="notes" maxlength="300" placeholder="Example: Three-month contract and on-site in California">
                     <span class="field-help">Up to 300 characters. Notes are for you and do not affect scoring.</span>
                 </div>
                 <div class="job-decision-field">
-                    <label for="pass-reason-{{ loop.index }}">Reason (optional)</label>
-                    <select id="pass-reason-{{ loop.index }}" name="decision_reason">
+                    <label for="pass-reason-{{ company_loop.index }}-{{ loop.index }}">Reason (optional)</label>
+                    <select id="pass-reason-{{ company_loop.index }}-{{ loop.index }}" name="decision_reason">
                         <option value="">No reason selected</option>
                         {% for reason in pass_reasons %}
                         <option value="{{ reason }}">{{ reason }}</option>
@@ -681,6 +757,9 @@
         </details>
         {% endif %}
     </article>
+        {% endfor %}
+        </div>
+    </details>
     {% endfor %}
 </section>
 {% if total_pages > 1 %}
@@ -690,6 +769,15 @@
         {% if current_page > 1 %}
         <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page - 1, view=view_query) }}">Previous</a>
         {% endif %}
+        {% for page_number in pagination_pages %}
+            {% if page_number is none %}
+            <span class="pagination-gap" aria-hidden="true">…</span>
+            {% elif page_number == current_page %}
+            <span class="button-link pagination-current" aria-current="page">{{ page_number }}</span>
+            {% else %}
+            <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=page_number, view=view_query) }}">{{ page_number }}</a>
+            {% endif %}
+        {% endfor %}
         {% if current_page < total_pages %}
         <a class="button-link button-secondary" href="{{ url_for('report_section_view', section_name=section_name, page=current_page + 1, view=view_query) }}">Next</a>
         {% endif %}
@@ -724,6 +812,16 @@
         document.getElementById("clear-visible-jobs")?.addEventListener("click", () => {
             visibleJobCheckboxes().forEach((checkbox) => {
                 checkbox.checked = false;
+            });
+        });
+        document.getElementById("expand-company-groups")?.addEventListener("click", () => {
+            document.querySelectorAll(".company-job-group").forEach((group) => {
+                group.open = true;
+            });
+        });
+        document.getElementById("collapse-company-groups")?.addEventListener("click", () => {
+            document.querySelectorAll(".company-job-group").forEach((group) => {
+                group.open = false;
             });
         });
     })();

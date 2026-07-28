@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `SP5 Build 1.11`
+- Current field-test build: `SP5 Build 1.13`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -124,8 +124,12 @@ lowered and no internal score is shown. Each group loads at most 20 full job
 cards per page. Review Needed also offers a compact view with at most 50
 collapsed job summaries per page, page-only Select all, matching navigation at
 the top and bottom, and a Back to top link that never changes pages or clears
-selections. Every compact summary can expand to the same Save, Pass, Apply,
-Notes, and evidence controls. Explicit workplace,
+selections. Numbered page links allow direct movement between distant pages.
+Jobs on each page are grouped into collapsible company sections; a company
+that spans pages shows both the number on the current page and its total in the
+result group. Expanding or collapsing a company does not reload the page or
+clear selected jobs. Every compact summary can expand to the same Save, Pass,
+Apply, Notes, and evidence controls. Explicit workplace,
 employment-type, and annual-pay wording in a description can fill a missing ATS
 field. An omitted schedule does not imply a conflict, while an explicit night,
 evening, weekend, or on-call requirement is still enforced.
@@ -177,7 +181,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in SP5 Build 1.11. Diagnostics still
+capabilities and are not implemented in SP5 Build 1.13. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -343,7 +347,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.11.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-SP5-build-1.13.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

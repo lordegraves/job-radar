@@ -1,6 +1,7 @@
 """Serve saved reports and structured sections from the latest scan snapshot."""
 
 import re
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -203,6 +204,35 @@ class ReportFileView:
     can_view: bool
 
 
+def _build_pagination_pages(
+    current_page: int,
+    total_pages: int,
+) -> list[int | None]:
+    """Keep nearby page choices visible without rendering hundreds of links."""
+    visible_pages = {
+        1,
+        total_pages,
+        current_page - 2,
+        current_page - 1,
+        current_page,
+        current_page + 1,
+        current_page + 2,
+    }
+    ordered_pages = sorted(
+        page
+        for page in visible_pages
+        if 1 <= page <= total_pages
+    )
+    result: list[int | None] = []
+    previous_page = 0
+    for page in ordered_pages:
+        if previous_page and page - previous_page > 1:
+            result.append(None)
+        result.append(page)
+        previous_page = page
+    return result
+
+
 def register_report_routes(
     app: Flask,
     *,
@@ -237,6 +267,8 @@ def register_report_routes(
         total_jobs = 0
         page_start_index = 0
         page_end_index = 0
+        job_groups: list[dict[str, object]] = []
+        pagination_pages: list[int | None] = [1]
         view_mode = (
             "compact"
             if section_name == "review_needed"
@@ -295,7 +327,17 @@ def register_report_routes(
                     and job.job_radar_id not in tracked_job_ids
                 )
             ]
+            all_job_cards.sort(
+                key=lambda card: (
+                    (card.company or "Unknown company").casefold(),
+                    card.title.casefold(),
+                )
+            )
             eligibility_counts = _count_eligibility_labels(all_job_cards)
+            company_totals = Counter(
+                card.company or "Unknown company"
+                for card in all_job_cards
+            )
             total_jobs = len(all_job_cards)
             total_pages = max(
                 1,
@@ -312,6 +354,26 @@ def register_report_routes(
                 total_jobs,
             )
             job_cards = all_job_cards[page_start_index:page_end_index]
+            for card in job_cards:
+                company_name = card.company or "Unknown company"
+                if (
+                    not job_groups
+                    or job_groups[-1]["company"] != company_name
+                ):
+                    job_groups.append(
+                        {
+                            "company": company_name,
+                            "jobs": [],
+                            "total": company_totals[company_name],
+                        }
+                    )
+                group_jobs = job_groups[-1]["jobs"]
+                assert isinstance(group_jobs, list)
+                group_jobs.append(card)
+            pagination_pages = _build_pagination_pages(
+                current_page,
+                total_pages,
+            )
 
         return render_template(
             "report_section.html",
@@ -320,6 +382,7 @@ def register_report_routes(
             section_description=section_details["description"],
             empty_message=section_details["empty_message"],
             job_cards=job_cards,
+            job_groups=job_groups,
             collector_errors=collector_errors,
             eligibility_counts=eligibility_counts,
             html_report_name=html_report_name,
@@ -328,6 +391,7 @@ def register_report_routes(
             decisions_enabled=section_name in JOB_DECISION_SECTIONS,
             current_page=current_page,
             total_pages=total_pages,
+            pagination_pages=pagination_pages,
             total_jobs=total_jobs,
             page_start=page_start_index + 1 if total_jobs else 0,
             page_end=page_end_index,
