@@ -30,6 +30,12 @@ CloseApplications=no
 RestartApplications=no
 ChangesEnvironment=no
 
+[InstallDelete]
+; PyInstaller's _internal directory is application-owned. Replace it as one
+; unit so removed dependencies from an older build cannot survive an upgrade
+; and collide with the new executable. User data is stored elsewhere.
+Type: filesandordirs; Name: "{app}\_internal"
+
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 

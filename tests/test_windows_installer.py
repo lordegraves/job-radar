@@ -31,6 +31,8 @@ def test_inno_installer_is_per_user_and_preserves_user_data() -> None:
     assert "'/AUTOLAUNCH'" in script_text
     assert "CloseApplications=no" in script_text
     assert "RestartApplications=no" in script_text
+    assert "[InstallDelete]" in script_text
+    assert 'Type: filesandordirs; Name: "{app}\\_internal"' in script_text
 
 
 def test_installer_build_script_requires_verified_bundle_first() -> None:
@@ -61,6 +63,8 @@ def test_installer_build_script_requires_verified_bundle_first() -> None:
     assert expected_installer in clean_validation_text
     assert expected_installer in release_validation_text
     assert 'Join-Path $installRoot "LICENSE"' in validation_text
+    assert "PreviousInstallerPath" in validation_text
+    assert "Assert-PackagedApplicationStarts" in validation_text
 
 
 def test_installer_receives_license_from_complete_windows_bundle() -> None:
