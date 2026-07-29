@@ -762,6 +762,28 @@ def test_critical_resume_gap_blocks_every_recommendation_bucket() -> None:
     )
 
 
+def test_missing_practical_details_do_not_rescue_weak_professional_fit() -> None:
+    config = make_scoring_config()
+    config["review_needed"] = {
+        "min_score": 100,
+        "excluded_location_statuses": ["blocked"],
+        "strong_signals": ["title:infrastructure"],
+    }
+
+    assert not evaluate_review_needed_eligibility(
+        score=180,
+        score_reasons=["+30 title:infrastructure"],
+        location_status="unknown",
+        top_match_eligible=False,
+        scoring_config=config,
+        resume_match=ResumeMatchResult(
+            label="Weak",
+            evidence=[],
+            gaps=[],
+        ),
+    )
+
+
 def test_top_match_allows_no_more_than_one_noncritical_resume_gap() -> None:
     posting = make_posting(
         title="Senior Infrastructure Engineer",

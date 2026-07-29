@@ -40,7 +40,7 @@ from job_radar.diagnostic_log_service import (
     read_diagnostic_log,
 )
 from job_radar.diagnostic_service import build_diagnostics_view
-from job_radar.email_sender import get_email_readiness
+from job_radar.email_sender import get_email_readiness, send_generated_scan_report
 from job_radar.email_settings_service import (
     EmailSettingsError,
     load_email_settings_form,
@@ -106,11 +106,20 @@ def register_settings_routes(
     """Register normal-user settings and read-only application information."""
     @app.get("/settings")
     def settings() -> str:
+        runtime_paths = get_runtime_paths()
         settings_view = _build_settings_view(settings_path)
 
         return render_template(
             "settings.html",
             settings_view=settings_view,
+            retention_form=load_retention_settings_form(settings_path),
+            email_form=load_email_settings_form(settings_path),
+            connection_test=session.get("email_connection_test"),
+            delivery_test=session.get("email_delivery_test"),
+            schedule_view=build_schedule_view(runtime_paths.database_path),
+            scheduler_integration=inspect_scheduler(),
+            discovery_form=load_company_discovery_settings_form(settings_path),
+            open_section=request.args.get("section", "").strip(),
         )
 
     @app.post("/settings/shutdown")
@@ -155,10 +164,15 @@ def register_settings_routes(
         )
 
     @app.get("/settings/company-discovery")
-    def settings_company_discovery() -> str:
-        return render_template(
-            "settings_company_discovery.html",
-            discovery_form=load_company_discovery_settings_form(settings_path),
+    def settings_company_discovery():
+        """Keep old bookmarks working after lookup controls moved to Settings."""
+
+        return redirect(
+            url_for(
+                "settings",
+                section="company-discovery",
+                _anchor="company-discovery-settings",
+            )
         )
 
     @app.post("/settings/company-discovery")
@@ -174,7 +188,7 @@ def register_settings_routes(
             flash(str(error), "error")
         else:
             flash("External company lookup preference saved.", "success")
-        return redirect(url_for("settings_company_discovery"))
+        return _settings_section_redirect("company-discovery")
 
     @app.post("/settings/about/check-updates")
     def settings_about_check_updates():
@@ -343,12 +357,10 @@ def register_settings_routes(
         return redirect(url_for("settings_diagnostics"))
 
     @app.get("/settings/email")
-    def settings_email() -> str:
-        return render_template(
-            "settings_email.html",
-            email_form=load_email_settings_form(settings_path),
-            connection_test=session.get("email_connection_test"),
-        )
+    def settings_email():
+        """Keep old bookmarks working after email controls moved to Settings."""
+
+        return _settings_section_redirect("email")
 
     @app.post("/settings/email")
     def settings_email_save():
@@ -368,18 +380,15 @@ def register_settings_routes(
             )
         except EmailSettingsError as error:
             flash(str(error), "error")
-            return redirect(url_for("settings_email"))
+            return _settings_section_redirect("email")
         flash("Email settings saved.", "success")
-        return redirect(url_for("settings_email"))
+        return _settings_section_redirect("email")
 
     @app.get("/settings/schedule")
-    def settings_schedule() -> str:
-        runtime_paths = get_runtime_paths()
-        return render_template(
-            "settings_schedule.html",
-            schedule_view=build_schedule_view(runtime_paths.database_path),
-            scheduler_integration=inspect_scheduler(),
-        )
+    def settings_schedule():
+        """Keep old bookmarks working after schedule controls moved to Settings."""
+
+        return _settings_section_redirect("schedule")
 
     @app.post("/settings/schedule")
     def settings_schedule_save():
@@ -394,16 +403,15 @@ def register_settings_routes(
             )
         except ScheduleError as error:
             flash(str(error), "error")
-            return redirect(url_for("settings_schedule"))
+            return _settings_section_redirect("schedule")
         flash("Scan schedule saved.", "success")
-        return redirect(url_for("settings_schedule"))
+        return _settings_section_redirect("schedule")
 
     @app.get("/settings/retention")
-    def settings_retention() -> str:
-        return render_template(
-            "settings_retention.html",
-            retention_form=load_retention_settings_form(settings_path),
-        )
+    def settings_retention():
+        """Keep old bookmarks working after retention controls moved to Settings."""
+
+        return _settings_section_redirect("retention")
 
     @app.post("/settings/retention")
     def settings_retention_save():
@@ -417,9 +425,9 @@ def register_settings_routes(
             )
         except RetentionSettingsError as error:
             flash(str(error), "error")
-            return redirect(url_for("settings_retention"))
+            return _settings_section_redirect("retention")
         flash("Report and log retention settings saved.", "success")
-        return redirect(url_for("settings_retention"))
+        return _settings_section_redirect("retention")
 
     @app.post("/settings/schedule/system/apply")
     def settings_schedule_system_apply():
@@ -435,7 +443,7 @@ def register_settings_routes(
             flash(str(error), "error")
         else:
             flash(message, "success")
-        return redirect(url_for("settings_schedule"))
+        return _settings_section_redirect("schedule")
 
     @app.post("/settings/schedule/system/disable")
     def settings_schedule_system_disable():
@@ -445,7 +453,7 @@ def register_settings_routes(
             flash(str(error), "error")
         else:
             flash(message, "success")
-        return redirect(url_for("settings_schedule"))
+        return _settings_section_redirect("schedule")
 
     @app.post("/settings/schedule/system/remove")
     def settings_schedule_system_remove():
@@ -455,7 +463,7 @@ def register_settings_routes(
             flash(str(error), "error")
         else:
             flash(message, "success")
-        return redirect(url_for("settings_schedule"))
+        return _settings_section_redirect("schedule")
 
     @app.post("/settings/email/test")
     def settings_email_test():
@@ -475,7 +483,21 @@ def register_settings_routes(
             request.form.get("provider", ""),
             result,
         )
-        return redirect(url_for("settings_email"))
+        return _settings_section_redirect("email")
+
+    @app.post("/settings/email/send-latest")
+    def settings_email_send_latest():
+        runtime_paths = get_runtime_paths()
+        result = send_generated_scan_report(
+            load_settings(settings_path).email,
+            preview_path=runtime_paths.resolve(DEFAULT_EMAIL_PREVIEW_PATH),
+            report_path=runtime_paths.resolve(DEFAULT_REPORT_PATH),
+        )
+        session["email_delivery_test"] = _email_delivery_status(
+            sent=result.sent,
+            message=result.message,
+        )
+        return _settings_section_redirect("email")
 
 
 def _build_settings_view(settings_path: str) -> SettingsView:
@@ -502,6 +524,18 @@ def _build_settings_view(settings_path: str) -> SettingsView:
         scan_report_path=DEFAULT_REPORT_PATH,
         scan_email_preview_path=DEFAULT_EMAIL_PREVIEW_PATH,
         email_status=email_readiness.message,
+    )
+
+
+def _settings_section_redirect(section: str):
+    """Return users to the inline Settings section they were working in."""
+
+    return redirect(
+        url_for(
+            "settings",
+            section=section,
+            _anchor=f"{section}-settings",
+        )
     )
 
 
@@ -556,5 +590,19 @@ def _email_connection_status(provider: str, result: str) -> dict[str, str]:
         "status": status,
         "reason": reason,
         "tone": tone,
+        "tested_at": f"Today at {tested_time}",
+    }
+
+
+def _email_delivery_status(*, sent: bool, message: str) -> dict[str, str]:
+    tested_time = datetime.now().astimezone().strftime("%I:%M %p").lstrip("0")
+    return {
+        "status": "Scan summary sent" if sent else "Scan summary not sent",
+        "reason": (
+            "Junior sent the latest summary and attached the full HTML report."
+            if sent
+            else message
+        ),
+        "tone": "success" if sent else "error",
         "tested_at": f"Today at {tested_time}",
     }

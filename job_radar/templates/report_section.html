@@ -663,16 +663,6 @@
 
         <details class="job-details">
             <summary>Show supporting details</summary>
-            {% if job.eligibility_reasons and section_name != 'potential_top_matches' %}
-            <section class="job-section">
-                <h2>Eligibility review</h2>
-                <ul class="eligibility-reasons">
-                    {% for reason in job.eligibility_reasons %}
-                    <li>{{ reason }}</li>
-                    {% endfor %}
-                </ul>
-            </section>
-            {% endif %}
 
             <div class="job-signal-grid">
             {% if job.technical_match %}

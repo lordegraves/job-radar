@@ -145,7 +145,7 @@ def test_schedule_page_saves_and_discloses_automation_boundary(
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
     client = app.test_client()
 
-    page = client.get("/settings/schedule")
+    page = client.get("/settings?section=schedule")
     saved = client.post(
         "/settings/schedule",
         data={

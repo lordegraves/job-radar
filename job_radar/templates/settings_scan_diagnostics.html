@@ -29,6 +29,7 @@
                 <th>Company</th>
                 <th>Platform</th>
                 <th>Warning type</th>
+                <th>Failed step</th>
                 <th>What happened</th>
                 <th>Action</th>
             </tr>
@@ -39,6 +40,7 @@
                 <td>{{ warning.employer_name }}</td>
                 <td>{{ warning.source_label }}</td>
                 <td>{{ warning.category }}</td>
+                <td>{{ warning.failure_stage }}</td>
                 <td>{{ warning.message }}</td>
                 <td>
                     {% if warning.employer_id %}

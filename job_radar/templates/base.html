@@ -138,9 +138,10 @@
         .site-nav {
             align-items: center;
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 4px;
             justify-content: flex-end;
+            min-width: 0;
         }
 
         .site-nav a {
@@ -496,7 +497,20 @@
             width: 100%;
         }
 
-        .global-scan-status {
+        .header-actions {
+            align-items: center;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            min-width: 0;
+        }
+
+        .scan-activity {
+            flex: 0 0 auto;
+            position: relative;
+        }
+
+        .scan-activity-toggle {
             align-items: center;
             background: var(--surface-muted);
             border: 1px solid var(--border-strong);
@@ -509,15 +523,71 @@
             white-space: nowrap;
         }
 
-        .global-scan-status[hidden] {
+        .scan-activity-toggle:hover,
+        .scan-activity-toggle[aria-expanded="true"] {
+            background: var(--surface-hover);
+            border-color: var(--link);
+            color: var(--text);
+        }
+
+        .scan-activity-toggle[hidden],
+        .scan-activity-panel[hidden] {
             display: none;
         }
 
-        .global-scan-dot {
+        .scan-activity-dot {
             background: var(--link);
             border-radius: 50%;
             height: 8px;
             width: 8px;
+        }
+
+        .scan-activity-dot.scan-activity-dot-failed {
+            background: #ff5f6d;
+        }
+
+        .scan-activity-panel {
+            background: #18242b;
+            border: 1px solid var(--link);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            color: var(--text);
+            min-width: 340px;
+            padding: 16px;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 12px);
+            width: min(390px, calc(100vw - 32px));
+            z-index: 20;
+        }
+
+        .scan-activity-panel.scan-activity-panel-failed {
+            background: var(--danger-surface);
+            border-color: var(--danger-border);
+        }
+
+        .scan-activity-panel h2 {
+            font-size: 1.08rem;
+            margin: 0 0 8px;
+        }
+
+        .scan-activity-panel p {
+            margin: 0 0 10px;
+        }
+
+        .scan-activity-panel progress {
+            accent-color: var(--accent);
+            display: block;
+            height: 12px;
+            margin: 10px 0;
+            width: 100%;
+        }
+
+        .scan-activity-actions {
+            align-items: center;
+            display: flex;
+            gap: 8px;
+            margin-top: 14px;
         }
 
         .admin-mode-indicator {
@@ -544,47 +614,48 @@
             padding: 0;
         }
 
-        .scan-notification {
-            background: #18242b;
-            border: 1px solid var(--link);
-            border-radius: 10px;
-            box-shadow: var(--shadow);
-            max-width: 420px;
-            padding: 14px 16px;
-            position: fixed;
-            right: 24px;
-            top: 82px;
-            z-index: 20;
-        }
-
-        .scan-notification[hidden] {
-            display: none;
-        }
-
-        .scan-notification.scan-notification-failed {
-            background: var(--danger-surface);
-            border-color: var(--danger-border);
-        }
-
-        .scan-notification p {
-            margin: 0 0 10px;
-        }
-
-        .scan-notification-actions {
-            align-items: center;
-            display: flex;
-            gap: 8px;
-        }
-
         @media (max-width: 1280px) {
+            .app-header {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .brand-build {
+                display: none;
+            }
+
+            .site-nav {
+                font-size: 0.88rem;
+                gap: 1px;
+            }
+
+            .site-nav a {
+                padding-left: 6px;
+                padding-right: 6px;
+            }
+        }
+
+        @media (max-width: 1080px) {
             .app-header-inner {
                 align-items: flex-start;
                 flex-direction: column;
                 gap: 12px;
             }
 
+            .header-actions {
+                align-items: flex-start;
+                flex-direction: column;
+                width: 100%;
+            }
+
             .site-nav {
+                flex-wrap: wrap;
                 justify-content: flex-start;
+            }
+
+            .scan-activity-panel {
+                left: 0;
+                right: auto;
             }
         }
 
@@ -605,11 +676,8 @@
                 padding-right: 16px;
             }
 
-            .scan-notification {
-                left: 16px;
-                max-width: none;
-                right: 16px;
-                top: 16px;
+            .scan-activity-panel {
+                min-width: 0;
             }
         }
 
@@ -633,7 +701,8 @@
                 <span>junior</span>
                 <span class="brand-build">{{ junior_build_label }}</span>
             </a>
-            <nav class="site-nav" aria-label="Primary navigation">
+            <div class="header-actions">
+                <nav class="site-nav" aria-label="Primary navigation">
                 <a class="{% if request.endpoint == 'index' %}active-nav{% endif %}" href="{{ url_for('index') }}"{% if request.endpoint == 'index' %} aria-current="page"{% endif %}>Home</a>
                 <a class="{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application'] %}active-nav{% endif %}" href="{{ url_for('tracker') }}"{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application'] %} aria-current="page"{% endif %}>Active Applications</a>
                 <a class="{% if request.endpoint in ['history', 'edit_history_record'] %}active-nav{% endif %}" href="{{ url_for('history') }}"{% if request.endpoint in ['history', 'edit_history_record'] %} aria-current="page"{% endif %}>Application History</a>
@@ -647,10 +716,23 @@
                 {% if admin_mode_active %}
                 <a class="{% if request.endpoint and request.endpoint.startswith('administration') %}active-nav{% endif %}" href="{{ url_for('administration') }}"{% if request.endpoint and request.endpoint.startswith('administration') %} aria-current="page"{% endif %}>Administration</a>
                 {% endif %}
-            </nav>
-            <div id="global-scan-status" class="global-scan-status" role="status" aria-live="polite" hidden>
-                <span class="global-scan-dot" aria-hidden="true"></span>
-                <span id="global-scan-status-text">Scan running</span>
+                </nav>
+                <div class="scan-activity">
+                    <button id="scan-activity-toggle" class="scan-activity-toggle" type="button" aria-expanded="false" aria-controls="scan-activity-panel" hidden>
+                        <span id="scan-activity-dot" class="scan-activity-dot" aria-hidden="true"></span>
+                        <span id="scan-activity-label">Scanning</span>
+                    </button>
+                    <aside id="scan-activity-panel" class="scan-activity-panel" aria-live="polite" hidden>
+                        <h2 id="scan-activity-title">Scan activity</h2>
+                        <p id="scan-activity-message"></p>
+                        <progress id="scan-activity-progress" max="100" value="0" hidden></progress>
+                        <p id="scan-activity-detail" class="muted"></p>
+                        <div class="scan-activity-actions">
+                            <a id="scan-activity-link" class="button-link" href="{{ url_for('scan') }}">Open scan progress</a>
+                            <button id="scan-activity-dismiss" class="button-secondary" type="button" hidden>Dismiss</button>
+                        </div>
+                    </aside>
+                </div>
             </div>
         </div>
         {% if admin_mode_active %}
@@ -664,14 +746,6 @@
         </div>
         {% endif %}
     </header>
-
-    <aside id="scan-notification" class="scan-notification" role="alert" hidden>
-        <p id="scan-notification-message"></p>
-        <div class="scan-notification-actions">
-            <a id="scan-notification-link" class="button-link" href="{{ url_for('review_jobs') }}">Review jobs</a>
-            <button id="scan-notification-dismiss" class="button-secondary" type="button">Dismiss</button>
-        </div>
-    </aside>
 
     <main id="main-content" class="page" tabindex="-1">
 {% if junior_update_result %}
@@ -731,12 +805,16 @@
             const statusUrl = "{{ url_for('scan_status') }}";
             const reportsUrl = "{{ url_for('review_jobs') }}";
             const scanPageUrl = "{{ url_for('scan') }}";
-            const statusBox = document.getElementById("global-scan-status");
-            const statusText = document.getElementById("global-scan-status-text");
-            const notification = document.getElementById("scan-notification");
-            const notificationMessage = document.getElementById("scan-notification-message");
-            const notificationLink = document.getElementById("scan-notification-link");
-            const dismissButton = document.getElementById("scan-notification-dismiss");
+            const activityToggle = document.getElementById("scan-activity-toggle");
+            const activityDot = document.getElementById("scan-activity-dot");
+            const activityLabel = document.getElementById("scan-activity-label");
+            const activityPanel = document.getElementById("scan-activity-panel");
+            const activityTitle = document.getElementById("scan-activity-title");
+            const activityMessage = document.getElementById("scan-activity-message");
+            const activityProgress = document.getElementById("scan-activity-progress");
+            const activityDetail = document.getElementById("scan-activity-detail");
+            const activityLink = document.getElementById("scan-activity-link");
+            const dismissButton = document.getElementById("scan-activity-dismiss");
             let pollTimer = null;
             let watchedScanId = sessionStorage.getItem("juniorWatchedScanId");
             let sawRunningScan = sessionStorage.getItem("juniorSawRunningScan") === "true";
@@ -753,9 +831,37 @@
                 sessionStorage.removeItem("juniorWatchedScanId");
             }
 
+            function setActivityPanelOpen(open) {
+                activityPanel.hidden = !open;
+                activityToggle.setAttribute("aria-expanded", String(open));
+            }
+
+            function formatDuration(totalSeconds) {
+                if (!Number.isFinite(totalSeconds)) {
+                    return "";
+                }
+                const seconds = Math.max(0, Math.round(totalSeconds));
+                if (seconds < 60) {
+                    return `${seconds} second${seconds === 1 ? "" : "s"}`;
+                }
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                if (minutes < 60) {
+                    return remainingSeconds
+                        ? `${minutes} minute${minutes === 1 ? "" : "s"} ${remainingSeconds} second${remainingSeconds === 1 ? "" : "s"}`
+                        : `${minutes} minute${minutes === 1 ? "" : "s"}`;
+                }
+                const hours = Math.floor(minutes / 60);
+                const remainingMinutes = minutes % 60;
+                return remainingMinutes
+                    ? `${hours} hour${hours === 1 ? "" : "s"} ${remainingMinutes} minute${remainingMinutes === 1 ? "" : "s"}`
+                    : `${hours} hour${hours === 1 ? "" : "s"}`;
+            }
+
             function showTerminalNotification(status) {
                 if (window.location.pathname === scanPageUrl) {
-                    notification.hidden = true;
+                    activityToggle.hidden = true;
+                    setActivityPanelOpen(false);
                     return;
                 }
 
@@ -763,33 +869,64 @@
                 const failed = status.status === "failed";
 
                 if (failed) {
-                    notificationMessage.textContent =
+                    activityLabel.textContent = "Scan failed";
+                    activityTitle.textContent = "Scan could not finish";
+                    activityMessage.textContent =
                         status.failure_summary || "junior could not complete the scan.";
-                    notificationLink.textContent = "View scan details";
-                    notificationLink.href = scanPageUrl;
-                    notification.classList.add("scan-notification-failed");
+                    activityDetail.textContent = "Open Scan for safe details and next steps.";
+                    activityLink.textContent = "View scan details";
+                    activityLink.href = scanPageUrl;
+                    activityPanel.classList.add("scan-activity-panel-failed");
+                    activityDot.classList.add("scan-activity-dot-failed");
                 } else {
                     const warningText = completedWithWarnings
                         ? ` with ${status.collector_errors} source warning${status.collector_errors === 1 ? "" : "s"}`
                         : "";
-                    notificationMessage.textContent =
-                        `Scan complete${warningText}. ${status.jobs_found} jobs found.`;
-                    notificationLink.textContent = "Review jobs";
-                    notificationLink.href = reportsUrl;
-                    notification.classList.remove("scan-notification-failed");
+                    const duration = formatDuration(status.elapsed_seconds);
+                    activityLabel.textContent = completedWithWarnings
+                        ? "Scan warnings"
+                        : "Scan complete";
+                    activityTitle.textContent = completedWithWarnings
+                        ? "Scan completed with warnings"
+                        : "Scan completed";
+                    activityMessage.textContent = duration
+                        ? `${status.companies_scanned} companies checked in ${duration}.`
+                        : `${status.companies_scanned} companies checked.`;
+                    activityDetail.textContent =
+                        `${status.jobs_found} jobs found${warningText}.`;
+                    activityLink.textContent = "Review jobs";
+                    activityLink.href = reportsUrl;
+                    activityPanel.classList.remove("scan-activity-panel-failed");
+                    activityDot.classList.remove("scan-activity-dot-failed");
                 }
 
-                notification.hidden = false;
+                activityProgress.hidden = true;
+                dismissButton.hidden = false;
+                activityToggle.hidden = false;
+                setActivityPanelOpen(true);
             }
 
             function renderGlobalScanStatus(status) {
-                statusBox.hidden = !status.is_running;
-                statusText.textContent = status.stage_label || "Scan running";
                 const currentScanId = status.scan_run_id === null
                     ? null
                     : String(status.scan_run_id);
 
                 if (status.is_running) {
+                    activityToggle.hidden = false;
+                    activityLabel.textContent = "Scanning";
+                    activityTitle.textContent = "Scan in progress";
+                    activityMessage.textContent =
+                        status.stage_label || "Scanning company job sources";
+                    activityDetail.textContent = status.companies_enabled > 0
+                        ? `${status.companies_scanned} of ${status.companies_enabled} companies checked. ${status.jobs_found} jobs found so far.`
+                        : `${status.jobs_found} jobs found so far.`;
+                    activityProgress.hidden = !status.progress_determinate;
+                    activityProgress.value = status.progress_percent || 0;
+                    activityLink.textContent = "Open scan progress";
+                    activityLink.href = scanPageUrl;
+                    dismissButton.hidden = true;
+                    activityPanel.classList.remove("scan-activity-panel-failed");
+                    activityDot.classList.remove("scan-activity-dot-failed");
                     sawRunningScan = true;
                     awaitingScanStart = false;
                     sessionStorage.setItem("juniorSawRunningScan", "true");
@@ -846,14 +983,19 @@
                 }
             }
 
+            activityToggle.addEventListener("click", () => {
+                setActivityPanelOpen(activityPanel.hidden);
+            });
+
             dismissButton.addEventListener("click", () => {
-                notification.hidden = true;
+                setActivityPanelOpen(false);
+                activityToggle.hidden = true;
             });
 
             window.juniorScanMonitor = {
                 refresh,
                 watch: () => {
-                    notification.hidden = true;
+                    setActivityPanelOpen(false);
                     awaitingScanStart = true;
                     watchedScanId = latestObservedScanId;
                     sessionStorage.setItem("juniorAwaitingScanStart", "true");

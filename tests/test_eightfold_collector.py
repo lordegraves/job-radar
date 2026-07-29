@@ -1,6 +1,10 @@
 """Verify Eightfold public search results become normalized Junior jobs."""
 
+import pytest
+import requests
+
 from job_radar.collectors.eightfold import collect_eightfold_jobs
+from job_radar.collectors.greenhouse import CollectorError
 
 
 class _Response:
@@ -261,3 +265,73 @@ def test_eightfold_stops_when_source_repeats_a_page(monkeypatch) -> None:
 
     assert len(jobs) == 10
     assert starts == [0, 10]
+
+
+def test_eightfold_records_initial_search_request_failure_stage(monkeypatch) -> None:
+    response = requests.Response()
+    response.status_code = 429
+
+    def fake_get_response(url, **kwargs):
+        raise requests.HTTPError("private response text", response=response)
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+
+    with pytest.raises(CollectorError) as caught:
+        collect_eightfold_jobs(
+            {
+                "company_key": "example",
+                "name": "Example",
+                "source_url": "https://apply.example.com",
+                "domain": "example.com",
+            }
+        )
+
+    assert caught.value.failure_stage == "initial_search_request"
+
+
+def test_eightfold_records_later_results_request_failure_stage(monkeypatch) -> None:
+    response = requests.Response()
+    response.status_code = 429
+    calls = 0
+
+    def fake_get_response(url, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return _Response(
+                {
+                    "data": {
+                        "count": 20,
+                        "positions": [
+                            {
+                                "id": index,
+                                "name": f"Role {index}",
+                                "positionUrl": f"/careers/job/{index}",
+                            }
+                            for index in range(10)
+                        ],
+                    }
+                }
+            )
+        raise requests.HTTPError("private response text", response=response)
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+
+    with pytest.raises(CollectorError) as caught:
+        collect_eightfold_jobs(
+            {
+                "company_key": "example",
+                "name": "Example",
+                "source_url": "https://apply.example.com",
+                "domain": "example.com",
+                "connection_test": True,
+            }
+        )
+
+    assert caught.value.failure_stage == "results_pagination_request"

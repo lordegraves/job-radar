@@ -755,12 +755,14 @@ def test_external_lookup_preference_is_visible_and_editable_in_settings(
 
     settings_page = client.get("/settings").get_data(as_text=True)
     privacy_page = client.get(
-        "/settings/company-discovery"
+        "/settings?section=company-discovery"
     ).get_data(as_text=True)
 
-    assert "Manage external lookup privacy" in settings_page
+    assert "External company lookup" in settings_page
     assert "Allow optional Bing company lookup" in privacy_page
     assert "Bing receives a search phrase" in privacy_page
+    normalized_page = " ".join(privacy_page.split())
+    assert 'id="company-discovery-settings" open' in normalized_page
 
     saved = client.post(
         "/settings/company-discovery",

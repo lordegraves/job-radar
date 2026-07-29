@@ -266,8 +266,6 @@ def is_review_needed_report_posting(scored_posting: ScoredPosting) -> bool:
         return False
     if scored_posting.location_outlier_eligible:
         return False
-    if scored_posting.location_outlier_eligible:
-        return False
 
     eligibility_needs_review = (
         scored_posting.eligibility is not None

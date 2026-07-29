@@ -6,6 +6,15 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Add direct **View posting** links to Active Applications and Application
+  History when the original public job address is available.
+- Identify the safe collection step behind Eightfold scan warnings, including
+  whether Microsoft failed on the initial job-search request, response reading,
+  or a later results page, while keeping raw responses and private details out
+  of diagnostics.
+- Add a GUI **Send latest scan summary** action that uses saved email
+  settings, sends the latest generated summary, attaches the full HTML report,
+  and reports a safe end-to-end delivery result without starting another scan.
 - Stop generic words such as `system`, `systems`, and a profile strength by
   itself from establishing role alignment. Clearly unrelated aerospace,
   finance, retail, and other cross-discipline jobs are now omitted before
@@ -25,7 +34,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   omitted, and broad omission-reason totals without storing job, profile, or
   résumé contents.
 - Label the application, executable metadata, and installer consistently as
-  `RC6 Build 1.1`.
+  `RC6 Build 1.2`.
 - Group Review Jobs by company within each bounded result page, show
   page-specific and overall company counts, preserve selections when groups
   are collapsed, and add numbered navigation for direct page changes.
@@ -78,6 +87,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   working, warning, and untested counts.
 - Keep background source-test progress refreshing after a temporary page
   refresh failure instead of requiring the user to leave and reopen the page.
+- Replace Settings dashboard cards and separate setup pages with four collapsed
+  expandable sections whose controls stay on the main Settings page.
 - Explain when USAJobs sources cannot run because local USAJobs API access is
   not configured, rather than showing a generic source-setup warning.
 - Relaunch Junior after an automatic Windows update completes while preserving

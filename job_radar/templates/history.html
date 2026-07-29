@@ -244,7 +244,16 @@
                 </td>
                 <td class="date-cell">{{ record.event_date or "" }}</td>
                 <td>{{ record.company }}</td>
-                <td>{{ record.role }}</td>
+                <td>
+                    <div>{{ record.role }}</div>
+                    {% if record.posting_url %}
+                    <a
+                        href="{{ record.posting_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >View posting</a>
+                    {% endif %}
+                </td>
                 <td><span class="history-chip">{{ record.status or "" }}</span></td>
                 <td class="outcome-cell"><span class="history-chip">{{ record.outcome_category or "" }}</span></td>
             </tr>

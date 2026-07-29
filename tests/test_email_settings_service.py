@@ -95,7 +95,7 @@ def test_email_setup_page_saves_through_service(tmp_path: Path, monkeypatch) -> 
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
     client = app.test_client()
 
-    page = client.get("/settings/email")
+    page = client.get("/settings?section=email")
     saved = client.post(
         "/settings/email",
         data={
@@ -114,7 +114,10 @@ def test_email_setup_page_saves_through_service(tmp_path: Path, monkeypatch) -> 
     )
 
     assert page.status_code == 200
-    assert "Email setup" in page.get_data(as_text=True)
+    assert "Email" in page.get_data(as_text=True)
+    normalized_page = " ".join(page.get_data(as_text=True).split())
+    assert 'id="email-settings"' in normalized_page
+    assert 'id="email-settings" open' in normalized_page
     assert "Gmail" in page.get_data(as_text=True)
     assert "Outlook" in page.get_data(as_text=True)
     assert "Custom SMTP" in page.get_data(as_text=True)
@@ -265,3 +268,52 @@ def test_connection_route_shows_session_scoped_status_card(
     assert "The username or password was rejected." in html
     assert "Gmail" in html
     assert "Today at" in html
+
+
+def test_email_setup_sends_latest_report_with_saved_settings(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+    _write_settings(settings_path)
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    (reports_path / "target-email-preview.txt").write_text(
+        "Subject: Latest report\n\nSummary\n",
+        encoding="utf-8",
+    )
+    (reports_path / "target-scan.html").write_text(
+        "<html>Report</html>",
+        encoding="utf-8",
+    )
+    captured = {}
+
+    def fake_send(email_settings, *, preview_path, report_path):
+        captured.update(
+            email_settings=email_settings,
+            preview_path=preview_path,
+            report_path=report_path,
+        )
+        return type("Result", (), {"sent": True, "message": "Email sent"})()
+
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.send_generated_scan_report",
+        fake_send,
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    response = client.post(
+        "/settings/email/send-latest",
+        follow_redirects=True,
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert captured["email_settings"].enabled is False
+    assert captured["preview_path"] == (
+        reports_path / "target-email-preview.txt"
+    )
+    assert captured["report_path"] == reports_path / "target-scan.html"
+    assert "Scan summary sent" in html
+    assert "attached the full HTML report" in html

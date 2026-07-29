@@ -11,6 +11,7 @@ from job_radar.diagnostic_service import (
     classify_collector_failure,
     classify_scan_failure,
 )
+from job_radar.source_health_service import _parse_error_type
 from job_radar.storage import (
     fail_scan_run,
     initialize_database,
@@ -77,6 +78,36 @@ def test_collector_failure_explains_safe_http_categories(
     assert message_fragment in outcome.message
     assert "private" not in outcome.message
     assert "token" not in outcome.message
+
+
+def test_rate_limit_identifies_safe_eightfold_failure_stage() -> None:
+    response = requests.Response()
+    response.status_code = 429
+    cause = requests.HTTPError("private response body", response=response)
+    error = CollectorError(
+        "private collector response",
+        failure_stage="initial_search_request",
+    )
+    error.__cause__ = cause
+
+    outcome = classify_collector_failure(error)
+
+    assert outcome.failure_stage == "initial_search_request"
+    assert outcome.failure_stage_label == "Initial job-search request"
+    assert "initial job-search request" in outcome.message
+    assert "HTTP 429" in outcome.message
+    assert "private" not in outcome.message
+
+
+def test_scan_warning_stage_supports_new_and_legacy_records() -> None:
+    assert _parse_error_type("network_initial_search_request_failure") == (
+        "network",
+        "Initial job-search request",
+    )
+    assert _parse_error_type("network_failure") == (
+        "network",
+        "Job collection (stage not recorded)",
+    )
 
 
 def test_scan_failure_distinguishes_owned_stages() -> None:

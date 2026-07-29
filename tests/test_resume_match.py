@@ -435,6 +435,60 @@ def test_generic_overlap_does_not_surface_clearly_unrelated_work(
     )
 
 
+def test_datacenter_architect_role_detects_civil_design_discipline_gap() -> None:
+    posting = make_posting(
+        title="Data Center Architect, CSA",
+        description=(
+            "Required Qualifications\n"
+            "- Civil, structural, or architectural engineering experience\n"
+            "- Lead hyperscale facility design and construction oversight\n"
+            "- Apply building codes and professional engineering standards"
+        ),
+    )
+    resume_text = (
+        "Linux infrastructure, HPC operations, cluster systems, datacenter "
+        "operations, and AI infrastructure."
+    )
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert result.has_critical_gap
+    assert any(
+        "civil, structural, or architectural engineering" in gap
+        for gap in result.gaps
+    )
+
+
+def test_hpc_scientific_support_role_reports_required_computing_gaps() -> None:
+    posting = make_posting(
+        title="HPC Scientific Support Engineer",
+        description=(
+            "Minimum Qualifications\n"
+            "- Experience supporting scientific users and debugging HPC applications\n"
+            "- Strong Fortran experience\n"
+            "- Experience with MPI and OpenMP\n"
+            "- Experience creating user documentation and delivering user training\n"
+            "Preferred Qualifications\n"
+            "- CUDA and OpenACC"
+        ),
+    )
+    resume_text = (
+        "Linux infrastructure, HPC operations, cluster systems, storage systems, "
+        "networking, and infrastructure automation."
+    )
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert result.has_critical_gap
+    assert any(gap.startswith("required Fortran experience") for gap in result.gaps)
+    assert any(gap.startswith("required MPI experience") for gap in result.gaps)
+    assert any(gap.startswith("required OpenMP experience") for gap in result.gaps)
+    assert not any(gap.startswith("required CUDA experience") for gap in result.gaps)
+    assert not any(gap.startswith("required OpenACC experience") for gap in result.gaps)
+
+
 def test_legitimate_adjacent_infrastructure_role_remains_reviewable() -> None:
     posting = make_posting(
         title="HPC Scientific Support Engineer",

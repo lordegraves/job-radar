@@ -1,6 +1,12 @@
 """Tests guarded email delivery using fake SMTP connections and credentials."""
 
-from job_radar.email_sender import get_email_readiness, send_email_report
+from pathlib import Path
+
+from job_radar.email_sender import (
+    get_email_readiness,
+    send_email_report,
+    send_generated_scan_report,
+)
 
 
 class FakeSMTP:
@@ -94,6 +100,57 @@ def test_send_email_report_refuses_when_disabled() -> None:
 
     assert result.sent is False
     assert result.message == "Email sending disabled by settings"
+
+
+def test_send_generated_scan_report_requires_complete_outputs(
+    tmp_path: Path,
+) -> None:
+    result = send_generated_scan_report(
+        {"enabled": False},
+        preview_path=tmp_path / "missing-preview.txt",
+        report_path=tmp_path / "missing-report.html",
+    )
+
+    assert result.sent is False
+    assert result.message == (
+        "No complete scan report is available. Run a scan before sending "
+        "its summary."
+    )
+
+
+def test_send_generated_scan_report_uses_preview_and_html_report(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    preview_path = tmp_path / "target-email-preview.txt"
+    report_path = tmp_path / "target-scan.html"
+    preview_path.write_text(
+        "Subject: Latest Junior report\n\nPlain-language summary\n",
+        encoding="utf-8",
+    )
+    report_path.write_text("<html>Full report</html>", encoding="utf-8")
+    captured = {}
+
+    def fake_send_email_report(**kwargs):
+        captured.update(kwargs)
+        return type("Result", (), {"sent": True, "message": "Email sent"})()
+
+    monkeypatch.setattr(
+        "job_radar.email_sender.send_email_report",
+        fake_send_email_report,
+    )
+
+    result = send_generated_scan_report(
+        {"enabled": True},
+        preview_path=preview_path,
+        report_path=report_path,
+    )
+
+    assert result.sent is True
+    assert captured["subject"] == "Latest Junior report"
+    assert captured["body"] == "Plain-language summary\n"
+    assert captured["html_body"] == "<html>Full report</html>"
+    assert captured["attachment_path"] == report_path
 
 
 def test_send_email_report_refuses_when_password_env_missing(monkeypatch) -> None:

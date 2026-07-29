@@ -40,6 +40,26 @@
     <p class="muted">Enter or review the connection details below, then select Test Connection.</p>
     {% endif %}
     <p><strong>Credential storage:</strong> {{ email_form.credential_status }}</p>
+    <hr>
+    <h3>Send the latest scan report</h3>
+    <p class="muted">
+        Send the latest generated summary now and attach the full HTML report.
+        This does not run another scan.
+    </p>
+    {% if delivery_test %}
+    <div class="connection-status {{ delivery_test.tone }}">
+        <span class="connection-dot" aria-hidden="true"></span>
+        {{ delivery_test.status }}
+    </div>
+    <div class="connection-facts">
+        <div><span>Last attempt</span><strong>{{ delivery_test.tested_at }}</strong></div>
+        <div><span>Result</span><strong>{{ delivery_test.reason }}</strong></div>
+    </div>
+    {% endif %}
+    <form method="post" action="{{ url_for('settings_email_send_latest') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Send latest scan summary</button>
+    </form>
 </section>
 
 <form class="page-card" method="post" action="{{ url_for('settings_email_save') }}">

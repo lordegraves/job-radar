@@ -447,6 +447,11 @@ def _handle_scan_unlocked(
                 postings = collect_jobs_for_company(company)
             except CollectorError as error:
                 diagnostic = classify_collector_failure(error)
+                error_type_parts = [diagnostic.category]
+                if diagnostic.failure_stage is not None:
+                    error_type_parts.append(diagnostic.failure_stage)
+                error_type_parts.append("failure")
+                diagnostic_error_type = "_".join(error_type_parts)
                 record_scan_connection_result(
                     database_path,
                     company_key,
@@ -466,7 +471,7 @@ def _handle_scan_unlocked(
                     scan_run_id=scan_run_id,
                     company_key=company_key,
                     source_type=source_type,
-                    error_type=f"{diagnostic.category}_failure",
+                    error_type=diagnostic_error_type,
                     error_message=diagnostic.message,
                 )
                 companies_scanned += 1
@@ -492,6 +497,7 @@ def _handle_scan_unlocked(
                     jobs_found=total_jobs,
                     collector_errors=len(collector_errors),
                     failure_category=diagnostic.category,
+                    failure_stage=diagnostic.failure_stage,
                     elapsed_seconds=elapsed_seconds(diagnostic_started),
                 )
                 continue

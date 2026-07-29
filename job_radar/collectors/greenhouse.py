@@ -13,6 +13,16 @@ GREENHOUSE_BASE_URL = "https://boards-api.greenhouse.io/v1/boards"
 class CollectorError(Exception):
     """Raised when a collector cannot fetch or parse jobs."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        failure_stage: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        # This is a bounded operational label, not a URL, response, or exception.
+        self.failure_stage = failure_stage
+
 
 def build_greenhouse_jobs_url(board_token: str) -> str:
     return f"{GREENHOUSE_BASE_URL}/{board_token}/jobs?content=true"

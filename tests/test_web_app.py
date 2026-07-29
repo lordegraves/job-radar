@@ -382,6 +382,11 @@ def test_tracker_page_lists_tracked_applications(tmp_path: Path) -> None:
     assert "jr-example-mobility-12345678" in html
     assert 'href="/tracker/jr-example-mobility-12345678/edit?filter=all"' in normalized_html
     assert ">Open</a>" in normalized_html
+    assert (
+        'href="https://example.com/jobs/example-mobility-sre" '
+        'target="_blank" rel="noopener noreferrer"'
+    ) in normalized_html
+    assert ">View posting</a>" in normalized_html
 
 
 def test_tracker_page_summarizes_workflow_counts(tmp_path: Path) -> None:
@@ -878,7 +883,7 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "Eligibility: Needs Review" in html
     assert "Eligibility summary" in html
     assert "Needs Review: 1" in html
-    assert "Eligibility review" in html
+    assert "Eligibility review" not in html
     assert "The posting does not provide usable compensation." in html
     assert "The posting includes an on-call requirement." in html
     assert "Recommended action" in html
@@ -1866,6 +1871,7 @@ def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
             include_in_job_radar=True,
             import_key="manual:archiveco:senior-linux-engineer",
             notes="Skipped because the role was onsite outside target area.",
+            posting_url="https://example.com/jobs/archiveco-linux-engineer",
         ),
     )
 
@@ -1898,6 +1904,12 @@ def test_history_page_lists_imported_history_records(tmp_path: Path) -> None:
     assert "Skipped / Avoid" in html
     assert "outcome-cell" in html
     assert 'href="/history/manual:archiveco:senior-linux-engineer/edit"' in html
+    normalized_html = " ".join(html.split())
+    assert (
+        'href="https://example.com/jobs/archiveco-linux-engineer" '
+        'target="_blank" rel="noopener noreferrer"'
+    ) in normalized_html
+    assert ">View posting</a>" in normalized_html
     assert ">Open</a>" in html
     assert "LinkedIn" not in html
     assert "Example Recruiter" not in html
@@ -2708,15 +2720,24 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "Report history" in settings_html
     assert "Latest scan only" in settings_html
     assert "The latest filenames remain stable." in settings_html
-    assert "Manage report and log retention" in settings_html
+    assert "Save retention settings" in settings_html
     assert "report_retention_days" not in settings_html
     assert "raw_capture_enabled" not in settings_html
     assert "Email" in settings_html
     assert "Disabled" in settings_html
-    assert "Secrets are not shown on this page." in settings_html
+    assert "The password is stored by your operating system" in settings_html
     assert "Health checks, version information" in settings_html
     assert "Exit Junior" not in settings_html
-    assert "Save" not in settings_html
+    assert "Save retention settings" in settings_html
+    normalized_settings_html = " ".join(settings_html.split())
+    for section_id in (
+        "retention-settings",
+        "email-settings",
+        "schedule-settings",
+        "company-discovery-settings",
+    ):
+        assert f'id="{section_id}"' in normalized_settings_html
+        assert f'id="{section_id}" open' not in normalized_settings_html
 
 
 def test_desktop_settings_requests_clean_shutdown(tmp_path: Path) -> None:
@@ -2874,7 +2895,7 @@ def test_retention_settings_page_saves_choices(tmp_path: Path) -> None:
     app = create_app(settings_path=str(settings_file))
     client = app.test_client()
 
-    page = client.get("/settings/retention")
+    page = client.get("/settings?section=retention")
     assert page.status_code == 200
     assert "Report and log retention" in page.get_data(as_text=True)
 
@@ -3136,9 +3157,10 @@ def test_scan_status_endpoint_returns_durable_progress(
         "jobs_found": 275,
         "collector_errors": 2,
         "has_results": False,
-            "failure_summary": None,
-            "trigger_source": "manual",
-        }
+        "failure_summary": None,
+        "trigger_source": "manual",
+        "elapsed_seconds": None,
+    }
 
 
 def test_scan_status_endpoint_exposes_completed_report_links(
@@ -3187,6 +3209,7 @@ def test_scan_status_endpoint_exposes_completed_report_links(
     assert status_payload["is_running"] is False
     assert status_payload["progress_percent"] == 100
     assert status_payload["has_results"] is True
+    assert status_payload["elapsed_seconds"] == 300
 
     assert page_response.status_code == 200
     assert "Latest scan completed." in page_html
@@ -3378,14 +3401,16 @@ def test_every_page_includes_global_scan_monitor(tmp_path: Path) -> None:
 
     html = client.get("/").get_data(as_text=True)
 
-    assert 'id="global-scan-status"' in html
-    assert 'id="scan-notification"' in html
+    assert 'id="scan-activity-toggle"' in html
+    assert 'id="scan-activity-panel"' in html
+    assert 'id="scan-activity-progress"' in html
     assert 'url_for(\'scan_status\')' not in html
     assert 'const statusUrl = "/scan/status"' in html
     assert "junior:scan-status" in html
     assert 'sessionStorage.setItem("juniorAwaitingScanStart", "true")' in html
     assert "watchedScanId = latestObservedScanId" in html
-    assert "notification.hidden = true" in html
+    assert "activityToggle.hidden = true" in html
+    assert "status.elapsed_seconds" in html
     assert "window.location.pathname === scanPageUrl" in html
 
 
@@ -5210,7 +5235,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.1" in html
+    assert "RC6 Build 1.2" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html
@@ -5718,15 +5743,7 @@ candidate:
             '<a class="active-nav" href="/settings/diagnostics" '
             'aria-current="page">Diagnostics</a>'
         ),
-        "/settings/email": (
-            '<a class="active-nav" href="/settings" '
-            'aria-current="page">Settings</a>'
-        ),
-        "/settings/retention": (
-            '<a class="active-nav" href="/settings" '
-            'aria-current="page">Settings</a>'
-        ),
-        "/settings/schedule": (
+        "/settings": (
             '<a class="active-nav" href="/settings" '
             'aria-current="page">Settings</a>'
         ),
@@ -5738,6 +5755,17 @@ candidate:
 
         assert response.status_code == 200
         assert expected_link in normalized_html
+
+    for legacy_route, section in (
+        ("/settings/email", "email"),
+        ("/settings/retention", "retention"),
+        ("/settings/schedule", "schedule"),
+    ):
+        response = client.get(legacy_route)
+        assert response.status_code == 302
+        assert f"/settings?section={section}#{section}-settings" in response.headers[
+            "Location"
+        ]
 
     compatibility_response = client.get("/preferences")
     assert compatibility_response.status_code == 302

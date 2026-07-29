@@ -210,6 +210,10 @@ _TECHNOLOGY_REQUIREMENTS = {
     "Go": ("go", "golang"),
     "Rust": ("rust",),
     "Java": ("java",),
+    "Fortran": ("fortran",),
+    "MPI": ("mpi", "message passing interface"),
+    "OpenMP": ("openmp",),
+    "OpenACC": ("openacc",),
     "C++": ("c++",),
     "Terraform": ("terraform",),
     "Ansible": ("ansible",),
@@ -222,6 +226,39 @@ _TECHNOLOGY_REQUIREMENTS = {
     "RTL verification": ("rtl", "systemverilog", "uvm"),
 }
 _DISCIPLINE_TERMS = {
+    "civil, structural, or architectural engineering": (
+        "civil engineer",
+        "civil engineering",
+        "structural engineer",
+        "structural engineering",
+        "architectural engineer",
+        "architectural engineering",
+        "building codes",
+        "construction oversight",
+        "facility design",
+        "facilities design",
+    ),
+    "aerospace or spacecraft systems engineering": (
+        "aerospace engineer",
+        "aerospace engineering",
+        "spacecraft",
+        "space systems",
+        "human landing system",
+        "flight hardware",
+        "mission assurance",
+    ),
+    "scientific-computing user support": (
+        "scientific support",
+        "scientific computing",
+        "research computing support",
+        "hpc application support",
+        "application performance",
+        "mpi",
+        "openmp",
+        "openacc",
+        "fortran",
+        "user training",
+    ),
     "security engineering": (
         "security engineer",
         "infrastructure security",
@@ -277,6 +314,20 @@ _DISCIPLINE_TERMS = {
         "forensic analyst",
         "forensic examiner",
     ),
+    "retail grocery operations": (
+        "produce department",
+        "grocery bagger",
+        "courtesy clerk",
+        "food handling",
+        "merchandising",
+        "store associate",
+    ),
+}
+_DISCIPLINES_REQUIRING_DESCRIPTION_CONFIRMATION = {
+    # "HPC scientific support" can describe ordinary cluster operations or a
+    # specialized scientific-application role. The requirements must establish
+    # the specialized discipline before Junior treats it as a decisive mismatch.
+    "scientific-computing user support",
 }
 _GENERIC_ROLE_WORDS = {
     "architect",
@@ -438,6 +489,8 @@ def _find_critical_gaps(
         central_to_requirements = sum(
             1 for marker in markers if _contains_phrase(required_text, marker)
         ) >= 2
+        if discipline in _DISCIPLINES_REQUIRING_DESCRIPTION_CONFIRMATION:
+            central_to_title = central_to_title and central_to_requirements
         supported = any(_contains_phrase(supported_text, marker) for marker in markers)
         if (central_to_title or central_to_requirements) and not supported:
             critical.append(f"central discipline requires {discipline} experience")

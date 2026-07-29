@@ -401,7 +401,14 @@ def test_name_only_uses_review_but_unknown_url_waits_for_validation(
     assert list_profile_employer_assignments(database_path, profile.profile_id) == []
 
 
-def test_assignments_remain_profile_specific(tmp_path: Path) -> None:
+def test_assignments_remain_profile_specific(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
     database_path = tmp_path / "junior.sqlite3"
     first = create_test_profile(database_path, "profile_1111aaaa")
     second = create_test_profile(database_path, "profile_2222bbbb")

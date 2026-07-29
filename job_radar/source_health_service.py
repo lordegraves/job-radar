@@ -38,6 +38,7 @@ class ScanWarningItem:
     source_type: str
     source_label: str
     category: str
+    failure_stage: str
     message: str
     created_at: str
 
@@ -152,8 +153,9 @@ def build_latest_scan_warnings(
         ).fetchall()
 
     warnings: list[ScanWarningItem] = []
-    for company_key, source_type, category, message, created_at in rows:
+    for company_key, source_type, error_type, message, created_at in rows:
         employer = employers.get(str(company_key))
+        category, failure_stage = _parse_error_type(str(error_type))
         warnings.append(
             ScanWarningItem(
                 employer_id=str(company_key or ""),
@@ -162,12 +164,25 @@ def build_latest_scan_warnings(
                 ),
                 source_type=str(source_type or "unknown"),
                 source_label=_source_label(str(source_type or "unknown")),
-                category=str(category).replace("_", " ").title(),
+                category=category.replace("_", " ").title(),
+                failure_stage=failure_stage,
                 message=str(message),
                 created_at=str(created_at),
             )
         )
     return tuple(warnings)
+
+
+def _parse_error_type(error_type: str) -> tuple[str, str]:
+    normalized = error_type.removesuffix("_failure")
+    category, separator, stage = normalized.partition("_")
+    stage_label = {
+        "initial_search_request": "Initial job-search request",
+        "initial_search_response": "Initial search response",
+        "results_pagination_request": "Later results-page request",
+        "results_pagination_response": "Later results-page response",
+    }.get(stage, "Job collection (stage not recorded)")
+    return (category if separator else normalized, stage_label)
 
 
 def _source_label(source_type: str) -> str:

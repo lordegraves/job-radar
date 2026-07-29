@@ -1096,6 +1096,7 @@ def make_job_history_record(
     role: str = "Senior Infrastructure Engineer",
     status: str = "Rejected - No Interview",
     notes: str = "Form rejection.",
+    posting_url: str = "https://example.com/jobs/senior-infrastructure-engineer",
 ) -> JobHistoryRecord:
     return JobHistoryRecord(
         history_type="pipeline",
@@ -1119,6 +1120,9 @@ def make_job_history_record(
         include_in_job_radar=True,
         import_key="pipeline:example-ai:senior-infrastructure-engineer",
         notes=notes,
+        job_radar_id="jr-example-ai-senior-infrastructure-engineer",
+        posting_url=posting_url,
+        lead_source="Company careers page",
     )
 
 
@@ -1152,6 +1156,12 @@ def test_upsert_job_history_record_inserts_new_record(tmp_path: Path) -> None:
     assert row["role"] == "Senior Infrastructure Engineer"
     assert row["technical_match"] == "Very Strong"
     assert row["include_in_job_radar"] == 1
+    assert row["job_radar_id"] == "jr-example-ai-senior-infrastructure-engineer"
+    assert (
+        row["posting_url"]
+        == "https://example.com/jobs/senior-infrastructure-engineer"
+    )
+    assert row["lead_source"] == "Company careers page"
 
 
 def test_upsert_job_history_record_updates_existing_record(tmp_path: Path) -> None:
@@ -1167,6 +1177,7 @@ def test_upsert_job_history_record_updates_existing_record(tmp_path: Path) -> No
         make_job_history_record(
             status="Rejected - After Interview",
             notes="Updated after recruiter screen.",
+            posting_url="https://example.com/jobs/updated-infrastructure-engineer",
         ),
     )
     row = get_job_history_row(database_path)
@@ -1176,6 +1187,10 @@ def test_upsert_job_history_record_updates_existing_record(tmp_path: Path) -> No
     assert count_rows(database_path, "job_history") == 1
     assert row["status"] == "Rejected - After Interview"
     assert row["notes"] == "Updated after recruiter screen."
+    assert (
+        row["posting_url"]
+        == "https://example.com/jobs/updated-infrastructure-engineer"
+    )
 
 
 def test_fetch_scan_runs_returns_none_when_no_scan_exists(

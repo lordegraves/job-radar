@@ -36,7 +36,17 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     expected_total: int | None = None
 
     start = 0
-    for _page_index in range(max_pages):
+    for page_index in range(max_pages):
+        request_stage = (
+            "initial_search_request"
+            if page_index == 0
+            else "results_pagination_request"
+        )
+        response_stage = (
+            "initial_search_response"
+            if page_index == 0
+            else "results_pagination_response"
+        )
         try:
             response = get_response(
                 f"{source_url}/api/pcsx/search",
@@ -53,10 +63,18 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
                 },
                 timeout=30,
             )
-            payload = response.json()
-        except (requests.RequestException, ValueError) as error:
+        except requests.RequestException as error:
             raise CollectorError(
-                f"Eightfold search failed for {company_name}: {error}"
+                f"Eightfold search failed for {company_name}: {error}",
+                failure_stage=request_stage,
+            ) from error
+
+        try:
+            payload = response.json()
+        except ValueError as error:
+            raise CollectorError(
+                f"Eightfold search failed for {company_name}: {error}",
+                failure_stage=response_stage,
             ) from error
 
         data = payload.get("data") if isinstance(payload, dict) else None

@@ -10,6 +10,7 @@ import job_radar.web_routes.settings as settings_routes
 from job_radar import __version__
 from job_radar.application_info_service import build_application_info
 from job_radar.storage import initialize_database
+from job_radar.source_health_service import ScanWarningItem
 from job_radar.update_check_service import (
     UpdateCheckResult,
     check_for_stable_update,
@@ -431,10 +432,31 @@ def test_desktop_update_downloads_verifies_launches_and_closes(
 
 def test_diagnostics_links_to_read_only_source_and_scan_details(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     settings_path = tmp_path / "config" / "settings.yaml"
     database_path = tmp_path / "data" / "junior.sqlite3"
     _write_settings(settings_path, database_path)
+    monkeypatch.setattr(
+        settings_routes,
+        "build_latest_scan_warnings",
+        lambda _database_path: (
+            ScanWarningItem(
+                employer_id="microsoft",
+                employer_name="Microsoft",
+                source_type="eightfold",
+                source_label="Eightfold",
+                category="Network",
+                failure_stage="Initial job-search request",
+                message=(
+                    "Junior reached the recruiting service, but the initial "
+                    "job-search request was rate-limited (HTTP 429) before a "
+                    "usable results page was received."
+                ),
+                created_at="2026-07-29T12:00:30+00:00",
+            ),
+        ),
+    )
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
     client = app.test_client()
 
@@ -452,4 +474,6 @@ def test_diagnostics_links_to_read_only_source_and_scan_details(
     assert source_health_response.headers["Location"].endswith(
         "/companies#company-sources"
     )
-    assert "No company-source warnings" in scan_details
+    assert "Microsoft" in scan_details
+    assert "Initial job-search request" in scan_details
+    assert "HTTP 429" in scan_details

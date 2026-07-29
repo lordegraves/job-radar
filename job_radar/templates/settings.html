@@ -1,55 +1,141 @@
-{# Keeps editable user settings separate from operational diagnostics. #}
+{# Presents normal-user controls in one expandable settings workspace. #}
 {% extends "base.html" %}
 
 {% block title %}Settings - junior{% endblock %}
 
 {% block page_styles %}
 <style>
-    .settings-grid {
-        align-items: stretch;
+    .settings-sections {
         display: grid;
-        gap: 18px;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 12px;
         margin-top: 18px;
     }
-
-    .settings-card {
+    .settings-section {
         background: rgba(31, 31, 35, 0.94);
         border: 1px solid var(--border);
-        border-radius: 14px;
+        border-radius: 12px;
         box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+    .settings-section > summary {
+        align-items: center;
+        cursor: pointer;
+        display: grid;
+        gap: 8px 18px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        list-style: none;
         padding: 20px 22px;
     }
-
-    .settings-card h2 {
-        margin-top: 0;
+    .settings-section > summary::-webkit-details-marker { display: none; }
+    .settings-section > summary::after {
+        color: var(--accent);
+        content: "Expand";
+        font-weight: 700;
     }
-
-    .settings-list {
-        list-style: none;
+    .settings-section[open] > summary::after { content: "Collapse"; }
+    .settings-section[open] > summary {
+        border-bottom: 1px solid var(--border);
+    }
+    .settings-section h2 {
         margin: 0;
-        padding: 0;
     }
-
-    .settings-list li {
-        border-top: 1px solid var(--border);
-        padding: 10px 0;
+    .settings-summary {
+        color: var(--muted);
+        grid-column: 1;
+        margin: 0;
     }
-
-    .settings-list li:first-child {
-        border-top: 0;
-        padding-top: 0;
+    .settings-content {
+        padding: 22px;
     }
-
-    .settings-label {
+    .settings-content > :first-child { margin-top: 0; }
+    .settings-content > :last-child { margin-bottom: 0; }
+    .settings-grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .settings-panel {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 18px;
+    }
+    .settings-panel h3 { margin-top: 0; }
+    .settings-content label {
+        display: block;
+        margin-top: 14px;
+    }
+    .settings-content label:first-child { margin-top: 0; }
+    .settings-content input:not([type="checkbox"]),
+    .settings-content select,
+    .settings-content textarea {
+        margin-top: 7px;
+        width: 100%;
+    }
+    .connection-status {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        font-weight: 700;
+    }
+    .connection-dot,
+    .status-dot {
+        background: #8b949e;
+        border-radius: 50%;
+        display: inline-block;
+        height: 11px;
+        width: 11px;
+    }
+    .connection-status.success .connection-dot,
+    .status-line.success .status-dot { background: #55d6a3; }
+    .connection-status.error .connection-dot,
+    .status-line.error .status-dot { background: #ff6477; }
+    .connection-status.warning .connection-dot,
+    .status-line.warning .status-dot { background: #f5c451; }
+    .connection-facts,
+    .schedule-facts {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        margin: 16px 0;
+    }
+    .connection-facts span,
+    .schedule-facts span {
         color: var(--muted);
         display: block;
         font-size: 0.9rem;
         margin-bottom: 4px;
     }
-
-    .settings-value {
-        overflow-wrap: anywhere;
+    .weekday-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+        margin: 12px 0 20px;
+    }
+    .weekday-grid label {
+        align-items: center;
+        background: rgba(45, 45, 51, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        display: flex;
+        gap: 8px;
+        margin: 0;
+        padding: 10px 12px;
+    }
+    .inline-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+    }
+    .inline-actions form { margin: 0; }
+    .privacy-list { margin-bottom: 18px; }
+    @media (max-width: 800px) {
+        .settings-grid { grid-template-columns: 1fr; }
+        .settings-section > summary {
+            grid-template-columns: minmax(0, 1fr);
+        }
+        .settings-section > summary::after { grid-column: 1; }
     }
 </style>
 {% endblock %}
@@ -60,59 +146,336 @@
 <div class="page-card">
     <p>Configure Junior's reports, email, scan schedule, and optional external company lookup.</p>
     <p>
-        Health checks, version information, runtime paths, and logs belong in
+        Each section below is collapsed until you need it.
+        Health checks, version information, runtime paths, and logs remain in
         <a href="{{ url_for('settings_diagnostics') }}">Diagnostics</a>.
-        Installation-wide controls belong in
+        Installation-wide controls remain in
         <a href="{{ url_for('administration_unlock') }}">Unlock Administration</a>.
     </p>
 </div>
 
-<div class="settings-grid">
-    <section class="settings-card">
-        <h2>Report history</h2>
-        <ul class="settings-list">
-            <li>
-                <span class="settings-label">Current policy</span>
-                <span class="settings-value">{{ settings_view.report_history_policy }}</span>
-            </li>
-            <li>
-                <span class="settings-label">Replacement behavior</span>
-                <span class="settings-value">{{ settings_view.report_replacement_behavior }}</span>
-            </li>
-        </ul>
-        <p><a href="{{ url_for('settings_retention') }}">Manage report and log retention</a></p>
-    </section>
+<div class="settings-sections">
+    <details
+        class="settings-section"
+        id="retention-settings"
+        {% if open_section == "retention" %}open{% endif %}
+    >
+        <summary>
+            <h2>Report and log retention</h2>
+            <p class="settings-summary">{{ settings_view.report_history_policy }}</p>
+        </summary>
+        <div class="settings-content">
+            <p>Choose how much Junior-generated history remains on this computer.</p>
+            <p>{{ settings_view.report_replacement_behavior }}</p>
+            <p class="muted">
+                Changes take effect during the next successful scan. Junior removes
+                only report archives and dated log files that it created and recognizes.
+            </p>
+            <form method="post" action="{{ url_for('settings_retention_save') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <div class="settings-grid">
+                    <section class="settings-panel">
+                        <h3>Scan reports</h3>
+                        <p class="muted">Keeping fewer report runs uses less disk space.</p>
+                        <label>Report history
+                            <select name="report_policy" data-count-control="report_count">
+                                {% for value, label in retention_form.policy_options %}
+                                <option value="{{ value }}" {% if retention_form.reports.mode == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label data-count-field="report_count">Number of report runs to keep
+                            <input type="number" min="1" max="50" name="report_count" value="{{ retention_form.reports.count }}">
+                        </label>
+                    </section>
+                    <section class="settings-panel">
+                        <h3>Dated logs</h3>
+                        <p class="muted">The active startup log and unrelated files are preserved.</p>
+                        <label>Log history
+                            <select name="log_policy" data-count-control="log_count">
+                                {% for value, label in retention_form.policy_options %}
+                                <option value="{{ value }}" {% if retention_form.logs.mode == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label data-count-field="log_count">Number of dated logs to keep
+                            <input type="number" min="1" max="50" name="log_count" value="{{ retention_form.logs.count }}">
+                        </label>
+                    </section>
+                </div>
+                <div class="inline-actions">
+                    <button type="submit">Save retention settings</button>
+                </div>
+            </form>
+        </div>
+    </details>
 
-    <section class="settings-card">
-        <h2>Email</h2>
-        <ul class="settings-list">
-            <li>
-                <span class="settings-label">Email status</span>
-                <span class="settings-value">{{ settings_view.email_status }}</span>
-            </li>
-        </ul>
-        <p><a href="{{ url_for('settings_email') }}">Set up email delivery</a></p>
-        <p class="muted">Secrets are not shown on this page.</p>
-    </section>
+    <details
+        class="settings-section"
+        id="email-settings"
+        {% if open_section == "email" %}open{% endif %}
+    >
+        <summary>
+            <h2>Email</h2>
+            <p class="settings-summary">{{ settings_view.email_status }}</p>
+        </summary>
+        <div class="settings-content">
+            <div class="settings-grid">
+                <section class="settings-panel">
+                    <h3>Connection status</h3>
+                    {% if connection_test %}
+                    <div class="connection-status {{ connection_test.tone }}">
+                        <span class="connection-dot" aria-hidden="true"></span>
+                        {{ connection_test.status }}
+                    </div>
+                    <div class="connection-facts">
+                        <div><span>Provider</span><strong>{{ connection_test.provider }}</strong></div>
+                        <div><span>Last test</span><strong>{{ connection_test.tested_at }}</strong></div>
+                        <div><span>Reason</span><strong>{{ connection_test.reason }}</strong></div>
+                    </div>
+                    {% else %}
+                    <div class="connection-status">
+                        <span class="connection-dot" aria-hidden="true"></span>
+                        Not tested
+                    </div>
+                    {% endif %}
+                    <p><strong>Credential storage:</strong> {{ email_form.credential_status }}</p>
+                </section>
+                <section class="settings-panel">
+                    <h3>Send the latest scan report</h3>
+                    <p class="muted">Send the latest generated summary now. This does not run another scan.</p>
+                    {% if delivery_test %}
+                    <div class="connection-status {{ delivery_test.tone }}">
+                        <span class="connection-dot" aria-hidden="true"></span>
+                        {{ delivery_test.status }}
+                    </div>
+                    <div class="connection-facts">
+                        <div><span>Last attempt</span><strong>{{ delivery_test.tested_at }}</strong></div>
+                        <div><span>Result</span><strong>{{ delivery_test.reason }}</strong></div>
+                    </div>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('settings_email_send_latest') }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit">Send latest scan summary</button>
+                    </form>
+                </section>
+            </div>
 
-    <section class="settings-card">
-        <h2>Scan schedule</h2>
-        <p>Choose when Junior should run unattended scans.</p>
-        <p><a href="{{ url_for('settings_schedule') }}">Set up scan scheduling</a></p>
-        <p class="muted">
-            Scheduled scans use the operating system and do not require the
-            Junior window to remain open.
-        </p>
-    </section>
+            <form class="settings-panel" method="post" action="{{ url_for('settings_email_save') }}" style="margin-top: 18px;">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <label>
+                    <input type="checkbox" name="enabled" value="yes" {% if email_form.enabled %}checked{% endif %}>
+                    Send reports by email
+                </label>
+                <div class="form-grid">
+                    <label>Provider
+                        <select id="email-provider" name="provider">
+                            <option value="gmail" {% if email_form.provider == 'gmail' %}selected{% endif %}>Gmail</option>
+                            <option value="outlook" {% if email_form.provider == 'outlook' %}selected{% endif %}>Outlook</option>
+                            <option value="custom" {% if email_form.provider == 'custom' %}selected{% endif %}>Custom SMTP</option>
+                        </select>
+                    </label>
+                    <label>Username
+                        <input name="smtp_username" value="{{ email_form.smtp_username }}">
+                    </label>
+                    <label>Password
+                        <input type="password" name="credential" autocomplete="new-password">
+                        <span class="muted">Leave blank to keep the current credential.</span>
+                    </label>
+                </div>
+                <details id="custom-smtp-settings" {% if email_form.provider == 'custom' %}open{% endif %}>
+                    <summary>Custom SMTP server settings</summary>
+                    <div class="form-grid">
+                        <label>SMTP server
+                            <input name="smtp_host" value="{{ email_form.smtp_host }}">
+                        </label>
+                        <label>SMTP port
+                            <input name="smtp_port" inputmode="numeric" value="{{ email_form.smtp_port }}">
+                        </label>
+                        <label>Security
+                            <select name="smtp_tls_mode">
+                                <option value="starttls" {% if email_form.smtp_tls_mode == 'starttls' %}selected{% endif %}>STARTTLS</option>
+                                <option value="ssl" {% if email_form.smtp_tls_mode == 'ssl' %}selected{% endif %}>SSL/TLS</option>
+                                <option value="none" {% if email_form.smtp_tls_mode == 'none' %}selected{% endif %}>None (local relay only)</option>
+                            </select>
+                        </label>
+                    </div>
+                </details>
+                <div class="form-grid">
+                    <label>Sender email
+                        <input type="email" name="sender" value="{{ email_form.sender }}">
+                    </label>
+                    <label>Sender name
+                        <input name="sender_name" value="{{ email_form.sender_name }}">
+                    </label>
+                    <label>Recipients, one per line
+                        <textarea name="recipients" rows="4">{{ email_form.recipients | join('\n') }}</textarea>
+                    </label>
+                </div>
+                <p class="muted">The password is stored by your operating system, not in Junior's settings or database.</p>
+                <div class="inline-actions">
+                    <button type="submit">Save email settings</button>
+                    <button class="button-secondary" type="submit" formaction="{{ url_for('settings_email_test') }}">Test Connection</button>
+                </div>
+            </form>
+        </div>
+    </details>
 
-    <section class="settings-card">
-        <h2>External company lookup</h2>
-        <p>
-            Control whether Junior may ask Bing to locate a separate public
-            careers system after local checks fail.
-        </p>
-        <p><a href="{{ url_for('settings_company_discovery') }}">Manage external lookup privacy</a></p>
-        <p class="muted">The default is Off. Bing is never required for normal scans.</p>
-    </section>
+    <details
+        class="settings-section"
+        id="schedule-settings"
+        {% if open_section == "schedule" %}open{% endif %}
+    >
+        <summary>
+            <h2>Scan schedule</h2>
+            <p class="settings-summary">{{ schedule_view.next_run }}</p>
+        </summary>
+        <div class="settings-content">
+            <div class="settings-grid">
+                <form class="settings-panel" method="post" action="{{ url_for('settings_schedule_save') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <h3>When Junior should scan</h3>
+                    <p class="muted">The computer must be powered on and awake. Junior's window does not need to remain open.</p>
+                    <p>
+                        <strong>Junior does not need to be open.</strong>
+                        The operating system starts scheduled scans while the
+                        computer is locked, provided this Windows user remains
+                        signed in and the computer is powered on and awake.
+                    </p>
+                    <label>
+                        <input type="checkbox" name="enabled" value="yes" {% if schedule_view.schedule.enabled %}checked{% endif %}>
+                        Turn on scheduled scans
+                    </label>
+                    <div class="form-grid">
+                        <label>Start time
+                            <input type="time" name="run_time" value="{{ schedule_view.schedule.run_time }}" required>
+                        </label>
+                        <label>
+                            <input type="checkbox" name="email_delivery" value="yes" {% if schedule_view.schedule.email_delivery %}checked{% endif %}>
+                            Email the report after a scheduled scan
+                        </label>
+                    </div>
+                    <fieldset>
+                        <legend>Days to scan</legend>
+                        <div class="weekday-grid">
+                            {% for value, label in schedule_view.weekday_options %}
+                            <label>
+                                <input type="checkbox" name="weekdays" value="{{ value }}" {% if value in schedule_view.schedule.weekdays %}checked{% endif %}>
+                                {{ label }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                    <button type="submit">Save schedule</button>
+                </form>
+                <section class="settings-panel">
+                    <h3>Schedule status</h3>
+                    <div class="schedule-facts">
+                        <div><span>Next scheduled run</span><strong>{{ schedule_view.next_run }}</strong></div>
+                        <div><span>Last scheduled run</span><strong>{{ schedule_view.last_run.status }}</strong></div>
+                        <div><span>{{ scheduler_integration.platform_name }} connection</span><strong>{{ scheduler_integration.state }}</strong></div>
+                    </div>
+                    <p>{{ schedule_view.last_run.message }}</p>
+                    <p class="muted">{{ scheduler_integration.message }}</p>
+                    {% if scheduler_integration.available %}
+                    <div class="inline-actions">
+                        <form method="post" action="{{ url_for('settings_schedule_system_apply') }}">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit">Apply schedule to {{ scheduler_integration.platform_name }}</button>
+                        </form>
+                        <form method="post" action="{{ url_for('settings_schedule_system_disable') }}">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                            <button class="button-secondary" type="submit">Disable schedule</button>
+                        </form>
+                        <form method="post" action="{{ url_for('settings_schedule_system_remove') }}">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                            <button class="button-secondary" type="submit">Remove schedule</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </section>
+            </div>
+        </div>
+    </details>
+
+    <details
+        class="settings-section"
+        id="company-discovery-settings"
+        {% if open_section == "company-discovery" %}open{% endif %}
+    >
+        <summary>
+            <h2>External company lookup</h2>
+            <p class="settings-summary">{% if discovery_form.external_lookup_enabled %}Enabled{% else %}Off (recommended){% endif %}</p>
+        </summary>
+        <div class="settings-content">
+            <p>
+                Junior first checks the public careers address and its built-in
+                collectors. If those checks fail, this optional setting permits
+                a limited Bing search for possible official careers sites.
+            </p>
+            <div class="settings-grid">
+                <section class="settings-panel">
+                    <h3>What Bing receives</h3>
+                    <p>
+                        Bing receives a search phrase containing only the submitted
+                        company name, its public domain, and the words
+                        <code>official careers jobs</code>.
+                    </p>
+                    <ul class="privacy-list">
+                        <li>The submitted company name and public domain.</li>
+                        <li>The words <code>official careers jobs</code>.</li>
+                        <li>Your IP address and ordinary connection details.</li>
+                    </ul>
+                    <p class="muted">
+                        Junior never sends profile, résumé, application, database,
+                        contact, or submitted URL-path information.
+                    </p>
+                </section>
+                <section class="settings-panel">
+                    <h3>Safety boundary</h3>
+                    <p>
+                        Bing results are never accepted as proof. Junior validates
+                        every candidate using its normal collector before saving a
+                        company, then discards failed candidates and search responses.
+                    </p>
+                    <p class="muted">This setting is never used during normal scans.</p>
+                </section>
+            </div>
+            <form method="post" action="{{ url_for('settings_company_discovery_save') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <label>
+                    <input
+                        name="external_lookup"
+                        type="checkbox"
+                        value="enabled"
+                        {% if discovery_form.external_lookup_enabled %}checked{% endif %}
+                    >
+                    Allow optional Bing company lookup
+                </label>
+                <div class="inline-actions">
+                    <button type="submit">Save external lookup setting</button>
+                </div>
+            </form>
+        </div>
+    </details>
 </div>
+
+<script>
+    document.querySelectorAll("[data-count-control]").forEach((control) => {
+        const updateCountVisibility = () => {
+            const field = document.querySelector(
+                `[data-count-field="${control.dataset.countControl}"]`
+            );
+            field.hidden = control.value !== "keep_last_n";
+        };
+        control.addEventListener("change", updateCountVisibility);
+        updateCountVisibility();
+    });
+
+    const provider = document.getElementById("email-provider");
+    const customSettings = document.getElementById("custom-smtp-settings");
+    provider.addEventListener("change", () => {
+        customSettings.open = provider.value === "custom";
+    });
+</script>
 {% endblock %}

@@ -2048,6 +2048,9 @@ def upsert_job_history_record_with_connection(
         record.applied_on,
         record.last_activity_on,
         record.follow_up_on,
+        record.job_radar_id,
+        record.posting_url,
+        record.lead_source,
     )
 
     if existing is None:
@@ -2078,9 +2081,12 @@ def upsert_job_history_record_with_connection(
                 notes,
                 applied_on,
                 last_activity_on,
-                follow_up_on
+                follow_up_on,
+                job_radar_id,
+                posting_url,
+                lead_source
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (profile_id,) + values,
         )
@@ -2114,6 +2120,9 @@ def upsert_job_history_record_with_connection(
             applied_on = ?,
             last_activity_on = ?,
             follow_up_on = ?,
+            job_radar_id = ?,
+            posting_url = ?,
+            lead_source = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE import_key = ? AND profile_id IS ?
         """,
@@ -2208,7 +2217,10 @@ def fetch_included_job_history_records(
                 notes,
                 applied_on,
                 last_activity_on,
-                follow_up_on
+                follow_up_on,
+                job_radar_id,
+                posting_url,
+                lead_source
             FROM job_history
             WHERE include_in_job_radar = 1 AND profile_id IS ?
             ORDER BY event_date DESC, company ASC, role ASC
@@ -2242,6 +2254,9 @@ def fetch_included_job_history_records(
             applied_on=row["applied_on"],
             last_activity_on=row["last_activity_on"],
             follow_up_on=row["follow_up_on"],
+            job_radar_id=row["job_radar_id"],
+            posting_url=row["posting_url"],
+            lead_source=row["lead_source"],
         )
         for row in rows
     ]

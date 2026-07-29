@@ -442,7 +442,16 @@
                     </span>
                 </td>
                 <td>{{ row.application.company_name }}</td>
-                <td>{{ row.application.role_title }}</td>
+                <td>
+                    <div>{{ row.application.role_title }}</div>
+                    {% if row.application.source_url %}
+                    <a
+                        href="{{ row.application.source_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >View posting</a>
+                    {% endif %}
+                </td>
                 <td>{{ row.application.status }}</td>
                 <td><span class="workflow-badge workflow-{{ row.workflow_state }}">{{ row.workflow_label }}</span></td>
                 <td class="date-cell">{{ row.application.applied_on or "" }}</td>

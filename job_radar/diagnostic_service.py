@@ -18,6 +18,8 @@ class DiagnosticOutcome:
     category_label: str
     message: str
     next_step: str
+    failure_stage: str | None = None
+    failure_stage_label: str = "Job collection (stage not recorded)"
 
 
 @dataclass(frozen=True)
@@ -39,6 +41,7 @@ class DiagnosticsView:
 
 def classify_collector_failure(error: CollectorError) -> DiagnosticOutcome:
     """Classify a collector failure by safe exception type, never its text."""
+    failure_stage = _safe_failure_stage(error)
     cause: BaseException | None = error
     while cause is not None:
         if isinstance(cause, (requests.Timeout, requests.ConnectionError)):
@@ -46,6 +49,7 @@ def classify_collector_failure(error: CollectorError) -> DiagnosticOutcome:
                 "network",
                 "Junior could not reach this company job source.",
                 "Check the network connection and try the source again.",
+                failure_stage=failure_stage,
             )
         if isinstance(cause, requests.HTTPError):
             status_code = (
@@ -57,35 +61,42 @@ def classify_collector_failure(error: CollectorError) -> DiagnosticOutcome:
                     "The company job source denied Junior's public request.",
                     "The recruiting platform may be blocking automated access. "
                     "Test the source again later or review its collector setup.",
+                    failure_stage=failure_stage,
                 )
             if status_code == 404:
                 return _outcome(
                     "collector",
                     "The configured company job-source address was not found.",
                     "Review the public careers address and collector setup.",
+                    failure_stage=failure_stage,
                 )
             if status_code == 429:
+                message = _rate_limit_message(failure_stage)
                 return _outcome(
                     "network",
-                    "The company job source temporarily limited Junior's requests.",
+                    message,
                     "Wait before testing or scanning this source again.",
+                    failure_stage=failure_stage,
                 )
             if status_code is not None and status_code >= 500:
                 return _outcome(
                     "network",
                     "The company recruiting service reported a temporary problem.",
                     "Try the source again later.",
+                    failure_stage=failure_stage,
                 )
             return _outcome(
                 "collector",
                 "The company job source rejected or could not complete the request.",
                 "Verify the public source address and try again later.",
+                failure_stage=failure_stage,
             )
         cause = cause.__cause__
     return _outcome(
         "collector",
         "Junior reached this company source but could not read its job list.",
         "Review the company's source type and settings, then try again.",
+        failure_stage=failure_stage,
     )
 
 
@@ -340,13 +351,57 @@ def _scan_error_categories(
     }
 
 
-def _outcome(category: str, message: str, next_step: str) -> DiagnosticOutcome:
+def _outcome(
+    category: str,
+    message: str,
+    next_step: str,
+    *,
+    failure_stage: str | None = None,
+) -> DiagnosticOutcome:
     return DiagnosticOutcome(
         category=category,
         category_label=_category_label(category),
         message=message,
         next_step=next_step,
+        failure_stage=failure_stage,
+        failure_stage_label=_failure_stage_label(failure_stage),
     )
+
+
+def _safe_failure_stage(error: CollectorError) -> str | None:
+    stage = getattr(error, "failure_stage", None)
+    if stage in {
+        "initial_search_request",
+        "initial_search_response",
+        "results_pagination_request",
+        "results_pagination_response",
+    }:
+        return stage
+    return None
+
+
+def _failure_stage_label(stage: str | None) -> str:
+    return {
+        "initial_search_request": "Initial job-search request",
+        "initial_search_response": "Initial search response",
+        "results_pagination_request": "Later results-page request",
+        "results_pagination_response": "Later results-page response",
+    }.get(stage, "Job collection (stage not recorded)")
+
+
+def _rate_limit_message(stage: str | None) -> str:
+    if stage == "initial_search_request":
+        return (
+            "Junior reached the recruiting service, but the initial job-search "
+            "request was rate-limited (HTTP 429) before a usable results page "
+            "was received."
+        )
+    if stage == "results_pagination_request":
+        return (
+            "Junior received an earlier job-results page, but a later page "
+            "request was rate-limited (HTTP 429) before collection finished."
+        )
+    return "The company job source temporarily limited Junior's requests (HTTP 429)."
 
 
 def _category_label(category: str) -> str:

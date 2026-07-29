@@ -1,6 +1,7 @@
 """Serve manual scan controls and progress updates for the web interface."""
 
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -242,6 +243,7 @@ def _build_scan_status_payload(
             "collector_errors": 0,
             "has_results": False,
             "failure_summary": None,
+            "elapsed_seconds": None,
         }
 
     status = str(scan_run["status"])
@@ -308,7 +310,26 @@ def _build_scan_status_payload(
         "has_results": has_results,
         "failure_summary": scan_run["failure_summary"],
         "trigger_source": scan_run["trigger_source"],
+        "elapsed_seconds": _calculate_elapsed_seconds(scan_run),
     }
+
+
+def _calculate_elapsed_seconds(scan_run: Any) -> int | None:
+    """Return a safe whole-second runtime for a completed scan."""
+    started_at = scan_run["started_at"] or scan_run["requested_at"]
+    finished_at = scan_run["finished_at"]
+    if not started_at or not finished_at:
+        return None
+
+    try:
+        started = datetime.fromisoformat(str(started_at).replace("Z", "+00:00"))
+        finished = datetime.fromisoformat(
+            str(finished_at).replace("Z", "+00:00")
+        )
+    except (TypeError, ValueError):
+        return None
+
+    return max(0, round((finished - started).total_seconds()))
 
 
 def _build_starting_scan_payload() -> dict[str, object]:
@@ -326,6 +347,7 @@ def _build_starting_scan_payload() -> dict[str, object]:
         "collector_errors": 0,
         "has_results": False,
         "failure_summary": None,
+        "elapsed_seconds": None,
     }
 
 
@@ -346,4 +368,5 @@ def _build_worker_failure_payload() -> dict[str, object]:
         "failure_summary": (
             "junior could not complete the scan. Open the Scan page for details."
         ),
+        "elapsed_seconds": None,
     }
