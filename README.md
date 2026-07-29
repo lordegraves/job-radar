@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.0`
+- Current field-test build: `RC6 Build 1.1`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -143,7 +143,7 @@ installations keep their current retention setting until the user changes it.
 
 ### RC6 collection and evaluation
 
-RC6 Build 1.0 makes collection and job evaluation more complete and more
+RC6 Build 1.1 makes collection and job evaluation more complete and more
 trustworthy:
 
 - Workday collection no longer stops after 40 jobs when a later page
@@ -156,6 +156,10 @@ trustworthy:
 - The active profile's target roles now participate directly in role-family
   alignment. Clearly unrelated work and central missing disciplines become
   critical gaps and are omitted instead of being sent to Review Jobs.
+- Generic words such as `system` and `systems`, and a profile strength by
+  itself, cannot establish that a job belongs to the user's target profession.
+  Unrelated aerospace, finance, retail, and other cross-discipline work is
+  omitted before missing practical details can send it to Review Jobs.
 - A Top Match requires strong or very strong résumé evidence, confirmed
   practical eligibility, and no more than one non-critical gap. Strong jobs
   with unresolved practical facts remain Potential Top Matches.
@@ -210,7 +214,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in RC6 Build 1.0. Diagnostics still
+capabilities and are not implemented in RC6 Build 1.1. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -376,7 +380,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.0.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.1.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

@@ -2,6 +2,8 @@
 
 from dataclasses import replace
 
+import pytest
+
 from job_radar.candidate_profile import CandidateProfile, CandidateResumeConfig
 from job_radar.models import JobPosting
 from job_radar.resume_match import match_resume_to_posting
@@ -327,6 +329,133 @@ def test_systems_administrator_aligns_with_infrastructure_profile() -> None:
 
     assert result.label == "Medium"
     assert not result.has_critical_gap
+
+
+def test_generic_systems_word_does_not_align_unrelated_spacecraft_role() -> None:
+    posting = make_posting(
+        title="Human Landing System (HLS) Engineer - APS Systems (SME1)",
+        description=(
+            "Required Qualifications\n"
+            "- Engineering degree and 20 years of aerospace engineering experience\n"
+            "- Liquid propulsion design, analysis, integration, and testing\n"
+            "- Experience with reaction-control thrusters and spacecraft fluid systems\n"
+            "Responsibilities\n"
+            "- Support NASA human landing propulsion-system engineering"
+        ),
+    )
+    resume_text = (
+        "Senior infrastructure engineer with Linux infrastructure, HPC operations, "
+        "cluster systems, datacenter operations, and platform reliability experience."
+    )
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert result.evidence == []
+    assert result.has_critical_gap
+    assert (
+        "the job title and required work do not align with this profile's target work"
+        in result.gaps
+    )
+
+
+def test_core_strength_alone_does_not_turn_unrelated_role_into_target_work() -> None:
+    posting = make_posting(
+        title="Marketing Automation Specialist",
+        description=(
+            "Required Qualifications\n"
+            "- Marketing automation and campaign-management experience\n"
+            "Responsibilities\n"
+            "- Build email campaigns and manage customer segments"
+        ),
+    )
+    profile = replace(
+        make_profile(),
+        core_strengths=[*make_profile().core_strengths, "automation"],
+    )
+    resume_text = "Infrastructure automation and Linux operations experience."
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label == "Poor Fit"
+    assert result.has_critical_gap
+
+
+@pytest.mark.parametrize(
+    ("title", "description"),
+    [
+        (
+            "Thermal Systems Engineer",
+            (
+                "Required qualifications include a mechanical or aerospace engineering "
+                "degree and experience with spacecraft thermal analysis, heat transfer, "
+                "thermal vacuum testing, and flight-hardware qualification."
+            ),
+        ),
+        (
+            "Financial Systems Analyst",
+            (
+                "Required qualifications include accounting operations, financial "
+                "reporting, ERP administration, general-ledger controls, and audit support."
+            ),
+        ),
+        (
+            "Produce/Assistant Department Leader",
+            (
+                "Manage produce inventory, merchandising, food safety, department budgets, "
+                "associate schedules, customer service, and in-store sales promotions."
+            ),
+        ),
+        (
+            "Courtesy Clerk/Grocery Bagger",
+            (
+                "Bag groceries, retrieve carts, clean customer areas, assist shoppers, "
+                "and follow retail store safety and food-handling procedures."
+            ),
+        ),
+    ],
+)
+def test_generic_overlap_does_not_surface_clearly_unrelated_work(
+    title: str,
+    description: str,
+) -> None:
+    posting = make_posting(title=title, description=description)
+    resume_text = (
+        "Senior infrastructure engineer with Linux infrastructure, HPC operations, "
+        "cluster systems, datacenter operations, and platform reliability experience."
+    )
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert result.has_critical_gap
+    assert (
+        "the job title and required work do not align with this profile's target work"
+        in result.gaps
+    )
+
+
+def test_legitimate_adjacent_infrastructure_role_remains_reviewable() -> None:
+    posting = make_posting(
+        title="HPC Scientific Support Engineer",
+        description=(
+            "Support Linux HPC clusters, storage systems, schedulers, networking, "
+            "automation, incident response, and Kubernetes-based research platforms."
+        ),
+    )
+    profile = replace(
+        make_profile(),
+        credible_adjacent=["HPC operations", "Kubernetes operations"],
+    )
+    resume_text = (
+        "Linux infrastructure, HPC operations, cluster systems, storage systems, "
+        "networking, automation, and incident response."
+    )
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert not result.has_critical_gap
+    assert result.label in {"Strong", "Medium"}
 
 
 def test_unfamiliar_title_with_responsibility_evidence_stays_below_top_match() -> None:

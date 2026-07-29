@@ -6,6 +6,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Stop generic words such as `system`, `systems`, and a profile strength by
+  itself from establishing role alignment. Clearly unrelated aerospace,
+  finance, retail, and other cross-discipline jobs are now omitted before
+  missing practical details can send them to Review Jobs.
 - Begin RC6 with complete Workday and Eightfold pagination that ignores false
   zero totals, detects repeated pages, and stops only at a verified boundary.
 - Evaluate required qualifications, central job disciplines, described
@@ -21,7 +25,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   omitted, and broad omission-reason totals without storing job, profile, or
   résumé contents.
 - Label the application, executable metadata, and installer consistently as
-  `RC6 Build 1.0`.
+  `RC6 Build 1.1`.
 - Group Review Jobs by company within each bounded result page, show
   page-specific and overall company counts, preserve selections when groups
   are collapsed, and add numbered navigation for direct page changes.

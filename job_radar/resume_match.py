@@ -292,6 +292,8 @@ _GENERIC_ROLE_WORDS = {
     "senior",
     "specialist",
     "staff",
+    "system",
+    "systems",
     "technology",
 }
 _ROLE_FAMILIES = {
@@ -305,7 +307,6 @@ _ROLE_FAMILIES = {
         "linux",
         "datacenter",
         "data center",
-        "systems engineer",
         "systems administrator",
         "system administrator",
         "network engineer",
@@ -563,11 +564,10 @@ def _role_alignment_is_confirmed(
     if not candidate_profile.target_roles:
         return True
 
-    profile_values = (
-        candidate_profile.target_roles
-        + candidate_profile.core_strengths
-        + candidate_profile.credible_adjacent
-    )
+    # A skill can appear in work from an entirely different profession. Only
+    # desired and explicitly adjacent roles may establish title alignment;
+    # strengths still contribute responsibility evidence separately.
+    profile_values = candidate_profile.target_roles + candidate_profile.credible_adjacent
     title_words = _meaningful_role_words(title)
     profile_words: set[str] = set()
     for value in profile_values:

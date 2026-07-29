@@ -20,7 +20,7 @@ VSVersionInfo(
           StringStruct("InternalName", "Junior"),
           StringStruct("OriginalFilename", "Junior.exe"),
           StringStruct("ProductName", "junior"),
-          StringStruct("ProductVersion", "0.2.0 - RC6 Build 1.0")
+          StringStruct("ProductVersion", "0.2.0 - RC6 Build 1.1")
         ]
       )
     ]),

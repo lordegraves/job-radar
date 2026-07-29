@@ -11,6 +11,7 @@ from pathlib import Path
 from flask import Flask, jsonify, redirect, render_template, url_for
 
 from job_radar import __build__, __version__
+from job_radar.build_info import RELEASE_LABEL
 from job_radar.config import ConfigError
 from job_radar.csrf import register_csrf_protection
 from job_radar.runtime_paths import RuntimePaths, get_default_user_data_directory
@@ -103,6 +104,7 @@ def create_app(
 
         return {
             "junior_build_label": __build__,
+            "junior_release_label": RELEASE_LABEL,
             # Keep the result visible until the user explicitly dismisses it.
             "junior_update_result": app.config.get("JOB_RADAR_UPDATE_RESULT"),
         }

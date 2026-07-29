@@ -7,7 +7,7 @@
 <section class="page-card narrow-card">
     <h1>Installing Junior update</h1>
     <p>
-        Junior verified {{ update.available_build and "SP5 Build " ~ update.available_build or update.available_version }}
+        Junior verified {{ update.available_build and junior_release_label ~ " Build " ~ update.available_build or update.available_version }}
         and started the Windows installer.
     </p>
     <p>
