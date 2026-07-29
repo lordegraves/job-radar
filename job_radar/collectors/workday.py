@@ -88,6 +88,84 @@ def _get_description(job: dict[str, Any]) -> str | None:
     return None
 
 
+def _detail_api_url(source_url: str, external_path: str) -> str | None:
+    """Build the Workday detail endpoint that contains the complete posting."""
+
+    marker = "/jobs"
+    if marker not in source_url:
+        return None
+
+    detail_path = external_path.lstrip("/")
+    if detail_path.startswith("job/"):
+        detail_path = detail_path[4:]
+    return source_url.split(marker, 1)[0].rstrip("/") + "/job/" + detail_path
+
+
+def _merge_workday_detail(
+    raw_job: dict[str, Any],
+    detail_payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Merge richer detail fields without discarding stable search metadata."""
+
+    merged = dict(raw_job)
+    detail = detail_payload.get("jobPostingInfo", detail_payload)
+    if not isinstance(detail, dict):
+        return merged
+
+    field_map = {
+        "title": ("title",),
+        "jobDescription": ("jobDescription", "description"),
+        "locationsText": ("location", "locationsText"),
+        "jobReqId": ("jobReqId",),
+        "externalUrl": ("externalUrl",),
+    }
+    for target, candidates in field_map.items():
+        for candidate in candidates:
+            value = detail.get(candidate)
+            if value:
+                merged[target] = value
+                break
+
+    additional_locations = detail.get("additionalLocations")
+    if additional_locations and merged.get("locationsText"):
+        merged["locationsText"] = ", ".join(
+            [str(merged["locationsText"])]
+            + [str(value) for value in additional_locations if value]
+        )
+
+    return merged
+
+
+def _fetch_workday_detail(
+    source_url: str,
+    raw_job: dict[str, Any],
+) -> dict[str, Any]:
+    external_path = raw_job.get("externalPath")
+    if not external_path or _get_description(raw_job):
+        return raw_job
+
+    detail_url = _detail_api_url(source_url, str(external_path))
+    if detail_url is None:
+        return raw_job
+
+    try:
+        response = requests.get(
+            detail_url,
+            headers=WORKDAY_HEADERS,
+            timeout=30,
+        )
+        response.raise_for_status()
+        detail_payload = response.json()
+    except (requests.RequestException, ValueError):
+        # Preserve the listing result. The shared evaluator will explicitly
+        # treat an incomplete description as unverified rather than "no gaps."
+        return raw_job
+
+    if not isinstance(detail_payload, dict):
+        return raw_job
+    return _merge_workday_detail(raw_job, detail_payload)
+
+
 def _get_source_url(
     company_config: dict[str, Any],
     job: dict[str, Any],
@@ -218,7 +296,15 @@ def collect_workday_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         if not isinstance(raw_jobs, list):
             raise CollectorError("Workday payload does not contain a jobPostings list")
 
-        page_postings = parse_workday_jobs(company_config, response_payload)
+        enriched_jobs = [
+            _fetch_workday_detail(str(source_url), raw_job)
+            if isinstance(raw_job, dict)
+            else raw_job
+            for raw_job in raw_jobs
+        ]
+        enriched_payload = dict(response_payload)
+        enriched_payload["jobPostings"] = enriched_jobs
+        page_postings = parse_workday_jobs(company_config, enriched_payload)
         page_identity = {
             (posting.source_job_id, posting.source_url) for posting in page_postings
         }

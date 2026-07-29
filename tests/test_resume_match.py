@@ -489,6 +489,54 @@ def test_hpc_scientific_support_role_reports_required_computing_gaps() -> None:
     assert not any(gap.startswith("required OpenACC experience") for gap in result.gaps)
 
 
+def test_incomplete_listing_teaser_cannot_report_no_gaps() -> None:
+    posting = make_posting(
+        title="Kubernetes Platform Architect",
+        description="",
+    )
+    resume_text = (
+        "Linux infrastructure, HPC operations, cluster systems, storage systems, "
+        "networking, automation, and Kubernetes operations."
+    )
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Weak"
+    assert result.has_critical_gap
+    assert result.requirements_reviewed == []
+    assert result.gaps == [
+        "The collected posting did not include enough job-description detail "
+        "to verify its required qualifications."
+    ]
+
+
+def test_datacenter_architect_reads_employer_specific_requirement_heading() -> None:
+    posting = make_posting(
+        title="Data Center Architect, CSA",
+        description=(
+            "You may be a good fit if\n"
+            "- You have civil, structural, or architectural engineering experience\n"
+            "- You have led hyperscale facility design and construction oversight\n"
+            "- You apply building codes and professional engineering standards\n"
+            "What you will do\n"
+            "- Lead the architecture of complex datacenter construction programs"
+        ),
+    )
+    resume_text = (
+        "Linux infrastructure, HPC operations, cluster systems, datacenter "
+        "operations, and AI infrastructure."
+    )
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert result.has_critical_gap
+    assert any(
+        "civil, structural, or architectural engineering" in gap
+        for gap in result.gaps
+    )
+
+
 def test_legitimate_adjacent_infrastructure_role_remains_reviewable() -> None:
     posting = make_posting(
         title="HPC Scientific Support Engineer",

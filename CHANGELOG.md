@@ -6,6 +6,16 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Collect complete Workday and SelectMinds job-detail records before
+  evaluation so travel, regional restrictions, telework language,
+  responsibilities, and required qualifications are not lost in listing
+  teasers.
+- Treat a missing job description as an incomplete weak match instead of
+  reporting that no résumé gaps were found.
+- Recognize additional employer-specific qualification headings and nested
+  JSON-LD job postings when comparing required work with résumé evidence.
+- Label the application, executable metadata, and installer consistently as
+  `RC6 Build 1.3`.
 - Add direct **View posting** links to Active Applications and Application
   History when the original public job address is available.
 - Identify the safe collection step behind Eightfold scan warnings, including
@@ -33,8 +43,6 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Add privacy-safe per-company scan diagnostics for collected, actionable,
   omitted, and broad omission-reason totals without storing job, profile, or
   résumé contents.
-- Label the application, executable metadata, and installer consistently as
-  `RC6 Build 1.2`.
 - Group Review Jobs by company within each bounded result page, show
   page-specific and overall company counts, preserve selections when groups
   are collapsed, and add numbered navigation for direct page changes.

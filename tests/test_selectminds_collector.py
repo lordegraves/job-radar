@@ -29,7 +29,7 @@ def _config():
 
 
 def test_collect_selectminds_jobs_builds_posting(monkeypatch):
-    html = """
+    listing_html = """
     <p><a href="https://lbl.referrals.selectminds.com/jobs/hpc-scientific-support-engineer-7496" class="job_link font_bold">HPC Scientific Support Engineer</a></p>
     <p class="jlr_description">Support NERSC users and HPC workloads.</p>
     <p class="jlr_preferred_field job_external_id">
@@ -44,12 +44,36 @@ def test_collect_selectminds_jobs_builds_posting(monkeypatch):
     </p>
     <a href="https://lbl.referrals.selectminds.com/jobs/hpc-scientific-support-engineer-7496" class="learn_more_btn">Learn More</a>
     """
+    detail_html = """
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "JobPosting",
+      "employmentType": "FULL_TIME",
+      "jobLocation": {
+        "@type": "Place",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Bay Area",
+          "addressRegion": "California",
+          "addressCountry": "US"
+        }
+      },
+      "description": "<h2>Minimum Qualifications</h2><p>Experience supporting scientific users and debugging HPC applications. Strong Fortran, MPI, and OpenMP experience is required.</p><p>This position may be on-site, hybrid, or full-time telework.</p>"
+    }
+    </script>
+    """
 
     def fake_get(url, headers, timeout):
-        assert url == "https://lbl.referrals.selectminds.com/page/nersc-careers-85"
         assert headers["Accept"].startswith("text/html")
         assert timeout == 30
-        return FakeResponse(html)
+        if url == "https://lbl.referrals.selectminds.com/page/nersc-careers-85":
+            return FakeResponse(listing_html)
+        assert url == (
+            "https://lbl.referrals.selectminds.com/jobs/"
+            "hpc-scientific-support-engineer-7496"
+        )
+        return FakeResponse(detail_html)
 
     monkeypatch.setattr(requests, "get", fake_get)
 
@@ -65,7 +89,10 @@ def test_collect_selectminds_jobs_builds_posting(monkeypatch):
         "https://lbl.referrals.selectminds.com/jobs/"
         "hpc-scientific-support-engineer-7496"
     )
-    assert "Support NERSC users and HPC workloads." in jobs[0].description
+    assert "Minimum Qualifications" in jobs[0].description
+    assert "full-time telework" in jobs[0].description
+    assert "Employment type: FULL_TIME" in jobs[0].description
+    assert jobs[0].location == "Bay Area, California, US"
     assert "Post Date: Jun 03, 2026" in jobs[0].description
     assert jobs[0].canonical_key
     assert jobs[0].content_hash

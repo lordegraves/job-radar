@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
+import json
 from typing import Any
 from urllib.parse import urljoin
 
@@ -95,6 +96,109 @@ class SelectMindsJobParser(HTMLParser):
                 return
 
 
+class SelectMindsDetailParser(HTMLParser):
+    """Extract structured or visible full-description text from a job page."""
+
+    _DETAIL_CLASSES = {
+        "job_description",
+        "job-description",
+        "jobdescription",
+        "job_detail",
+        "job-detail",
+        "job_details",
+        "job-details",
+    }
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._detail_depth = 0
+        self._capture_json_ld = False
+        self._json_ld_parts: list[str] = []
+        self._detail_parts: list[str] = []
+        self.structured_data: list[dict[str, Any]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attrs_dict = dict(attrs)
+        class_names = {
+            value.lower() for value in (attrs_dict.get("class") or "").split()
+        }
+        element_id = (attrs_dict.get("id") or "").lower()
+
+        if tag == "script" and attrs_dict.get("type") == "application/ld+json":
+            self._capture_json_ld = True
+            self._json_ld_parts = []
+            return
+
+        if self._detail_depth:
+            self._detail_depth += 1
+        elif class_names.intersection(self._DETAIL_CLASSES) or element_id in {
+            "job-description",
+            "job_description",
+            "jobdescription",
+        }:
+            self._detail_depth = 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "script" and self._capture_json_ld:
+            self._capture_json_ld = False
+            self._load_json_ld("".join(self._json_ld_parts))
+            return
+
+        if self._detail_depth:
+            self._detail_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self._capture_json_ld:
+            self._json_ld_parts.append(data)
+        elif self._detail_depth:
+            text = data.strip()
+            if text:
+                self._detail_parts.append(text)
+
+    def _load_json_ld(self, value: str) -> None:
+        try:
+            payload = json.loads(value)
+        except (TypeError, ValueError):
+            return
+        candidates = payload if isinstance(payload, list) else [payload]
+        for candidate in candidates:
+            if isinstance(candidate, dict):
+                self.structured_data.append(candidate)
+
+    def result(self) -> dict[str, str | None]:
+        for candidate in _job_posting_candidates(self.structured_data):
+            return {
+                "description": _html_to_text(candidate.get("description")),
+                "location": _structured_location(candidate.get("jobLocation")),
+                "employment_type": _clean_text(candidate.get("employmentType")),
+            }
+        return {
+            "description": _clean_text(" ".join(self._detail_parts)),
+            "location": None,
+            "employment_type": None,
+        }
+
+
+def _job_posting_candidates(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Find JobPosting objects even when a site nests them in JSON-LD graphs."""
+
+    matches: list[dict[str, Any]] = []
+    pending: list[Any] = list(values)
+    while pending:
+        candidate = pending.pop()
+        if isinstance(candidate, list):
+            pending.extend(candidate)
+            continue
+        if not isinstance(candidate, dict):
+            continue
+        if str(candidate.get("@type", "")).lower() == "jobposting":
+            matches.append(candidate)
+        graph = candidate.get("@graph")
+        if isinstance(graph, list):
+            pending.extend(graph)
+    return matches
+
+
 def collect_selectminds_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     company_key = str(company_config["company_key"])
     company_name = str(company_config["name"])
@@ -112,6 +216,23 @@ def collect_selectminds_jobs(company_config: dict[str, Any]) -> list[JobPosting]
     seen: set[str] = set()
 
     for job in parser.jobs:
+        source_job_url = _clean_text(job.get("source_url"))
+        if source_job_url:
+            try:
+                detail_html = _fetch_selectminds_page(source_job_url)
+            except requests.RequestException:
+                detail_html = ""
+            if detail_html:
+                detail_parser = SelectMindsDetailParser()
+                detail_parser.feed(detail_html)
+                detail = detail_parser.result()
+                if detail.get("description"):
+                    job["description"] = detail["description"]
+                if detail.get("location"):
+                    job["location"] = detail["location"]
+                if detail.get("employment_type"):
+                    job["employment_type"] = detail["employment_type"]
+
         posting = _build_posting(
             company_key=company_key,
             company_name=company_name,
@@ -166,7 +287,7 @@ def _build_posting(
         source_type=source_type,
         source_url=source_url,
         title=title,
-        location=None,
+        location=_clean_text(job.get("location")),
         description=description,
         source_job_id=source_job_id,
         remote_status=None,
@@ -202,11 +323,52 @@ def _build_posting(
 def _build_description(job: dict[str, str | None]) -> str | None:
     parts = [
         _clean_text(job.get("description")),
+        _format_label("Employment type", job.get("employment_type")),
         _format_label("Post Date", job.get("post_date")),
     ]
 
     description = "\n\n".join(part for part in parts if part)
     return description or None
+
+
+class _VisibleTextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        text = data.strip()
+        if text:
+            self.parts.append(text)
+
+
+def _html_to_text(value: Any) -> str | None:
+    text = _clean_text(value)
+    if not text:
+        return None
+    parser = _VisibleTextParser()
+    parser.feed(text)
+    return _clean_text(" ".join(parser.parts))
+
+
+def _structured_location(value: Any) -> str | None:
+    locations = value if isinstance(value, list) else [value]
+    rendered: list[str] = []
+    for location in locations:
+        if not isinstance(location, dict):
+            continue
+        address = location.get("address")
+        if not isinstance(address, dict):
+            continue
+        parts = [
+            _clean_text(address.get("addressLocality")),
+            _clean_text(address.get("addressRegion")),
+            _clean_text(address.get("addressCountry")),
+        ]
+        rendered_location = ", ".join(part for part in parts if part)
+        if rendered_location:
+            rendered.append(rendered_location)
+    return "; ".join(rendered) or None
 
 
 def _format_label(label: str, value: str | None) -> str | None:

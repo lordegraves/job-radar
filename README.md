@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.2`
+- Current field-test build: `RC6 Build 1.3`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -144,13 +144,23 @@ installations keep their current retention setting until the user changes it.
 
 ### RC6 collection and evaluation
 
-RC6 Build 1.2 makes collection and job evaluation more complete and more
+RC6 Build 1.3 makes collection and job evaluation more complete and more
 trustworthy:
 
 - Workday collection no longer stops after 40 jobs when a later page
   incorrectly reports a total of zero. Pagination continues until Junior
   reaches the real end of the listing, while repeated-page detection prevents
   endless collection. The same protection applies to Eightfold.
+- Workday and SelectMinds collection now open each posting's detail source
+  before evaluation. This provides the full responsibilities, required
+  qualifications, workplace wording, location, employment type, and travel
+  requirements instead of relying on a short search-result teaser.
+- A posting with no usable job description is explicitly treated as an
+  incomplete, weak match. Junior no longer displays **Possible gaps: None**
+  when it did not have enough information to perform the comparison.
+- Qualification extraction recognizes common employer-specific headings such
+  as **You may be a good fit if**, **Who you are**, and **What we're looking
+  for**, including nested JSON-LD job descriptions.
 - Junior evaluates required qualifications and the work described in the job
   posting, not merely a loose collection of matching words. It distinguishes
   required qualifications from preferred or bonus qualifications.
@@ -219,7 +229,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in RC6 Build 1.2. Diagnostics still
+capabilities and are not implemented in RC6 Build 1.3. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -385,7 +395,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.2.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.3.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

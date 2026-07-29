@@ -1,12 +1,26 @@
 """Tests Workday pagination, response parsing, normalized jobs, and failures."""
 
 import pytest
+import requests
 
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.workday import (
     collect_workday_jobs,
     parse_workday_jobs,
 )
+
+
+@pytest.fixture(autouse=True)
+def _prevent_unmocked_workday_detail_requests(monkeypatch):
+    """Keep collector tests isolated unless a test supplies a detail response."""
+
+    def fail_detail_request(*args, **kwargs):
+        raise requests.RequestException("detail request not configured")
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.get",
+        fail_detail_request,
+    )
 
 
 def test_parse_workday_jobs_returns_job_postings() -> None:
@@ -192,6 +206,89 @@ def test_collect_workday_jobs_stops_at_configured_max_pages(
 
     assert captured_offsets == [0, 1]
     assert len(postings) == 2
+
+
+def test_collect_workday_jobs_fetches_complete_job_detail(
+    monkeypatch,
+) -> None:
+    company_config = {
+        "company_key": "example_company",
+        "name": "Example Company",
+        "source_type": "workday",
+        "source_url": (
+            "https://example.wd1.myworkdayjobs.com/"
+            "wday/cxs/example/External_Career/jobs"
+        ),
+        "source_base_url": "https://example.wd1.myworkdayjobs.com/External_Career",
+        "page_size": 20,
+        "max_pages": 1,
+    }
+
+    class SearchResponse:
+        text = ""
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "total": 1,
+                "jobPostings": [
+                    {
+                        "title": "Kubernetes Platform Architect",
+                        "externalPath": (
+                            "/job/United-Kingdom-Remote-Location/"
+                            "Kubernetes-Platform-Architect_R025880"
+                        ),
+                        "locationsText": "United Kingdom-Remote Location",
+                        "bulletFields": ["R025880"],
+                    }
+                ],
+            }
+
+    class DetailResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "jobPostingInfo": {
+                    "title": "Kubernetes Platform Architect",
+                    "jobDescription": (
+                        "Required qualifications include platform architecture "
+                        "leadership and Kubernetes product expertise. This role "
+                        "requires travel up to 50 percent across customer sites."
+                    ),
+                    "location": "United Kingdom-Remote Location",
+                    "jobReqId": "R025880",
+                }
+            }
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.post",
+        lambda *args, **kwargs: SearchResponse(),
+    )
+
+    def fake_get(url, headers, timeout):
+        assert url == (
+            "https://example.wd1.myworkdayjobs.com/wday/cxs/example/"
+            "External_Career/job/United-Kingdom-Remote-Location/"
+            "Kubernetes-Platform-Architect_R025880"
+        )
+        assert headers["Accept"] == "application/json"
+        assert timeout == 30
+        return DetailResponse()
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.get",
+        fake_get,
+    )
+
+    postings = collect_workday_jobs(company_config)
+
+    assert len(postings) == 1
+    assert postings[0].location == "United Kingdom-Remote Location"
+    assert "travel up to 50 percent" in (postings[0].description or "")
 
 
 def test_collect_workday_jobs_ignores_false_zero_total_on_later_pages(

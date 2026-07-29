@@ -1,7 +1,7 @@
 #define AppName "Junior"
 #define AppVersion "0.2.0"
-#define BuildLabel "RC6 Build 1.2"
-#define BuildSlug "RC6-build-1.2"
+#define BuildLabel "RC6 Build 1.3"
+#define BuildSlug "RC6-build-1.3"
 #define AppPublisher "Junior"
 #define AppExeName "Junior.exe"
 

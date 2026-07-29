@@ -33,6 +33,19 @@ def match_resume_to_posting(
         return ResumeMatchResult(label="Unknown", evidence=[], gaps=[])
 
     normalized_resume_text = clean_text(resume_text).lower()
+    description = clean_text(posting.description or "")
+    if not _description_is_substantive(description):
+        incomplete_gap = (
+            "The collected posting did not include enough job-description detail "
+            "to verify its required qualifications."
+        )
+        return ResumeMatchResult(
+            label="Weak",
+            evidence=[],
+            gaps=[incomplete_gap],
+            critical_gaps=[incomplete_gap],
+            requirements_reviewed=[],
+        )
     posting_text = _build_posting_text(posting)
     role_relevant_text = clean_text(
         " ".join(
@@ -165,8 +178,21 @@ _REQUIREMENT_HEADINGS = (
     "what we need",
     "we expect you to have",
     "you have",
+    "you may be a good fit if",
+    "you'll thrive in this role if",
+    "you will thrive in this role if",
+    "who you are",
+    "what we're looking for",
+    "what we are looking for",
+    "the ideal candidate",
     "qualifications",
 )
+
+
+def _description_is_substantive(description: str) -> bool:
+    """Reject records that contain no usable job-description text."""
+
+    return bool(re.search(r"[a-zA-Z0-9]", description))
 _STOP_HEADINGS = (
     "preferred qualifications",
     "desired qualifications",
