@@ -158,6 +158,9 @@ def test_scan_pipeline_tracks_new_then_seen(
     assert report_file.exists()
     assert report_file.with_suffix(".json").exists()
     assert (report_file.parent / "target-scan-raw.zip").exists()
+    evaluation_audit = (
+        report_file.parent / "job-evaluation-audit.txt"
+    ).read_text(encoding="utf-8")
     assert not report_file.with_suffix(".md").exists()
 
     assert "Jobs collected: 1" in first_output
@@ -183,6 +186,13 @@ def test_scan_pipeline_tracks_new_then_seen(
     assert "<h1>junior Report</h1>" in first_html
     assert '<h2 id="top-matches">Top Matches</h2>' in first_html
     assert "Senior Infrastructure Engineer" in first_html
+    assert "Example AI - Senior Infrastructure Engineer" in evaluation_audit
+    assert "Final outcome: top match" in evaluation_audit
+    assert (
+        "Public posting: https://boards.greenhouse.io/exampleai/jobs/123"
+        in evaluation_audit
+    )
+    assert "Build Linux infrastructure." not in evaluation_audit
 
     handle_scan(
         config_path=str(config_file),

@@ -374,9 +374,17 @@ Current scan artifacts are:
 
 - HTML scan report — the primary user-facing report
 - plain-text email preview — the message that can be reviewed before delivery
+- plain-text evaluation audit — one bounded record for every evaluated job,
+  explaining why it was surfaced or omitted
 - structured JSON snapshot — internal structured data used by the application
 - compressed raw-scan ZIP — a downloadable plain-text record of every public
   posting collected in that run
+
+The evaluation audit records public job identity, classification, role and
+résumé fit, recognized gaps, and bounded decision reasons. It excludes job
+descriptions, profile contents, résumé contents, credentials, and raw
+exceptions, so it can be shared for troubleshooting without exposing those
+private contents.
 
 The normal HTML and email reports summarize the jobs worth presenting and do
 not create thousands of full cards for unrelated or omitted jobs. The raw ZIP
@@ -391,7 +399,7 @@ log retention**, choose:
 - latest plus the previous run
 - a chosen total from 1 through 50
 
-When history is enabled, Junior copies and verifies the previous complete report set before replacing the latest files. Older HTML reports, email previews, and raw-scan ZIPs appear under **Retained report history** on the Reports page with direct Download controls. Raw ZIPs are compressed, but installations scanning many employers can still use meaningful disk space; lower the retained-run count when long history is unnecessary. Lower limits take effect during the next successful scan. Junior removes only marked report archives and recognized dated Junior logs; active logs and unrelated files remain untouched.
+When history is enabled, Junior copies and verifies the previous complete report set before replacing the latest files. Older HTML reports, email previews, evaluation audits, and raw-scan ZIPs appear under **Retained report history** on the Reports page with direct Download controls. Raw ZIPs are compressed, but installations scanning many employers can still use meaningful disk space; lower the retained-run count when long history is unnecessary. Lower limits take effect during the next successful scan. Junior removes only marked report archives and recognized dated Junior logs; active logs and unrelated files remain untouched.
 
 ## Active Applications
 

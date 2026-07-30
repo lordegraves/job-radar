@@ -28,6 +28,7 @@ class RetainedReportRun:
     generated_at: str
     html_report_name: str | None
     email_preview_name: str | None
+    evaluation_audit_name: str | None
     raw_scan_name: str | None
 
 
@@ -36,16 +37,20 @@ def archive_before_report_write(
     html_report_path: str | Path,
     snapshot_path: str | Path,
     email_preview_path: str | Path | None,
+    evaluation_audit_path: str | Path | None = None,
     raw_scan_path: str | Path | None = None,
 ) -> None:
     """Preserve the prior known report set before any current file is replaced."""
     html_path = Path(html_report_path)
     snapshot = Path(snapshot_path)
     email_path = Path(email_preview_path) if email_preview_path else None
+    audit_path = (
+        Path(evaluation_audit_path) if evaluation_audit_path else None
+    )
     raw_path = Path(raw_scan_path) if raw_scan_path else None
     report_files = tuple(
         path
-        for path in (html_path, snapshot, email_path, raw_path)
+        for path in (html_path, snapshot, email_path, audit_path, raw_path)
         if path is not None and path.is_file()
     )
     if report_files:
@@ -85,6 +90,10 @@ def list_retained_report_runs(
             email_preview_name=_optional_relative_name(
                 archive,
                 "target-email-preview.txt",
+            ),
+            evaluation_audit_name=_optional_relative_name(
+                archive,
+                "job-evaluation-audit.txt",
             ),
             raw_scan_name=_optional_relative_name(
                 archive,

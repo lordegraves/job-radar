@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.3`
+- Current field-test build: `RC6 Build 1.4`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -138,15 +138,21 @@ Creating an application from Review Jobs returns to the same review group and
 marks that scan job as applied. Home and Review Jobs counts show undecided work
 remaining, rather than repeating jobs already saved, applied, or passed.
 **Reports** is a separate page for the latest generated HTML report, email
-preview, compressed raw-scan download, and retained report history. New
+preview, privacy-safe evaluation audit, compressed raw-scan download, and
+retained report history. New
 installations retain the latest 10 successful report runs by default. Existing
 installations keep their current retention setting until the user changes it.
 
 ### RC6 collection and evaluation
 
-RC6 Build 1.3 makes collection and job evaluation more complete and more
+RC6 Build 1.4 makes collection and job evaluation more complete and more
 trustworthy:
 
+- Every successful scan writes a downloadable plain-text evaluation audit
+  explaining why each collected job was surfaced or omitted. It contains
+  public job identity and bounded evaluation outcomes, but excludes job
+  descriptions, profile contents, résumé contents, credentials, and raw
+  exceptions.
 - Workday collection no longer stops after 40 jobs when a later page
   incorrectly reports a total of zero. Pagination continues until Junior
   reaches the real end of the listing, while repeated-page detection prevents
@@ -229,7 +235,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in RC6 Build 1.3. Diagnostics still
+capabilities and are not implemented in RC6 Build 1.4. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -395,7 +401,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.3.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.4.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

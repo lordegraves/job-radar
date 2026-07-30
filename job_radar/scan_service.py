@@ -45,6 +45,10 @@ from job_radar.report_view_model import (
     is_review_needed_report_posting,
     is_top_match_report_posting,
 )
+from job_radar.evaluation_audit import (
+    EVALUATION_AUDIT_NAME,
+    write_evaluation_audit,
+)
 from job_radar.retention_service import (
     apply_retention_after_report_write,
     archive_before_report_write,
@@ -685,6 +689,9 @@ def _handle_scan_unlocked(
             )
 
         scored_postings.sort(key=lambda item: item.score, reverse=True)
+        # Keep the complete evaluation set for the audit before user decisions
+        # hide jobs from the current review inbox.
+        all_scored_postings = tuple(scored_postings)
         decided_job_ids = get_decided_job_ids(
             database_path,
             profile_id=profile_id,
@@ -749,6 +756,9 @@ def _handle_scan_unlocked(
                 jobs_changed += 1
 
         generated_at = datetime.now(UTC).isoformat()
+        evaluation_audit_path = (
+            Path(report_path).parent / EVALUATION_AUDIT_NAME
+        )
 
         report = ScanReport(
             companies_enabled=len(companies),
@@ -784,6 +794,7 @@ def _handle_scan_unlocked(
             html_report_path=Path(report_path).with_suffix(".html"),
             snapshot_path=Path(report_path).with_suffix(".json"),
             email_preview_path=email_preview_path,
+            evaluation_audit_path=evaluation_audit_path,
             raw_scan_path=Path(report_path).parent / RAW_SCAN_ARCHIVE_NAME,
         )
 
@@ -805,14 +816,20 @@ def _handle_scan_unlocked(
                 report,
             )
 
+        write_raw_scan_export(
+            Path(report_path).parent / RAW_SCAN_ARCHIVE_NAME,
+            report,
+        )
+        write_evaluation_audit(
+            evaluation_audit_path,
+            all_scored_postings,
+            decided_job_ids=decided_job_ids,
+            generated_at=generated_at,
+        )
         apply_retention_after_report_write(
             reports_path=Path(report_path).parent,
             logs_path=logs_path,
             retention=settings.retention,
-        )
-        write_raw_scan_export(
-            Path(report_path).parent / RAW_SCAN_ARCHIVE_NAME,
-            report,
         )
 
         email_send_result = None

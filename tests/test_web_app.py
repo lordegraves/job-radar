@@ -3450,6 +3450,10 @@ def test_reports_page_lists_only_current_scan_outputs(
         "Email preview",
         encoding="utf-8",
     )
+    (reports_path / "job-evaluation-audit.txt").write_text(
+        "Junior job evaluation audit",
+        encoding="utf-8",
+    )
     (reports_path / "target-scan-raw.zip").write_bytes(b"raw archive")
     (reports_path / "code-audit.md").write_text(
         "# Code audit",
@@ -3479,6 +3483,10 @@ def test_reports_page_lists_only_current_scan_outputs(
     assert "These are read-only copies" in html
     assert "target-email-preview.txt" in html
     assert "Latest plain-text email preview." in html
+    assert "job-evaluation-audit.txt" in html
+    assert "Why each collected job was surfaced or omitted." in html
+    assert "/reports/view/job-evaluation-audit.txt" in html
+    assert 'href="/reports/job-evaluation-audit.txt">Download</a>' in html
     assert "target-scan-raw.zip" in html
     assert "every posting collected" in html
     assert 'href="/reports/target-scan-raw.zip">Download</a>' in html
@@ -5235,7 +5243,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.3" in html
+    assert "RC6 Build 1.4" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

@@ -6,6 +6,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Add a downloadable privacy-safe evaluation audit explaining why every
+  collected job was surfaced or omitted.
+- Retain each evaluation audit with its verified archived report set.
 - Collect complete Workday and SelectMinds job-detail records before
   evaluation so travel, regional restrictions, telework language,
   responsibilities, and required qualifications are not lost in listing
@@ -15,7 +18,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Recognize additional employer-specific qualification headings and nested
   JSON-LD job postings when comparing required work with résumé evidence.
 - Label the application, executable metadata, and installer consistently as
-  `RC6 Build 1.3`.
+  `RC6 Build 1.4`.
 - Add direct **View posting** links to Active Applications and Application
   History when the original public job address is available.
 - Identify the safe collection step behind Eightfold scan warnings, including

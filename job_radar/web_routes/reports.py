@@ -29,6 +29,7 @@ from job_radar.job_decision_service import (
     save_job_decisions_bulk,
 )
 from job_radar.decision_event_log import record_decision_event
+from job_radar.evaluation_audit import EVALUATION_AUDIT_NAME
 from job_radar.raw_scan_export import (
     RAW_SCAN_ARCHIVE_NAME,
     raw_scan_download_name,
@@ -72,12 +73,19 @@ PRIMARY_REPORT_FILE_DETAILS = {
         "description": "Latest plain-text email preview.",
         "sort_order": 20,
     },
+    EVALUATION_AUDIT_NAME: {
+        "description": (
+            "Why each collected job was surfaced or omitted. It excludes job "
+            "descriptions, profile contents, and résumé contents."
+        ),
+        "sort_order": 30,
+    },
     RAW_SCAN_ARCHIVE_NAME: {
         "description": (
             "Compressed plain-text export of every posting collected in the "
             "latest scan."
         ),
-        "sort_order": 30,
+        "sort_order": 40,
     },
 }
 
