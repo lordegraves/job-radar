@@ -16,6 +16,25 @@ from job_radar.scored_posting import ScoredPosting
 
 
 EVALUATION_AUDIT_NAME = "job-evaluation-audit.txt"
+TARGETED_EVALUATION_AUDIT_NAME = "targeted-job-evaluation-audit.txt"
+
+
+def evaluation_audit_download_name(
+    modified_timestamp: float,
+    *,
+    targeted: bool = False,
+) -> str:
+    """Build a readable, timestamped filename for a downloaded audit."""
+
+    timestamp = datetime.fromtimestamp(modified_timestamp).strftime(
+        "%Y-%m-%d-%H%M"
+    )
+    prefix = (
+        "junior-targeted-job-evaluation-audit"
+        if targeted
+        else "junior-job-evaluation-audit"
+    )
+    return f"{prefix}-{timestamp}.txt"
 
 
 @dataclass(frozen=True)
@@ -33,6 +52,8 @@ def write_evaluation_audit(
     *,
     decided_job_ids: set[str] | None = None,
     generated_at: str | None = None,
+    scan_kind: str = "full",
+    scan_run_id: int | None = None,
 ) -> EvaluationAuditSummary:
     """Write one readable, bounded record per job without private document text."""
 
@@ -54,6 +75,8 @@ def write_evaluation_audit(
     lines = [
         "Junior job evaluation audit",
         f"Generated: {generated}",
+        f"Scan kind: {scan_kind}",
+        f"Scan run ID: {scan_run_id if scan_run_id is not None else 'Unknown'}",
         f"Jobs evaluated: {len(records)}",
         "",
         "Outcome summary",

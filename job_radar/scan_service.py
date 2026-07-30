@@ -47,6 +47,7 @@ from job_radar.report_view_model import (
 )
 from job_radar.evaluation_audit import (
     EVALUATION_AUDIT_NAME,
+    TARGETED_EVALUATION_AUDIT_NAME,
     write_evaluation_audit,
 )
 from job_radar.retention_service import (
@@ -756,8 +757,14 @@ def _handle_scan_unlocked(
                 jobs_changed += 1
 
         generated_at = datetime.now(UTC).isoformat()
+        scan_kind = "selected" if selected_employer_ids else "full"
+        evaluation_audit_name = (
+            TARGETED_EVALUATION_AUDIT_NAME
+            if selected_employer_ids
+            else EVALUATION_AUDIT_NAME
+        )
         evaluation_audit_path = (
-            Path(report_path).parent / EVALUATION_AUDIT_NAME
+            Path(report_path).parent / evaluation_audit_name
         )
 
         report = ScanReport(
@@ -820,11 +827,13 @@ def _handle_scan_unlocked(
             Path(report_path).parent / RAW_SCAN_ARCHIVE_NAME,
             report,
         )
-        write_evaluation_audit(
+        evaluation_audit_summary = write_evaluation_audit(
             evaluation_audit_path,
             all_scored_postings,
             decided_job_ids=decided_job_ids,
             generated_at=generated_at,
+            scan_kind=scan_kind,
+            scan_run_id=scan_run_id,
         )
         # A successful scan promises a durable explanation of every evaluation.
         # Do not finalize a report set when that audit was not actually written.
@@ -834,6 +843,18 @@ def _handle_scan_unlocked(
         ):
             raise RuntimeError(
                 "The scan evaluation audit was not created. "
+                "The scan was not finalized."
+            )
+        if evaluation_audit_summary.jobs_evaluated != len(
+            all_scored_postings
+        ):
+            raise RuntimeError(
+                "The scan evaluation audit is incomplete. "
+                "The scan was not finalized."
+            )
+        if total_jobs > 0 and evaluation_audit_summary.jobs_evaluated == 0:
+            raise RuntimeError(
+                "Jobs were collected, but no evaluation records were created. "
                 "The scan was not finalized."
             )
         apply_retention_after_report_write(

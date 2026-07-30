@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import re
+import time
 from typing import Any
 from urllib.parse import urljoin
 
@@ -18,6 +19,8 @@ from job_radar.normalize import make_canonical_key, make_content_hash
 
 DEFAULT_PAGE_SIZE = 20
 DEFAULT_MAX_PAGES = 100
+DETAIL_REQUEST_ATTEMPTS = 3
+DETAIL_RETRY_DELAY_SECONDS = 0.25
 
 
 def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
@@ -34,6 +37,9 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     seen: set[str] = set()
     seen_pages: set[tuple[str, ...]] = set()
     expected_total: int | None = None
+    # A source-health check must exercise the detail endpoint used by a real
+    # scan, not merely prove that Eightfold's search page can be reached.
+    detail_probe_pending = connection_test and max_pages == 1
 
     start = 0
     for page_index in range(max_pages):
@@ -99,10 +105,11 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
                 source_url=source_url,
                 domain=domain,
                 raw_position=raw_position,
-                fetch_details=not connection_test,
+                fetch_details=not connection_test or detail_probe_pending,
             )
             if posting is None:
                 continue
+            detail_probe_pending = False
             dedupe_key = posting.source_job_id or posting.source_url
             if dedupe_key in seen:
                 continue
@@ -150,6 +157,7 @@ def _build_posting(
             source_url=source_url,
             domain=domain,
             position_id=position_id,
+            company_name=company_name,
         )
         if fetch_details
         else {}
@@ -194,26 +202,59 @@ def _fetch_position_detail(
     source_url: str,
     domain: str,
     position_id: str,
+    company_name: str,
 ) -> dict[str, Any]:
-    try:
-        response = get_response(
-            f"{source_url}/api/pcsx/position_details",
-            params={
-                "position_id": position_id,
-                "domain": domain,
-                "hl": "en",
-            },
-            headers={
-                "Accept": "application/json",
-                "User-Agent": "JobRadar/0.1 local career-source scanner",
-            },
-            timeout=30,
+    response = None
+    for attempt in range(DETAIL_REQUEST_ATTEMPTS):
+        try:
+            response = get_response(
+                f"{source_url}/api/pcsx/position_details",
+                params={
+                    "position_id": position_id,
+                    "domain": domain,
+                    "hl": "en",
+                },
+                headers={
+                    "Accept": "application/json",
+                    "User-Agent": "JobRadar/0.1 local career-source scanner",
+                },
+                timeout=30,
+            )
+            break
+        except requests.RequestException as error:
+            status_code = getattr(error.response, "status_code", None)
+            temporary_failure = status_code == 429 or (
+                isinstance(status_code, int) and status_code >= 500
+            )
+            if temporary_failure and attempt + 1 < DETAIL_REQUEST_ATTEMPTS:
+                time.sleep(DETAIL_RETRY_DELAY_SECONDS)
+                continue
+            raise CollectorError(
+                f"Eightfold position details could not be retrieved for "
+                f"{company_name}.",
+                failure_stage="position_detail_request",
+            ) from error
+
+    if response is None:  # Defensive guard; the loop either returns or raises.
+        raise CollectorError(
+            f"Eightfold position details could not be retrieved for {company_name}.",
+            failure_stage="position_detail_request",
         )
+
+    try:
         payload = response.json()
-    except (requests.RequestException, ValueError):
-        return {}
+    except ValueError as error:
+        raise CollectorError(
+            f"Eightfold position details were not readable for {company_name}.",
+            failure_stage="position_detail_response",
+        ) from error
     data = payload.get("data") if isinstance(payload, dict) else None
-    return data if isinstance(data, dict) else {}
+    if not isinstance(data, dict):
+        raise CollectorError(
+            f"Eightfold position details were incomplete for {company_name}.",
+            failure_stage="position_detail_response",
+        )
+    return data
 
 
 def _plain_text(value: Any) -> str | None:

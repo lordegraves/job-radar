@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.4`
+- Current field-test build: `RC6 Build 1.5`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -139,7 +139,9 @@ marks that scan job as applied. Home and Review Jobs counts show undecided work
 remaining, rather than repeating jobs already saved, applied, or passed.
 **Reports** is a separate page for the latest generated HTML report, email
 preview, privacy-safe evaluation audit, compressed raw-scan download, and
-retained report history. New
+retained report history. Full scans and selected-company scans keep separate
+evaluation audits, so a targeted scan cannot replace the latest full-scan
+audit. Downloaded audit filenames include the scan date and time. New
 installations retain the latest 10 successful report runs by default. Existing
 installations keep their current retention setting until the user changes it.
 
@@ -152,7 +154,12 @@ trustworthy:
   explaining why each collected job was surfaced or omitted. It contains
   public job identity and bounded evaluation outcomes, but excludes job
   descriptions, profile contents, résumé contents, credentials, and raw
-  exceptions.
+  exceptions. Junior verifies that every scored job is represented before it
+  publishes a successful result; an incomplete audit fails safely instead of
+  becoming a misleading diagnostic record.
+- The Scan page paints its starting state immediately after the scan button is
+  pressed. Its completion message reports the exact elapsed time and number of
+  companies scanned.
 - Workday collection no longer stops after 40 jobs when a later page
   incorrectly reports a total of zero. Pagination continues until Junior
   reaches the real end of the listing, while repeated-page detection prevents
@@ -187,6 +194,9 @@ trustworthy:
   diagnostics. For example, an Eightfold warning can distinguish the initial
   job-search request from a later results-page request or response-reading
   failure without retaining raw responses, private URLs, or exception text.
+- Eightfold connection tests exercise the same job-detail request used by a
+  full scan. Temporary throttling and server failures are retried, and a
+  remaining failure identifies the safe collection stage where it occurred.
 
 These rules are occupation-neutral. They use each profile's own target roles,
 résumé evidence, gaps, and exclusions rather than globally hard-coded
@@ -235,7 +245,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in RC6 Build 1.4. Diagnostics still
+capabilities and are not implemented in RC6 Build 1.5. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -401,7 +411,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.4.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.5.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

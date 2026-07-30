@@ -3112,6 +3112,9 @@ def test_scan_page_restores_active_scan_progress(
     assert 'value="28"' in html
     assert "18 of 64 company sources scanned." in normalized_html
     assert "142 jobs found." in normalized_html
+    assert 'id="latest-output-summary"' in html
+    assert "formatDuration(status.elapsed_seconds)" in html
+    assert "await new Promise(window.requestAnimationFrame);" in html
 
 
 def test_scan_status_endpoint_returns_durable_progress(
@@ -3674,6 +3677,53 @@ def test_raw_scan_archive_download_uses_timestamped_filename(
     assert "junior-raw-scan-2026-07-26-1630.zip" in response.headers[
         "Content-Disposition"
     ]
+
+
+def test_evaluation_audit_download_uses_timestamped_filename(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    audit = reports_path / "job-evaluation-audit.txt"
+    audit.write_text("audit", encoding="utf-8")
+    timestamp = datetime(2026, 7, 26, 16, 30).timestamp()
+    os.utime(audit, (timestamp, timestamp))
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    response = create_app(settings_path=str(settings_file)).test_client().get(
+        "/reports/job-evaluation-audit.txt"
+    )
+
+    assert response.status_code == 200
+    assert "junior-job-evaluation-audit-2026-07-26-1630.txt" in response.headers[
+        "Content-Disposition"
+    ]
+
+
+def test_targeted_evaluation_audit_download_uses_timestamped_filename(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    audit = reports_path / "targeted-job-evaluation-audit.txt"
+    audit.write_text("audit", encoding="utf-8")
+    timestamp = datetime(2026, 7, 26, 16, 30).timestamp()
+    os.utime(audit, (timestamp, timestamp))
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    response = create_app(settings_path=str(settings_file)).test_client().get(
+        "/reports/targeted-job-evaluation-audit.txt"
+    )
+
+    assert response.status_code == 200
+    assert (
+        "junior-targeted-job-evaluation-audit-2026-07-26-1630.txt"
+        in response.headers["Content-Disposition"]
+    )
 
 
 def test_report_file_rejects_non_report_file(tmp_path: Path) -> None:
@@ -5265,7 +5315,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.4" in html
+    assert "RC6 Build 1.5" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

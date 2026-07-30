@@ -29,7 +29,11 @@ from job_radar.job_decision_service import (
     save_job_decisions_bulk,
 )
 from job_radar.decision_event_log import record_decision_event
-from job_radar.evaluation_audit import EVALUATION_AUDIT_NAME
+from job_radar.evaluation_audit import (
+    EVALUATION_AUDIT_NAME,
+    TARGETED_EVALUATION_AUDIT_NAME,
+    evaluation_audit_download_name,
+)
 from job_radar.raw_scan_export import (
     RAW_SCAN_ARCHIVE_NAME,
     raw_scan_download_name,
@@ -787,11 +791,18 @@ def register_report_routes(
     def report_file(report_name: str):
         reports_path = Path(get_reports_path()).resolve()
         report_path = _validate_download_path(reports_path, report_name)
-        download_name = (
-            raw_scan_download_name(report_path.stat().st_mtime)
-            if report_path.name == RAW_SCAN_ARCHIVE_NAME
-            else report_path.name
-        )
+        modified_timestamp = report_path.stat().st_mtime
+        if report_path.name == RAW_SCAN_ARCHIVE_NAME:
+            download_name = raw_scan_download_name(modified_timestamp)
+        elif report_path.name == EVALUATION_AUDIT_NAME:
+            download_name = evaluation_audit_download_name(modified_timestamp)
+        elif report_path.name == TARGETED_EVALUATION_AUDIT_NAME:
+            download_name = evaluation_audit_download_name(
+                modified_timestamp,
+                targeted=True,
+            )
+        else:
+            download_name = report_path.name
 
         return send_from_directory(
             reports_path,

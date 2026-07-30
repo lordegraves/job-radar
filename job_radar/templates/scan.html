@@ -151,7 +151,10 @@
         class="latest-output-card"
         {% if not scan_status.has_results and scan_result != "success" %}hidden{% endif %}
     >
-        <p><strong>Latest scan completed.</strong> Review the jobs from the latest successful scan.</p>
+        <p>
+            <strong>Latest scan completed.</strong>
+            <span id="latest-output-summary">Review the jobs from the latest successful scan.</span>
+        </p>
         <div class="latest-output-links">
             <a href="{{ url_for('review_jobs') }}">Review jobs</a>
             <a href="{{ url_for('report_view', report_name='target-scan.html') }}">Read-only HTML report</a>
@@ -275,6 +278,7 @@
     const scanFailure = document.getElementById("scan-failure");
     const scanFailureSummary = document.getElementById("scan-failure-summary");
     const latestOutput = document.getElementById("latest-output");
+    const latestOutputSummary = document.getElementById("latest-output-summary");
     const csrfToken = scanForm.elements["_csrf_token"].value;
 
     selectAllCompanies?.addEventListener("change", () => {
@@ -302,6 +306,12 @@
         latestOutput.hidden = !status.has_results;
 
         scanStage.textContent = status.stage_label;
+        if (status.has_results) {
+            const duration = formatDuration(status.elapsed_seconds);
+            latestOutputSummary.textContent = duration
+                ? `Junior checked ${status.companies_scanned} company sources in ${duration}. Review the jobs from the latest successful scan.`
+                : "Review the jobs from the latest successful scan.";
+        }
 
         if (status.progress_determinate) {
             scanProgress.max = 100;
@@ -340,6 +350,8 @@
             "Scan is starting. This may take a few minutes.";
 
         try {
+            // Let the visible starting state paint before the request begins.
+            await new Promise(window.requestAnimationFrame);
             const response = await fetch(scanForm.action, {
                 method: "POST",
                 headers: {
@@ -385,6 +397,8 @@
             "Junior is preparing the selected company sources.";
 
         try {
+            // Let the visible starting state paint before the request begins.
+            await new Promise(window.requestAnimationFrame);
             const response = await fetch(selectedScanForm.action, {
                 method: "POST",
                 headers: {"Accept": "application/json"},

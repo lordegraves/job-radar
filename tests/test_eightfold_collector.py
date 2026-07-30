@@ -91,19 +91,29 @@ def test_eightfold_connection_test_reads_only_one_search_page(monkeypatch) -> No
 
     def fake_get_response(url, **kwargs):
         calls.append((url, kwargs))
+        if url.endswith("/api/pcsx/search"):
+            return _Response(
+                {
+                    "data": {
+                        "count": 1,
+                        "positions": [
+                            {
+                                "id": 123,
+                                "displayJobId": "JR-123",
+                                "name": "Platform Engineer",
+                                "locations": ["Colorado, United States"],
+                                "positionUrl": "/careers/job/123",
+                            }
+                        ],
+                    }
+                }
+            )
         return _Response(
             {
                 "data": {
-                    "count": 1,
-                    "positions": [
-                        {
-                            "id": 123,
-                            "displayJobId": "JR-123",
-                            "name": "Platform Engineer",
-                            "locations": ["Colorado, United States"],
-                            "positionUrl": "/careers/job/123",
-                        }
-                    ],
+                    "displayJobId": "JR-123",
+                    "locations": ["Colorado, United States"],
+                    "jobDescription": "Operate reliable systems.",
                 }
             }
         )
@@ -126,8 +136,63 @@ def test_eightfold_connection_test_reads_only_one_search_page(monkeypatch) -> No
     )
 
     assert len(jobs) == 1
-    assert len(calls) == 1
+    assert len(calls) == 2
     assert calls[0][0].endswith("/api/pcsx/search")
+    assert calls[1][0].endswith("/api/pcsx/position_details")
+
+
+def test_eightfold_retries_temporary_detail_failure(monkeypatch) -> None:
+    response = requests.Response()
+    response.status_code = 429
+    detail_calls = 0
+
+    def fake_get_response(url, **kwargs):
+        nonlocal detail_calls
+        if url.endswith("/api/pcsx/search"):
+            return _Response(
+                {
+                    "data": {
+                        "count": 1,
+                        "positions": [
+                            {
+                                "id": 123,
+                                "name": "Platform Engineer",
+                                "positionUrl": "/careers/job/123",
+                            }
+                        ],
+                    }
+                }
+            )
+        detail_calls += 1
+        if detail_calls < 3:
+            raise requests.HTTPError("private response text", response=response)
+        return _Response(
+            {
+                "data": {
+                    "displayJobId": "JR-123",
+                    "jobDescription": "Operate reliable systems.",
+                }
+            }
+        )
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+    monkeypatch.setattr("job_radar.collectors.eightfold.time.sleep", lambda _: None)
+
+    jobs = collect_eightfold_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_url": "https://apply.example.com",
+            "domain": "example.com",
+        }
+    )
+
+    assert len(jobs) == 1
+    assert jobs[0].description == "Operate reliable systems."
+    assert detail_calls == 3
 
 
 def test_eightfold_uses_actual_server_page_size_and_keeps_fetching(

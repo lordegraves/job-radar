@@ -189,6 +189,8 @@ def test_scan_pipeline_tracks_new_then_seen(
     assert '<h2 id="top-matches">Top Matches</h2>' in first_html
     assert "Senior Infrastructure Engineer" in first_html
     assert "Example AI - Senior Infrastructure Engineer" in evaluation_audit
+    assert "Scan kind: full" in evaluation_audit
+    assert "Scan run ID: 1" in evaluation_audit
     assert "Final outcome: top match" in evaluation_audit
     assert (
         "Public posting: https://boards.greenhouse.io/exampleai/jobs/123"
@@ -229,6 +231,29 @@ def test_scan_pipeline_tracks_new_then_seen(
     assert '<h2 id="top-matches">Top Matches</h2>' in second_html
     assert "Senior Infrastructure Engineer" in second_html
 
+    full_audit_after_second_scan = (
+        report_file.parent / "job-evaluation-audit.txt"
+    ).read_text(encoding="utf-8")
+
+    handle_scan(
+        config_path=str(config_file),
+        settings_path=str(settings_file),
+        report_path=str(report_file),
+        scoring_path=str(scoring_file),
+        trigger_source="manual:selected",
+        selected_employer_ids=["example_ai"],
+    )
+
+    targeted_audit = (
+        report_file.parent / "targeted-job-evaluation-audit.txt"
+    ).read_text(encoding="utf-8")
+    assert "Scan kind: selected" in targeted_audit
+    assert "Scan run ID: 3" in targeted_audit
+    assert "Example AI - Senior Infrastructure Engineer" in targeted_audit
+    assert (
+        report_file.parent / "job-evaluation-audit.txt"
+    ).read_text(encoding="utf-8") == full_audit_after_second_scan
+
 
 def test_scan_does_not_finalize_without_evaluation_audit(
     tmp_path: Path,
@@ -247,6 +272,36 @@ def test_scan_does_not_finalize_without_evaluation_audit(
     )
 
     with pytest.raises(RuntimeError, match="evaluation audit"):
+        handle_scan(
+            config_path=str(config_file),
+            settings_path=str(settings_file),
+            report_path=str(report_file),
+            scoring_path=str(scoring_file),
+        )
+
+
+def test_scan_does_not_finalize_with_incomplete_evaluation_audit(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_file, settings_file, _, report_file, scoring_file = (
+        write_scan_test_files(tmp_path)
+    )
+    monkeypatch.setattr(
+        "job_radar.scan_service.collect_jobs_for_company",
+        lambda company_config: [make_fake_posting()],
+    )
+
+    def write_incomplete_audit(path, *args, **kwargs):
+        Path(path).write_text("Incomplete audit\n", encoding="utf-8")
+        return SimpleNamespace(jobs_evaluated=0)
+
+    monkeypatch.setattr(
+        "job_radar.scan_service.write_evaluation_audit",
+        write_incomplete_audit,
+    )
+
+    with pytest.raises(RuntimeError, match="incomplete"):
         handle_scan(
             config_path=str(config_file),
             settings_path=str(settings_file),
