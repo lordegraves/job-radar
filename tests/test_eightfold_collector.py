@@ -195,6 +195,73 @@ def test_eightfold_retries_temporary_detail_failure(monkeypatch) -> None:
     assert detail_calls == 3
 
 
+def test_eightfold_reuses_fresh_unchanged_detail(monkeypatch) -> None:
+    from datetime import UTC, datetime
+
+    from job_radar.collectors.incremental_cache import (
+        CACHE_CONFIG_KEY,
+        listing_fingerprint,
+    )
+    from job_radar.models import JobPosting
+    from job_radar.storage import CachedSourcePosting
+
+    raw_position = {
+        "id": 123,
+        "name": "Platform Engineer",
+        "locations": ["Remote"],
+        "positionUrl": "/careers/job/123",
+    }
+    fingerprint = listing_fingerprint(
+        {
+            "id": "123",
+            "title": "Platform Engineer",
+            "path": "/careers/job/123",
+            "locations": ["Remote"],
+            "workstyle": None,
+        }
+    )
+    cached = CachedSourcePosting(
+        posting=JobPosting(
+            company_key="example",
+            company_name="Example",
+            source_type="eightfold",
+            source_job_id="123",
+            source_url="https://apply.example.com/careers/job/123",
+            title="Platform Engineer",
+            location="Remote",
+            description="Complete cached responsibilities.",
+            canonical_key="example",
+            content_hash="cached",
+        ),
+        listing_fingerprint=fingerprint,
+        detail_verified_at=datetime.now(UTC).isoformat(),
+    )
+
+    def fake_get_response(url, **kwargs):
+        if url.endswith("/api/pcsx/search"):
+            return _Response(
+                {"data": {"count": 1, "positions": [raw_position]}}
+            )
+        raise AssertionError("detail request was not skipped")
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+    jobs = collect_eightfold_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_type": "eightfold",
+            "source_url": "https://apply.example.com",
+            "domain": "example.com",
+            CACHE_CONFIG_KEY: {"123": cached},
+        }
+    )
+
+    assert jobs[0].description == "Complete cached responsibilities."
+
+
 def test_eightfold_uses_actual_server_page_size_and_keeps_fetching(
     monkeypatch,
 ) -> None:
@@ -400,3 +467,64 @@ def test_eightfold_records_later_results_request_failure_stage(monkeypatch) -> N
         )
 
     assert caught.value.failure_stage == "results_pagination_request"
+
+
+def test_eightfold_retries_rate_limited_results_page(monkeypatch) -> None:
+    response = requests.Response()
+    response.status_code = 429
+    response.headers["Retry-After"] = "3"
+    search_calls = 0
+    delays = []
+
+    def fake_get_response(url, **kwargs):
+        nonlocal search_calls
+        if url.endswith("/api/pcsx/position_details"):
+            position_id = kwargs["params"]["position_id"]
+            return _Response(
+                {
+                    "data": {
+                        "displayJobId": str(position_id),
+                        "jobDescription": "Operate reliable systems.",
+                    }
+                }
+            )
+        search_calls += 1
+        start = kwargs["params"]["start"]
+        if search_calls == 2:
+            raise requests.HTTPError("rate limited", response=response)
+        positions = (
+            [
+                {
+                    "id": start + 1,
+                    "name": f"Role {start + 1}",
+                    "positionUrl": f"/careers/job/{start + 1}",
+                }
+            ]
+            if start < 2
+            else []
+        )
+        return _Response(
+            {"data": {"count": 2, "positions": positions}}
+        )
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.time.sleep",
+        delays.append,
+    )
+
+    jobs = collect_eightfold_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_url": "https://apply.example.com",
+            "domain": "example.com",
+            "max_pages": 3,
+        }
+    )
+
+    assert len(jobs) == 2
+    assert 3.0 in delays

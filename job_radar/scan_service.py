@@ -2,9 +2,16 @@
 
 from datetime import UTC, datetime
 from pathlib import Path
+import re
+from time import monotonic
 
 from job_radar.candidate_profile import CandidateProfile
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.incremental_cache import (
+    CACHE_CONFIG_KEY,
+    FINGERPRINTS_CONFIG_KEY,
+    REUSED_CONFIG_KEY,
+)
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import (
     evaluate_compensation,
@@ -77,8 +84,10 @@ from job_radar.storage import (
     complete_scan_run,
     fail_scan_run,
     fetch_included_job_history_records,
+    fetch_source_posting_cache,
     initialize_database,
     record_scan_error,
+    replace_source_posting_cache,
     start_scan_run,
     update_scan_run_progress,
     upsert_job_posting,
@@ -95,14 +104,11 @@ def _find_profile_avoid_matches(
     if candidate_profile is None:
         return []
 
-    posting_text = clean_text(
-        " ".join(
-            [
-                getattr(posting, "title", "") or "",
-                getattr(posting, "description", "") or "",
-            ]
-        )
+    title_text = clean_text(getattr(posting, "title", "") or "").lower()
+    description_text = clean_text(
+        getattr(posting, "description", "") or ""
     ).lower()
+    posting_text = f"{title_text} {description_text}"
 
     matches: list[str] = []
 
@@ -117,10 +123,40 @@ def _find_profile_avoid_matches(
                 matches.append(avoid_term)
             continue
 
-        if normalized_avoid in posting_text:
+        if _is_central_profile_exclusion(
+            normalized_avoid,
+            title_text=title_text,
+            description_text=description_text,
+        ):
             matches.append(avoid_term)
 
     return _dedupe_preserving_order(matches)
+
+
+def _is_central_profile_exclusion(
+    exclusion: str,
+    *,
+    title_text: str,
+    description_text: str,
+) -> bool:
+    """Do not reject a job for an incidental phrase buried in its description."""
+
+    phrase = re.escape(exclusion).replace(r"\ ", r"\s+")
+    bounded_phrase = rf"(?<!\w){phrase}(?!\w)"
+    if re.search(bounded_phrase, title_text):
+        return True
+
+    central_markers = (
+        r"responsible\s+for",
+        r"primary\s+(?:responsibility|focus)(?:\s+is)?",
+        r"core\s+(?:responsibility|focus)(?:\s+is)?",
+        r"this\s+role\s+(?:owns|will\s+own|is\s+responsible\s+for)",
+    )
+    central_pattern = (
+        rf"(?:{'|'.join(central_markers)})"
+        rf"[\s:,-]{{1,12}}.{{0,80}}{bounded_phrase}"
+    )
+    return re.search(central_pattern, description_text) is not None
 
 
 def _has_cleared_only_signal(posting_text: str) -> bool:
@@ -442,6 +478,7 @@ def _handle_scan_unlocked(
         )
 
         for company_number, company in enumerate(companies, start=1):
+            company_started = monotonic()
             company_key = company["company_key"]
             company_name = company["name"]
             source_type = company["source_type"]
@@ -449,7 +486,13 @@ def _handle_scan_unlocked(
             print(f"- {company_key} ({company_name}) source_type={source_type}")
 
             try:
-                postings = collect_jobs_for_company(company)
+                collection_config = dict(company)
+                collection_config[CACHE_CONFIG_KEY] = fetch_source_posting_cache(
+                    database_path,
+                    str(company_key),
+                    str(source_type),
+                )
+                postings = collect_jobs_for_company(collection_config)
             except CollectorError as error:
                 diagnostic = classify_collector_failure(error)
                 error_type_parts = [diagnostic.category]
@@ -503,11 +546,36 @@ def _handle_scan_unlocked(
                     collector_errors=len(collector_errors),
                     failure_category=diagnostic.category,
                     failure_stage=diagnostic.failure_stage,
+                    company_elapsed_seconds=elapsed_seconds(company_started),
                     elapsed_seconds=elapsed_seconds(diagnostic_started),
                 )
                 continue
 
             total_jobs += len(postings)
+            observed_at = datetime.now(UTC).isoformat()
+            listing_fingerprints = collection_config.get(
+                FINGERPRINTS_CONFIG_KEY,
+                {},
+            )
+            reused_identities = collection_config.get(REUSED_CONFIG_KEY, set())
+            replace_source_posting_cache(
+                database_path,
+                company_key=str(company_key),
+                company_name=str(company_name),
+                source_type=str(source_type),
+                postings=postings,
+                listing_fingerprints=(
+                    listing_fingerprints
+                    if isinstance(listing_fingerprints, dict)
+                    else {}
+                ),
+                reused_identities=(
+                    reused_identities
+                    if isinstance(reused_identities, set)
+                    else set()
+                ),
+                observed_at=observed_at,
+            )
             record_scan_connection_result(
                 database_path,
                 company_key,
@@ -534,10 +602,13 @@ def _handle_scan_unlocked(
                 source_type=source_type,
                 companies_scanned=companies_scanned,
                 jobs_found=len(postings),
+                jobs_reused=len(reused_identities),
+                company_elapsed_seconds=elapsed_seconds(company_started),
                 elapsed_seconds=elapsed_seconds(diagnostic_started),
             )
 
         current_stage = "scoring"
+        scoring_started = monotonic()
         update_scan_run_progress(
             database_path,
             scan_run_id=scan_run_id,
@@ -689,6 +760,15 @@ def _handle_scan_unlocked(
                 )
             )
 
+        record_scan_diagnostic(
+            logs_path,
+            event="scan_evaluation_completed",
+            scan_run_id=scan_run_id,
+            stage=current_stage,
+            jobs_found=len(scored_postings),
+            phase_elapsed_seconds=elapsed_seconds(scoring_started),
+        )
+
         scored_postings.sort(key=lambda item: item.score, reverse=True)
         # Keep the complete evaluation set for the audit before user decisions
         # hide jobs from the current review inbox.
@@ -788,6 +868,7 @@ def _handle_scan_unlocked(
         )
 
         current_stage = "report_generation"
+        report_started = monotonic()
         update_scan_run_progress(
             database_path,
             scan_run_id=scan_run_id,
@@ -834,6 +915,14 @@ def _handle_scan_unlocked(
             generated_at=generated_at,
             scan_kind=scan_kind,
             scan_run_id=scan_run_id,
+        )
+        record_scan_diagnostic(
+            logs_path,
+            event="scan_report_generation_completed",
+            scan_run_id=scan_run_id,
+            stage=current_stage,
+            jobs_found=total_jobs,
+            phase_elapsed_seconds=elapsed_seconds(report_started),
         )
         # A successful scan promises a durable explanation of every evaluation.
         # Do not finalize a report set when that audit was not actually written.

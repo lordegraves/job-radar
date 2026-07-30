@@ -1,7 +1,6 @@
 """Serve manual scan controls and progress updates for the web interface."""
 
 from collections.abc import Callable
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +14,7 @@ from job_radar.runtime_paths import (
 from job_radar.company_workspace_service import build_company_workspace
 from job_radar.report_snapshot import load_report_snapshot
 from job_radar.scan_task_runner import ScanTaskRunner
+from job_radar.scan_progress import calculate_scan_elapsed_seconds
 from job_radar.storage import fetch_active_scan_run, fetch_latest_scan_run
 
 
@@ -310,26 +310,8 @@ def _build_scan_status_payload(
         "has_results": has_results,
         "failure_summary": scan_run["failure_summary"],
         "trigger_source": scan_run["trigger_source"],
-        "elapsed_seconds": _calculate_elapsed_seconds(scan_run),
+        "elapsed_seconds": calculate_scan_elapsed_seconds(scan_run),
     }
-
-
-def _calculate_elapsed_seconds(scan_run: Any) -> int | None:
-    """Return a safe whole-second runtime for a completed scan."""
-    started_at = scan_run["started_at"] or scan_run["requested_at"]
-    finished_at = scan_run["finished_at"]
-    if not started_at or not finished_at:
-        return None
-
-    try:
-        started = datetime.fromisoformat(str(started_at).replace("Z", "+00:00"))
-        finished = datetime.fromisoformat(
-            str(finished_at).replace("Z", "+00:00")
-        )
-    except (TypeError, ValueError):
-        return None
-
-    return max(0, round((finished - started).total_seconds()))
 
 
 def _build_starting_scan_payload() -> dict[str, object]:

@@ -338,6 +338,19 @@ A scan:
 8. writes the HTML report, structured snapshot, and email preview
 9. records completion or stage-specific failure
 
+The first scan after installing Build 1.6 creates an incremental cache of
+complete public source records, including jobs that are not actionable. Later
+Workday and Eightfold scans reuse a fresh complete description when the public
+listing identity, title, location, and source path are unchanged. New, changed,
+missing-cache, and stale records still retrieve full details. A failed or
+incomplete company collection never replaces that company's last valid cache
+or marks its previously observed jobs absent.
+
+The Scan page shows a live elapsed time. The final duration is also retained on
+Scan and Latest Scan Details. Privacy-safe diagnostics record the time spent on
+each company, local evaluation, report generation, and the number of source
+details reused without storing descriptions or profile contents.
+
 Occasional company or network errors may be temporary. The interface preserves error details and does not imply that one collector failure invalidates the entire scan.
 
 ## Diagnostics

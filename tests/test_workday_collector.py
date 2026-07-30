@@ -291,6 +291,83 @@ def test_collect_workday_jobs_fetches_complete_job_detail(
     assert "travel up to 50 percent" in (postings[0].description or "")
 
 
+def test_collect_workday_jobs_reuses_fresh_unchanged_detail(
+    monkeypatch,
+) -> None:
+    from datetime import UTC, datetime
+
+    from job_radar.collectors.incremental_cache import (
+        CACHE_CONFIG_KEY,
+        listing_fingerprint,
+    )
+    from job_radar.models import JobPosting
+    from job_radar.storage import CachedSourcePosting
+
+    raw_job = {
+        "title": "Platform Engineer",
+        "externalPath": "/job/Remote/Platform-Engineer_R1",
+        "locationsText": "Remote",
+        "bulletFields": ["R1"],
+    }
+    cached_posting = JobPosting(
+        company_key="example_company",
+        company_name="Example Company",
+        source_type="workday",
+        source_job_id="R1",
+        source_url="https://example.test/job/R1",
+        title="Platform Engineer",
+        location="Remote",
+        description="Complete cached responsibilities.",
+        canonical_key="example",
+        content_hash="cached",
+    )
+    fingerprint = listing_fingerprint(
+        {
+            "identity": "R1",
+            "title": "Platform Engineer",
+            "location": "Remote",
+            "external_path": raw_job["externalPath"],
+        }
+    )
+    company_config = {
+        "company_key": "example_company",
+        "name": "Example Company",
+        "source_type": "workday",
+        "source_url": "https://example.test/wday/cxs/example/External/jobs",
+        "source_base_url": "https://example.test/External",
+        "max_pages": 1,
+        CACHE_CONFIG_KEY: {
+            "R1": CachedSourcePosting(
+                posting=cached_posting,
+                listing_fingerprint=fingerprint,
+                detail_verified_at=datetime.now(UTC).isoformat(),
+            )
+        },
+    }
+
+    class SearchResponse:
+        text = ""
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"total": 1, "jobPostings": [raw_job]}
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.post",
+        lambda *args, **kwargs: SearchResponse(),
+    )
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.get",
+        lambda *args, **kwargs: pytest.fail("detail request was not skipped"),
+    )
+
+    postings = collect_workday_jobs(company_config)
+
+    assert postings[0].description == "Complete cached responsibilities."
+
+
 def test_collect_workday_jobs_ignores_false_zero_total_on_later_pages(
     monkeypatch,
 ) -> None:

@@ -3147,6 +3147,9 @@ def test_scan_status_endpoint_returns_durable_progress(
     payload = response.get_json()
 
     assert response.status_code == 200
+    elapsed_seconds = payload.pop("elapsed_seconds")
+    assert isinstance(elapsed_seconds, int)
+    assert elapsed_seconds >= 0
     assert payload == {
         "scan_run_id": scan_run_id,
         "status": "running",
@@ -3162,7 +3165,6 @@ def test_scan_status_endpoint_returns_durable_progress(
         "has_results": False,
         "failure_summary": None,
         "trigger_source": "manual",
-        "elapsed_seconds": None,
     }
 
 
@@ -5315,7 +5317,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.5" in html
+    assert "RC6 Build 1.6" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

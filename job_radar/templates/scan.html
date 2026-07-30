@@ -130,6 +130,9 @@
             {% if scan_status.companies_enabled %}
             {{ scan_status.companies_scanned }} of {{ scan_status.companies_enabled }} company sources scanned.
             {{ scan_status.jobs_found }} jobs found.
+            {% if scan_status.elapsed_seconds is not none %}
+            Elapsed: <span id="scan-elapsed">{{ scan_status.elapsed_seconds }}</span> seconds.
+            {% endif %}
             {% else %}
             Scan is running. This may take a few minutes.
             {% endif %}
@@ -321,10 +324,12 @@
         }
 
         if (status.companies_enabled > 0) {
+            const elapsed = formatDuration(status.elapsed_seconds);
             scanProgressDetails.textContent =
                 `${status.companies_scanned} of ${status.companies_enabled} ` +
                 `company sources scanned (${status.progress_percent}%). ` +
-                `${status.jobs_found} jobs found.`;
+                `${status.jobs_found} jobs found.` +
+                (elapsed ? ` Elapsed: ${elapsed}.` : "");
         } else {
             scanProgressDetails.textContent =
                 "Scan is running. This may take a few minutes.";

@@ -1492,13 +1492,40 @@ def test_find_profile_avoid_matches_detects_plain_avoid_terms() -> None:
         source_url="https://example.com/job",
         title="Senior Frontend Engineer",
         location="Remote",
-        description="Build product management tooling.",
+        description="This role is responsible for product management tooling.",
     )
 
     assert _find_profile_avoid_matches(profile, posting) == [
         "frontend",
         "product management",
     ]
+
+
+def test_find_profile_avoid_matches_ignores_incidental_description_phrase() -> None:
+    profile = CandidateProfile(
+        name="Test User",
+        compensation_floor_usd=None,
+        preferred_base_usd=None,
+        resume=None,
+        core_strengths=[],
+        credible_adjacent=[],
+        learning_or_gap=[],
+        avoid=["product management"],
+    )
+    posting = JobPosting(
+        company_key="test",
+        company_name="Test Company",
+        source_type="greenhouse",
+        source_url="https://example.com/job",
+        title="Senior Site Reliability Engineer",
+        location="Remote",
+        description=(
+            "Operate reliable infrastructure and collaborate with product "
+            "management on service priorities."
+        ),
+    )
+
+    assert _find_profile_avoid_matches(profile, posting) == []
 
 
 def test_find_profile_avoid_matches_detects_cleared_only_roles() -> None:

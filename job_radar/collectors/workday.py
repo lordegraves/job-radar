@@ -1,10 +1,16 @@
 """Collect and normalize jobs from Workday recruiting APIs."""
 
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import requests
 
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.incremental_cache import (
+    get_cached_posting,
+    listing_fingerprint,
+    record_listing,
+)
 from job_radar.collectors.pagination import get_max_pages, get_page_size
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -139,6 +145,7 @@ def _merge_workday_detail(
 def _fetch_workday_detail(
     source_url: str,
     raw_job: dict[str, Any],
+    company_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     external_path = raw_job.get("externalPath")
     if not external_path or _get_description(raw_job):
@@ -147,6 +154,42 @@ def _fetch_workday_detail(
     detail_url = _detail_api_url(source_url, str(external_path))
     if detail_url is None:
         return raw_job
+
+    identity = _get_job_id(raw_job) or str(external_path)
+    fingerprint = listing_fingerprint(
+        {
+            "identity": identity,
+            "title": _get_title(raw_job),
+            "location": _get_location(raw_job),
+            "external_path": external_path,
+        }
+    )
+    if company_config is not None:
+        cached = get_cached_posting(
+            company_config,
+            identity=identity,
+            fingerprint=fingerprint,
+        )
+        if cached is not None:
+            posting = cached.posting
+            record_listing(
+                company_config,
+                identity=identity,
+                fingerprint=fingerprint,
+                reused=True,
+            )
+            merged = dict(raw_job)
+            merged["jobDescription"] = posting.description
+            merged["locationsText"] = posting.location
+            merged["externalUrl"] = posting.source_url
+            merged["jobReqId"] = posting.source_job_id
+            return merged
+        record_listing(
+            company_config,
+            identity=identity,
+            fingerprint=fingerprint,
+            reused=False,
+        )
 
     try:
         response = requests.get(
@@ -296,10 +339,25 @@ def collect_workday_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         if not isinstance(raw_jobs, list):
             raise CollectorError("Workday payload does not contain a jobPostings list")
 
+        raw_job_dicts = [job for job in raw_jobs if isinstance(job, dict)]
+        # Four workers substantially reduce large Workday feeds without
+        # creating an unbounded burst against an employer's public service.
+        with ThreadPoolExecutor(
+            max_workers=min(4, max(1, len(raw_job_dicts)))
+        ) as executor:
+            enriched_dicts = list(
+                executor.map(
+                    lambda job: _fetch_workday_detail(
+                        str(source_url),
+                        job,
+                        company_config,
+                    ),
+                    raw_job_dicts,
+                )
+            )
+        enriched_jobs = iter(enriched_dicts)
         enriched_jobs = [
-            _fetch_workday_detail(str(source_url), raw_job)
-            if isinstance(raw_job, dict)
-            else raw_job
+            next(enriched_jobs) if isinstance(raw_job, dict) else raw_job
             for raw_job in raw_jobs
         ]
         enriched_payload = dict(response_payload)

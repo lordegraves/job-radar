@@ -8,6 +8,19 @@
 <h1 class="page-title">Latest Scan Details</h1>
 
 <section class="page-card">
+    {% if latest_scan %}
+    <p>
+        <strong>Scan {{ latest_scan.status.replace("_", " ") }}.</strong>
+        {{ latest_scan.companies_scanned }} of
+        {{ latest_scan.companies_enabled }} company sources checked;
+        {{ latest_scan.jobs_found }} jobs found.
+        {% if elapsed_seconds is not none %}
+        Elapsed time: {{ elapsed_seconds // 3600 }}h
+        {{ (elapsed_seconds % 3600) // 60 }}m
+        {{ elapsed_seconds % 60 }}s.
+        {% endif %}
+    </p>
+    {% endif %}
     <p>
         These are safe explanations of company-source warnings from the latest
         scan. Junior does not display raw responses, private URLs, credentials,

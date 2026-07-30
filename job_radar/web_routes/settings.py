@@ -64,6 +64,7 @@ from job_radar.schedule_service import (
     build_schedule_view,
     save_scan_schedule,
 )
+from job_radar.scan_progress import calculate_scan_elapsed_seconds
 from job_radar.scheduler_integration import (
     SchedulerIntegrationError,
     apply_scheduler,
@@ -72,6 +73,7 @@ from job_radar.scheduler_integration import (
     remove_scheduler,
 )
 from job_radar.source_health_service import build_latest_scan_warnings
+from job_radar.storage import fetch_latest_scan_run
 from job_radar.update_check_service import check_for_update
 from job_radar.update_install_service import (
     UpdateInstallError,
@@ -158,9 +160,16 @@ def register_settings_routes(
     @app.get("/settings/diagnostics/latest-scan")
     def settings_scan_diagnostics() -> str:
         runtime_paths = get_runtime_paths()
+        latest_scan = fetch_latest_scan_run(runtime_paths.database_path)
         return render_template(
             "settings_scan_diagnostics.html",
             warnings=build_latest_scan_warnings(runtime_paths.database_path),
+            latest_scan=latest_scan,
+            elapsed_seconds=(
+                calculate_scan_elapsed_seconds(latest_scan)
+                if latest_scan is not None
+                else None
+            ),
         )
 
     @app.get("/settings/company-discovery")

@@ -82,7 +82,12 @@ def test_employer_connection(
             source_config = employer.to_company_config()
             # A health check proves that the source is readable; it must not
             # perform the full, potentially thousands-of-jobs scan.
-            source_config["max_pages"] = 1
+            # Eightfold's most common field failure occurs only when moving to
+            # a later results page. Exercise that boundary without turning the
+            # health check into a full scan.
+            source_config["max_pages"] = (
+                2 if employer.source_type == "eightfold" else 1
+            )
             source_config["connection_test"] = True
             jobs = collect_jobs_for_company(source_config)
         except CollectorError as error:

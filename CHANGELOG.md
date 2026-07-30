@@ -6,6 +6,17 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Add an atomic all-source posting cache so follow-up Workday and Eightfold
+  scans reuse fresh unchanged descriptions, while new, changed, stale, and
+  previously incomplete jobs still retrieve and evaluate complete details.
+- Bound Workday detail retrieval to four workers, make Eightfold honor
+  `Retry-After` and bounded exponential backoff, and make its connection test
+  exercise a later results page.
+- Show live and final elapsed scan time, record separate company, evaluation,
+  and report-generation timings, and report how many details were reused.
+- Treat profile work exclusions as central-role rules: match titles and
+  explicitly stated primary responsibilities, but do not reject strong jobs
+  for an incidental phrase elsewhere in a long description.
 - Keep full-scan and selected-company evaluation audits separate, timestamp
   audit downloads, and reject incomplete audits that do not account for every
   scored job.
@@ -28,7 +39,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Recognize additional employer-specific qualification headings and nested
   JSON-LD job postings when comparing required work with résumé evidence.
 - Label the application, executable metadata, and installer consistently as
-  `RC6 Build 1.5`.
+  `RC6 Build 1.6`.
 - Add direct **View posting** links to Active Applications and Application
   History when the original public job address is available.
 - Identify the safe collection step behind Eightfold scan warnings, including

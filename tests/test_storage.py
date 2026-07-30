@@ -18,9 +18,11 @@ from job_radar.storage import (
     fail_scan_run,
     fetch_active_scan_run,
     fetch_latest_scan_run,
+    fetch_source_posting_cache,
     initialize_database,
     record_scan_error,
     record_scan_run,
+    replace_source_posting_cache,
     start_scan_run,
     update_scan_run_progress,
     upsert_job_history_record,
@@ -99,7 +101,7 @@ def test_profile_activity_migration_assigns_legacy_rows_to_active_profile(
     assert tracker_row == (profile.profile_id, "Preserve tracker data")
     assert history_row == (profile.profile_id, "Preserve history data")
     assert foreign_key_errors == []
-    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v29-*.bak"))) == 1
+    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v30-*.bak"))) == 1
 
 
 def test_clearance_migration_preserves_legacy_exclusion_behavior(
@@ -255,7 +257,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     backup_directory = tmp_path / "backups"
     backup_paths = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v29-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v30-*.bak"
         )
     )
 
@@ -281,7 +283,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
 
     backup_paths_after_second_initialization = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v29-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v30-*.bak"
         )
     )
 
@@ -366,6 +368,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
         (27,),
             (28,),
             (29,),
+            (30,),
     ]
     with connect_database(database_path) as connection:
         profile_columns = {
@@ -393,7 +396,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v29-*.bak"
+            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v30-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -436,7 +439,7 @@ def test_initialize_database_rolls_back_failed_migration(
         "_schema_migrations",
         lambda: (
             *existing_migrations,
-            (30, "synthetic failing migration", fail_after_temporary_change),
+            (31, "synthetic failing migration", fail_after_temporary_change),
         ),
     )
 
@@ -453,7 +456,7 @@ def test_initialize_database_rolls_back_failed_migration(
             """
         ).fetchone()
         migration_version = connection.execute(
-            "SELECT version FROM schema_migrations WHERE version = 30"
+                "SELECT version FROM schema_migrations WHERE version = 31"
         ).fetchone()
         foreign_key_errors = connection.execute(
             "PRAGMA foreign_key_check"
@@ -465,7 +468,7 @@ def test_initialize_database_rolls_back_failed_migration(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-current.sqlite3.pre-migration-v30-v30-*.bak"
+            "synthetic-current.sqlite3.pre-migration-v31-v31-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -503,9 +506,10 @@ def test_initialize_database_rolls_back_failed_migration(
         (25,),
         (26,),
         (27,),
-            (28,),
-            (29,),
-        ]
+                (28,),
+                (29,),
+                (30,),
+            ]
 
 
 def test_initialize_database_creates_expected_tables(tmp_path: Path) -> None:
@@ -594,6 +598,7 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
             (27, "add profile-owned job decisions"),
             (28, "add profile job-decision reasons"),
             (29, "add strong location-outlier preference"),
+            (30, "add incremental source posting cache"),
         ]
 
 
@@ -924,6 +929,55 @@ def test_upsert_job_posting_returns_seen_for_same_content(tmp_path: Path) -> Non
     assert second == "seen"
     assert count_rows(database_path, "job_postings") == 1
     assert count_rows(database_path, "job_status") == 1
+
+
+def test_source_posting_cache_replaces_one_company_atomically(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "cache.sqlite3"
+    initialize_database(database_path)
+    posting = make_posting()
+
+    replace_source_posting_cache(
+        database_path,
+        company_key=posting.company_key,
+        company_name=posting.company_name,
+        source_type=posting.source_type,
+        postings=[posting],
+        listing_fingerprints={
+            posting.source_job_id or posting.source_url: "listing-v1"
+        },
+        reused_identities=set(),
+        observed_at="2026-07-30T12:00:00+00:00",
+    )
+
+    cached = fetch_source_posting_cache(
+        database_path,
+        posting.company_key,
+        posting.source_type,
+    )
+    identity = posting.source_job_id or posting.source_url
+
+    assert cached[identity].posting.description == posting.description
+    assert cached[identity].listing_fingerprint == "listing-v1"
+    assert cached[identity].detail_verified_at == "2026-07-30T12:00:00+00:00"
+
+    replace_source_posting_cache(
+        database_path,
+        company_key=posting.company_key,
+        company_name=posting.company_name,
+        source_type=posting.source_type,
+        postings=[],
+        listing_fingerprints={},
+        reused_identities=set(),
+        observed_at="2026-07-31T12:00:00+00:00",
+    )
+
+    assert fetch_source_posting_cache(
+        database_path,
+        posting.company_key,
+        posting.source_type,
+    ) == {}
 
 
 def test_upsert_job_posting_returns_changed_for_different_content(tmp_path: Path) -> None:

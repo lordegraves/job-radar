@@ -1,7 +1,9 @@
 """Turn stored scan-run details into understandable GUI progress information."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from sqlite3 import Row
+from typing import Any
 
 
 STAGE_LABELS = {
@@ -48,6 +50,33 @@ class ScanProgressView:
     is_running: bool
     is_terminal: bool
     succeeded: bool
+
+
+def calculate_scan_elapsed_seconds(
+    scan_run: Any,
+    *,
+    now: datetime | None = None,
+) -> int | None:
+    """Return live or final elapsed time from durable scan timestamps."""
+
+    started_at = scan_run["started_at"] or scan_run["requested_at"]
+    finished_at = scan_run["finished_at"]
+    if not started_at:
+        return None
+    try:
+        started = datetime.fromisoformat(str(started_at).replace("Z", "+00:00"))
+        finished = (
+            datetime.fromisoformat(str(finished_at).replace("Z", "+00:00"))
+            if finished_at
+            else (now or datetime.now(UTC))
+        )
+    except (TypeError, ValueError):
+        return None
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=UTC)
+    if finished.tzinfo is None:
+        finished = finished.replace(tzinfo=UTC)
+    return max(0, round((finished - started).total_seconds()))
 
 
 def _build_status_label(status: str) -> str:

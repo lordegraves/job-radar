@@ -12,6 +12,11 @@ import requests
 
 from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.incremental_cache import (
+    get_cached_posting,
+    listing_fingerprint,
+    record_listing,
+)
 from job_radar.collectors.pagination import get_max_pages, get_page_size
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -20,7 +25,10 @@ from job_radar.normalize import make_canonical_key, make_content_hash
 DEFAULT_PAGE_SIZE = 20
 DEFAULT_MAX_PAGES = 100
 DETAIL_REQUEST_ATTEMPTS = 3
-DETAIL_RETRY_DELAY_SECONDS = 0.25
+DETAIL_RETRY_DELAY_SECONDS = 1.0
+SEARCH_REQUEST_ATTEMPTS = 5
+SEARCH_RETRY_DELAY_SECONDS = 2.0
+REQUEST_PACING_SECONDS = 0.1
 
 
 def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
@@ -39,7 +47,7 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     expected_total: int | None = None
     # A source-health check must exercise the detail endpoint used by a real
     # scan, not merely prove that Eightfold's search page can be reached.
-    detail_probe_pending = connection_test and max_pages == 1
+    detail_probe_pending = connection_test and max_pages in {1, 2}
 
     start = 0
     for page_index in range(max_pages):
@@ -53,27 +61,13 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
             if page_index == 0
             else "results_pagination_response"
         )
-        try:
-            response = get_response(
-                f"{source_url}/api/pcsx/search",
-                params={
-                    "domain": domain,
-                    "query": "",
-                    "location": "",
-                    "start": start,
-                    "sort_by": "relevance",
-                },
-                headers={
-                    "Accept": "application/json",
-                    "User-Agent": "JobRadar/0.1 local career-source scanner",
-                },
-                timeout=30,
-            )
-        except requests.RequestException as error:
-            raise CollectorError(
-                f"Eightfold search failed for {company_name}: {error}",
-                failure_stage=request_stage,
-            ) from error
+        response = _fetch_search_page(
+            source_url=source_url,
+            domain=domain,
+            start=start,
+            company_name=company_name,
+            failure_stage=request_stage,
+        )
 
         try:
             payload = response.json()
@@ -105,6 +99,7 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
                 source_url=source_url,
                 domain=domain,
                 raw_position=raw_position,
+                company_config=company_config,
                 fetch_details=not connection_test or detail_probe_pending,
             )
             if posting is None:
@@ -123,9 +118,9 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
             expected_total = max(expected_total or 0, count)
         if expected_total is not None and len(postings) >= expected_total:
             break
-        if max_pages == 1:
-            # Source-health checks deliberately sample one result page. A
-            # normal scan retains the configured multi-page behavior.
+        if connection_test and page_index + 1 >= max_pages:
+            # Source-health checks deliberately sample a bounded result set.
+            # A normal scan retains the configured multi-page behavior.
             break
         # Eightfold may enforce a smaller server-side page size than Junior
         # requests. Advance by what the server actually returned so valid jobs
@@ -133,6 +128,7 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         start += len(raw_positions)
         if expected_total is None and len(raw_positions) < page_size:
             break
+        time.sleep(REQUEST_PACING_SECONDS)
 
     return postings
 
@@ -144,14 +140,38 @@ def _build_posting(
     source_url: str,
     domain: str,
     raw_position: dict[str, Any],
+    company_config: dict[str, Any] | None = None,
     fetch_details: bool = True,
 ) -> JobPosting | None:
     position_id = str(raw_position.get("id") or "").strip()
+    listing_identity = str(
+        raw_position.get("displayJobId") or position_id
+    ).strip()
     title = str(raw_position.get("name") or "").strip()
     position_path = str(raw_position.get("positionUrl") or "").strip()
     if not position_id or not title or not position_path:
         return None
 
+    fingerprint = listing_fingerprint(
+        {
+            "id": listing_identity,
+            "title": title,
+            "path": position_path,
+            "locations": raw_position.get("locations"),
+            "workstyle": raw_position.get(
+                "efcustomTextJobRequisitionWorkstyle"
+            ),
+        }
+    )
+    cached = (
+        get_cached_posting(
+            company_config,
+            identity=listing_identity,
+            fingerprint=fingerprint,
+        )
+        if company_config is not None and fetch_details
+        else None
+    )
     detail = (
         _fetch_position_detail(
             source_url=source_url,
@@ -159,9 +179,40 @@ def _build_posting(
             position_id=position_id,
             company_name=company_name,
         )
-        if fetch_details
+        if fetch_details and cached is None
         else {}
     )
+    if company_config is not None:
+        record_listing(
+            company_config,
+            identity=listing_identity,
+            fingerprint=fingerprint,
+            reused=cached is not None,
+        )
+    if cached is not None:
+        cached_posting = cached.posting
+        return JobPosting(
+            company_key=company_key,
+            company_name=company_name,
+            source_type="eightfold",
+            source_url=cached_posting.source_url,
+            title=title,
+            location=cached_posting.location,
+            description=cached_posting.description,
+            source_job_id=cached_posting.source_job_id,
+            remote_status=cached_posting.remote_status,
+            salary_text=cached_posting.salary_text,
+            canonical_key=make_canonical_key(
+                company_name,
+                title,
+                cached_posting.location,
+            ),
+            content_hash=make_content_hash(
+                title,
+                cached_posting.location,
+                cached_posting.description,
+            ),
+        )
     locations = detail.get("locations") or raw_position.get("locations") or []
     location = ", ".join(str(item) for item in locations if item) or None
     description = _plain_text(
@@ -174,11 +225,9 @@ def _build_posting(
         or raw_position.get("workLocationOption")
         or ""
     ).strip() or None
-    source_job_id = str(
-        detail.get("displayJobId")
-        or raw_position.get("displayJobId")
-        or position_id
-    )
+    # Use the identity advertised by the listing so incremental lookup can
+    # decide whether a detail request is needed before making that request.
+    source_job_id = listing_identity
     posting_url = urljoin(f"{source_url}/", position_path)
 
     return JobPosting(
@@ -194,6 +243,58 @@ def _build_posting(
         salary_text=None,
         canonical_key=make_canonical_key(company_name, title, location),
         content_hash=make_content_hash(title, location, description),
+    )
+
+
+def _fetch_search_page(
+    *,
+    source_url: str,
+    domain: str,
+    start: int,
+    company_name: str,
+    failure_stage: str,
+) -> requests.Response:
+    """Honor rate limiting before declaring a paginated scan incomplete."""
+
+    for attempt in range(SEARCH_REQUEST_ATTEMPTS):
+        try:
+            return get_response(
+                f"{source_url}/api/pcsx/search",
+                params={
+                    "domain": domain,
+                    "query": "",
+                    "location": "",
+                    "start": start,
+                    "sort_by": "relevance",
+                },
+                headers={
+                    "Accept": "application/json",
+                    "User-Agent": "JobRadar/0.1 local career-source scanner",
+                },
+                timeout=30,
+            )
+        except requests.RequestException as error:
+            status_code = getattr(error.response, "status_code", None)
+            retryable = status_code == 429 or (
+                isinstance(status_code, int) and status_code >= 500
+            )
+            if retryable and attempt + 1 < SEARCH_REQUEST_ATTEMPTS:
+                retry_after = getattr(error.response, "headers", {}).get(
+                    "Retry-After"
+                )
+                try:
+                    delay = float(retry_after)
+                except (TypeError, ValueError):
+                    delay = SEARCH_RETRY_DELAY_SECONDS * (2**attempt)
+                time.sleep(min(max(delay, 0.1), 30.0))
+                continue
+            raise CollectorError(
+                f"Eightfold search failed for {company_name}: {error}",
+                failure_stage=failure_stage,
+            ) from error
+    raise CollectorError(
+        f"Eightfold search failed for {company_name}.",
+        failure_stage=failure_stage,
     )
 
 

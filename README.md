@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.5`
+- Current field-test build: `RC6 Build 1.6`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -245,7 +245,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in RC6 Build 1.5. Diagnostics still
+capabilities and are not implemented in RC6 Build 1.6. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -411,7 +411,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.5.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.6.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

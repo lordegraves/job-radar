@@ -8,6 +8,7 @@ a failure cannot leave only part of an upgrade applied.
 
 import sqlite3
 import unicodedata
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -18,6 +19,15 @@ from job_radar.tracker.tracker_storage import (
     initialize_tracker_schema,
     migrate_tracker_schema,
 )
+
+
+@dataclass(frozen=True)
+class CachedSourcePosting:
+    """Public source data that can safely avoid an unchanged detail request."""
+
+    posting: JobPosting
+    listing_fingerprint: str
+    detail_verified_at: str
 
 
 SCHEMA_SQL = """
@@ -333,6 +343,11 @@ def _schema_migrations() -> tuple:
             29,
             "add strong location-outlier preference",
             _migrate_strong_location_outlier_preference,
+        ),
+        (
+            30,
+            "add incremental source posting cache",
+            _migrate_incremental_source_posting_cache,
         ),
     )
 
@@ -1442,6 +1457,42 @@ def _migrate_strong_location_outlier_preference(
         )
 
 
+def _migrate_incremental_source_posting_cache(
+    connection: sqlite3.Connection,
+) -> None:
+    """Cache complete public source records separately from actionable jobs."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS source_posting_cache (
+            company_key TEXT NOT NULL,
+            source_type TEXT NOT NULL,
+            source_identity TEXT NOT NULL,
+            source_job_id TEXT,
+            source_url TEXT NOT NULL,
+            title TEXT NOT NULL,
+            location TEXT,
+            remote_status TEXT,
+            salary_text TEXT,
+            description TEXT,
+            canonical_key TEXT NOT NULL,
+            content_hash TEXT NOT NULL,
+            listing_fingerprint TEXT NOT NULL,
+            detail_verified_at TEXT NOT NULL,
+            last_seen_at TEXT NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY (company_key, source_type, source_identity)
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_source_posting_cache_company_active
+        ON source_posting_cache(company_key, is_active, last_seen_at)
+        """
+    )
+
+
 def _migrate_profile_scoring_config(
     connection: sqlite3.Connection,
 ) -> None:
@@ -2006,6 +2057,133 @@ def upsert_job_posting(
                 (job_posting_id, scan_run_id, result),
             )
         return result
+
+
+def fetch_source_posting_cache(
+    database_path: str | Path,
+    company_key: str,
+    source_type: str,
+) -> dict[str, CachedSourcePosting]:
+    """Load the last complete public records for one company source."""
+
+    with connect_database(Path(database_path)) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM source_posting_cache
+            WHERE company_key = ? AND source_type = ? AND is_active = 1
+            """,
+            (company_key, source_type),
+        ).fetchall()
+
+    cached: dict[str, CachedSourcePosting] = {}
+    for row in rows:
+        posting = JobPosting(
+            company_key=row["company_key"],
+            company_name=row["company_key"],
+            source_type=row["source_type"],
+            source_job_id=row["source_job_id"],
+            source_url=row["source_url"],
+            title=row["title"],
+            location=row["location"],
+            remote_status=row["remote_status"],
+            salary_text=row["salary_text"],
+            description=row["description"],
+            canonical_key=row["canonical_key"],
+            content_hash=row["content_hash"],
+        )
+        cached[row["source_identity"]] = CachedSourcePosting(
+            posting=posting,
+            listing_fingerprint=row["listing_fingerprint"],
+            detail_verified_at=row["detail_verified_at"],
+        )
+    return cached
+
+
+def replace_source_posting_cache(
+    database_path: str | Path,
+    *,
+    company_key: str,
+    company_name: str,
+    source_type: str,
+    postings: list[JobPosting],
+    listing_fingerprints: dict[str, str],
+    reused_identities: set[str],
+    observed_at: str,
+) -> None:
+    """Atomically replace one cache only after its collector fully succeeds."""
+
+    with connect_database(Path(database_path)) as connection:
+        connection.execute(
+            """
+            UPDATE source_posting_cache
+            SET is_active = 0
+            WHERE company_key = ? AND source_type = ?
+            """,
+            (company_key, source_type),
+        )
+        for posting in postings:
+            identity = posting.source_job_id or posting.source_url
+            if not identity:
+                continue
+            fingerprint = listing_fingerprints.get(identity, posting.content_hash or "")
+            existing = connection.execute(
+                """
+                SELECT detail_verified_at
+                FROM source_posting_cache
+                WHERE company_key = ? AND source_type = ? AND source_identity = ?
+                """,
+                (company_key, source_type, identity),
+            ).fetchone()
+            detail_verified_at = (
+                existing[0]
+                if identity in reused_identities and existing is not None
+                else observed_at
+            )
+            connection.execute(
+                """
+                INSERT INTO source_posting_cache (
+                    company_key, source_type, source_identity, source_job_id,
+                    source_url, title, location, remote_status, salary_text,
+                    description, canonical_key, content_hash,
+                    listing_fingerprint, detail_verified_at, last_seen_at,
+                    is_active
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                ON CONFLICT(company_key, source_type, source_identity) DO UPDATE SET
+                    source_job_id = excluded.source_job_id,
+                    source_url = excluded.source_url,
+                    title = excluded.title,
+                    location = excluded.location,
+                    remote_status = excluded.remote_status,
+                    salary_text = excluded.salary_text,
+                    description = excluded.description,
+                    canonical_key = excluded.canonical_key,
+                    content_hash = excluded.content_hash,
+                    listing_fingerprint = excluded.listing_fingerprint,
+                    detail_verified_at = excluded.detail_verified_at,
+                    last_seen_at = excluded.last_seen_at,
+                    is_active = 1
+                """,
+                (
+                    company_key,
+                    source_type,
+                    identity,
+                    posting.source_job_id,
+                    posting.source_url,
+                    posting.title,
+                    posting.location,
+                    posting.remote_status,
+                    posting.salary_text,
+                    posting.description,
+                    posting.canonical_key or "",
+                    posting.content_hash or "",
+                    fingerprint,
+                    detail_verified_at,
+                    observed_at,
+                ),
+            )
 
 
 def upsert_job_history_record_with_connection(

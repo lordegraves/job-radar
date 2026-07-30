@@ -26,6 +26,7 @@ _SAFE_FIELDS = {
     "jobs_new",
     "jobs_seen",
     "jobs_changed",
+    "jobs_reused",
     "jobs_decided",
     "jobs_actionable",
     "jobs_not_actionable",
@@ -43,6 +44,8 @@ _SAFE_FIELDS = {
     "failure_category",
     "failure_reason",
     "elapsed_seconds",
+    "company_elapsed_seconds",
+    "phase_elapsed_seconds",
 }
 
 
