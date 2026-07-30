@@ -3497,6 +3497,28 @@ def test_reports_page_lists_only_current_scan_outputs(
     assert "Review decisions are made on the Review Jobs page." in html
 
 
+def test_reports_page_warns_when_current_scan_audit_is_missing(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    (reports_path / "target-scan.html").write_text(
+        "<html><body>Target scan</body></html>",
+        encoding="utf-8",
+    )
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+
+    app = create_app(settings_path=str(settings_file))
+    response = app.test_client().get("/reports")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Evaluation audit unavailable for this report set." in html
+    assert "Run a new scan after reinstalling this corrected build." in html
+
+
 def test_reports_page_shows_primary_outputs_in_display_order(
     tmp_path: Path,
 ) -> None:

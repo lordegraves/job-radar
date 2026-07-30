@@ -5,6 +5,8 @@ import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from job_radar.cli import handle_scan
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -226,3 +228,28 @@ def test_scan_pipeline_tracks_new_then_seen(
     assert "<h1>junior Report</h1>" in second_html
     assert '<h2 id="top-matches">Top Matches</h2>' in second_html
     assert "Senior Infrastructure Engineer" in second_html
+
+
+def test_scan_does_not_finalize_without_evaluation_audit(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_file, settings_file, _, report_file, scoring_file = (
+        write_scan_test_files(tmp_path)
+    )
+    monkeypatch.setattr(
+        "job_radar.scan_service.collect_jobs_for_company",
+        lambda company_config: [make_fake_posting()],
+    )
+    monkeypatch.setattr(
+        "job_radar.scan_service.write_evaluation_audit",
+        lambda *args, **kwargs: None,
+    )
+
+    with pytest.raises(RuntimeError, match="evaluation audit"):
+        handle_scan(
+            config_path=str(config_file),
+            settings_path=str(settings_file),
+            report_path=str(report_file),
+            scoring_path=str(scoring_file),
+        )

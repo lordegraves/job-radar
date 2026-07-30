@@ -8,6 +8,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 - Add a downloadable privacy-safe evaluation audit explaining why every
   collected job was surfaced or omitted.
+- Require successful scans to verify that their evaluation audit was durably
+  created, and warn on Reports when a current report set is missing it.
 - Retain each evaluation audit with its verified archived report set.
 - Collect complete Workday and SelectMinds job-detail records before
   evaluation so travel, regional restrictions, telework language,

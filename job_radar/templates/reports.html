@@ -39,6 +39,11 @@
         font-weight: bold;
     }
 
+    .audit-warning {
+        border-left: 4px solid #f5c451;
+        margin-top: 18px;
+    }
+
     @media (max-width: 900px) {
         .primary-output-grid {
             grid-template-columns: 1fr;
@@ -61,6 +66,16 @@
     <p class="muted">Latest scan completed {{ latest_report.generated_at }}.</p>
     {% endif %}
 </div>
+
+{% if evaluation_audit_missing %}
+<div class="page-card audit-warning" role="alert">
+    <strong>Evaluation audit unavailable for this report set.</strong>
+    <p>
+        These files may have been created by an older or incomplete scan.
+        Run a new scan after reinstalling this corrected build.
+    </p>
+</div>
+{% endif %}
 
 <section class="report-exports">
 <h2>View or download reports</h2>

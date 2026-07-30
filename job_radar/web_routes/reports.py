@@ -412,6 +412,18 @@ def register_report_routes(
     def reports() -> str:
         reports_path = get_reports_path()
         primary_report_files = _get_report_file_views(reports_path)
+        current_scan_outputs_exist = any(
+            (Path(reports_path) / name).is_file()
+            for name in (
+                "target-scan.html",
+                "target-email-preview.txt",
+                RAW_SCAN_ARCHIVE_NAME,
+            )
+        )
+        evaluation_audit_missing = (
+            current_scan_outputs_exist
+            and not (Path(reports_path) / EVALUATION_AUDIT_NAME).is_file()
+        )
 
         return render_template(
             "reports.html",
@@ -419,6 +431,7 @@ def register_report_routes(
             latest_report=build_latest_report_summary(reports_path),
             primary_report_files=primary_report_files,
             retained_report_runs=list_retained_report_runs(reports_path),
+            evaluation_audit_missing=evaluation_audit_missing,
         )
 
     @app.get("/review-jobs")

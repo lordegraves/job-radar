@@ -826,6 +826,16 @@ def _handle_scan_unlocked(
             decided_job_ids=decided_job_ids,
             generated_at=generated_at,
         )
+        # A successful scan promises a durable explanation of every evaluation.
+        # Do not finalize a report set when that audit was not actually written.
+        if (
+            not evaluation_audit_path.is_file()
+            or evaluation_audit_path.stat().st_size <= 0
+        ):
+            raise RuntimeError(
+                "The scan evaluation audit was not created. "
+                "The scan was not finalized."
+            )
         apply_retention_after_report_write(
             reports_path=Path(report_path).parent,
             logs_path=logs_path,
