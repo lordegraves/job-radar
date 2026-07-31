@@ -3180,6 +3180,12 @@ def test_scan_status_endpoint_returns_durable_progress(
         "current_company_number": 33,
         "current_source_type": "eightfold",
         "current_operation": "Reading Eightfold listing page 4",
+        "jobs_not_actionable": 0,
+        "jobs_new": 0,
+        "jobs_seen": 0,
+        "jobs_changed": 0,
+        "top_matches_count": 0,
+        "review_needed_count": 0,
     }
 
 
@@ -3230,9 +3236,21 @@ def test_scan_status_endpoint_exposes_completed_report_links(
     assert status_payload["progress_percent"] == 100
     assert status_payload["has_results"] is True
     assert status_payload["elapsed_seconds"] == 300
+    assert status_payload["jobs_found"] == 500
+    assert status_payload["jobs_not_actionable"] == 490
+    assert status_payload["jobs_new"] == 5
+    assert status_payload["jobs_seen"] == 490
+    assert status_payload["jobs_changed"] == 5
+    assert status_payload["top_matches_count"] == 2
+    assert status_payload["review_needed_count"] == 8
 
     assert page_response.status_code == 200
     assert "Latest scan completed." in page_html
+    assert 'aria-label="Latest completed scan summary"' in page_html
+    assert '<dd id="latest-jobs">500</dd>' in page_html
+    assert '<dd id="latest-top-matches">2</dd>' in page_html
+    assert '<dd id="latest-review-needed">8</dd>' in page_html
+    assert '<dd id="latest-not-actionable">490</dd>' in page_html
     assert "/reports/view/target-scan.html" in page_html
     assert "/reports/view/target-email-preview.txt" in page_html
 
@@ -5332,7 +5350,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.7" in html
+    assert "RC6 Build 1.8" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

@@ -6,6 +6,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Expand the latest completed-scan card with duration, companies, collected
+  jobs, recommendation outcomes, new/seen/changed totals, and source warnings.
 - Prevent Eightfold detail services from holding a scan for hours: reuse
   verified descriptions, cap optional detail enrichment at five minutes per
   employer, stop after three consecutive detail failures, retain all valid
@@ -47,7 +49,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Recognize additional employer-specific qualification headings and nested
   JSON-LD job postings when comparing required work with résumé evidence.
 - Label the application, executable metadata, and installer consistently as
-  `RC6 Build 1.7`.
+  `RC6 Build 1.8`.
 - Add direct **View posting** links to Active Applications and Application
   History when the original public job address is available.
 - Identify the safe collection step behind Eightfold scan warnings, including

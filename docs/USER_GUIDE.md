@@ -356,6 +356,11 @@ Latest Scan Details. Privacy-safe diagnostics record the time spent on each
 company, local evaluation, report generation, and the number of source details
 reused without storing descriptions or profile contents.
 
+After completion, the Scan page summarizes the run without requiring a report
+download: duration, companies completed, jobs collected, top matches, jobs
+needing review, jobs omitted as not actionable, new/previously seen/changed
+jobs, and company-source warnings.
+
 Occasional company or network errors may be temporary. The interface preserves error details and does not imply that one collector failure invalidates the entire scan.
 
 ## Diagnostics

@@ -248,6 +248,12 @@ def _build_scan_status_payload(
             "current_company_number": None,
             "current_source_type": None,
             "current_operation": None,
+            "jobs_not_actionable": 0,
+            "jobs_new": 0,
+            "jobs_seen": 0,
+            "jobs_changed": 0,
+            "top_matches_count": 0,
+            "review_needed_count": 0,
         }
 
     status = str(scan_run["status"])
@@ -323,6 +329,12 @@ def _build_scan_status_payload(
             if stage == "collection"
             else stage_label
         ),
+        "jobs_not_actionable": int(scan_run["jobs_not_actionable"] or 0),
+        "jobs_new": int(scan_run["jobs_new"] or 0),
+        "jobs_seen": int(scan_run["jobs_seen"] or 0),
+        "jobs_changed": int(scan_run["jobs_changed"] or 0),
+        "top_matches_count": int(scan_run["top_matches_count"] or 0),
+        "review_needed_count": int(scan_run["review_needed_count"] or 0),
     }
 
 
@@ -346,6 +358,12 @@ def _build_starting_scan_payload() -> dict[str, object]:
         "current_company_number": None,
         "current_source_type": None,
         "current_operation": "Preparing scan",
+        "jobs_not_actionable": 0,
+        "jobs_new": 0,
+        "jobs_seen": 0,
+        "jobs_changed": 0,
+        "top_matches_count": 0,
+        "review_needed_count": 0,
     }
 
 
@@ -371,4 +389,10 @@ def _build_worker_failure_payload() -> dict[str, object]:
         "current_company_number": None,
         "current_source_type": None,
         "current_operation": None,
+        "jobs_not_actionable": 0,
+        "jobs_new": 0,
+        "jobs_seen": 0,
+        "jobs_changed": 0,
+        "top_matches_count": 0,
+        "review_needed_count": 0,
     }

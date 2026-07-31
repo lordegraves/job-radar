@@ -43,6 +43,31 @@
         gap: 10px;
     }
 
+    .scan-result-metrics {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+        margin: 14px 0;
+    }
+
+    .scan-result-metrics div {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+    }
+
+    .scan-result-metrics dt {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .scan-result-metrics dd {
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin: 4px 0 0;
+    }
+
     .scan-current-operation {
         font-weight: normal;
         margin: 8px 0 0;
@@ -162,6 +187,18 @@
             <strong>Latest scan completed.</strong>
             <span id="latest-output-summary">Review the jobs from the latest successful scan.</span>
         </p>
+        <dl class="scan-result-metrics" aria-label="Latest completed scan summary">
+            <div><dt>Duration</dt><dd id="latest-duration">—</dd></div>
+            <div><dt>Companies</dt><dd id="latest-companies">{{ scan_status.companies_scanned }}</dd></div>
+            <div><dt>Jobs collected</dt><dd id="latest-jobs">{{ scan_status.jobs_found }}</dd></div>
+            <div><dt>Top matches</dt><dd id="latest-top-matches">{{ scan_status.top_matches_count }}</dd></div>
+            <div><dt>Needs review</dt><dd id="latest-review-needed">{{ scan_status.review_needed_count }}</dd></div>
+            <div><dt>Not actionable</dt><dd id="latest-not-actionable">{{ scan_status.jobs_not_actionable }}</dd></div>
+            <div><dt>New jobs</dt><dd id="latest-new-jobs">{{ scan_status.jobs_new }}</dd></div>
+            <div><dt>Previously seen</dt><dd id="latest-seen-jobs">{{ scan_status.jobs_seen }}</dd></div>
+            <div><dt>Changed jobs</dt><dd id="latest-changed-jobs">{{ scan_status.jobs_changed }}</dd></div>
+            <div><dt>Source warnings</dt><dd id="latest-warnings">{{ scan_status.collector_errors }}</dd></div>
+        </dl>
         <div class="latest-output-links">
             <a href="{{ url_for('review_jobs') }}">Review jobs</a>
             <a href="{{ url_for('report_view', report_name='target-scan.html') }}">Read-only HTML report</a>
@@ -289,6 +326,16 @@
     const scanFailureSummary = document.getElementById("scan-failure-summary");
     const latestOutput = document.getElementById("latest-output");
     const latestOutputSummary = document.getElementById("latest-output-summary");
+    const latestDuration = document.getElementById("latest-duration");
+    const latestCompanies = document.getElementById("latest-companies");
+    const latestJobs = document.getElementById("latest-jobs");
+    const latestTopMatches = document.getElementById("latest-top-matches");
+    const latestReviewNeeded = document.getElementById("latest-review-needed");
+    const latestNotActionable = document.getElementById("latest-not-actionable");
+    const latestNewJobs = document.getElementById("latest-new-jobs");
+    const latestSeenJobs = document.getElementById("latest-seen-jobs");
+    const latestChangedJobs = document.getElementById("latest-changed-jobs");
+    const latestWarnings = document.getElementById("latest-warnings");
     const csrfToken = scanForm.elements["_csrf_token"].value;
     let elapsedBaseline = 0;
     let elapsedBaselineAt = Date.now();
@@ -343,6 +390,16 @@
             latestOutputSummary.textContent = duration
                 ? `Junior checked ${status.companies_scanned} company sources in ${duration}. Review the jobs from the latest successful scan.`
                 : "Review the jobs from the latest successful scan.";
+            latestDuration.textContent = duration || "Unknown";
+            latestCompanies.textContent = status.companies_scanned;
+            latestJobs.textContent = status.jobs_found;
+            latestTopMatches.textContent = status.top_matches_count;
+            latestReviewNeeded.textContent = status.review_needed_count;
+            latestNotActionable.textContent = status.jobs_not_actionable;
+            latestNewJobs.textContent = status.jobs_new;
+            latestSeenJobs.textContent = status.jobs_seen;
+            latestChangedJobs.textContent = status.jobs_changed;
+            latestWarnings.textContent = status.collector_errors;
         }
 
         if (status.progress_determinate) {

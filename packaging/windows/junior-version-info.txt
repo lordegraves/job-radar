@@ -16,11 +16,11 @@ VSVersionInfo(
         [
           StringStruct("CompanyName", "Junior"),
           StringStruct("FileDescription", "Local-first job search operations"),
-          StringStruct("FileVersion", "0.2.0.3"),
+          StringStruct("FileVersion", "0.2.0.4"),
           StringStruct("InternalName", "Junior"),
           StringStruct("OriginalFilename", "Junior.exe"),
           StringStruct("ProductName", "junior"),
-          StringStruct("ProductVersion", "0.2.0 - RC6 Build 1.7")
+          StringStruct("ProductVersion", "0.2.0 - RC6 Build 1.8")
         ]
       )
     ]),
