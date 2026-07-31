@@ -698,6 +698,52 @@ def test_explicit_description_workplace_language_is_detected(
     assert result.reasons[0].code == expected_code
 
 
+def test_hybrid_onsite_description_is_checked_against_selected_locations() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Bay Area, California, United States",
+            remote_status=None,
+            description=(
+                "This position requires substantial on-site presence. Hybrid "
+                "schedules may be considered. Hybrid work combines work on-site "
+                "at Berkeley Lab and some telework."
+            ),
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote", "Hybrid", "On-site"),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "location_outside_selected_areas"
+
+
+def test_explicit_onsite_description_overrides_loose_remote_metadata() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location=(
+                "Spring, Texas, United States of America, San Jose, California, "
+                "All, North Carolina, United States of America"
+            ),
+            remote_status="Remote",
+            description=(
+                "This role has been designed as ‘Onsite’ with an expectation that "
+                "you will primarily work from an HPE office."
+            ),
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote", "Hybrid", "On-site"),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "location_outside_selected_areas"
+
+
 def test_conflicting_schedule_is_not_eligible() -> None:
     posting = make_posting(
         description="This position works the night shift.",

@@ -269,8 +269,24 @@ def _append_history_rationale(
     scored_posting: ScoredPosting,
     rationale: str,
 ) -> str:
+    accepted_on_call_note = _format_accepted_on_call_note(scored_posting)
+    if accepted_on_call_note:
+        rationale = f"{rationale} {accepted_on_call_note}"
     history_note = _format_history_rationale_note(scored_posting)
     return f"{rationale} {history_note}" if history_note else rationale
+
+
+def _format_accepted_on_call_note(scored_posting: ScoredPosting) -> str | None:
+    """Keep an accepted operational obligation visible without blocking the job."""
+
+    if scored_posting.eligibility is None:
+        return None
+    if any(
+        reason.code == "on_call_requirement_accepted"
+        for reason in scored_posting.eligibility.reasons
+    ):
+        return "This job includes on-call work, which this profile accepts."
+    return None
 
 
 def _format_history_rationale_note(scored_posting: ScoredPosting) -> str | None:

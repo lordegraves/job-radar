@@ -1358,6 +1358,63 @@ def _specific_location_for_evaluation(posting: JobPosting) -> str | None:
 
 
 def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
+    description = clean_text(posting.description).lower()
+    explicit_description_patterns = (
+        (
+            ARRANGEMENT_FLEX,
+            (
+                r"\b(?:this|the)\s+(?:role|position|job)\s+uses?\s+"
+                r"(?:a\s+)?flex(?:ible)?\s+(?:workplace|work)\s+"
+                r"(?:arrangement|model)\b",
+                r"\bflex(?:ible)?\s+(?:workplace|work)\s+"
+                r"(?:arrangement|model)\b",
+                r"\bworkplace\s+type\s*:\s*flex\b",
+            ),
+        ),
+        (
+            ARRANGEMENT_HYBRID,
+            (
+                r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+hybrid\b",
+                r"\bhybrid\s+(?:role|position|job|work arrangement)\b",
+                r"\bhybrid\s+schedules?\s+may\s+be\s+considered\b",
+                r"\bcombination\s+of\s+performing\s+work\s+on[- ]?site\b"
+                r".{0,180}\btelework\b",
+                r"\bworkplace\s+type\s*:\s*hybrid\b",
+            ),
+        ),
+        (
+            ARRANGEMENT_ON_SITE,
+            (
+                r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+"
+                r"(?:on[- ]?site|in[- ]?person)\b",
+                r"\b(?:this\s+)?role\s+has\s+been\s+designed\s+as\s+"
+                r"[\"'‘’“”]*on[- ]?site[\"'‘’“”]*\b",
+                r"\b(?:on[- ]?site|in[- ]?person)\s+"
+                r"(?:role|position|job|work arrangement)\b",
+                r"\bexpectation\s+that\s+you\s+will\s+primarily\s+work\s+from\b"
+                r".{0,100}\boffice\b",
+                r"\bworkplace\s+type\s*:\s*(?:on[- ]?site|in[- ]?person)\b",
+            ),
+        ),
+        (
+            ARRANGEMENT_REMOTE,
+            (
+                r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+"
+                r"(?:fully\s+)?remote\b",
+                r"\b(?:fully\s+)?remote\s+(?:role|position|job|work arrangement)\b",
+                r"\bworkplace\s+type\s*:\s*remote\b",
+                r"\bwork\s+remotely\b",
+            ),
+        ),
+    )
+
+    # Explicit role-specific description language can correct incomplete or
+    # misleading ATS summary metadata. Stricter hybrid/on-site wording is
+    # checked before optional or incidental remote language.
+    for arrangement, patterns in explicit_description_patterns:
+        if any(re.search(pattern, description) for pattern in patterns):
+            return arrangement
+
     text = clean_text(
         " ".join(
             value
@@ -1397,53 +1454,6 @@ def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
         )
     ):
         return ARRANGEMENT_REMOTE
-
-    description = clean_text(posting.description).lower()
-    explicit_description_patterns = (
-        (
-            ARRANGEMENT_FLEX,
-            (
-                r"\b(?:this|the)\s+(?:role|position|job)\s+uses?\s+"
-                r"(?:a\s+)?flex(?:ible)?\s+(?:workplace|work)\s+"
-                r"(?:arrangement|model)\b",
-                r"\bflex(?:ible)?\s+(?:workplace|work)\s+"
-                r"(?:arrangement|model)\b",
-                r"\bworkplace\s+type\s*:\s*flex\b",
-            ),
-        ),
-        (
-            ARRANGEMENT_HYBRID,
-            (
-                r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+hybrid\b",
-                r"\bhybrid\s+(?:role|position|job|work arrangement)\b",
-                r"\bworkplace\s+type\s*:\s*hybrid\b",
-            ),
-        ),
-        (
-            ARRANGEMENT_ON_SITE,
-            (
-                r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+"
-                r"(?:on[- ]?site|in[- ]?person)\b",
-                r"\b(?:on[- ]?site|in[- ]?person)\s+"
-                r"(?:role|position|job|work arrangement)\b",
-                r"\bworkplace\s+type\s*:\s*(?:on[- ]?site|in[- ]?person)\b",
-            ),
-        ),
-        (
-            ARRANGEMENT_REMOTE,
-            (
-                r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+"
-                r"(?:fully\s+)?remote\b",
-                r"\b(?:fully\s+)?remote\s+(?:role|position|job|work arrangement)\b",
-                r"\bworkplace\s+type\s*:\s*remote\b",
-                r"\bwork\s+remotely\b",
-            ),
-        ),
-    )
-
-    for arrangement, patterns in explicit_description_patterns:
-        if any(re.search(pattern, description) for pattern in patterns):
-            return arrangement
 
     return None
 

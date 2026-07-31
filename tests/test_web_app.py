@@ -5357,7 +5357,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.9" in html
+    assert "RC6 Build 1.10" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html
@@ -5410,6 +5410,10 @@ def test_profile_summary_and_edit_page_have_separate_jobs(tmp_path: Path) -> Non
     )
 
     assert "What junior will scan for" in summary_html
+    assert 'class="profile-scan-summary"' in summary_html
+    assert 'aria-label="Active scan profile"' in summary_html
+    assert "Disabled" in summary_html
+    assert "Not shown" not in summary_html
     assert "Companies" in summary_html
     assert "No companies configured" in summary_html
     assert 'href="/companies"' in summary_html

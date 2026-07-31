@@ -261,18 +261,52 @@ def test_build_report_view_model_routes_tracked_role_out_of_apply_sections() -> 
     tracked = make_scored_posting(
         title="Site Reliability Engineer",
         top_match_eligible=True,
+        potential_top_match_eligible=True,
+        location_outlier_eligible=True,
         review_needed_eligible=True,
         tracked=True,
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_unknown",
+                    message="Compensation needs review.",
+                ),
+            ),
+        ),
     )
 
     view = build_report_view_model(scored_postings=[tracked])
 
     assert view.top_matches == []
+    assert view.potential_top_matches == []
+    assert view.location_outliers == []
     assert view.review_needed == []
     assert view.tracked_applications == [tracked]
     assert view.email_scored_postings == []
     assert view.email_top_matches == []
     assert view.email_review_needed == []
+
+
+def test_accepted_on_call_requirement_remains_visible_in_recommendation() -> None:
+    posting = make_scored_posting(
+        title="Platform Reliability Engineer",
+        top_match_eligible=True,
+        eligibility=EligibilityResult(
+            status="eligible",
+            reasons=(
+                EligibilityReason(
+                    code="on_call_requirement_accepted",
+                    message="The posting includes accepted on-call work.",
+                ),
+            ),
+        ),
+    )
+
+    job = build_job_output_view_model(posting)
+
+    assert "This job includes on-call work" in job.action_rationale
+    assert "which this profile accepts" in job.action_rationale
 
 
 def test_not_eligible_role_is_excluded_from_action_sections() -> None:

@@ -18,6 +18,7 @@ from job_radar.normalize import make_canonical_key, make_content_hash
 
 DEFAULT_WORKDAY_LIMIT = 20
 DEFAULT_WORKDAY_MAX_PAGES = 50
+WORKDAY_DETAIL_NORMALIZATION_VERSION = 2
 
 
 WORKDAY_HEADERS = {
@@ -85,13 +86,19 @@ def _get_location(job: dict[str, Any]) -> str | None:
 
 
 def _get_description(job: dict[str, Any]) -> str | None:
+    description: str | None = None
     for field_name in ["description", "jobDescription", "summary"]:
-        description = job.get(field_name)
+        value = job.get(field_name)
 
-        if description:
-            return str(description)
+        if value:
+            description = str(value)
+            break
 
-    return None
+    time_type = job.get("timeType")
+    if time_type:
+        employment_fact = f"Employment type: {time_type}"
+        return f"{description}\n{employment_fact}" if description else employment_fact
+    return description
 
 
 def _detail_api_url(source_url: str, external_path: str) -> str | None:
@@ -124,6 +131,7 @@ def _merge_workday_detail(
         "locationsText": ("location", "locationsText"),
         "jobReqId": ("jobReqId",),
         "externalUrl": ("externalUrl",),
+        "timeType": ("timeType",),
     }
     for target, candidates in field_map.items():
         for candidate in candidates:
@@ -148,7 +156,11 @@ def _fetch_workday_detail(
     company_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     external_path = raw_job.get("externalPath")
-    if not external_path or _get_description(raw_job):
+    has_description = any(
+        raw_job.get(field_name)
+        for field_name in ("description", "jobDescription", "summary")
+    )
+    if not external_path or has_description:
         return raw_job
 
     detail_url = _detail_api_url(source_url, str(external_path))
@@ -162,6 +174,9 @@ def _fetch_workday_detail(
             "title": _get_title(raw_job),
             "location": _get_location(raw_job),
             "external_path": external_path,
+            # A parser upgrade must refresh unchanged cached detail once so
+            # newly normalized facts are not delayed for the cache lifetime.
+            "normalization_version": WORKDAY_DETAIL_NORMALIZATION_VERSION,
         }
     )
     if company_config is not None:

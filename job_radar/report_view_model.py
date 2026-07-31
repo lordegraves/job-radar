@@ -182,6 +182,7 @@ def build_report_view_model(
         scored_posting
         for scored_posting in report_scored_postings
         if scored_posting.location_outlier_eligible
+        and _get_recommended_action(scored_posting) != ACTION_TRACK_STATUS
     ]
     review_needed = [
         scored_posting
@@ -243,6 +244,7 @@ def is_potential_top_match_report_posting(
 
     return (
         not scored_posting.location_outlier_eligible
+        and _get_recommended_action(scored_posting) != ACTION_TRACK_STATUS
         and _is_actionable_posting(scored_posting)
         and (
             scored_posting.top_match_eligible

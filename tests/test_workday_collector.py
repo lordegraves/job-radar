@@ -5,6 +5,7 @@ import requests
 
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.workday import (
+    WORKDAY_DETAIL_NORMALIZATION_VERSION,
     collect_workday_jobs,
     parse_workday_jobs,
 )
@@ -242,6 +243,7 @@ def test_collect_workday_jobs_fetches_complete_job_detail(
                         ),
                         "locationsText": "United Kingdom-Remote Location",
                         "bulletFields": ["R025880"],
+                        "timeType": "Full time",
                     }
                 ],
             }
@@ -254,6 +256,7 @@ def test_collect_workday_jobs_fetches_complete_job_detail(
             return {
                 "jobPostingInfo": {
                     "title": "Kubernetes Platform Architect",
+                    "timeType": "Full time",
                     "jobDescription": (
                         "Required qualifications include platform architecture "
                         "leadership and Kubernetes product expertise. This role "
@@ -289,6 +292,7 @@ def test_collect_workday_jobs_fetches_complete_job_detail(
     assert len(postings) == 1
     assert postings[0].location == "United Kingdom-Remote Location"
     assert "travel up to 50 percent" in (postings[0].description or "")
+    assert "Employment type: Full time" in (postings[0].description or "")
 
 
 def test_collect_workday_jobs_reuses_fresh_unchanged_detail(
@@ -327,6 +331,7 @@ def test_collect_workday_jobs_reuses_fresh_unchanged_detail(
             "title": "Platform Engineer",
             "location": "Remote",
             "external_path": raw_job["externalPath"],
+            "normalization_version": WORKDAY_DETAIL_NORMALIZATION_VERSION,
         }
     )
     company_config = {

@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Enforce explicit hybrid and on-site wording from complete descriptions before
+  looser ATS remote hints, then check those jobs against profile locations.
+- Keep already-tracked applications out of Potential Top Matches and location
+  outliers, while keeping accepted on-call obligations visible on job cards.
+- Preserve Workday employment type during detail normalization and refresh old
+  Workday cache entries once after the parser upgrade.
+- Replace the scan-profile tile wall with a formatted list and label the
+  exceptional-location option as Enabled or Disabled.
 - Replace the completed-scan dashboard tiles with a compact five-line receipt,
   and render the recorded duration before JavaScript runs.
 - Make each company group clearly show its individual Expand or Collapse action.
@@ -55,7 +63,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Recognize additional employer-specific qualification headings and nested
   JSON-LD job postings when comparing required work with résumé evidence.
 - Label the application, executable metadata, and installer consistently as
-  `RC6 Build 1.9`.
+  `RC6 Build 1.10`.
 - Add direct **View posting** links to Active Applications and Application
   History when the original public job address is available.
 - Identify the safe collection step behind Eightfold scan warnings, including
