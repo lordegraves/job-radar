@@ -43,29 +43,10 @@
         gap: 10px;
     }
 
-    .scan-result-metrics {
-        display: grid;
-        gap: 10px;
-        grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-        margin: 14px 0;
-    }
-
-    .scan-result-metrics div {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 10px 12px;
-    }
-
-    .scan-result-metrics dt {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-    }
-
-    .scan-result-metrics dd {
-        font-size: 1.15rem;
-        font-weight: 700;
-        margin: 4px 0 0;
+    .scan-result-summary-list {
+        line-height: 1.55;
+        margin: 12px 0 16px;
+        padding-left: 22px;
     }
 
     .scan-current-operation {
@@ -187,18 +168,13 @@
             <strong>Latest scan completed.</strong>
             <span id="latest-output-summary">Review the jobs from the latest successful scan.</span>
         </p>
-        <dl class="scan-result-metrics" aria-label="Latest completed scan summary">
-            <div><dt>Duration</dt><dd id="latest-duration">—</dd></div>
-            <div><dt>Companies</dt><dd id="latest-companies">{{ scan_status.companies_scanned }}</dd></div>
-            <div><dt>Jobs collected</dt><dd id="latest-jobs">{{ scan_status.jobs_found }}</dd></div>
-            <div><dt>Top matches</dt><dd id="latest-top-matches">{{ scan_status.top_matches_count }}</dd></div>
-            <div><dt>Needs review</dt><dd id="latest-review-needed">{{ scan_status.review_needed_count }}</dd></div>
-            <div><dt>Not actionable</dt><dd id="latest-not-actionable">{{ scan_status.jobs_not_actionable }}</dd></div>
-            <div><dt>New jobs</dt><dd id="latest-new-jobs">{{ scan_status.jobs_new }}</dd></div>
-            <div><dt>Previously seen</dt><dd id="latest-seen-jobs">{{ scan_status.jobs_seen }}</dd></div>
-            <div><dt>Changed jobs</dt><dd id="latest-changed-jobs">{{ scan_status.jobs_changed }}</dd></div>
-            <div><dt>Source warnings</dt><dd id="latest-warnings">{{ scan_status.collector_errors }}</dd></div>
-        </dl>
+        <ul class="scan-result-summary-list" aria-label="Latest completed scan summary">
+            <li><strong>Duration:</strong> <span id="latest-duration">{{ scan_status.elapsed_label or "Unknown" }}</span></li>
+            <li><strong>Collection:</strong> <span id="latest-companies">{{ scan_status.companies_scanned }}</span> company sources; <span id="latest-jobs">{{ scan_status.jobs_found }}</span> jobs collected.</li>
+            <li><strong>Recommendation outcome:</strong> <span id="latest-top-matches">{{ scan_status.top_matches_count }}</span> top matches; <span id="latest-review-needed">{{ scan_status.review_needed_count }}</span> need review; <span id="latest-not-actionable">{{ scan_status.jobs_not_actionable }}</span> not actionable.</li>
+            <li><strong>Job changes:</strong> <span id="latest-new-jobs">{{ scan_status.jobs_new }}</span> new; <span id="latest-seen-jobs">{{ scan_status.jobs_seen }}</span> previously seen; <span id="latest-changed-jobs">{{ scan_status.jobs_changed }}</span> changed.</li>
+            <li><strong>Source health:</strong> <span id="latest-warnings">{{ scan_status.collector_errors }}</span> warnings.</li>
+        </ul>
         <div class="latest-output-links">
             <a href="{{ url_for('review_jobs') }}">Review jobs</a>
             <a href="{{ url_for('report_view', report_name='target-scan.html') }}">Read-only HTML report</a>

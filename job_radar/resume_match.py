@@ -46,7 +46,6 @@ def match_resume_to_posting(
             critical_gaps=[incomplete_gap],
             requirements_reviewed=[],
         )
-    posting_text = _build_posting_text(posting)
     role_relevant_text = clean_text(
         " ".join(
             part
@@ -65,7 +64,7 @@ def match_resume_to_posting(
     )
     configured_gaps = _find_resume_gaps(
         candidate_profile=candidate_profile,
-        posting_text=posting_text,
+        posting_text=role_relevant_text,
     )
     requirements = _extract_required_clauses(posting.description)
     critical_gaps = _find_critical_gaps(
@@ -143,7 +142,9 @@ def _should_report_resume_gap(
     normalized_gap: str,
     posting_text: str,
 ) -> bool:
-    return _term_matches(normalized_gap, posting_text)
+    # A configured multiword gap is one concept. Do not assemble it from
+    # unrelated words scattered across a long description or employer boilerplate.
+    return _contains_phrase(posting_text, normalized_gap)
 
 
 def _classify_resume_match(
@@ -297,6 +298,9 @@ _DISCIPLINE_TERMS = {
     "software engineering": (
         "software engineer",
         "software developer",
+        "kernel developer",
+        "kernel-level software development",
+        "linux kernel components",
         "backend engineer",
         "full stack",
         "full-stack",
@@ -764,18 +768,6 @@ def _term_matches(term: str, text: str) -> bool:
         return False
 
     return all(word in text for word in term_words)
-
-
-def _build_posting_text(posting: JobPosting) -> str:
-    parts = [
-        posting.title,
-        posting.location,
-        posting.remote_status,
-        posting.salary_text,
-        posting.description,
-    ]
-
-    return clean_text(" ".join(part for part in parts if part)).lower()
 
 
 def _dedupe_preserving_order(values: list[str]) -> list[str]:

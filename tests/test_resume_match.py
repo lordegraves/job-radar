@@ -105,6 +105,49 @@ def test_match_resume_to_posting_reports_configured_gap_without_title_guessing()
     assert not result.has_critical_gap
 
 
+def test_scattered_words_do_not_invent_a_configured_security_gap() -> None:
+    posting = make_posting(
+        title="HPC Technical Consultant",
+        description=(
+            "Key Responsibilities\n"
+            "Monitor HPC compute, network, and storage infrastructure. Perform Linux "
+            "system administration and troubleshoot server hardware.\n"
+            "Minimum Qualifications\n"
+            "US citizenship and ability to obtain a security clearance.\n"
+            "Preferred Qualifications\n"
+            "Experience in engineering organizations and HPC operations."
+        ),
+    )
+    resume_text = "Linux infrastructure, HPC operations, and datacenter operations."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Weak"
+    assert "security engineering" not in result.gaps
+    assert not result.has_critical_gap
+
+
+def test_kernel_development_is_not_mistaken_for_linux_operations() -> None:
+    posting = make_posting(
+        title="Principal Linux Kernel Developer",
+        description=(
+            "Key Responsibilities\n"
+            "Lead architecture and design of Linux kernel components and contribute "
+            "patches to upstream open-source communities.\n"
+            "Required Qualifications\n"
+            "Expert C programming and deep Linux kernel internals experience.\n"
+            "8 years of kernel-level software development."
+        ),
+    )
+    resume_text = "Linux infrastructure, HPC operations, and cluster administration."
+
+    result = match_resume_to_posting(posting, make_profile(), resume_text)
+
+    assert result.label == "Poor Fit"
+    assert "central discipline requires software engineering experience" in result.gaps
+    assert result.has_critical_gap
+
+
 def test_match_resume_to_posting_rejects_required_go_for_non_software_profile() -> None:
     posting = make_posting(
         title="Software Engineer, Infrastructure",

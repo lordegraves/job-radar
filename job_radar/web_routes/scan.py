@@ -244,6 +244,7 @@ def _build_scan_status_payload(
             "has_results": False,
             "failure_summary": None,
             "elapsed_seconds": None,
+            "elapsed_label": None,
             "current_company_name": None,
             "current_company_number": None,
             "current_source_type": None,
@@ -304,6 +305,7 @@ def _build_scan_status_payload(
         status in {"completed", "completed_with_warnings"}
         and scan_run["report_status"] == "completed"
     )
+    elapsed_seconds = calculate_scan_elapsed_seconds(scan_run)
 
     return {
         "scan_run_id": int(scan_run["id"]),
@@ -320,7 +322,8 @@ def _build_scan_status_payload(
         "has_results": has_results,
         "failure_summary": scan_run["failure_summary"],
         "trigger_source": scan_run["trigger_source"],
-        "elapsed_seconds": calculate_scan_elapsed_seconds(scan_run),
+        "elapsed_seconds": elapsed_seconds,
+        "elapsed_label": _format_elapsed_duration(elapsed_seconds),
         "current_company_name": scan_run["current_company_name"],
         "current_company_number": scan_run["current_company_number"],
         "current_source_type": scan_run["current_source_type"],
@@ -336,6 +339,21 @@ def _build_scan_status_payload(
         "top_matches_count": int(scan_run["top_matches_count"] or 0),
         "review_needed_count": int(scan_run["review_needed_count"] or 0),
     }
+
+
+def _format_elapsed_duration(total_seconds: int | None) -> str | None:
+    """Format a completed scan duration as a compact, readable receipt value."""
+
+    if total_seconds is None:
+        return None
+    seconds = max(0, int(total_seconds))
+    hours, remainder = divmod(seconds, 3600)
+    minutes, remaining_seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours}h {minutes:02d}m {remaining_seconds:02d}s"
+    if minutes:
+        return f"{minutes}m {remaining_seconds:02d}s"
+    return f"{remaining_seconds}s"
 
 
 def _build_starting_scan_payload() -> dict[str, object]:
@@ -354,6 +372,7 @@ def _build_starting_scan_payload() -> dict[str, object]:
         "has_results": False,
         "failure_summary": None,
         "elapsed_seconds": None,
+        "elapsed_label": None,
         "current_company_name": None,
         "current_company_number": None,
         "current_source_type": None,
@@ -385,6 +404,7 @@ def _build_worker_failure_payload() -> dict[str, object]:
             "junior could not complete the scan. Open the Scan page for details."
         ),
         "elapsed_seconds": None,
+        "elapsed_label": None,
         "current_company_name": None,
         "current_company_number": None,
         "current_source_type": None,

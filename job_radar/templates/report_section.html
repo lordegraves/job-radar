@@ -58,6 +58,23 @@
         font-weight: 500;
     }
 
+    .company-toggle-label {
+        color: var(--link) !important;
+        margin-left: auto;
+    }
+
+    .company-toggle-open {
+        display: none;
+    }
+
+    .company-job-group[open] .company-toggle-closed {
+        display: none;
+    }
+
+    .company-job-group[open] .company-toggle-open {
+        display: inline;
+    }
+
     .company-job-cards {
         display: grid;
         gap: 14px;
@@ -552,6 +569,10 @@
             <span>
                 {{ group.jobs|length }} on this page
                 {% if group.total != group.jobs|length %}· {{ group.total }} total{% endif %}
+            </span>
+            <span class="company-toggle-label" aria-hidden="true">
+                <span class="company-toggle-closed">Expand</span>
+                <span class="company-toggle-open">Collapse</span>
             </span>
         </summary>
         <div class="company-job-cards">

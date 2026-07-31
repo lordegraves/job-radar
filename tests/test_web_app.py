@@ -1219,6 +1219,8 @@ def test_report_section_paginates_large_result_sets(
     assert 'href="/reports/section/review_needed?page=3">3</a>' in first_html
     assert "Expand all companies" in first_html
     assert "Collapse all companies" in first_html
+    assert 'class="company-toggle-closed">Expand</span>' in first_html
+    assert 'class="company-toggle-open">Collapse</span>' in first_html
     assert '<details class="company-job-group">' in first_html
     assert '<details class="company-job-group" open>' not in first_html
     assert "20 on this page" in first_html
@@ -3159,8 +3161,10 @@ def test_scan_status_endpoint_returns_durable_progress(
 
     assert response.status_code == 200
     elapsed_seconds = payload.pop("elapsed_seconds")
+    elapsed_label = payload.pop("elapsed_label")
     assert isinstance(elapsed_seconds, int)
     assert elapsed_seconds >= 0
+    assert isinstance(elapsed_label, str)
     assert payload == {
         "scan_run_id": scan_run_id,
         "status": "running",
@@ -3236,6 +3240,7 @@ def test_scan_status_endpoint_exposes_completed_report_links(
     assert status_payload["progress_percent"] == 100
     assert status_payload["has_results"] is True
     assert status_payload["elapsed_seconds"] == 300
+    assert status_payload["elapsed_label"] == "5m 00s"
     assert status_payload["jobs_found"] == 500
     assert status_payload["jobs_not_actionable"] == 490
     assert status_payload["jobs_new"] == 5
@@ -3247,10 +3252,12 @@ def test_scan_status_endpoint_exposes_completed_report_links(
     assert page_response.status_code == 200
     assert "Latest scan completed." in page_html
     assert 'aria-label="Latest completed scan summary"' in page_html
-    assert '<dd id="latest-jobs">500</dd>' in page_html
-    assert '<dd id="latest-top-matches">2</dd>' in page_html
-    assert '<dd id="latest-review-needed">8</dd>' in page_html
-    assert '<dd id="latest-not-actionable">490</dd>' in page_html
+    assert '<span id="latest-duration">5m 00s</span>' in page_html
+    assert '<span id="latest-jobs">500</span> jobs collected.' in page_html
+    assert '<span id="latest-top-matches">2</span> top matches' in page_html
+    assert '<span id="latest-review-needed">8</span> need review' in page_html
+    assert '<span id="latest-not-actionable">490</span> not actionable' in page_html
+    assert 'class="scan-result-metrics"' not in page_html
     assert "/reports/view/target-scan.html" in page_html
     assert "/reports/view/target-email-preview.txt" in page_html
 
@@ -5350,7 +5357,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.8" in html
+    assert "RC6 Build 1.9" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

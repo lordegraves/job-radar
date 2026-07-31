@@ -6,6 +6,12 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Replace the completed-scan dashboard tiles with a compact five-line receipt,
+  and render the recorded duration before JavaScript runs.
+- Make each company group clearly show its individual Expand or Collapse action.
+- Omit unsupported kernel-development roles from infrastructure searches, and
+  stop inventing multiword profile gaps from unrelated words scattered across
+  a posting.
 - Expand the latest completed-scan card with duration, companies, collected
   jobs, recommendation outcomes, new/seen/changed totals, and source warnings.
 - Prevent Eightfold detail services from holding a scan for hours: reuse
@@ -49,7 +55,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Recognize additional employer-specific qualification headings and nested
   JSON-LD job postings when comparing required work with résumé evidence.
 - Label the application, executable metadata, and installer consistently as
-  `RC6 Build 1.8`.
+  `RC6 Build 1.9`.
 - Add direct **View posting** links to Active Applications and Application
   History when the original public job address is available.
 - Identify the safe collection step behind Eightfold scan warnings, including

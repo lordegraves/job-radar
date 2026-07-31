@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.8`
+- Current field-test build: `RC6 Build 1.9`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -128,8 +128,10 @@ the top and bottom, and a Back to top link that never changes pages or clears
 selections. Numbered page links allow direct movement between distant pages.
 Jobs on each page are grouped into collapsible company sections; a company
 that spans pages shows both the number on the current page and its total in the
-result group. Expanding or collapsing a company does not reload the page or
-clear selected jobs. Every compact summary can expand to the same Save, Pass,
+result group. Each company header clearly shows **Expand** or **Collapse**, and
+the page also provides expand-all and collapse-all controls. Changing a company
+section does not reload the page or clear selected jobs. Every compact summary
+can expand to the same Save, Pass,
 Apply, Notes, and evidence controls. Explicit workplace,
 employment-type, and annual-pay wording in a description can fill a missing ATS
 field. An omitted schedule does not imply a conflict, while an explicit night,
@@ -184,6 +186,9 @@ trustworthy:
   itself, cannot establish that a job belongs to the user's target profession.
   Unrelated aerospace, finance, retail, and other cross-discipline work is
   omitted before missing practical details can send it to Review Jobs.
+- Linux operations evidence does not qualify a kernel-development position by
+  itself, and multiword profile gaps must appear as one real concept in the
+  role description rather than as unrelated words scattered across the page.
 - A Top Match requires strong or very strong résumé evidence, confirmed
   practical eligibility, and no more than one non-critical gap. Strong jobs
   with unresolved practical facts remain Potential Top Matches.
@@ -245,7 +250,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in RC6 Build 1.8. Diagnostics still
+capabilities and are not implemented in RC6 Build 1.9. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -411,7 +416,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.8.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.9.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
