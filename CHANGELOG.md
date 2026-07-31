@@ -6,6 +6,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Give immediate visual acknowledgement when full scans, selected-company
+  scans, and connection tests are submitted, and prevent duplicate clicks
+  while Junior starts the requested work.
 - Enforce explicit hybrid and on-site wording from complete descriptions before
   looser ATS remote hints, then check those jobs against profile locations.
 - Keep already-tracked applications out of Potential Top Matches and location
@@ -63,7 +66,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Recognize additional employer-specific qualification headings and nested
   JSON-LD job postings when comparing required work with résumé evidence.
 - Label the application, executable metadata, and installer consistently as
-  `RC6 Build 1.10`.
+  `RC6 Build 1.11`.
 - Add direct **View posting** links to Active Applications and Application
   History when the original public job address is available.
 - Identify the safe collection step behind Eightfold scan warnings, including

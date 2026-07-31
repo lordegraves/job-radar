@@ -3061,6 +3061,9 @@ def test_scan_page_shows_user_scan_controls_and_results_summary(
     assert "Email sending is disabled for manual scans started here." in normalized_html
     assert 'id="scan-submit-button"' in html
     assert "> Run scan </button>" in normalized_html
+    assert 'scanButton.textContent = "Starting scan..."' in html
+    assert 'selectedScanButton.textContent = "Starting selected scan..."' in html
+    assert 'button[data-submit-pending-label]' in html
     assert "<summary>Scan selected companies</summary>" in normalized_html
     assert "Select all companies" in html
     assert "<summary>Latest scan problems</summary>" in normalized_html
@@ -5357,7 +5360,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.10" in html
+    assert "RC6 Build 1.11" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

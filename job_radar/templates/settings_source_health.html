@@ -109,12 +109,13 @@
     <form method="post" action="{{ url_for('settings_source_health_test') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <div class="button-row">
-            <button type="submit" name="test_scope" value="untested">Test all untested sources</button>
-            <button class="button-secondary" type="submit" name="test_scope" value="selected">Test selected sources</button>
+            <button type="submit" name="test_scope" value="untested" data-submit-pending-label="Starting tests...">Test all untested sources</button>
+            <button class="button-secondary" type="submit" name="test_scope" value="selected" data-submit-pending-label="Starting tests...">Test selected sources</button>
             <button
                 class="button-secondary"
                 type="submit"
                 formaction="{{ url_for('run_selected_scan') }}"
+                data-submit-pending-label="Starting selected scan..."
             >Scan selected companies</button>
         </div>
         <p class="muted">

@@ -113,6 +113,8 @@ def test_companies_page_shows_only_active_profile_employers(
     assert "Scan selected companies" not in html
     assert 'id="source-test-meter"' in html
     assert 'X-Junior-Background-Test": "1"' in html
+    assert 'submittedButton.textContent = "Starting tests..."' in html
+    assert "testButtons.forEach((button) => { button.disabled = true; });" in html
     assert ">Remove</button>" in html
     assert "<summary>More</summary>" not in html
 
@@ -869,6 +871,7 @@ def test_company_detail_shows_and_refreshes_safe_source_health(
     assert "Not tested" in initial_html
     assert "Workday" in initial_html
     assert "Test job source" in initial_html
+    assert 'data-submit-pending-label="Testing job source..."' in initial_html
     assert "Connection succeeded and returned 12 jobs." in tested_html
     assert "Connected" in tested_html
     assert "Jobs found during last check" in tested_html

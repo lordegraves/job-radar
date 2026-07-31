@@ -558,6 +558,7 @@
     const step = document.getElementById("source-test-step");
     const results = document.getElementById("source-test-results");
     const selectAll = document.getElementById("select-all-sources");
+    const testButtons = Array.from(form?.querySelectorAll("button[type='submit']") || []);
     if (!form || !container || !status || !percent || !meter || !step || !results) return;
 
     const rows = new Map(
@@ -630,6 +631,9 @@
                 window.setTimeout(poll, 750);
             } else {
                 polling = false;
+                testButtons.forEach((button) => { button.disabled = false; });
+                testButtons[0].textContent = "Test all untested sources";
+                testButtons[1].textContent = "Test selected sources";
                 if (current.total) {
                     status.textContent =
                         `Testing finished: ${current.completed} checked, ` +
@@ -659,6 +663,9 @@
         const payload = await response.json();
         if (!response.ok) {
             step.textContent = payload.message || "Junior could not start the test.";
+            testButtons.forEach((button) => { button.disabled = false; });
+            testButtons[0].textContent = "Test all untested sources";
+            testButtons[1].textContent = "Test selected sources";
             return;
         }
         if (!polling) poll();
@@ -666,6 +673,9 @@
 
     form.addEventListener("submit", (event) => {
         event.preventDefault();
+        const submittedButton = event.submitter;
+        testButtons.forEach((button) => { button.disabled = true; });
+        if (submittedButton) submittedButton.textContent = "Starting tests...";
         const data = new FormData(form);
         data.set("test_scope", event.submitter?.value || "selected");
         startTest(data);

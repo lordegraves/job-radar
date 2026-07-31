@@ -57,7 +57,7 @@
             </form>
             <form method="post" action="{{ url_for('administration_employer_test_connection', employer_id=record.employer.employer_id) }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <button type="submit">Test connection</button>
+                <button type="submit" data-submit-pending-label="Testing connection...">Test connection</button>
             </form>
             {% if record.employer.enabled %}
             <form method="post" action="{{ url_for('administration_employer_disable', employer_id=record.employer.employer_id) }}">

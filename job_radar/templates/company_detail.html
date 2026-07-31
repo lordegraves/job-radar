@@ -133,7 +133,7 @@
 <div class="actions">
     <form method="post" action="{{ url_for('test_company_source', company_key=company.company_key) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        <button type="submit">Test job source</button>
+        <button type="submit" data-submit-pending-label="Testing job source...">Test job source</button>
     </form>
     <form method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">

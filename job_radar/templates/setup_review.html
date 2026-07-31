@@ -63,7 +63,7 @@
         {% endif %}
         <form method="post" action="{{ url_for('setup_validate') }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Test setup</button>
+            <button type="submit" data-submit-pending-label="Testing setup...">Test setup</button>
         </form>
     </section>
     <section class="page-card">

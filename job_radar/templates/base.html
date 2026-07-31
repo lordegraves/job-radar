@@ -788,6 +788,14 @@
             });
         });
 
+        document.querySelectorAll("button[data-submit-pending-label]").forEach((button) => {
+            button.form?.addEventListener("submit", (event) => {
+                if (event.submitter !== button) return;
+                button.disabled = true;
+                button.textContent = button.dataset.submitPendingLabel;
+            });
+        });
+
         function confirmDestructiveAction(message) {
             const confirmation = window.prompt(`${message}\n\nType DELETE to confirm.`);
             return confirmation === "DELETE";

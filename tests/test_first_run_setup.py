@@ -176,6 +176,7 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
     assert progress.current_step == REVIEW
 
     review_html = client.get("/setup/review").get_data(as_text=True)
+    assert 'data-submit-pending-label="Testing setup..."' in review_html
     assert "Step 4 of 4" in review_html
     assert "Fictional Baker" in review_html
     assert "Bakers" in review_html

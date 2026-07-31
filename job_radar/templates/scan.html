@@ -409,7 +409,7 @@
         event.preventDefault();
 
         scanButton.disabled = true;
-        scanButton.textContent = "Scan running...";
+        scanButton.textContent = "Starting scan...";
         scanRunning.hidden = false;
         scanFailure.hidden = true;
         latestOutput.hidden = true;
@@ -447,17 +447,19 @@
 
     selectedScanForm?.addEventListener("submit", async (event) => {
         event.preventDefault();
+        selectedScanButton.disabled = true;
+        selectedScanButton.textContent = "Starting selected scan...";
         const selected = new FormData(selectedScanForm);
         if (!selected.getAll("employer_id").length) {
             scanFailure.hidden = false;
             scanFailureSummary.textContent =
                 "Select at least one company before starting this scan.";
+            selectedScanButton.disabled = false;
+            selectedScanButton.textContent = "Scan selected companies";
             return;
         }
 
         scanButton.disabled = true;
-        selectedScanButton.disabled = true;
-        selectedScanButton.textContent = "Scan running...";
         scanRunning.hidden = false;
         scanFailure.hidden = true;
         scanStage.textContent = "Starting selected-company scan";
