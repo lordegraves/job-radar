@@ -84,6 +84,10 @@ CREATE TABLE IF NOT EXISTS scan_runs (
     finished_at TEXT,
     status TEXT NOT NULL DEFAULT 'completed',
     current_stage TEXT,
+    current_company_name TEXT,
+    current_company_number INTEGER,
+    current_source_type TEXT,
+    current_operation TEXT,
     failure_summary TEXT,
     report_status TEXT NOT NULL DEFAULT 'not_started',
     email_status TEXT NOT NULL DEFAULT 'not_requested',
@@ -348,6 +352,11 @@ def _schema_migrations() -> tuple:
             30,
             "add incremental source posting cache",
             _migrate_incremental_source_posting_cache,
+        ),
+        (
+            31,
+            "add detailed scan progress",
+            _migrate_detailed_scan_progress,
         ),
     )
 
@@ -1493,6 +1502,26 @@ def _migrate_incremental_source_posting_cache(
     )
 
 
+def _migrate_detailed_scan_progress(connection: sqlite3.Connection) -> None:
+    """Persist only public, bounded details about the active scan step."""
+
+    existing = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(scan_runs)").fetchall()
+    }
+    columns = {
+        "current_company_name": "TEXT",
+        "current_company_number": "INTEGER",
+        "current_source_type": "TEXT",
+        "current_operation": "TEXT",
+    }
+    for name, column_type in columns.items():
+        if name not in existing:
+            connection.execute(
+                f"ALTER TABLE scan_runs ADD COLUMN {name} {column_type}"
+            )
+
+
 def _migrate_profile_scoring_config(
     connection: sqlite3.Connection,
 ) -> None:
@@ -1615,6 +1644,10 @@ def update_scan_run_progress(
     companies_scanned: int | None = None,
     jobs_found: int | None = None,
     collector_errors: int | None = None,
+    current_company_name: str | None = None,
+    current_company_number: int | None = None,
+    current_source_type: str | None = None,
+    current_operation: str | None = None,
 ) -> bool:
     db_path = Path(database_path)
 
@@ -1628,7 +1661,11 @@ def update_scan_run_progress(
                 jobs_found = COALESCE(?, jobs_found),
                 jobs_collected = COALESCE(?, jobs_collected),
                 collector_errors = COALESCE(?, collector_errors),
-                errors_count = COALESCE(?, errors_count)
+                errors_count = COALESCE(?, errors_count),
+                current_company_name = COALESCE(?, current_company_name),
+                current_company_number = COALESCE(?, current_company_number),
+                current_source_type = COALESCE(?, current_source_type),
+                current_operation = COALESCE(?, current_operation)
             WHERE id = ?
             AND status = 'running'
             """,
@@ -1639,6 +1676,10 @@ def update_scan_run_progress(
                 jobs_found,
                 collector_errors,
                 collector_errors,
+                current_company_name,
+                current_company_number,
+                current_source_type,
+                current_operation,
                 scan_run_id,
             ),
         )

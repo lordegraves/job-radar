@@ -10,7 +10,9 @@ from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.incremental_cache import (
     CACHE_CONFIG_KEY,
     FINGERPRINTS_CONFIG_KEY,
+    PROGRESS_CONFIG_KEY,
     REUSED_CONFIG_KEY,
+    WARNINGS_CONFIG_KEY,
 )
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import (
@@ -485,6 +487,19 @@ def _handle_scan_unlocked(
 
             print(f"- {company_key} ({company_name}) source_type={source_type}")
 
+            update_scan_run_progress(
+                database_path,
+                scan_run_id=scan_run_id,
+                current_stage="collection",
+                companies_scanned=companies_scanned,
+                jobs_found=total_jobs,
+                collector_errors=len(collector_errors),
+                current_company_name=str(company_name),
+                current_company_number=company_number,
+                current_source_type=str(source_type),
+                current_operation="Starting company job source",
+            )
+
             try:
                 collection_config = dict(company)
                 collection_config[CACHE_CONFIG_KEY] = fetch_source_posting_cache(
@@ -492,6 +507,28 @@ def _handle_scan_unlocked(
                     str(company_key),
                     str(source_type),
                 )
+                last_progress_write = 0.0
+
+                def report_collection_progress(operation: str) -> None:
+                    nonlocal last_progress_write
+                    now = monotonic()
+                    if now - last_progress_write < 1.0:
+                        return
+                    last_progress_write = now
+                    update_scan_run_progress(
+                        database_path,
+                        scan_run_id=scan_run_id,
+                        current_stage="collection",
+                        companies_scanned=companies_scanned,
+                        jobs_found=total_jobs,
+                        collector_errors=len(collector_errors),
+                        current_company_name=str(company_name),
+                        current_company_number=company_number,
+                        current_source_type=str(source_type),
+                        current_operation=operation,
+                    )
+
+                collection_config[PROGRESS_CONFIG_KEY] = report_collection_progress
                 postings = collect_jobs_for_company(collection_config)
             except CollectorError as error:
                 diagnostic = classify_collector_failure(error)
@@ -581,6 +618,26 @@ def _handle_scan_unlocked(
                 company_key,
                 job_count=len(postings),
             )
+            collection_warnings = collection_config.get(WARNINGS_CONFIG_KEY, [])
+            if isinstance(collection_warnings, list):
+                for warning in collection_warnings:
+                    message = str(warning)
+                    collector_errors.append(
+                        ScanError(
+                            company_key=company_key,
+                            company_name=company_name,
+                            source_type=source_type,
+                            message=message,
+                        )
+                    )
+                    record_scan_error(
+                        database_path,
+                        scan_run_id=scan_run_id,
+                        company_key=company_key,
+                        source_type=source_type,
+                        error_type="incomplete_position_detail_response_failure",
+                        error_message=message,
+                    )
             collected_postings.extend(postings)
             companies_scanned += 1
             update_scan_run_progress(

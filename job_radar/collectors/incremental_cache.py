@@ -13,7 +13,28 @@ from job_radar.storage import CachedSourcePosting
 CACHE_CONFIG_KEY = "_source_posting_cache"
 FINGERPRINTS_CONFIG_KEY = "_source_listing_fingerprints"
 REUSED_CONFIG_KEY = "_source_reused_identities"
+PROGRESS_CONFIG_KEY = "_scan_progress_callback"
+WARNINGS_CONFIG_KEY = "_source_collection_warnings"
 DETAIL_CACHE_MAX_AGE = timedelta(days=7)
+
+
+def report_progress(company_config: dict[str, Any], operation: str) -> None:
+    """Send a bounded public progress label when the scan supplied a callback."""
+
+    callback = company_config.get(PROGRESS_CONFIG_KEY)
+    if callable(callback):
+        callback(operation[:160])
+
+
+def record_collection_warning(
+    company_config: dict[str, Any],
+    warning: str,
+) -> None:
+    """Retain a safe source warning for the shared scan lifecycle."""
+
+    warnings = company_config.setdefault(WARNINGS_CONFIG_KEY, [])
+    if isinstance(warnings, list) and warning not in warnings:
+        warnings.append(warning[:300])
 
 
 def listing_fingerprint(value: object) -> str:

@@ -244,6 +244,10 @@ def _build_scan_status_payload(
             "has_results": False,
             "failure_summary": None,
             "elapsed_seconds": None,
+            "current_company_name": None,
+            "current_company_number": None,
+            "current_source_type": None,
+            "current_operation": None,
         }
 
     status = str(scan_run["status"])
@@ -311,6 +315,14 @@ def _build_scan_status_payload(
         "failure_summary": scan_run["failure_summary"],
         "trigger_source": scan_run["trigger_source"],
         "elapsed_seconds": calculate_scan_elapsed_seconds(scan_run),
+        "current_company_name": scan_run["current_company_name"],
+        "current_company_number": scan_run["current_company_number"],
+        "current_source_type": scan_run["current_source_type"],
+        "current_operation": (
+            scan_run["current_operation"]
+            if stage == "collection"
+            else stage_label
+        ),
     }
 
 
@@ -330,6 +342,10 @@ def _build_starting_scan_payload() -> dict[str, object]:
         "has_results": False,
         "failure_summary": None,
         "elapsed_seconds": None,
+        "current_company_name": None,
+        "current_company_number": None,
+        "current_source_type": None,
+        "current_operation": "Preparing scan",
     }
 
 
@@ -351,4 +367,8 @@ def _build_worker_failure_payload() -> dict[str, object]:
             "junior could not complete the scan. Open the Scan page for details."
         ),
         "elapsed_seconds": None,
+        "current_company_name": None,
+        "current_company_number": None,
+        "current_source_type": None,
+        "current_operation": None,
     }

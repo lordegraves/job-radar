@@ -181,6 +181,7 @@ def _parse_error_type(error_type: str) -> tuple[str, str]:
         "initial_search_response": "Initial search response",
         "results_pagination_request": "Later results-page request",
         "results_pagination_response": "Later results-page response",
+        "position_detail_response": "Individual job-description retrieval",
     }.get(stage, "Job collection (stage not recorded)")
     return (category if separator else normalized, stage_label)
 

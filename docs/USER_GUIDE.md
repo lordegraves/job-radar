@@ -346,10 +346,15 @@ missing-cache, and stale records still retrieve full details. A failed or
 incomplete company collection never replaces that company's last valid cache
 or marks its previously observed jobs absent.
 
-The Scan page shows a live elapsed time. The final duration is also retained on
-Scan and Latest Scan Details. Privacy-safe diagnostics record the time spent on
-each company, local evaluation, report generation, and the number of source
-details reused without storing descriptions or profile contents.
+The Scan page shows a live `HH:MM:SS` clock, the current company and recruiting
+platform, and the active collection step. Eightfold description retrieval is
+limited to five minutes per employer and stops after three consecutive detail
+failures. Junior still retains valid listings, reuses previously verified
+descriptions, and treats jobs without enough description text as incomplete
+weak matches instead of guessing. The final duration is retained on Scan and
+Latest Scan Details. Privacy-safe diagnostics record the time spent on each
+company, local evaluation, report generation, and the number of source details
+reused without storing descriptions or profile contents.
 
 Occasional company or network errors may be temporary. The interface preserves error details and does not imply that one collector failure invalidates the entire scan.
 

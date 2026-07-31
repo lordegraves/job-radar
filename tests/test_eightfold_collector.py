@@ -195,6 +195,93 @@ def test_eightfold_retries_temporary_detail_failure(monkeypatch) -> None:
     assert detail_calls == 3
 
 
+def test_eightfold_opens_detail_circuit_and_keeps_all_listings(monkeypatch) -> None:
+    from job_radar.collectors.incremental_cache import WARNINGS_CONFIG_KEY
+
+    detail_calls = 0
+
+    def fake_get_response(url, **kwargs):
+        nonlocal detail_calls
+        if url.endswith("/api/pcsx/search"):
+            return _Response(
+                {
+                    "data": {
+                        "count": 5,
+                        "positions": [
+                            {
+                                "id": number,
+                                "name": f"Platform Engineer {number}",
+                                "positionUrl": f"/careers/job/{number}",
+                                "descriptionTeaser": "Operate reliable systems.",
+                            }
+                            for number in range(1, 6)
+                        ],
+                    }
+                }
+            )
+        detail_calls += 1
+        assert kwargs["timeout"] == 10
+        raise requests.ConnectionError("private response text")
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+    config = {
+        "company_key": "example",
+        "name": "Example",
+        "source_url": "https://apply.example.com",
+        "domain": "example.com",
+    }
+
+    jobs = collect_eightfold_jobs(config)
+
+    assert len(jobs) == 5
+    assert detail_calls == 3
+    assert all(job.description == "Operate reliable systems." for job in jobs)
+    assert len(config[WARNINGS_CONFIG_KEY]) == 1
+    assert "evaluated conservatively as incomplete" in config[WARNINGS_CONFIG_KEY][0]
+
+
+def test_eightfold_connection_test_still_fails_when_detail_is_unavailable(
+    monkeypatch,
+) -> None:
+    def fake_get_response(url, **kwargs):
+        if url.endswith("/api/pcsx/search"):
+            return _Response(
+                {
+                    "data": {
+                        "count": 1,
+                        "positions": [
+                            {
+                                "id": 1,
+                                "name": "Platform Engineer",
+                                "positionUrl": "/careers/job/1",
+                            }
+                        ],
+                    }
+                }
+            )
+        raise requests.ConnectionError("private response text")
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+
+    with pytest.raises(CollectorError, match="position details"):
+        collect_eightfold_jobs(
+            {
+                "company_key": "example",
+                "name": "Example",
+                "source_url": "https://apply.example.com",
+                "domain": "example.com",
+                "connection_test": True,
+                "max_pages": 1,
+            }
+        )
+
+
 def test_eightfold_reuses_fresh_unchanged_detail(monkeypatch) -> None:
     from datetime import UTC, datetime
 

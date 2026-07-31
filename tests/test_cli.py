@@ -8,6 +8,7 @@ invented data rather than a real Job Radar workspace.
 import json
 import sqlite3
 import sys
+from datetime import date
 from pathlib import Path
 
 from job_radar.candidate_profile import CandidateProfile
@@ -2211,7 +2212,17 @@ logs_path: {tmp_path}
 def test_handle_tracker_list_filters_to_applications_needing_review(
     tmp_path: Path,
     capsys,
+    monkeypatch,
 ) -> None:
+    from job_radar.tracker.tracker_service import get_application_workflow_state
+
+    monkeypatch.setattr(
+        "job_radar.cli.get_application_workflow_state",
+        lambda application: get_application_workflow_state(
+            application,
+            today=date(2026, 7, 30),
+        ),
+    )
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
 

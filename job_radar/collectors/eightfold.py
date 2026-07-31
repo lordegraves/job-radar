@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import re
 import time
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urljoin
 
@@ -15,7 +16,9 @@ from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.incremental_cache import (
     get_cached_posting,
     listing_fingerprint,
+    record_collection_warning,
     record_listing,
+    report_progress,
 )
 from job_radar.collectors.pagination import get_max_pages, get_page_size
 from job_radar.models import JobPosting
@@ -26,9 +29,42 @@ DEFAULT_PAGE_SIZE = 20
 DEFAULT_MAX_PAGES = 100
 DETAIL_REQUEST_ATTEMPTS = 3
 DETAIL_RETRY_DELAY_SECONDS = 1.0
+DETAIL_REQUEST_TIMEOUT_SECONDS = 10
+DETAIL_ENRICHMENT_BUDGET_SECONDS = 300
+DETAIL_FAILURE_CIRCUIT_LIMIT = 3
 SEARCH_REQUEST_ATTEMPTS = 5
 SEARCH_RETRY_DELAY_SECONDS = 2.0
 REQUEST_PACING_SECONDS = 0.1
+
+
+@dataclass
+class _DetailPolicy:
+    """Bound optional description work so one tenant cannot hold the scan."""
+
+    started_at: float
+    consecutive_failures: int = 0
+    downloaded: int = 0
+    skipped: int = 0
+    disabled_reason: str | None = None
+
+    @property
+    def allowed(self) -> bool:
+        if self.disabled_reason is not None:
+            return False
+        if time.monotonic() - self.started_at >= DETAIL_ENRICHMENT_BUDGET_SECONDS:
+            self.disabled_reason = "the five-minute description budget was reached"
+            return False
+        return True
+
+    def succeeded(self) -> None:
+        self.consecutive_failures = 0
+        self.downloaded += 1
+
+    def failed(self) -> None:
+        self.consecutive_failures += 1
+        self.skipped += 1
+        if self.consecutive_failures >= DETAIL_FAILURE_CIRCUIT_LIMIT:
+            self.disabled_reason = "the description service repeatedly failed"
 
 
 def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
@@ -48,9 +84,14 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     # A source-health check must exercise the detail endpoint used by a real
     # scan, not merely prove that Eightfold's search page can be reached.
     detail_probe_pending = connection_test and max_pages in {1, 2}
+    detail_policy = _DetailPolicy(started_at=time.monotonic())
 
     start = 0
     for page_index in range(max_pages):
+        report_progress(
+            company_config,
+            f"Reading Eightfold listing page {page_index + 1}",
+        )
         request_stage = (
             "initial_search_request"
             if page_index == 0
@@ -101,6 +142,8 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
                 raw_position=raw_position,
                 company_config=company_config,
                 fetch_details=not connection_test or detail_probe_pending,
+                detail_policy=detail_policy,
+                strict_details=connection_test,
             )
             if posting is None:
                 continue
@@ -130,6 +173,14 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
             break
         time.sleep(REQUEST_PACING_SECONDS)
 
+    if detail_policy.skipped:
+        reason = detail_policy.disabled_reason or "some descriptions were unavailable"
+        record_collection_warning(
+            company_config,
+            "Junior collected this company's job listings, but Eightfold did not "
+            f"provide {detail_policy.skipped} complete description(s) because {reason}. "
+            "Those jobs were evaluated conservatively as incomplete.",
+        )
     return postings
 
 
@@ -142,6 +193,8 @@ def _build_posting(
     raw_position: dict[str, Any],
     company_config: dict[str, Any] | None = None,
     fetch_details: bool = True,
+    detail_policy: _DetailPolicy | None = None,
+    strict_details: bool = False,
 ) -> JobPosting | None:
     position_id = str(raw_position.get("id") or "").strip()
     listing_identity = str(
@@ -172,17 +225,35 @@ def _build_posting(
         if company_config is not None and fetch_details
         else None
     )
-    detail = (
-        _fetch_position_detail(
-            source_url=source_url,
-            domain=domain,
-            position_id=position_id,
-            company_name=company_name,
-        )
-        if fetch_details and cached is None
-        else {}
-    )
-    if company_config is not None:
+    detail: dict[str, Any] = {}
+    if fetch_details and cached is None:
+        allowed = detail_policy is None or detail_policy.allowed
+        if allowed:
+            if company_config is not None and detail_policy is not None:
+                report_progress(
+                    company_config,
+                    "Downloading Eightfold descriptions "
+                    f"({detail_policy.downloaded} complete, "
+                    f"{detail_policy.skipped} unavailable)",
+                )
+            try:
+                detail = _fetch_position_detail(
+                    source_url=source_url,
+                    domain=domain,
+                    position_id=position_id,
+                    company_name=company_name,
+                )
+            except CollectorError:
+                if strict_details:
+                    raise
+                if detail_policy is not None:
+                    detail_policy.failed()
+            else:
+                if detail_policy is not None:
+                    detail_policy.succeeded()
+        elif detail_policy is not None:
+            detail_policy.skipped += 1
+    if company_config is not None and (cached is not None or detail):
         record_listing(
             company_config,
             identity=listing_identity,
@@ -216,7 +287,11 @@ def _build_posting(
     locations = detail.get("locations") or raw_position.get("locations") or []
     location = ", ".join(str(item) for item in locations if item) or None
     description = _plain_text(
-        detail.get("jobDescription") or raw_position.get("jobDescription")
+        detail.get("jobDescription")
+        or detail.get("description")
+        or raw_position.get("jobDescription")
+        or raw_position.get("description")
+        or raw_position.get("descriptionTeaser")
     )
     remote_status = str(
         detail.get("efcustomTextJobRequisitionWorkstyle")
@@ -319,7 +394,7 @@ def _fetch_position_detail(
                     "Accept": "application/json",
                     "User-Agent": "JobRadar/0.1 local career-source scanner",
                 },
-                timeout=30,
+                timeout=DETAIL_REQUEST_TIMEOUT_SECONDS,
             )
             break
         except requests.RequestException as error:

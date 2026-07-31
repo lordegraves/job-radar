@@ -101,7 +101,7 @@ def test_profile_activity_migration_assigns_legacy_rows_to_active_profile(
     assert tracker_row == (profile.profile_id, "Preserve tracker data")
     assert history_row == (profile.profile_id, "Preserve history data")
     assert foreign_key_errors == []
-    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v30-*.bak"))) == 1
+    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v31-*.bak"))) == 1
 
 
 def test_clearance_migration_preserves_legacy_exclusion_behavior(
@@ -257,7 +257,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     backup_directory = tmp_path / "backups"
     backup_paths = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v30-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v31-*.bak"
         )
     )
 
@@ -283,7 +283,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
 
     backup_paths_after_second_initialization = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v30-*.bak"
+            "job_radar.sqlite3.pre-migration-v1-v31-*.bak"
         )
     )
 
@@ -369,6 +369,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
             (28,),
             (29,),
             (30,),
+            (31,),
     ]
     with connect_database(database_path) as connection:
         profile_columns = {
@@ -396,7 +397,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v30-*.bak"
+            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v31-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -439,7 +440,7 @@ def test_initialize_database_rolls_back_failed_migration(
         "_schema_migrations",
         lambda: (
             *existing_migrations,
-            (31, "synthetic failing migration", fail_after_temporary_change),
+            (32, "synthetic failing migration", fail_after_temporary_change),
         ),
     )
 
@@ -456,7 +457,7 @@ def test_initialize_database_rolls_back_failed_migration(
             """
         ).fetchone()
         migration_version = connection.execute(
-                "SELECT version FROM schema_migrations WHERE version = 31"
+                "SELECT version FROM schema_migrations WHERE version = 32"
         ).fetchone()
         foreign_key_errors = connection.execute(
             "PRAGMA foreign_key_check"
@@ -468,7 +469,7 @@ def test_initialize_database_rolls_back_failed_migration(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-current.sqlite3.pre-migration-v31-v31-*.bak"
+            "synthetic-current.sqlite3.pre-migration-v32-v32-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -509,6 +510,7 @@ def test_initialize_database_rolls_back_failed_migration(
                 (28,),
                 (29,),
                 (30,),
+                (31,),
             ]
 
 
@@ -599,6 +601,7 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
             (28, "add profile job-decision reasons"),
             (29, "add strong location-outlier preference"),
             (30, "add incremental source posting cache"),
+            (31, "add detailed scan progress"),
         ]
 
 
@@ -685,6 +688,10 @@ def test_scan_run_lifecycle_records_progress_completion_and_errors(
         companies_scanned=2,
         jobs_found=25,
         collector_errors=1,
+        current_company_name="Example Company",
+        current_company_number=2,
+        current_source_type="eightfold",
+        current_operation="Downloading descriptions",
     )
 
     error_id = record_scan_error(
@@ -740,6 +747,10 @@ def test_scan_run_lifecycle_records_progress_completion_and_errors(
     assert scan_row["jobs_found"] == 40
     assert scan_row["jobs_collected"] == 40
     assert scan_row["collector_errors"] == 1
+    assert scan_row["current_company_name"] == "Example Company"
+    assert scan_row["current_company_number"] == 2
+    assert scan_row["current_source_type"] == "eightfold"
+    assert scan_row["current_operation"] == "Downloading descriptions"
     assert error_row is not None
     assert error_row["scan_run_id"] == scan_run_id
     assert error_row["company_key"] == "example_ai"

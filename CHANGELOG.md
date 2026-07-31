@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Prevent Eightfold detail services from holding a scan for hours: reuse
+  verified descriptions, cap optional detail enrichment at five minutes per
+  employer, stop after three consecutive detail failures, retain all valid
+  listings, and evaluate insufficient listings conservatively.
+- Show a continuously updating `HH:MM:SS` scan clock plus the current company,
+  recruiting platform, listing page, and description-retrieval operation.
+- Persist only bounded public scan-progress labels, and report a plain-language
+  warning when Eightfold listings were collected without complete descriptions.
 - Add an atomic all-source posting cache so follow-up Workday and Eightfold
   scans reuse fresh unchanged descriptions, while new, changed, stale, and
   previously incomplete jobs still retrieve and evaluate complete details.
@@ -39,7 +47,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Recognize additional employer-specific qualification headings and nested
   JSON-LD job postings when comparing required work with résumé evidence.
 - Label the application, executable metadata, and installer consistently as
-  `RC6 Build 1.6`.
+  `RC6 Build 1.7`.
 - Add direct **View posting** links to Active Applications and Application
   History when the original public job address is available.
 - Identify the safe collection step behind Eightfold scan warnings, including

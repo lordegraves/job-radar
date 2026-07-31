@@ -43,6 +43,11 @@
         gap: 10px;
     }
 
+    .scan-current-operation {
+        font-weight: normal;
+        margin: 8px 0 0;
+    }
+
     .scan-details {
         background: rgba(31, 31, 35, 0.94);
         border: 1px solid var(--border);
@@ -127,16 +132,15 @@
             {% endif %}
         ></progress>
         <p id="scan-progress-details" class="scan-progress-details">
-            {% if scan_status.companies_enabled %}
-            {{ scan_status.companies_scanned }} of {{ scan_status.companies_enabled }} company sources scanned.
-            {{ scan_status.jobs_found }} jobs found.
-            {% if scan_status.elapsed_seconds is not none %}
-            Elapsed: <span id="scan-elapsed">{{ scan_status.elapsed_seconds }}</span> seconds.
-            {% endif %}
-            {% else %}
-            Scan is running. This may take a few minutes.
-            {% endif %}
+            <span id="scan-progress-counts">
+                {% if scan_status.companies_enabled %}
+                {{ scan_status.companies_scanned }} of {{ scan_status.companies_enabled }} company sources scanned.
+                {{ scan_status.jobs_found }} jobs found.
+                {% else %}Scan is preparing.{% endif %}
+            </span>
+            <span>Elapsed: <span id="scan-elapsed">00:00:00</span>.</span>
         </p>
+        <p id="scan-current-operation" class="scan-current-operation"></p>
     </div>
 
     <div
@@ -278,11 +282,32 @@
     const scanStage = document.getElementById("scan-stage");
     const scanProgress = document.getElementById("scan-progress");
     const scanProgressDetails = document.getElementById("scan-progress-details");
+    const scanProgressCounts = document.getElementById("scan-progress-counts");
+    const scanElapsed = document.getElementById("scan-elapsed");
+    const scanCurrentOperation = document.getElementById("scan-current-operation");
     const scanFailure = document.getElementById("scan-failure");
     const scanFailureSummary = document.getElementById("scan-failure-summary");
     const latestOutput = document.getElementById("latest-output");
     const latestOutputSummary = document.getElementById("latest-output-summary");
     const csrfToken = scanForm.elements["_csrf_token"].value;
+    let elapsedBaseline = 0;
+    let elapsedBaselineAt = Date.now();
+    let scanIsRunning = initialScanStatus.is_running;
+
+    function formatClock(totalSeconds) {
+        const value = Math.max(0, Math.floor(totalSeconds || 0));
+        const hours = String(Math.floor(value / 3600)).padStart(2, "0");
+        const minutes = String(Math.floor((value % 3600) / 60)).padStart(2, "0");
+        const seconds = String(value % 60).padStart(2, "0");
+        return `${hours}:${minutes}:${seconds}`;
+    }
+
+    function paintElapsedClock() {
+        const additional = scanIsRunning
+            ? Math.floor((Date.now() - elapsedBaselineAt) / 1000)
+            : 0;
+        scanElapsed.textContent = formatClock(elapsedBaseline + additional);
+    }
 
     selectAllCompanies?.addEventListener("change", () => {
         selectedScanForm
@@ -293,6 +318,10 @@
     });
 
     function renderScanStatus(status) {
+        scanIsRunning = status.is_running;
+        elapsedBaseline = status.elapsed_seconds || 0;
+        elapsedBaselineAt = Date.now();
+        paintElapsedClock();
         scanButton.disabled = status.is_running;
         scanButton.textContent = status.is_running
             ? "Scan running..."
@@ -324,16 +353,18 @@
         }
 
         if (status.companies_enabled > 0) {
-            const elapsed = formatDuration(status.elapsed_seconds);
-            scanProgressDetails.textContent =
+            scanProgressCounts.textContent =
                 `${status.companies_scanned} of ${status.companies_enabled} ` +
                 `company sources scanned (${status.progress_percent}%). ` +
-                `${status.jobs_found} jobs found.` +
-                (elapsed ? ` Elapsed: ${elapsed}.` : "");
+                `${status.jobs_found} jobs found. `;
         } else {
-            scanProgressDetails.textContent =
-                "Scan is running. This may take a few minutes.";
+            scanProgressCounts.textContent = "Scan is preparing. ";
         }
+        const company = status.stage === "collection" && status.current_company_name
+            ? `Company ${status.current_company_number} of ${status.companies_enabled}: ` +
+              `${status.current_company_name} (${status.current_source_type}). `
+            : "";
+        scanCurrentOperation.textContent = company + (status.current_operation || "");
 
         if (status.status === "failed") {
             scanFailureSummary.textContent =
@@ -351,8 +382,8 @@
         latestOutput.hidden = true;
         scanStage.textContent = "Starting scan";
         scanProgress.removeAttribute("value");
-        scanProgressDetails.textContent =
-            "Scan is starting. This may take a few minutes.";
+        scanProgressCounts.textContent = "Scan is starting. ";
+        scanCurrentOperation.textContent = "Preparing configuration and profile";
 
         try {
             // Let the visible starting state paint before the request begins.
@@ -366,7 +397,7 @@
             });
 
             if (response.status === 409) {
-                scanProgressDetails.textContent =
+                scanProgressCounts.textContent =
                     "A scan is already running. Junior will show its progress here.";
             } else if (!response.ok) {
                 throw new Error(`Scan start request failed: ${response.status}`);
@@ -398,7 +429,7 @@
         scanFailure.hidden = true;
         scanStage.textContent = "Starting selected-company scan";
         scanProgress.removeAttribute("value");
-        scanProgressDetails.textContent =
+        scanProgressCounts.textContent =
             "Junior is preparing the selected company sources.";
 
         try {
@@ -429,6 +460,7 @@
     });
 
     renderScanStatus(initialScanStatus);
+    window.setInterval(paintElapsedClock, 1000);
 
 </script>
 {% endblock %}

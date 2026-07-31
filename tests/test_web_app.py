@@ -3066,7 +3066,7 @@ def test_scan_page_shows_user_scan_controls_and_results_summary(
     assert "Example Company" in html
     assert "The public job source did not respond." in html
     assert "Run scan from GUI" not in html
-    assert "Scan is running. This may take a few minutes." in normalized_html
+    assert "Scan is preparing." in normalized_html
     assert "Some company/source errors are temporary." in normalized_html
     assert "After running a scan, use the latest scan links here" in normalized_html
     assert "python -m job_radar scan" not in html
@@ -3097,6 +3097,10 @@ def test_scan_page_restores_active_scan_progress(
         companies_scanned=18,
         jobs_found=142,
         collector_errors=1,
+        current_company_name="Example Company",
+        current_company_number=19,
+        current_source_type="eightfold",
+        current_operation="Downloading Eightfold descriptions",
     )
     client = app.test_client()
 
@@ -3112,6 +3116,9 @@ def test_scan_page_restores_active_scan_progress(
     assert 'value="28"' in html
     assert "18 of 64 company sources scanned." in normalized_html
     assert "142 jobs found." in normalized_html
+    assert 'id="scan-elapsed"' in html
+    assert "formatClock" in html
+    assert "window.setInterval(paintElapsedClock, 1000);" in html
     assert 'id="latest-output-summary"' in html
     assert "formatDuration(status.elapsed_seconds)" in html
     assert "await new Promise(window.requestAnimationFrame);" in html
@@ -3140,6 +3147,10 @@ def test_scan_status_endpoint_returns_durable_progress(
         companies_scanned=32,
         jobs_found=275,
         collector_errors=2,
+        current_company_name="Example Company",
+        current_company_number=33,
+        current_source_type="eightfold",
+        current_operation="Reading Eightfold listing page 4",
     )
     client = app.test_client()
 
@@ -3165,6 +3176,10 @@ def test_scan_status_endpoint_returns_durable_progress(
         "has_results": False,
         "failure_summary": None,
         "trigger_source": "manual",
+        "current_company_name": "Example Company",
+        "current_company_number": 33,
+        "current_source_type": "eightfold",
+        "current_operation": "Reading Eightfold listing page 4",
     }
 
 
@@ -5317,7 +5332,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.6" in html
+    assert "RC6 Build 1.7" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

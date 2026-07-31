@@ -44,7 +44,7 @@ def test_installer_build_script_requires_verified_bundle_first() -> None:
     assert "packaging\\windows\\junior-installer.iss" in script_text
     assert "ISCC.exe" in script_text
     assert (
-        "artifacts\\installer\\Junior-Setup-0.2.0-RC6-build-1.6.exe"
+        "artifacts\\installer\\Junior-Setup-0.2.0-RC6-build-1.7.exe"
         in script_text
     )
     validation_text = (
@@ -57,7 +57,7 @@ def test_installer_build_script_requires_verified_bundle_first() -> None:
         PROJECT_ROOT / "scripts" / "validate_release.ps1"
     ).read_text(encoding="utf-8")
     expected_installer = (
-        "artifacts\\installer\\Junior-Setup-0.2.0-RC6-build-1.6.exe"
+        "artifacts\\installer\\Junior-Setup-0.2.0-RC6-build-1.7.exe"
     )
     assert expected_installer in validation_text
     assert expected_installer in clean_validation_text
@@ -110,7 +110,7 @@ def test_windows_bundle_embeds_product_version_details() -> None:
     assert "junior-version-info.txt" in spec_text
     assert 'StringStruct("ProductName", "junior")' in version_text
     assert (
-        'StringStruct("ProductVersion", "0.2.0 - RC6 Build 1.6")'
+        'StringStruct("ProductVersion", "0.2.0 - RC6 Build 1.7")'
         in version_text
     )
-    assert 'StringStruct("FileVersion", "0.2.0.2")' in version_text
+    assert 'StringStruct("FileVersion", "0.2.0.3")' in version_text
