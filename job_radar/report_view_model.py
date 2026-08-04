@@ -58,6 +58,10 @@ class JobOutputViewModel:
     eligibility_reasons: tuple[str, ...]
     eligibility_reason_text: str
     llm_advisory_label: str
+    llm_fit_assessment: str
+    llm_explanation: str
+    deterministic_resume_evidence: str
+    deterministic_resume_gaps: tuple[str, ...]
 
 
 def build_job_output_view_model(
@@ -129,6 +133,26 @@ def build_job_output_view_model(
             f"OpenAI-assisted ({scored_posting.llm_review.model})"
             if scored_posting.llm_review is not None
             else ""
+        ),
+        llm_fit_assessment=(
+            scored_posting.llm_review.fit_assessment.title()
+            if scored_posting.llm_review is not None
+            else ""
+        ),
+        llm_explanation=(
+            scored_posting.llm_review.explanation
+            if scored_posting.llm_review is not None
+            else ""
+        ),
+        deterministic_resume_evidence=(
+            "; ".join(scored_posting.deterministic_resume_match.evidence)
+            if scored_posting.deterministic_resume_match is not None
+            else ""
+        ),
+        deterministic_resume_gaps=tuple(
+            scored_posting.deterministic_resume_match.gaps
+            if scored_posting.deterministic_resume_match is not None
+            else ()
         ),
     )
 

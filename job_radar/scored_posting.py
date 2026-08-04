@@ -32,3 +32,4 @@ class ScoredPosting:
     history_risk_reasons: list[str] | None = None
     application: ApplicationRecord | None = None
     llm_review: LlmFitReview | None = None
+    deterministic_resume_match: ResumeMatchResult | None = None

@@ -19,6 +19,7 @@ from job_radar.job_decision_service import (
     list_job_decisions,
     save_job_decision,
 )
+from job_radar.llm_advisory import LlmAdvisoryError, LlmConnectionResult
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_storage import (
     create_profile,
@@ -2746,6 +2747,59 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     ):
         assert f'id="{section_id}"' in normalized_settings_html
         assert f'id="{section_id}" open' not in normalized_settings_html
+
+
+def test_llm_connection_result_is_visible_in_llm_settings(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.test_openai_connection",
+        lambda **_kwargs: LlmConnectionResult(
+            provider="openai",
+            model="gpt-5.6-sol",
+            message="OpenAI confirmed access to gpt-5.6-sol.",
+        ),
+    )
+    client = create_app(settings_path=str(settings_file)).test_client()
+
+    response = client.post("/settings/llm/test", follow_redirects=True)
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Connection confirmed" in html
+    assert "OpenAI confirmed access to gpt-5.6-sol." in html
+    assert 'id="llm-settings"' in html
+    assert 'id="llm-settings" open' in " ".join(html.split())
+
+
+def test_llm_connection_failure_is_visible_in_llm_settings(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+
+    def fail_connection(**_kwargs) -> None:
+        raise LlmAdvisoryError("The saved OpenAI API key was rejected.")
+
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.test_openai_connection",
+        fail_connection,
+    )
+    client = create_app(settings_path=str(settings_file)).test_client()
+
+    response = client.post("/settings/llm/test", follow_redirects=True)
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Connection test failed" in html
+    assert "The saved OpenAI API key was rejected." in html
+    assert 'role="alert"' in html
 
 
 def test_desktop_settings_requests_clean_shutdown(tmp_path: Path) -> None:

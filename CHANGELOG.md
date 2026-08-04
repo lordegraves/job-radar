@@ -6,6 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Complete the initial disabled-by-default OpenAI advisory workflow with a
+  no-résumé connection test, bounded retry and refusal handling, and
+  evidence-grounded résumé-tailoring guidance for one user-selected job.
+  Enabling it adds no AI calls, cost, or delay to scans; OpenAI failures leave
+  Junior's deterministic result unchanged.
 - Record a 100 percent observed agreement rate in the latest 50-job
   risk-weighted, non-LLM validation: all nine surfaced jobs, the 15
   highest-scoring omissions, 25 random omissions, and the Ford India-remote
@@ -31,10 +36,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   remote and citizenship requirements, describe confirmed location mismatches
   with certainty, and stop incomplete tracked jobs from claiming no strengths
   or gaps.
-- Add disabled-by-default, provider-neutral LLM fit review with OpenAI as the
-  first provider, explicit résumé-transmission consent, OS credential storage,
-  bounded scan use, structured responses, unchanged-input caching, safe
-  deterministic fallback, and audit metadata.
+- Add the disabled-by-default OpenAI advisory foundation with explicit
+  résumé-transmission consent, operating-system credential storage, structured
+  responses, and safe deterministic fallback. Its user-facing role is now
+  limited to on-demand résumé-tailoring advice for one selected job; scans do
+  not call OpenAI.
 - Retrieve complete Oracle HCM and ADP requisition details through their
   structured public endpoints, retry transient Workday detail failures once,
   and distinguish plausible incomplete jobs from safely skipped unrelated

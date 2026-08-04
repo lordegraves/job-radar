@@ -680,6 +680,7 @@ def _apply_llm_fit_review(
         potential_top_match_eligible=potential,
         top_match_reasons=top_reasons,
         llm_review=review,
+        deterministic_resume_match=deterministic,
     )
 
 
@@ -1275,26 +1276,9 @@ def _handle_scan_unlocked(
                 )
             )
 
-        scored_postings, llm_reviewed, llm_reused, llm_failed = (
-            _augment_ambiguous_jobs_with_llm(
-                scored_postings,
-                settings=settings,
-                database_path=database_path,
-                profile_id=profile_id,
-                resume_text=resume_text,
-                scoring_config=scoring_config,
-            )
-        )
-        if settings.llm.enabled:
-            record_scan_diagnostic(
-                logs_path,
-                event="llm_advisory_completed",
-                scan_run_id=scan_run_id,
-                stage=current_stage,
-                jobs_llm_reviewed=llm_reviewed,
-                jobs_llm_reused=llm_reused,
-                llm_failures=llm_failed,
-            )
+        # AI assistance is deliberately user-requested per job. Enabling it must
+        # never add paid provider calls, latency, or nondeterminism to a scan.
+        llm_reviewed = llm_reused = llm_failed = 0
 
         record_scan_diagnostic(
             logs_path,
@@ -1407,6 +1391,9 @@ def _handle_scan_unlocked(
             jobs_omitted=jobs_omitted,
             history_context=history_context,
             tracker_workflow_summary=tracker_workflow_summary,
+            llm_jobs_reviewed=llm_reviewed,
+            llm_reviews_reused=llm_reused,
+            llm_failures=llm_failed,
         )
 
         current_stage = "report_generation"

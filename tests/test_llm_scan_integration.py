@@ -73,6 +73,7 @@ def test_weak_llm_fit_blocks_recommendation_without_changing_location() -> None:
     assert result.resume_match.label == "Poor Fit"
     assert result.resume_match.gaps == ["No Linux kernel-development experience"]
     assert result.llm_review == review
+    assert result.deterministic_resume_match == original.resume_match
 
 
 def test_strong_llm_fit_can_confirm_top_match() -> None:

@@ -17,6 +17,7 @@ from job_radar.storage import (
     complete_scan_run,
     fail_scan_run,
     fetch_active_scan_run,
+    fetch_job_posting_by_radar_id,
     fetch_latest_scan_run,
     fetch_source_posting_cache,
     initialize_database,
@@ -1422,3 +1423,28 @@ def test_fetch_active_scan_run_excludes_terminal_scan(
     assert latest_row is not None
     assert latest_row["id"] == scan_run_id
     assert latest_row["status"] == "failed"
+
+
+def test_fetch_job_posting_by_radar_id_restores_public_detail(tmp_path: Path) -> None:
+    database_path = tmp_path / "job_radar.sqlite3"
+    initialize_database(database_path)
+    posting = JobPosting(
+        company_key="example",
+        company_name="Example Company",
+        source_type="greenhouse",
+        source_url="https://example.com/jobs/42",
+        source_job_id="42",
+        title="Platform Engineer",
+        location="Remote - US",
+        description="Required Linux platform experience.",
+        canonical_key="example:42",
+        content_hash="synthetic-content-hash",
+    )
+    upsert_job_posting(database_path, posting)
+
+    loaded = fetch_job_posting_by_radar_id(database_path, posting.job_radar_id)
+
+    assert loaded is not None
+    assert loaded.company_name == "Example Company"
+    assert loaded.description == "Required Linux platform experience."
+    assert loaded.normalization_state == "complete"

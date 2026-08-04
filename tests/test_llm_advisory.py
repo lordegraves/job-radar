@@ -1,9 +1,14 @@
 import json
 
 import pytest
+import requests
 
 from job_radar.config import LlmSettings
-from job_radar.llm_advisory import LlmAdvisoryError, review_job_fit
+from job_radar.llm_advisory import (
+    LlmAdvisoryError,
+    review_job_fit,
+    test_openai_connection as check_openai_connection,
+)
 from job_radar.models import JobPosting
 from job_radar.resume_match import ResumeMatchResult
 
@@ -17,6 +22,16 @@ class FakeResponse:
 
     def json(self):
         return self.value
+
+
+class FailingResponse:
+    def __init__(self, status_code):
+        self.status_code = status_code
+
+    def raise_for_status(self):
+        response = requests.Response()
+        response.status_code = self.status_code
+        raise requests.HTTPError(response=response)
 
 
 def settings(*, enabled: bool = True) -> LlmSettings:
@@ -92,7 +107,63 @@ def test_openai_review_uses_bounded_structured_nonstored_request(monkeypatch) ->
     )
     assert captured["json"]["store"] is False
     assert captured["json"]["text"]["format"]["strict"] is True
-    assert captured["timeout"] == 45
+    assert captured["timeout"] == 30
+
+
+def test_connection_check_sends_no_resume_or_job_data(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "job_radar.llm_advisory.get_credential",
+        lambda _reference: "secret-not-logged",
+    )
+    captured = {}
+
+    def get_json(url, **kwargs):
+        captured["url"] = url
+        captured.update(kwargs)
+        return FakeResponse({"id": "gpt-test"})
+
+    result = check_openai_connection(settings=settings(), get_json=get_json)
+
+    assert result.model == "gpt-test"
+    assert captured["url"].endswith("/v1/models/gpt-test")
+    assert "json" not in captured
+    assert "secret-not-logged" not in result.message
+
+
+def test_connection_check_explains_rejected_key(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "job_radar.llm_advisory.get_credential",
+        lambda _reference: "rejected-key",
+    )
+
+    with pytest.raises(LlmAdvisoryError, match="rejected the saved API key"):
+        check_openai_connection(
+            settings=settings(),
+            get_json=lambda *_args, **_kwargs: FailingResponse(401),
+        )
+
+
+def test_refusal_keeps_deterministic_result(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "job_radar.llm_advisory.get_credential",
+        lambda _reference: "secret-not-logged",
+    )
+    response = FakeResponse(
+        {
+            "output": [
+                {"content": [{"type": "refusal", "refusal": "Declined"}]}
+            ]
+        }
+    )
+
+    with pytest.raises(LlmAdvisoryError, match="declined"):
+        review_job_fit(
+            settings=settings(),
+            posting=posting(),
+            resume_text="Operated datacenter networks.",
+            deterministic_match=deterministic(),
+            post_json=lambda *_args, **_kwargs: response,
+        )
 
 
 def test_disabled_advisory_never_reads_credentials(monkeypatch) -> None:

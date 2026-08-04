@@ -33,3 +33,6 @@ class ScanReport:
     jobs_omitted: int | None = None
     history_context: list[str] | None = None
     tracker_workflow_summary: dict[str, int] | None = None
+    llm_jobs_reviewed: int = 0
+    llm_reviews_reused: int = 0
+    llm_failures: int = 0

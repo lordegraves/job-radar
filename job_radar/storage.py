@@ -2227,6 +2227,44 @@ def upsert_job_posting(
         return result
 
 
+def fetch_job_posting_by_radar_id(
+    database_path: str | Path,
+    job_radar_id: str,
+) -> JobPosting | None:
+    """Load one stored public posting through its stable Junior identity."""
+
+    db_path = initialize_database(database_path)
+    with connect_database(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            """
+            SELECT jobs.*, companies.name AS company_name
+            FROM job_postings AS jobs
+            JOIN companies ON companies.company_key = jobs.company_key
+            WHERE jobs.is_active = 1
+            """
+        ).fetchall()
+    for row in rows:
+        posting = JobPosting(
+            company_key=row["company_key"],
+            company_name=row["company_name"],
+            source_type=row["source_type"],
+            source_url=row["source_url"],
+            title=row["title"],
+            location=row["location"],
+            description=row["description"],
+            source_job_id=row["source_job_id"],
+            remote_status=row["remote_status"],
+            salary_text=row["salary_text"],
+            canonical_key=row["canonical_key"],
+            content_hash=row["content_hash"],
+            normalization_state=("complete" if row["description"] else "incomplete"),
+        )
+        if posting.job_radar_id == job_radar_id:
+            return posting
+    return None
+
+
 def fetch_source_posting_cache(
     database_path: str | Path,
     company_key: str,

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from job_radar.compensation import CompensationResult
 from job_radar.eligibility import EligibilityReason, EligibilityResult
+from job_radar.llm_advisory import LlmFitReview
 from job_radar.resume_match import ResumeMatchResult
 from job_radar.models import JobPosting
 from job_radar.report_snapshot import (
@@ -116,7 +117,7 @@ def make_report() -> ScanReport:
 def test_build_report_snapshot_partitions_gui_sections() -> None:
     snapshot = build_report_snapshot(make_report())
 
-    assert snapshot.schema_version == 5
+    assert snapshot.schema_version == 6
     assert snapshot.summary.generated_at == "2026-07-15T12:00:00+00:00"
     assert snapshot.summary.top_matches == 1
     assert snapshot.summary.review_needed == 1
@@ -224,11 +225,60 @@ def test_report_snapshot_persists_eligibility_details(tmp_path: Path) -> None:
     loaded_snapshot = load_report_snapshot(snapshot_path)
     loaded_job = loaded_snapshot.potential_top_matches[0]
 
-    assert loaded_snapshot.schema_version == 5
+    assert loaded_snapshot.schema_version == 6
     assert loaded_job.eligibility_status == "needs_review"
     assert loaded_job.eligibility_reasons == [
         "The posting does not provide usable compensation.",
         "The posting includes an on-call requirement.",
+    ]
+
+
+def test_report_snapshot_preserves_local_and_llm_fit_findings() -> None:
+    base = make_scored_posting(title="llm-reviewed", top_match_eligible=True)
+    local_match = ResumeMatchResult(
+        label="Moderate",
+        evidence=["Linux operations"],
+        gaps=["No advanced kernel-development evidence"],
+    )
+    assisted_match = ResumeMatchResult(
+        label="Strong",
+        evidence=["Linux platform engineering"],
+        gaps=[],
+    )
+    scored = ScoredPosting(
+        **{
+            **base.__dict__,
+            "resume_match": assisted_match,
+            "deterministic_resume_match": local_match,
+            "llm_review": LlmFitReview(
+                fit_assessment="strong",
+                evidence=("Linux platform engineering",),
+                material_gaps=(),
+                explanation="The required platform work is supported.",
+                provider="openai",
+                model="gpt-test",
+            ),
+        }
+    )
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=1,
+        jobs_seen=0,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[scored.posting],
+        scored_postings=[scored],
+    )
+
+    job = build_report_snapshot(report).top_matches[0]
+
+    assert job.llm_advisory_label == "OpenAI-assisted (gpt-test)"
+    assert job.llm_fit_assessment == "Strong"
+    assert job.llm_explanation == "The required platform work is supported."
+    assert job.deterministic_resume_evidence == "Linux operations"
+    assert job.deterministic_resume_gaps == [
+        "No advanced kernel-development evidence"
     ]
 
 

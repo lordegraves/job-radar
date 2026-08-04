@@ -16,7 +16,7 @@ from job_radar.report_view_model import build_job_output_view_model
 from job_radar.scored_posting import ScoredPosting
 
 
-REPORT_SNAPSHOT_SCHEMA_VERSION = 5
+REPORT_SNAPSHOT_SCHEMA_VERSION = 6
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,11 @@ class ReportSnapshotJob:
     workplace_arrangement: str = "Not stated"
     eligibility_status: str | None = None
     eligibility_reasons: list[str] | None = None
+    llm_advisory_label: str = ""
+    llm_fit_assessment: str = ""
+    llm_explanation: str = ""
+    deterministic_resume_evidence: str = ""
+    deterministic_resume_gaps: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -61,6 +66,9 @@ class ReportSnapshotSummary:
     tracked_applications: int
     new_jobs: int
     collector_errors: int
+    llm_jobs_reviewed: int = 0
+    llm_reviews_reused: int = 0
+    llm_failures: int = 0
 
 
 @dataclass(frozen=True)
@@ -109,6 +117,9 @@ def build_report_snapshot(report: ScanReport) -> ReportSnapshot:
             tracked_applications=len(view_model.tracked_applications),
             new_jobs=report.jobs_new,
             collector_errors=len(collector_errors),
+            llm_jobs_reviewed=report.llm_jobs_reviewed,
+            llm_reviews_reused=report.llm_reviews_reused,
+            llm_failures=report.llm_failures,
         ),
         top_matches=_build_snapshot_jobs(view_model.top_matches),
         potential_top_matches=_build_snapshot_jobs(
@@ -152,6 +163,9 @@ def load_report_snapshot(snapshot_path: str | Path) -> ReportSnapshot:
             **{
                 "potential_top_matches": 0,
                 "location_outliers": 0,
+                "llm_jobs_reviewed": 0,
+                "llm_reviews_reused": 0,
+                "llm_failures": 0,
                 **raw_snapshot["summary"],
             }
         ),
@@ -219,6 +233,11 @@ def _build_snapshot_job(
             if job.eligibility_status is not None
             else None
         ),
+        llm_advisory_label=job.llm_advisory_label,
+        llm_fit_assessment=job.llm_fit_assessment,
+        llm_explanation=job.llm_explanation,
+        deterministic_resume_evidence=job.deterministic_resume_evidence,
+        deterministic_resume_gaps=list(job.deterministic_resume_gaps),
     )
 
 
@@ -244,6 +263,11 @@ def _load_snapshot_jobs(
         compatible_job.setdefault("workplace_arrangement", "Not stated")
         compatible_job.setdefault("eligibility_status", None)
         compatible_job.setdefault("eligibility_reasons", None)
+        compatible_job.setdefault("llm_advisory_label", "")
+        compatible_job.setdefault("llm_fit_assessment", "")
+        compatible_job.setdefault("llm_explanation", "")
+        compatible_job.setdefault("deterministic_resume_evidence", "")
+        compatible_job.setdefault("deterministic_resume_gaps", None)
         jobs.append(ReportSnapshotJob(**compatible_job))
 
     return jobs

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}AI advisory - Junior{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <p><a href="{{ url_for('report_section_view', section_name=return_section) }}">← Back to jobs</a></p>
+        <h1>AI advisory</h1>
+        <p>{{ posting.company_name }} — {{ posting.title }}</p>
+    </div>
+</header>
+
+<section class="panel">
+    <p><strong>OpenAI-assisted advice using {{ advice.model }}</strong></p>
+    <p class="muted">This is advice, not a verified fact or an automatic application decision. Junior's deterministic eligibility rules are unchanged.</p>
+
+    <h2>Résumé-tailoring guidance</h2>
+    <p>{{ advice.summary }}</p>
+    <h3>Suggested edits</h3>
+    {% for edit in advice.edits %}
+    <article class="settings-panel">
+        <h4>{{ edit.section }}</h4>
+        <p>{{ edit.suggestion }}</p>
+        <p class="muted"><strong>Existing résumé evidence:</strong> {{ edit.resume_evidence }}</p>
+    </article>
+    {% else %}
+    <p>No evidence-grounded edits were suggested.</p>
+    {% endfor %}
+    {% if advice.cautions %}
+    <h3>Do not claim without evidence</h3>
+    <ul>{% for item in advice.cautions %}<li>{{ item }}</li>{% endfor %}</ul>
+    {% endif %}
+</section>
+{% endblock %}

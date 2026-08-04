@@ -237,6 +237,10 @@
         margin-top: 18px;
     }
 
+    .job-links.job-links-with-llm {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .job-links .button-link {
         align-items: center;
         display: inline-flex;
@@ -246,6 +250,11 @@
 
     .job-links form {
         margin: 0;
+    }
+
+    .job-links .llm-tailor-form,
+    .job-links .llm-tailor-form button {
+        width: 100%;
     }
 
     .job-links label {
@@ -459,6 +468,16 @@
 {% endblock %}
 
 {% block content %}
+{% if llm_summary.llm_jobs_reviewed or llm_summary.llm_reviews_reused or llm_summary.llm_failures %}
+<section class="panel">
+    <h2>OpenAI advisory activity</h2>
+    <ul>
+        <li>{{ llm_summary.llm_jobs_reviewed }} new job-fit review(s) completed.</li>
+        <li>{{ llm_summary.llm_reviews_reused }} unchanged review(s) reused.</li>
+        <li>{{ llm_summary.llm_failures }} request(s) failed or were declined; Junior kept its local deterministic result for each one.</li>
+    </ul>
+</section>
+{% endif %}
 <section id="review-page-top" class="section-hero">
     <h1>{{ section_title }}</h1>
     <p>{{ section_description }}</p>
@@ -650,16 +669,37 @@
         </section>
         {% endif %}
 
+        {% if job.llm_advisory_label %}
+        <section class="job-section">
+            <h2>Junior's local résumé comparison</h2>
+            <p><strong>Strengths:</strong> {{ job.deterministic_resume_evidence or "No clear strengths recorded" }}</p>
+            <p><strong>Possible gaps:</strong></p>
+            <ul>
+                {% for gap in job.deterministic_resume_gaps %}
+                <li>{{ gap }}</li>
+                {% else %}
+                <li>No material required-qualification gaps recorded</li>
+                {% endfor %}
+            </ul>
+        </section>
+        <section class="job-section">
+            <h2>OpenAI advisory</h2>
+            <p><strong>Fit assessment:</strong> {{ job.llm_fit_assessment }}</p>
+            {% if job.llm_explanation %}<p>{{ job.llm_explanation }}</p>{% endif %}
+            <p class="muted">This advice can refine professional-fit evidence. Junior's tested location, clearance, compensation, and employment rules remain authoritative.</p>
+        </section>
+        {% endif %}
+
         {% if job.resume_evidence %}
         <section class="job-section">
-            <h2>Strengths from your résumé</h2>
+            <h2>{% if job.llm_advisory_label %}AI-assisted strengths from your résumé{% else %}Strengths from your résumé{% endif %}</h2>
             <p>{{ job.resume_evidence }}</p>
         </section>
         {% endif %}
 
         {% if job.resume_gaps %}
         <section class="job-section">
-            <h2>Possible gaps</h2>
+            <h2>{% if job.llm_advisory_label %}AI-assisted possible gaps{% else %}Possible gaps{% endif %}</h2>
             <ul>
                 {% for gap in job.resume_gaps.splitlines() %}
                 <li>{{ gap }}</li>
@@ -736,7 +776,7 @@
             {% endif %}
         </details>
 
-        <div class="job-links">
+        <div class="job-links{% if llm_enabled and job.job_radar_id %} job-links-with-llm{% endif %}">
             {% if job.review_state == "applied" and job.tracker_edit_url %}
             <a class="button-link" href="{{ job.tracker_edit_url }}">Open in Active Applications</a>
             {% elif job.review_state in ("saved", "passed") %}
@@ -746,6 +786,13 @@
             {% endif %}
             {% if job.url %}
             <a class="button-link button-secondary" href="{{ job.url }}" target="_blank" rel="noopener noreferrer">Open job posting</a>
+            {% endif %}
+            {% if llm_enabled and job.job_radar_id %}
+            <form class="llm-tailor-form" method="post" action="{{ url_for('report_job_llm_advice', job_radar_id=job.job_radar_id) }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="section_name" value="{{ section_name }}">
+                <button class="button-secondary" type="submit" name="advice_kind" value="resume" data-submit-pending-label="Preparing advice…">Tailor résumé</button>
+            </form>
             {% endif %}
             {% if job.job_radar_id and decisions_enabled and job.review_state == "needs_review" %}
             <form class="job-decision-form" method="post" action="{{ url_for('save_report_job_decision', job_radar_id=job.job_radar_id) }}">

@@ -251,6 +251,8 @@ def create_app(
         get_database_path=lambda: _get_database_path(app),
         get_profile_id=lambda: _get_active_profile_id(app),
         get_logs_path=lambda: str(_get_runtime_paths(app).logs_path),
+        get_settings_path=lambda: app.config["JOB_RADAR_SETTINGS_PATH"],
+        get_base_directory=lambda: str(_get_runtime_paths(app).base_directory),
     )
 
     register_tracker_routes(
