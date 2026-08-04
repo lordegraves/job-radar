@@ -51,12 +51,12 @@ def test_cronjobs_are_guarded_and_share_persistent_data() -> None:
     assert (
         scan["spec"]["jobTemplate"]["spec"]["template"]["spec"]
         ["containers"][0]["command"][0]
-        == "job-radar-scheduled"
+        == "junior-scheduled"
     )
     assert (
         backup["spec"]["jobTemplate"]["spec"]["template"]["spec"]
         ["containers"][0]["command"][0]
-        == "job-radar-backup"
+        == "junior-backup"
     )
     assert "--keep" in (
         backup["spec"]["jobTemplate"]["spec"]["template"]["spec"]

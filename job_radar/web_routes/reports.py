@@ -28,11 +28,6 @@ from job_radar.job_decision_service import (
     save_job_decision,
     save_job_decisions_bulk,
 )
-from job_radar.config import load_settings
-from job_radar.llm_advisory import LlmAdvisoryError
-from job_radar.llm_career_advisory import build_resume_tailoring_advice
-from job_radar.profile_context import load_active_candidate_context
-from job_radar.storage import fetch_job_posting_by_radar_id
 from job_radar.decision_event_log import record_decision_event
 from job_radar.evaluation_audit import (
     EVALUATION_AUDIT_NAME,
@@ -422,55 +417,18 @@ def register_report_routes(
             view_mode=view_mode,
             view_query="compact" if view_mode == "compact" else None,
             today_iso=date.today().isoformat(),
-            llm_enabled=load_settings(get_settings_path()).llm.enabled,
+            llm_enabled=False,
             llm_summary=snapshot.summary,
         )
 
     @app.post("/reports/jobs/<path:job_radar_id>/llm-advice")
     def report_job_llm_advice(job_radar_id: str):
-        advice_kind = request.form.get("advice_kind", "")
         return_section = request.form.get("section_name", "review_needed")
         if return_section not in REPORT_SECTION_DETAILS:
             return_section = "review_needed"
-        settings = load_settings(get_settings_path())
-        posting = fetch_job_posting_by_radar_id(
-            get_database_path(),
-            job_radar_id,
-        )
-        if posting is None:
-            abort(404)
-        try:
-            if advice_kind != "resume":
-                abort(400)
-            context = load_active_candidate_context(
-                get_database_path(),
-                (
-                    Path(settings.candidate_profile_path)
-                    if settings.candidate_profile_path
-                    else None
-                ),
-                base_directory=Path(get_base_directory()),
-            )
-            if not context.resume_text:
-                raise LlmAdvisoryError(
-                    "Junior could not load the active résumé for tailoring advice."
-                )
-            advice = build_resume_tailoring_advice(
-                settings=settings.llm,
-                posting=posting,
-                resume_text=context.resume_text,
-            )
-        except LlmAdvisoryError as error:
-            flash(str(error), "error")
-            return redirect(
-                url_for("report_section_view", section_name=return_section)
-            )
-        return render_template(
-            "llm_job_advice.html",
-            posting=posting,
-            advice=advice,
-            advice_kind=advice_kind,
-            return_section=return_section,
+        flash("AI résumé tailoring is under development.", "info")
+        return redirect(
+            url_for("report_section_view", section_name=return_section)
         )
 
     @app.get("/reports")

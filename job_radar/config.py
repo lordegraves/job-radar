@@ -1,4 +1,4 @@
-"""Load and validate Job Radar's YAML configuration into typed settings.
+"""Load and validate Junior's YAML configuration into typed settings.
 
 This module rejects malformed company, path, profile, and email configuration
 before application work begins. Its mapping-compatible settings objects preserve
@@ -21,7 +21,7 @@ SUPPORTED_SOURCE_TYPES = {
 
 
 class ConfigError(Exception):
-    """Raised when Job Radar configuration is missing or invalid."""
+    """Raised when Junior configuration is missing or invalid."""
 
 
 @dataclass(frozen=True)

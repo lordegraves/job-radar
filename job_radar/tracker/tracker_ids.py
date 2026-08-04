@@ -1,4 +1,4 @@
-"""Create stable Job Radar IDs for manually entered or imported jobs."""
+"""Create stable Junior IDs for manually entered or imported jobs."""
 
 import hashlib
 from uuid import uuid4
@@ -14,7 +14,7 @@ def build_manual_job_radar_id(
     """Build an app-owned ID for manual jobs that did not come from a scan.
 
     URLs are useful evidence, but they are not durable app identity. Spreadsheet
-    imports and GUI-created records get a Job Radar-owned ID so tracker records
+    imports and GUI-created records get a Junior-owned ID so tracker records
     do not use posting URLs as primary keys.
     """
     stable_key = source_key or source_url

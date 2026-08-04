@@ -91,7 +91,7 @@ def test_update_check_reports_newer_verified_stable_release() -> None:
             {
                 "tag_name": "v0.2.0",
                 "html_url": (
-                    "https://github.com/lordegraves/job-radar/releases/tag/v0.2.0"
+                    "https://github.com/lordegraves/junior/releases/tag/v0.2.0"
                 ),
             }
         ),
@@ -127,14 +127,14 @@ def test_update_check_reports_newer_field_test_build() -> None:
         request_get=lambda *args, **kwargs: _ReleaseResponse(
             {
                 "html_url": (
-                    "https://github.com/lordegraves/job-radar/"
+                    "https://github.com/lordegraves/junior/"
                     "releases/tag/v0.2.0-rc5"
                 ),
                 "assets": [
                     {
                         "name": "Junior-Setup-0.2.0-SP5-build-1.2.exe",
                         "browser_download_url": (
-                            "https://github.com/lordegraves/job-radar/releases/"
+                            "https://github.com/lordegraves/junior/releases/"
                             "download/v0.2.0-rc5/"
                             "Junior-Setup-0.2.0-SP5-build-1.2.exe"
                         ),
@@ -142,7 +142,7 @@ def test_update_check_reports_newer_field_test_build() -> None:
                     {
                         "name": "SHA256-SP5-build-1.2.txt",
                         "browser_download_url": (
-                            "https://github.com/lordegraves/job-radar/releases/"
+                            "https://github.com/lordegraves/junior/releases/"
                             "download/v0.2.0-rc5/"
                             "SHA256-SP5-build-1.2.txt"
                         ),
@@ -177,7 +177,7 @@ def test_about_update_check_is_manual_and_displays_safe_result(
                 {
                         "tag_name": "v0.3.0",
                         "html_url": (
-                            "https://github.com/lordegraves/job-radar/"
+                            "https://github.com/lordegraves/junior/"
                             "releases/tag/v0.3.0"
                         ),
                 }
@@ -219,15 +219,15 @@ def _installable_update(installer: bytes) -> UpdateCheckResult:
         available_version="0.2.0",
         available_build="1.4",
         release_url=(
-            "https://github.com/lordegraves/job-radar/releases/tag/v0.2.0-rc5"
+            "https://github.com/lordegraves/junior/releases/tag/v0.2.0-rc5"
         ),
         installer_name="Junior-Setup-0.2.0-SP5-build-1.5.exe",
         installer_url=(
-            "https://github.com/lordegraves/job-radar/releases/download/"
+            "https://github.com/lordegraves/junior/releases/download/"
             "v0.2.0-rc5/Junior-Setup-0.2.0-SP5-build-1.5.exe"
         ),
         checksum_url=(
-            "https://github.com/lordegraves/job-radar/releases/download/"
+            "https://github.com/lordegraves/junior/releases/download/"
             "v0.2.0-rc5/SHA256-SP5-build-1.5.txt"
         ),
     )

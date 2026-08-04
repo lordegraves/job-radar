@@ -95,7 +95,7 @@ class DesktopInstanceLock(AbstractContextManager["DesktopInstanceLock"]):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="job-radar-desktop",
+        prog="junior-desktop",
         description="Launch the junior desktop interface",
     )
     parser.add_argument(
@@ -141,7 +141,7 @@ def build_local_url(host: str, port: int) -> str:
     return f"http://{browser_host}:{port}/"
 
 
-def is_job_radar_running(url: str) -> bool:
+def is_junior_running(url: str) -> bool:
     try:
         with urlopen(url, timeout=1.0) as response:
             response_text = response.read(65536).decode(
@@ -162,7 +162,7 @@ def wait_until_ready(
     deadline = time.monotonic() + timeout_seconds
 
     while time.monotonic() < deadline:
-        if is_job_radar_running(url):
+        if is_junior_running(url):
             return
 
         time.sleep(0.05)
@@ -182,7 +182,7 @@ def run_desktop_server(
 ) -> None:
     server_thread = threading.Thread(
         target=server.serve_forever,
-        name="job-radar-local-server",
+        name="junior-local-server",
         daemon=True,
     )
     server_thread.start()
@@ -219,7 +219,7 @@ def run_native_window(
     set_windows_app_identity()
     server_thread = threading.Thread(
         target=server.serve_forever,
-        name="job-radar-local-server",
+        name="junior-local-server",
         daemon=True,
     )
     server_thread.start()
@@ -425,7 +425,7 @@ def launch_desktop() -> None:
                 )
             return
 
-        if is_job_radar_running(url):
+        if is_junior_running(url):
             if args.browser:
                 webbrowser.open(url)
             elif not args.no_browser:

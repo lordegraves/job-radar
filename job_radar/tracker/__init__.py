@@ -1,1 +1,1 @@
-"""Application tracker support for Job Radar."""
+"""Application tracker support for Junior."""

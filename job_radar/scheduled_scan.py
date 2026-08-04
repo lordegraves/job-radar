@@ -49,7 +49,7 @@ def run_saved_schedule(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="job-radar-scheduled",
+        prog="junior-scheduled",
         description="Run Junior's saved scan schedule",
     )
     parser.add_argument(

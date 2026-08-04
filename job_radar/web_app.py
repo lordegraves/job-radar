@@ -1,4 +1,4 @@
-"""Create and launch the Job Radar web interface with safe startup diagnostics."""
+"""Create and launch the Junior web interface with safe startup diagnostics."""
 
 import argparse
 import json
@@ -386,7 +386,7 @@ def _format_configuration_startup_error(
             "junior could not start because its settings file was not found.\n\n"
             "What to do:\n"
             "Run this command once to create your junior workspace:\n\n"
-            "    job-radar bootstrap-user-data\n\n"
+            "    junior bootstrap-user-data\n\n"
             "Then start junior again.\n\n"
             "Technical details:\n"
             f"{technical_details}\n"

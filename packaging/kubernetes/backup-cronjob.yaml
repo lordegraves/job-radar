@@ -23,7 +23,7 @@ spec:
             - name: backup
               image: junior:0.2.0
               command:
-                - job-radar-backup
+                - junior-backup
                 - --user-data-root
                 - /var/lib/junior
                 - --keep

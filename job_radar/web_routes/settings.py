@@ -47,12 +47,6 @@ from job_radar.email_settings_service import (
     save_email_settings,
     test_email_connection,
 )
-from job_radar.llm_settings_service import (
-    LlmSettingsError,
-    load_llm_settings_form,
-    save_llm_settings,
-)
-from job_radar.llm_advisory import LlmAdvisoryError, test_openai_connection
 from job_radar.retention_settings_service import (
     RetentionSettingsError,
     load_retention_settings_form,
@@ -127,7 +121,6 @@ def register_settings_routes(
             schedule_view=build_schedule_view(runtime_paths.database_path),
             scheduler_integration=inspect_scheduler(),
             discovery_form=load_company_discovery_settings_form(settings_path),
-            llm_form=load_llm_settings_form(settings_path),
             llm_connection_test=session.get("llm_connection_test"),
             open_section=request.args.get("section", "").strip(),
         )
@@ -448,43 +441,13 @@ def register_settings_routes(
 
     @app.post("/settings/llm")
     def settings_llm_save():
-        try:
-            current_llm = load_settings(settings_path).llm
-            save_llm_settings(
-                settings_path,
-                enabled=request.form.get("enabled") == "yes",
-                provider=request.form.get("provider", "openai"),
-                model=request.form.get("model", ""),
-                privacy_acknowledged=(
-                    request.form.get("privacy_acknowledged") == "yes"
-                ),
-                max_reviews_per_scan=current_llm.max_reviews_per_scan,
-                credential=request.form.get("credential", ""),
-            )
-        except (LlmSettingsError, ValueError) as error:
-            flash(str(error), "error")
-            return _settings_section_redirect("llm")
-        flash("LLM advisory settings saved.", "success")
+        flash("AI résumé tailoring is under development.", "info")
         return _settings_section_redirect("llm")
 
     @app.post("/settings/llm/test")
     def settings_llm_test():
-        try:
-            result = test_openai_connection(
-                settings=load_settings(settings_path).llm,
-            )
-        except LlmAdvisoryError as error:
-            session["llm_connection_test"] = {
-                "tone": "error",
-                "status": "Connection test failed",
-                "message": str(error),
-            }
-            return _settings_section_redirect("llm")
-        session["llm_connection_test"] = {
-            "tone": "success",
-            "status": "Connection confirmed",
-            "message": result.message,
-        }
+        session.pop("llm_connection_test", None)
+        flash("AI résumé tailoring is under development.", "info")
         return _settings_section_redirect("llm")
 
     @app.post("/settings/schedule/system/apply")

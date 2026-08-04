@@ -10,10 +10,10 @@ import requests
 
 
 LATEST_RELEASE_API = (
-    "https://api.github.com/repos/lordegraves/job-radar/releases/latest"
+    "https://api.github.com/repos/lordegraves/junior/releases/latest"
 )
 RELEASE_BY_TAG_API = (
-    "https://api.github.com/repos/lordegraves/job-radar/releases/tags/{tag}"
+    "https://api.github.com/repos/lordegraves/junior/releases/tags/{tag}"
 )
 _VERSION_PATTERN = re.compile(
     r"^v?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
@@ -261,7 +261,7 @@ def _safe_release_url(value: object) -> str | None:
     if (
         parsed.scheme != "https"
         or parsed.netloc.lower() != "github.com"
-        or not parsed.path.startswith("/lordegraves/job-radar/releases/tag/")
+        or not parsed.path.startswith("/lordegraves/junior/releases/tag/")
     ):
         return None
     return value
@@ -275,7 +275,7 @@ def _safe_asset_url(value: object) -> str | None:
         parsed.scheme != "https"
         or parsed.netloc.lower() != "github.com"
         or not parsed.path.startswith(
-            "/lordegraves/job-radar/releases/download/"
+            "/lordegraves/junior/releases/download/"
         )
     ):
         return None

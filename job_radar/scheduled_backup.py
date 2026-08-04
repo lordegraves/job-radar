@@ -43,7 +43,7 @@ def run_scheduled_backup(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="job-radar-backup",
+        prog="junior-backup",
         description="Create a verified backup in Junior's user-data directory",
     )
     parser.add_argument(

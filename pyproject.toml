@@ -35,12 +35,19 @@ dev = [
 ]
 
 [project.scripts]
+junior = "job_radar.cli:main"
+junior-scheduled = "job_radar.scheduled_scan:main"
+junior-backup = "job_radar.scheduled_backup:main"
+junior-web = "job_radar.web_app:main"
+# Released aliases remain available so existing automation keeps working.
 job-radar = "job_radar.cli:main"
 job-radar-scheduled = "job_radar.scheduled_scan:main"
 job-radar-backup = "job_radar.scheduled_backup:main"
 job-radar-web = "job_radar.web_app:main"
 
 [project.gui-scripts]
+junior-desktop = "job_radar.desktop_launcher:main"
+# Keep the released launcher alias for upgrades and existing shortcuts.
 job-radar-desktop = "job_radar.desktop_launcher:main"
 
 [tool.setuptools.packages.find]
@@ -59,3 +66,9 @@ job_radar = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+# Validation runs deliberately leave disposable package copies under
+# testtmp-* when a failure needs inspection. Lint the maintained source and
+# tests, not those frozen diagnostic copies.
+extend-exclude = ["testtmp-*"]

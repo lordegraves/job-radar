@@ -1,7 +1,7 @@
-"""Define managed profiles without depending on files outside Job Radar.
+"""Define managed profiles without depending on files outside Junior.
 
 Profiles use stable application-owned IDs. Resume records contain only names
-inside Job Radar's managed resume directory, so moving or renaming an original
+inside Junior's managed resume directory, so moving or renaming an original
 file in Documents, Downloads, or cloud storage cannot break an active profile.
 """
 
@@ -78,7 +78,7 @@ class LocationPreference:
 
 @dataclass(frozen=True)
 class ManagedResume:
-    """Identify resume files stored inside Job Radar's managed user-data area."""
+    """Identify resume files stored inside Junior's managed user-data area."""
 
     source_file_name: str
     normalized_text_file_name: str = NORMALIZED_RESUME_FILENAME

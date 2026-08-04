@@ -19,7 +19,6 @@ from job_radar.job_decision_service import (
     list_job_decisions,
     save_job_decision,
 )
-from job_radar.llm_advisory import LlmAdvisoryError, LlmConnectionResult
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_storage import (
     create_profile,
@@ -2730,10 +2729,11 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "Email" in settings_html
     assert "Disabled" in settings_html
     assert "The password is stored by your operating system" in settings_html
-    assert "LLM advisory assistance" in settings_html
-    assert "Off by default" in settings_html
-    assert "complete active résumé" in settings_html
-    assert "API use is billed separately" in settings_html
+    assert "AI résumé tailoring" in settings_html
+    assert "Under development" in settings_html
+    assert "not currently available" in settings_html
+    assert "Enable optional OpenAI" not in settings_html
+    assert "Test OpenAI connection" not in settings_html
     assert "Health checks, version information" in settings_html
     assert "Exit Junior" not in settings_html
     assert "Save retention settings" in settings_html
@@ -2749,57 +2749,40 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
         assert f'id="{section_id}" open' not in normalized_settings_html
 
 
-def test_llm_connection_result_is_visible_in_llm_settings(
+def test_llm_connection_endpoint_reports_feature_under_development(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     write_settings_file(settings_file, database_file)
-    monkeypatch.setattr(
-        "job_radar.web_routes.settings.test_openai_connection",
-        lambda **_kwargs: LlmConnectionResult(
-            provider="openai",
-            model="gpt-5.6-sol",
-            message="OpenAI confirmed access to gpt-5.6-sol.",
-        ),
-    )
     client = create_app(settings_path=str(settings_file)).test_client()
 
     response = client.post("/settings/llm/test", follow_redirects=True)
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Connection confirmed" in html
-    assert "OpenAI confirmed access to gpt-5.6-sol." in html
+    assert "AI résumé tailoring is under development." in html
     assert 'id="llm-settings"' in html
     assert 'id="llm-settings" open' in " ".join(html.split())
 
 
-def test_llm_connection_failure_is_visible_in_llm_settings(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
+def test_llm_save_endpoint_cannot_enable_feature(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
     write_settings_file(settings_file, database_file)
 
-    def fail_connection(**_kwargs) -> None:
-        raise LlmAdvisoryError("The saved OpenAI API key was rejected.")
-
-    monkeypatch.setattr(
-        "job_radar.web_routes.settings.test_openai_connection",
-        fail_connection,
-    )
     client = create_app(settings_path=str(settings_file)).test_client()
 
-    response = client.post("/settings/llm/test", follow_redirects=True)
+    response = client.post(
+        "/settings/llm",
+        data={"enabled": "yes"},
+        follow_redirects=True,
+    )
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Connection test failed" in html
-    assert "The saved OpenAI API key was rejected." in html
-    assert 'role="alert"' in html
+    assert "AI résumé tailoring is under development." in html
+    assert load_settings(settings_file).llm.enabled is False
 
 
 def test_desktop_settings_requests_clean_shutdown(tmp_path: Path) -> None:
@@ -4734,7 +4717,7 @@ def test_tracker_edit_page_moves_terminal_outcome_to_history_and_redirects(
 
     assert history_record.company == "Example Mobility"
     assert history_record.role == "Senior Site Reliability Engineer"
-    assert history_record.source == "Job Radar Tracker"
+    assert history_record.source == "Junior Tracker"
     assert history_record.event_date == "2026-07-12"
     assert history_record.status == "Applied"
     assert history_record.outcome_category == "Rejected - No Interview"
@@ -5535,7 +5518,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.11" in html
+    assert "RC6 Build 1.12" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

@@ -6,11 +6,22 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
-- Complete the initial disabled-by-default OpenAI advisory workflow with a
-  no-résumé connection test, bounded retry and refusal handling, and
-  evidence-grounded résumé-tailoring guidance for one user-selected job.
-  Enabling it adds no AI calls, cost, or delay to scans; OpenAI failures leave
-  Junior's deterministic result unchanged.
+- Prepare the fully audited, accuracy-validated product as `RC6 Build 1.12`,
+  including canonical Junior commands, the renamed GitHub release location,
+  disabled under-development AI controls, and expanded large-data GUI checks.
+
+- Make `junior`, `junior-desktop`, `junior-web`, `junior-scheduled`, and
+  `junior-backup` the canonical installed commands while retaining released
+  `job-radar*` aliases for existing automation and upgrades. Update official
+  repository, release, update-check, license, and security links to the renamed
+  `lordegraves/junior` GitHub repository.
+- Park all AI résumé tailoring while the feature remains under development.
+  Settings provides no enablement or connection controls, job reports provide
+  no tailoring action, and direct legacy requests cannot activate the feature.
+  Retained experimental OpenAI and local-model code has no role in scans.
+- Retain the experimental OpenAI advisory implementation with bounded retry,
+  refusal handling, evidence-grounded prompts, and secure credential boundaries
+  for future development; it is not currently exposed to users.
 - Record a 100 percent observed agreement rate in the latest 50-job
   risk-weighted, non-LLM validation: all nine surfaced jobs, the 15
   highest-scoring omissions, 25 random omissions, and the Ford India-remote
@@ -36,11 +47,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   remote and citizenship requirements, describe confirmed location mismatches
   with certainty, and stop incomplete tracked jobs from claiming no strengths
   or gaps.
-- Add the disabled-by-default OpenAI advisory foundation with explicit
+- Build an experimental OpenAI advisory foundation with explicit
   résumé-transmission consent, operating-system credential storage, structured
-  responses, and safe deterministic fallback. Its user-facing role is now
-  limited to on-demand résumé-tailoring advice for one selected job; scans do
-  not call OpenAI.
+  responses, and safe deterministic fallback. The experiment is now parked;
+  no AI controls or tailoring actions are exposed and scans do not call OpenAI.
 - Retrieve complete Oracle HCM and ADP requisition details through their
   structured public endpoints, retry transient Workday detail failures once,
   and distinguish plausible incomplete jobs from safely skipped unrelated
@@ -448,7 +458,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   10,000 historical applications, 2,500 active applications, and five profiles;
   added profile-first and active-company database indexes; and corrected the
   shared SQLite boundary so context-managed operations release their database
-  handles after commit or rollback.
+  handles after commit or rollback. The gate now repeatedly renders the real
+  Active Applications and Application History pages, and an extended test
+  passed with 500 companies, 500,000 jobs, 50,000 history records, 10,000
+  active applications, and five profiles.
 - Added a repeatable release-candidate acceptance walkthrough for the exact
   publishable installer, covering isolated new-user setup, first report,
   application tracking, restart, update checking, backup, restore,
@@ -614,6 +627,6 @@ Application History itself was not removed. It remains a core SQLite-backed appl
 - SMTP delivery disabled unless explicitly configured and requested.
 - SMTP password values excluded from YAML and source control.
 
-[Unreleased]: https://github.com/lordegraves/job-radar/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/lordegraves/job-radar/releases/tag/v0.2.0
-[0.1.0]: https://github.com/lordegraves/job-radar/releases/tag/v0.1.0
+[Unreleased]: https://github.com/lordegraves/junior/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/lordegraves/junior/releases/tag/v0.2.0
+[0.1.0]: https://github.com/lordegraves/junior/releases/tag/v0.1.0

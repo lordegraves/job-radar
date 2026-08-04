@@ -1,4 +1,4 @@
-"""Open SQLite connections with Job Radar's required safety settings.
+"""Open SQLite connections with Junior's required safety settings.
 
 All database services use this helper so SQLite foreign-key rules are enforced
 consistently instead of depending on each caller to remember the setting.

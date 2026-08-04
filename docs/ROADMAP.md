@@ -392,7 +392,7 @@ The first and only RC7 language-model capability is **Explain this job**.
 ## Protected wording notes
 
 - Priority 19 uses “user-owned” to mean data stored in the user's application-data area. Employer organizations and source definitions are installation-wide; profiles independently select from that shared catalog.
-- Historical `Job Radar` references remain inside protected task descriptions. The user-facing product name is junior, while repository, package, command, environment-variable, durable Job Radar ID, and existing user-data names remain unchanged for compatibility.
+- Historical `Job Radar` references remain inside protected task descriptions. The user-facing product and canonical command names are Junior. The `job-radar` distribution, `job_radar` Python package, released command aliases, environment variables, durable database identifiers, and existing user-data names remain unchanged for compatibility.
 
 ## Current status summary
 

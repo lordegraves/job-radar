@@ -404,76 +404,18 @@
         {% if open_section == "llm" %}open{% endif %}
     >
         <summary>
-            <h2>Résumé-tailoring assistance</h2>
-            <p class="settings-summary">{% if llm_form.enabled %}Enabled — OpenAI{% else %}Off by default{% endif %}</p>
+            <h2>AI résumé tailoring</h2>
+            <p class="settings-summary">Under development</p>
         </summary>
         <div class="settings-content">
-            <p>
-                Junior's tested local rules continue to collect, evaluate, and sort
-                every job. Optional AI assistance is used only when you select
-                <strong>Tailor résumé</strong> for one job; enabling it never adds
-                AI requests or charges to a scan.
-            </p>
             <section class="settings-panel">
-                <h3>Important data-privacy warning</h3>
+                <h3>Under development</h3>
                 <p>
-                    When you request tailoring advice, Junior sends that selected
-                    job description and the complete active résumé to OpenAI. OpenAI also
-                    receives your IP address and ordinary connection information.
+                    AI résumé tailoring is not currently available. Junior's tested
+                    local rules continue to collect, evaluate, and sort every job
+                    without AI.
                 </p>
-                <ul class="privacy-list">
-                    <li>Do not enable this feature if you do not want résumé information sent to OpenAI.</li>
-                    <li>API use is billed separately from a ChatGPT subscription.</li>
-                    <li>Junior requests no provider-side response storage, but the provider's current data terms still apply.</li>
-                    <li>Junior never sends application-tracker notes, credentials, or unrelated profile records.</li>
-                </ul>
             </section>
-            <form method="post" action="{{ url_for('settings_llm_save') }}">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="provider" value="openai">
-                <div class="settings-grid">
-                    <section class="settings-panel">
-                        <h3>Provider</h3>
-                        <p><strong>OpenAI</strong> (initial supported provider)</p>
-                        <label>Model
-                            <input name="model" value="{{ llm_form.model }}" autocomplete="off">
-                        </label>
-                    </section>
-                    <section class="settings-panel">
-                        <h3>Secure API credential</h3>
-                        <p>{% if llm_form.credential_saved %}An API key is stored in the operating-system credential manager.{% else %}No API key is stored.{% endif %}</p>
-                        <label>OpenAI API key
-                            <input name="credential" type="password" value="" autocomplete="new-password" placeholder="Leave blank to keep the saved key">
-                        </label>
-                        <p class="muted">The key is never saved in settings, SQLite, reports, logs, or diagnostics.</p>
-                    </section>
-                </div>
-                <label>
-                    <input name="privacy_acknowledged" type="checkbox" value="yes" {% if llm_form.privacy_acknowledged %}checked{% endif %}>
-                    I understand that the selected résumé and job description will be sent to OpenAI only when I request tailoring advice.
-                </label>
-                <label>
-                    <input name="enabled" type="checkbox" value="yes" {% if llm_form.enabled %}checked{% endif %}>
-                    Enable optional LLM advisory assistance
-                </label>
-                <div class="inline-actions">
-                    <button type="submit" data-submit-pending-label="Saving…">Save LLM advisory settings</button>
-                </div>
-            </form>
-            <form method="post" action="{{ url_for('settings_llm_test') }}">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <div class="inline-actions">
-                    <button type="submit" data-submit-pending-label="Testing…" {% if not llm_form.credential_saved %}disabled{% endif %}>Test OpenAI connection</button>
-                </div>
-                <p class="muted">This checks the saved key and model name. It sends no résumé or job information.</p>
-                {% if llm_connection_test %}
-                <div class="connection-status {{ llm_connection_test.tone }}" role="{% if llm_connection_test.tone == 'error' %}alert{% else %}status{% endif %}">
-                    <span class="connection-dot" aria-hidden="true"></span>
-                    {{ llm_connection_test.status }}
-                </div>
-                <p>{{ llm_connection_test.message }}</p>
-                {% endif %}
-            </form>
         </div>
     </details>
 

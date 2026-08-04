@@ -23,7 +23,7 @@ spec:
             - name: scan
               image: junior:0.2.0
               command:
-                - job-radar-scheduled
+                - junior-scheduled
                 - --user-data-root
                 - /var/lib/junior
               env:

@@ -2,7 +2,7 @@
 
 Browser and server interactions are replaced with controlled test doubles so
 the suite can prove launcher decisions without opening a real browser or using
-the operator's live Job Radar workspace.
+the operator's live Junior workspace.
 """
 
 import sys
@@ -74,7 +74,7 @@ def test_build_local_url_uses_browser_safe_host(
     assert desktop_launcher.build_local_url(host, 5000) == expected_url
 
 
-def test_main_reuses_running_job_radar(
+def test_main_reuses_running_junior(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -84,11 +84,11 @@ def test_main_reuses_running_job_radar(
     monkeypatch.setattr(
         sys,
         "argv",
-        ["job-radar-desktop", "--browser"],
+        ["junior-desktop", "--browser"],
     )
     monkeypatch.setattr(
         desktop_launcher,
-        "is_job_radar_running",
+        "is_junior_running",
         lambda _url: True,
     )
     monkeypatch.setattr(
@@ -119,7 +119,7 @@ def test_second_launcher_uses_locked_workspace_instance(
     monkeypatch.setattr(
         sys,
         "argv",
-        ["job-radar-desktop", "--port", "5999"],
+        ["junior-desktop", "--port", "5999"],
     )
     monkeypatch.setattr(
         desktop_launcher,
@@ -138,7 +138,7 @@ def test_second_launcher_uses_locked_workspace_instance(
     )
     monkeypatch.setattr(
         desktop_launcher,
-        "is_job_radar_running",
+        "is_junior_running",
         lambda _url: pytest.fail("second instance must not probe another port"),
     )
 
@@ -155,7 +155,7 @@ def test_second_launcher_uses_locked_workspace_instance(
     ]
 
 
-def test_main_bootstraps_starts_native_job_radar(
+def test_main_bootstraps_starts_native_junior(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -173,11 +173,11 @@ def test_main_bootstraps_starts_native_job_radar(
     monkeypatch.setattr(
         sys,
         "argv",
-        ["job-radar-desktop"],
+        ["junior-desktop"],
     )
     monkeypatch.setattr(
         desktop_launcher,
-        "is_job_radar_running",
+        "is_junior_running",
         lambda _url: False,
     )
     monkeypatch.setattr(
@@ -260,8 +260,8 @@ def test_main_guarantees_process_exit_after_verified_update(
         extensions={"junior_scan_runner": SimpleNamespace(wait=lambda: None)},
     )
 
-    monkeypatch.setattr(sys, "argv", ["job-radar-desktop"])
-    monkeypatch.setattr(desktop_launcher, "is_job_radar_running", lambda _url: False)
+    monkeypatch.setattr(sys, "argv", ["junior-desktop"])
+    monkeypatch.setattr(desktop_launcher, "is_junior_running", lambda _url: False)
     monkeypatch.setattr(
         desktop_launcher,
         "ensure_desktop_workspace",
@@ -309,13 +309,13 @@ def test_main_no_browser_starts_without_opening_browser(
         sys,
         "argv",
         [
-            "job-radar-desktop",
+            "junior-desktop",
             "--no-browser",
         ],
     )
     monkeypatch.setattr(
         desktop_launcher,
-        "is_job_radar_running",
+        "is_junior_running",
         lambda _url: False,
     )
     monkeypatch.setattr(
@@ -375,7 +375,7 @@ def test_wait_until_ready_reports_timeout(
     )
     monkeypatch.setattr(
         desktop_launcher,
-        "is_job_radar_running",
+        "is_junior_running",
         lambda _url: False,
     )
 
@@ -458,7 +458,7 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
     )
 
     title, url, options = calls["window"]
-    assert title == "Junior — RC6 Build 1.11"
+    assert title == "Junior — RC6 Build 1.12"
     assert url == "http://127.0.0.1:5000/"
     assert options["resizable"] is True
     assert options["min_size"] == (960, 640)

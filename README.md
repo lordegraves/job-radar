@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.11`
+- Current field-test build: `RC6 Build 1.12`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -97,7 +97,7 @@ employer and discard unsuccessful probe data when the request finishes. The
 setup result distinguishes an unavailable optional service from a completed
 lookup that produced no independently verified source.
 
-Junior owns application identifiers. The internal Job Radar ID is hidden from
+Junior owns application identifiers. The internal Junior ID is hidden from
 normal forms and reports. A scan-linked application reuses the identifier
 assigned during collection, while an application entered manually from
 LinkedIn or another outside source receives a new Junior-managed ID when the
@@ -199,28 +199,33 @@ and test linting passed, and whitespace validation passed. These automated
 checks protect known rules and collector behavior; the 50-job human-style
 review measures whether those rules produced sensible real-world results.
 
-### Optional OpenAI advisory assistance
+### AI résumé tailoring
 
-Junior's OpenAI integration is optional and remains disabled by default. The
-user must read and accept a plain-language privacy warning and securely store
-an OpenAI API key before enabling it. A ChatGPT subscription does not provide
-API access or cover API charges. The initial default model is `gpt-5.6-sol`.
+AI résumé tailoring is under development and is not currently available to
+users. Settings provides no enablement, credential, provider, or connection-test
+controls, and job reports provide no tailoring action. The retained experimental
+OpenAI and local-model code has no role in scans, scoring, filtering,
+recommendations, gaps, or omissions. Junior continues to collect, evaluate, and
+sort every job using its tested deterministic rules.
 
-The Settings page can test the saved key and selected model without sending a
-résumé or job description. Enabling this feature never adds OpenAI requests,
-cost, delay, or nondeterministic advice to a scan. Junior continues to collect,
-evaluate, and sort every job using its tested local rules.
+Local résumé-tailoring is parked. It is not current product functionality,
+is not offered for installation, and has no role in scans, scoring, filtering,
+recommendations, gaps, or omissions. Developers can use
+`scripts/benchmark_local_resume_tailoring.py` with an explicitly supplied
+`llama.cpp` server executable, GGUF model, private benchmark-case file, and
+output path. The benchmark starts a loopback-only local server, measures
+startup and response time, checks that cited evidence appears in the supplied
+résumé, and writes no result into Junior's database or reports.
 
-For one selected job, the user may request résumé-tailoring suggestions. The
-advice must cite evidence already present in the résumé and identify
-unsupported claims that should not be added. Junior displays advice for the
-user to select normally; it does not create or modify a résumé file.
-
-OpenAI responses are requested with provider-side storage disabled. Junior
-never places the API key, private request, résumé, job description, or advice
-in its evaluation audit or diagnostic log. A refusal, timeout, rate limit,
-invalid response, unavailable model, or provider failure leaves the local job
-result unchanged.
+The August 2026 feasibility run compared the official Q4 releases of Microsoft
+Phi-3 Mini (2.39 GB, MIT) and Qwen3 4B (2.50 GB, Apache-2.0) on three synthetic
+truthfulness cases. Both produced usable local response times, but Phi promoted
+unsupported qualifications in two of three cases and Qwen promoted unsupported
+qualifications in all three. Local AI is therefore **parked and not approved
+for product integration**. The benchmark and its tests are retained so a later
+reconsideration starts from measured evidence. A later trial must demonstrate
+truthful advice and justify its additional download, memory, CPU, maintenance,
+and licensing costs before this decision changes.
 
 Temporary employer-source failures do not turn incomplete cache entries into
 verified descriptions. Junior retries non-Eightfold sources once; Eightfold
@@ -349,7 +354,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in RC6 Build 1.11. Diagnostics still
+capabilities and are not implemented in RC6 Build 1.12. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -391,7 +396,7 @@ http://127.0.0.1:5000/
 The installed console entry point is also available:
 
 ```powershell
-job-radar-web --settings config\settings.yaml
+junior-web --settings config\settings.yaml
 ```
 
 ## Common commands
@@ -487,8 +492,12 @@ Validate long-term responsiveness with a disposable fictional workspace:
 
 The default gate creates 100 fictional companies, 100,000 jobs, 10,000
 historical applications, 2,500 active applications, and five profiles. It
-checks the database access paths used by normal profile-owned workflows and
-removes the complete temporary workspace afterward.
+checks indexed database access and repeatedly renders the real Active
+Applications and Application History pages. The August 2026 extended run used
+500 companies, 500,000 jobs, 50,000 history records, 10,000 active applications,
+and five profiles. Its slowest repeated page responses were 0.100 seconds for
+Active Applications and 0.225 seconds for Application History. Every run uses
+an isolated fictional workspace and removes it afterward.
 
 Before publishing a release candidate, complete the normal-user walkthrough in
 [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). It covers the exact
@@ -515,7 +524,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.11.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.12.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
@@ -642,7 +651,7 @@ The desktop launcher holds one operating-system lock per Junior user-data worksp
 
 Closing the desktop window requests a clean local-server shutdown. If a GUI scan is active, Junior keeps the process and instance lock alive until the scan worker finishes its protected database and report writes. The internal shutdown endpoint remains available to the desktop shell, but Settings does not show a redundant Exit card.
 
-The desktop launcher now uses pywebview to place the same local Flask interface inside a normal native window. It does not create a second UI. A first launch opens at the reviewed 1440 by 900 pixel size, with a 960 by 640 minimum. When the user closes the native window, Junior stores only its size and screen position in the user-owned runtime directory and restores that geometry on the next launch. Missing or invalid state returns safely to the reviewed default. Windows, Linux, and macOS must share the same pages, controls, layouts, validation, typography, and workflows; only genuinely native window chrome, dialogs, notifications, and keyboard conventions may differ. Use `job-radar-desktop --browser` when deliberate browser-based local use is preferred, or `--no-browser` for an externally managed local server. PySide6/QWebEngineView remains the documented fallback if cross-platform testing proves system webview rendering cannot satisfy that shared-interface requirement.
+The desktop launcher now uses pywebview to place the same local Flask interface inside a normal native window. It does not create a second UI. A first launch opens at the reviewed 1440 by 900 pixel size, with a 960 by 640 minimum. When the user closes the native window, Junior stores only its size and screen position in the user-owned runtime directory and restores that geometry on the next launch. Missing or invalid state returns safely to the reviewed default. Windows, Linux, and macOS must share the same pages, controls, layouts, validation, typography, and workflows; only genuinely native window chrome, dialogs, notifications, and keyboard conventions may differ. Use `junior-desktop --browser` when deliberate browser-based local use is preferred, or `--no-browser` for an externally managed local server. The released `job-radar-desktop` name remains a compatibility alias. PySide6/QWebEngineView remains the documented fallback if cross-platform testing proves system webview rendering cannot satisfy that shared-interface requirement.
 
 The shared page shell supports keyboard users with a visible-on-focus skip link, strong focus indicators on interactive controls, and a programmatically identified current navigation page. It also provides a mobile/zoom viewport, narrow-window wrapping, forced-color control borders, and screen-reader captions for application data tables. Profile occupation and location suggestions expose their expanded state and work with Enter, Escape, arrow keys, Tab, or a pointer. Automated checks require every visible form control to have a programmatic label and protect WCAG AA contrast for shared text, links, statuses, and actions.
 
@@ -662,7 +671,7 @@ Managed profiles and uploaded resumes are stored inside junior's user-data area.
 
 A controlled migration service can prepare an existing YAML profile for managed storage, but migration is not automatic or exposed as a normal GUI action yet. It creates a private recovery bundle containing the source profile, resume files, and a consistent SQLite backup before creating or selecting the managed profile. Real user-data migration requires a separate backup-and-rehearsal step and explicit approval.
 
-The Profile / Resume page is a read-only home for selecting profiles and reviewing the active profile, résumé insights, and a plain-English summary of what junior is intended to find during targeted company scans. A compact profile selector supports switching, editing, creating, and guarded permanent deletion. junior supports up to five profiles; deleting one also removes its Junior-managed résumé and requires the same typed `DELETE` confirmation used for application deletion. Dedicated create and edit pages keep data entry separate from the summary; Cancel and Back return without saving, and only an explicit Create profile, Save changes, or Save résumé action writes the corresponding change. When no profile exists, the summary page directs the user to create the first one. This workflow does not run a search and is not a broad job-board filter. It stores normalized occupation identities, structured U.S. locations and commute radii, job levels, employment types, schedule, on-call availability, security-clearance handling, workplace arrangements, minimum compensation, travel percentage, and optional work exclusions in SQLite. Workplace choices include Remote, Hybrid, On-site, and Flex. Flex applies only when an employer explicitly describes a flexible workplace arrangement or work model; flexible hours remain a separate schedule preference. A clear requirement for an existing active clearance follows the profile's choice; ambiguous clearance wording is placed in Needs Review instead of being guessed. Exclusions describe roles or responsibilities the user does not want; duplicate lines are normalized and the existing profile evidence boundary evaluates them without assuming that similar-sounding titles mean the same work. Selected locations use approximate straight-line distance to define acceptable hybrid, on-site, and flex commutes. Truly remote jobs ignore commuting distance, while an employer's remote residency restriction must match a location where the user lives or genuinely plans to move. Newly created managed profiles own an occupation-neutral scoring configuration instead of inheriting another user's role, skill, location, or exclusion assumptions. The saved practical preferences do not yet generate the complete scoring and recommendation policy; that integration remains in progress. The former `/preferences` address redirects to Profile / Resume for compatibility. Occupation suggestions use the O*NET 30.3 Database under CC BY 4.0; location suggestions and radius coverage use the U.S. Census Bureau 2025 Gazetteer Files, with display prioritization from the Census Bureau Vintage 2025 Population Estimates. junior includes only the reference fields needed by this workflow and has modified their packaging and presentation.
+The Profile / Resume page is a read-only home for selecting profiles and reviewing the active profile, résumé insights, and a plain-English summary of what junior is intended to find during targeted company scans. A compact profile selector supports switching, editing, creating, and guarded permanent deletion. junior supports up to five profiles; deleting one also removes its Junior-managed résumé and requires the same typed `DELETE` confirmation used for application deletion. Dedicated create and edit pages keep data entry separate from the summary; Cancel and Back return without saving, and only an explicit Create profile, Save changes, or Save résumé action writes the corresponding change. When no profile exists, the summary page directs the user to create the first one. This workflow does not run a search and is not a broad job-board filter. It stores normalized occupation identities, structured U.S. locations and commute radii, job levels, employment types, schedule, on-call availability, security-clearance handling, workplace arrangements, minimum compensation, travel percentage, and optional work exclusions in SQLite. Workplace choices include Remote, Hybrid, On-site, and Flex. Flex applies only when an employer explicitly describes a flexible workplace arrangement or work model; flexible hours remain a separate schedule preference. A clear requirement for an existing active clearance follows the profile's choice; ambiguous clearance wording is placed in Needs Review instead of being guessed. Exclusions describe roles or responsibilities the user does not want; duplicate lines are normalized and the existing profile evidence boundary evaluates them without assuming that similar-sounding titles mean the same work. Selected locations use approximate straight-line distance to define acceptable hybrid, on-site, and flex commutes. Truly remote jobs ignore commuting distance, while an employer's remote residency restriction must match a location where the user lives or genuinely plans to move. Newly created managed profiles own an occupation-neutral scoring configuration instead of inheriting another user's role, skill, location, or exclusion assumptions. Saved practical preferences feed the shared eligibility, scoring, and recommendation services used by GUI, CLI, and scheduled scans. The former `/preferences` address redirects to Profile / Resume for compatibility. Occupation suggestions use the O*NET 30.3 Database under CC BY 4.0; location suggestions and radius coverage use the U.S. Census Bureau 2025 Gazetteer Files, with display prioritization from the Census Bureau Vintage 2025 Population Estimates. junior includes only the reference fields needed by this workflow and has modified their packaging and presentation.
 
 The active managed profile also has a Related Roles workspace. Junior can suggest adjacent titles from packaged O*NET occupation descriptions when the profile's résumé contains supporting work evidence, or from job descriptions previously observed during that profile's own scans. Similar wording alone is not enough. Suggestions tied to an observed employer retain that company context because one title can describe different disciplines at different companies. Every suggestion shows a plain-language explanation and the matched evidence terms. The user must choose **Relevant**, **Not relevant**, or **Different discipline**; only Relevant mappings join the existing target-role boundaries used by company recommendations. No internal score is shown, no suggestion is approved automatically, and the feature does not alter the established job-scoring formula. Junior stores the suggestion, short displayed evidence terms, and feedback in the profile-owned database; it does not store another raw copy of the résumé.
 
@@ -687,7 +696,7 @@ Every unlocked Administration subpage includes an explicit **Back to Administrat
 | Administration | Employer Catalog and collector configuration, runtime paths, database operations, backup and restore, legacy import and migration, raw diagnostics, support bundles, and installation-wide defaults affecting every profile |
 | Undecided / future | The final placement of support links, bounded diagnostic summaries, and recovery guidance will be decided when those workflows become editable |
 
-The Settings page provides normal-user controls for email, scheduling, retention, optional external company lookup, and optional résumé-tailoring assistance in collapsed expandable sections. Résumé-tailoring assistance is disabled by default and cannot be enabled until the user acknowledges that the active résumé and one selected job description will be sent to OpenAI when the user requests advice. Enabling it does not send scan results to OpenAI, alter Junior's deterministic scoring, or add provider calls, cost, or delay to scans. The API key is stored only in the operating-system credential manager; ChatGPT subscriptions and OpenAI API billing are separate. The separate top-level Diagnostics page summarizes application configuration, the latest scan, company sources, and email delivery with green, yellow, red, or neutral status cards. Problems are categorized as configuration, collector, network, email, or unexpected application failures and include a plain-language next step. A separate developer-log pane shows one recognized Junior-owned log at a time as timestamped structured text and downloads a complete `.log` copy without simplifying or dropping safe fields. The on-screen view is limited to the newest 200,000 bytes. It is not a general file browser: nested paths, arbitrary logs, editing, deletion, and unrestricted downloads are rejected. Job descriptions, profile and résumé contents, credentials, tokens, environment contents, request headers, and raw exception text are neither stored in these logs nor displayed. Administration includes the global Employer Catalog, where an unlocked administrator can create and edit structured employer-source settings, run bounded local validation, test the real collector connection without importing jobs, and enable, disable, or retire an employer. A connection test records the last attempt, last success, last problem, returned-job count, and a safe troubleshooting category. It never stores raw collector or network error text, and editing source settings clears stale connection health. The employer detail page can assign an available, validated employer to any managed profile or remove one profile's assignment without affecting another profile or deleting collected history. Permanent deletion requires typing `DELETE` and is permitted only when no profile assignment or collected job references the employer; otherwise the administrator must disable or retire it. The Employer Review Queue lets unresolved profile submissions be matched to an existing employer, used to prefill a new employer, assigned after availability checks, or closed as unsupported, rejected, or duplicate. Recommendation Administration provides employer/profile diagnostics, global employer recommendation metadata and eligibility, profile-specific feedback inspection and guarded reset, and explicitly bounded rebuilds for one profile, one employer, or every profile. Recommendation maintenance has a sanitized audit and does not silently override profile feedback. Review decisions have a sanitized audit trail. New and edited employers must validate before they can be globally enabled. Disabling or retiring preserves profile assignments and collected history; an unavailable employer is omitted from scans until it is enabled again. Packaged company defaults are empty for new installations. Existing legacy definitions import only once into the active profile, never replace a user-edited database employer with the same stable ID, and remain separate from later user-owned catalog changes. Other Administration categories remain planned.
+The Settings page provides normal-user controls for email, scheduling, retention, and optional external company lookup in collapsed expandable sections. AI résumé tailoring is visibly marked **Under development** and provides no enablement, credential, provider, or connection-test controls. Job reports provide no tailoring action. Retained experimental AI code does not send data, alter Junior's deterministic scoring, or add provider calls, cost, or delay to scans. The separate top-level Diagnostics page summarizes application configuration, the latest scan, company sources, and email delivery with green, yellow, red, or neutral status cards. Problems are categorized as configuration, collector, network, email, or unexpected application failures and include a plain-language next step. A separate developer-log pane shows one recognized Junior-owned log at a time as timestamped structured text and downloads a complete `.log` copy without simplifying or dropping safe fields. The on-screen view is limited to the newest 200,000 bytes. It is not a general file browser: nested paths, arbitrary logs, editing, deletion, and unrestricted downloads are rejected. Job descriptions, profile and résumé contents, credentials, tokens, environment contents, request headers, and raw exception text are neither stored in these logs nor displayed. Administration includes the global Employer Catalog, where an unlocked administrator can create and edit structured employer-source settings, run bounded local validation, test the real collector connection without importing jobs, and enable, disable, or retire an employer. A connection test records the last attempt, last success, last problem, returned-job count, and a safe troubleshooting category. It never stores raw collector or network error text, and editing source settings clears stale connection health. The employer detail page can assign an available, validated employer to any managed profile or remove one profile's assignment without affecting another profile or deleting collected history. Permanent deletion requires typing `DELETE` and is permitted only when no profile assignment or collected job references the employer; otherwise the administrator must disable or retire it. The Employer Review Queue lets unresolved profile submissions be matched to an existing employer, used to prefill a new employer, assigned after availability checks, or closed as unsupported, rejected, or duplicate. Recommendation Administration provides employer/profile diagnostics, global employer recommendation metadata and eligibility, profile-specific feedback inspection and guarded reset, and explicitly bounded rebuilds for one profile, one employer, or every profile. Recommendation maintenance has a sanitized audit and does not silently override profile feedback. Review decisions have a sanitized audit trail. New and edited employers must validate before they can be globally enabled. Disabling or retiring preserves profile assignments and collected history; an unavailable employer is omitted from scans until it is enabled again. Packaged company defaults are empty for new installations. Existing legacy definitions import only once into the active profile, never replace a user-edited database employer with the same stable ID, and remain separate from later user-owned catalog changes. Other Administration categories remain planned.
 
 Developer logs retain allowlisted scan, decision, company-discovery, update,
 and startup events as dated records. New structured operational events identify
@@ -790,7 +799,7 @@ Junior's implemented data and network behavior is documented in
 [PRIVACY.md](PRIVACY.md). Report security issues privately by following
 [SECURITY.md](SECURITY.md), not through a public issue. Official downloads are
 published only on the
-[Junior GitHub releases page](https://github.com/lordegraves/job-radar/releases);
+[Junior GitHub releases page](https://github.com/lordegraves/junior/releases);
 verify each installer with its published SHA-256 checksum.
 
 ## Product boundaries

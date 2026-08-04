@@ -1,4 +1,4 @@
-"""Create or migrate a Job Radar user workspace without replacing user files.
+"""Create or migrate a Junior user workspace without replacing user files.
 
 Normal first-run setup copies only safe packaged defaults. Profiles, databases,
 and existing configuration move only from explicitly supplied sources, and

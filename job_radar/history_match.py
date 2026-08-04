@@ -1,4 +1,4 @@
-"""Match current postings to prior decisions so Job Radar avoids repeated work."""
+"""Match current postings to prior decisions so Junior avoids repeated work."""
 
 import re
 from dataclasses import dataclass

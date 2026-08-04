@@ -1,4 +1,4 @@
-"""Define Job Radar's command-line interface for advanced and automated use.
+"""Define Junior's command-line interface for advanced and automated use.
 
 This module translates CLI arguments into shared services for scanning,
 validation, database setup, history summaries, and application tracking. It is
@@ -51,7 +51,7 @@ TRACKER_NEEDS_REVIEW_WORKFLOW_STATES = {
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="job-radar",
+        prog="junior",
         description="Target-company job discovery and triage tool",
     )
     parser.add_argument(
@@ -244,9 +244,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Update a tracked application",
     )
     tracker_update_parser.add_argument(
+        "--junior-id",
         "--job-radar-id",
+        dest="job_radar_id",
         required=True,
-        help="Job Radar ID for the tracked application",
+        help="Junior ID for the tracked application",
     )
     tracker_update_parser.add_argument(
         "--status",
@@ -289,9 +291,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Add a tracked application",
     )
     tracker_add_parser.add_argument(
+        "--junior-id",
         "--job-radar-id",
+        dest="job_radar_id",
         required=True,
-        help="Job Radar ID for the tracked application",
+        help="Junior ID for the tracked application",
     )
     tracker_add_parser.add_argument(
         "--company",
@@ -447,7 +451,7 @@ def handle_tracker_list(
 
         print()
         print(f"- {application.company_name} — {application.role_title}")
-        print(f"  Job Radar ID: {application.job_radar_id}")
+        print(f"  Junior ID: {application.job_radar_id}")
         print(f"  Status: {application.status}")
         print(f"  Workflow: {workflow_state}")
 
@@ -509,7 +513,7 @@ def handle_tracker_add(
     print("Application tracker entry saved")
     print(f"Database: {database_path}")
     print(f"Result: {result}")
-    print(f"Job Radar ID: {job_radar_id}")
+    print(f"Junior ID: {job_radar_id}")
     print(f"Company: {company_name}")
     print(f"Role: {role_title}")
     print(f"Status: {status}")
@@ -564,13 +568,13 @@ def handle_tracker_update(
     if not updated:
         print("Application tracker update failed")
         print(f"Database: {database_path}")
-        print(f"Job Radar ID: {job_radar_id}")
+        print(f"Junior ID: {job_radar_id}")
         print("Reason: tracked application was not found")
         return
 
     print("Application tracker updated")
     print(f"Database: {database_path}")
-    print(f"Job Radar ID: {job_radar_id}")
+    print(f"Junior ID: {job_radar_id}")
     print(f"Status: {status}")
 
     if follow_up_on:

@@ -1,7 +1,7 @@
 """Resolve the profile and resume used by scans without breaking YAML users.
 
 A selected managed profile takes priority. When no managed profile is selected,
-Job Radar preserves the existing YAML profile workflow exactly as before.
+Junior preserves the existing YAML profile workflow exactly as before.
 """
 
 from dataclasses import dataclass

@@ -1,4 +1,4 @@
-"""Shared recommendation vocabulary for Job Radar.
+"""Shared recommendation vocabulary for Junior.
 
 These constants keep report, email, scoring, and history logic from drifting
 when user-facing action labels or business-rule risk labels change.

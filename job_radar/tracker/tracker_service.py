@@ -186,7 +186,7 @@ def build_history_record_from_application_record(
         history_type="Pipeline",
         company=application.company_name,
         role=application.role_title,
-        source="Job Radar Tracker",
+        source="Junior Tracker",
         ats_platform=None,
         work_arrangement=None,
         location=None,
@@ -211,7 +211,7 @@ def build_history_record_from_application_record(
         notes=notes,
         job_radar_id=application.job_radar_id,
         posting_url=application.source_url,
-        lead_source="Job Radar Tracker",
+        lead_source="Junior Tracker",
         applied_on=applied_on if applied_on is not None else application.applied_on,
         last_activity_on=(
             last_activity_on

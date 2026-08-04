@@ -1,4 +1,4 @@
-"""Resolve the files and writable directories used by one Job Radar run.
+"""Resolve the files and writable directories used by one Junior run.
 
 These shared rules keep user-owned databases, settings, reports, logs, profiles,
 and resumes separate from installed application files. CLI, web, and desktop
@@ -26,7 +26,7 @@ APPLICATION_DATA_ENVIRONMENT_VARIABLE = "JOB_RADAR_DATA_DIR"
 
 @dataclass(frozen=True)
 class UserDataPaths:
-    """Standard writable locations owned by the current Job Radar user."""
+    """Standard writable locations owned by the current Junior user."""
 
     root: Path
     config: Path
@@ -57,7 +57,7 @@ class UserDataPaths:
 
 @dataclass(frozen=True)
 class RuntimePaths:
-    """Resolved paths used by one Job Radar application run.
+    """Resolved paths used by one Junior application run.
 
     Relative paths continue to resolve from the working directory so current
     development and command-line behavior remains unchanged. A packaged
@@ -204,7 +204,7 @@ class RuntimePaths:
 
 
 def get_default_user_data_directory() -> Path:
-    """Return the operating system's normal location for Job Radar user data.
+    """Return the operating system's normal location for Junior user data.
 
     An explicit JOB_RADAR_DATA_DIR value takes priority. This provides a safe
     test and recovery override without requiring private data to live inside

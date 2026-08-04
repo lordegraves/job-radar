@@ -16,11 +16,14 @@ from pathlib import Path
 from typing import TypeVar
 
 from job_radar.database import connect_database
+from job_radar.profile_models import ManagedProfile
+from job_radar.profile_storage import create_profile, set_active_profile
 from job_radar.storage import (
     fetch_included_job_history_records,
     initialize_database,
 )
 from job_radar.tracker.tracker_storage import list_applications
+from job_radar.web_app import create_app
 
 
 DEFAULT_COMPANIES = 100
@@ -41,6 +44,31 @@ def _measure(label: str, operation: Callable[[], T]) -> tuple[T, float]:
     return result, elapsed
 
 
+def _measure_repeated(
+    label: str,
+    operation: Callable[[], T],
+    *,
+    repetitions: int = 10,
+) -> tuple[T, float]:
+    """Exercise a normal GUI read repeatedly and report its slowest response."""
+
+    result: T | None = None
+    elapsed_samples: list[float] = []
+    for _ in range(repetitions):
+        started = time.perf_counter()
+        result = operation()
+        elapsed_samples.append(time.perf_counter() - started)
+    slowest = max(elapsed_samples)
+    average = sum(elapsed_samples) / len(elapsed_samples)
+    print(
+        f"{label}: average {average:.3f}s; slowest {slowest:.3f}s "
+        f"across {repetitions} requests"
+    )
+    if result is None:
+        raise RuntimeError("Repeated scale measurement produced no result.")
+    return result, slowest
+
+
 def _populate_scale_database(
     database_path: Path,
     *,
@@ -51,26 +79,21 @@ def _populate_scale_database(
     tracker: int,
 ) -> None:
     initialize_database(database_path)
-    profile_ids = [f"profile_{index:02d}" for index in range(profiles)]
+    profile_ids = [f"profile_{index:08d}" for index in range(profiles)]
 
-    with connect_database(database_path) as connection:
-        connection.executemany(
-            """
-            INSERT INTO profiles (profile_id, schema_version, display_name)
-            VALUES (?, 1, ?)
-            """,
-            (
-                (profile_id, f"Fictional Profile {index + 1}")
-                for index, profile_id in enumerate(profile_ids)
+    # Use the real profile service so GUI measurements exercise valid records,
+    # not an artificial partial schema that Junior itself could never create.
+    for index, profile_id in enumerate(profile_ids):
+        create_profile(
+            database_path,
+            ManagedProfile(
+                profile_id=profile_id,
+                display_name=f"Fictional Profile {index + 1}",
             ),
         )
-        connection.execute(
-            """
-            INSERT INTO active_profile_selection (singleton_id, profile_id)
-            VALUES (1, ?)
-            """,
-            (profile_ids[0],),
-        )
+    set_active_profile(database_path, profile_ids[0])
+
+    with connect_database(database_path) as connection:
         connection.executemany(
             """
             INSERT INTO companies (
@@ -226,7 +249,7 @@ def run_validation(
                 tracker=tracker,
             ),
         )
-        profile_id = "profile_00"
+        profile_id = "profile_00000000"
 
         with connect_database(database_path) as connection:
             job_result, job_lookup_seconds = _measure(
@@ -314,6 +337,24 @@ def run_validation(
             ),
         )
 
+        settings_path = Path(temporary) / "settings.yaml"
+        settings_path.write_text(
+            "database_path: " + database_path.as_posix() + "\n"
+            "reports_path: " + (Path(temporary) / "reports").as_posix() + "\n"
+            "logs_path: " + (Path(temporary) / "logs").as_posix() + "\n",
+            encoding="utf-8",
+        )
+        client = create_app(settings_path=str(settings_path)).test_client()
+
+        tracker_page, tracker_page_seconds = _measure_repeated(
+            "Render one profile's Active Applications page",
+            lambda: client.get("/tracker"),
+        )
+        history_page, history_page_seconds = _measure_repeated(
+            "Render one profile's Application History page",
+            lambda: client.get("/history"),
+        )
+
         expected_history = sum(
             1 for index in range(history) if index % profiles == 0
         )
@@ -326,6 +367,8 @@ def run_validation(
             raise RuntimeError("Profile-owned history count changed at scale.")
         if len(tracker_result) != expected_tracker:
             raise RuntimeError("Profile-owned tracker count changed at scale.")
+        if tracker_page.status_code != 200 or history_page.status_code != 200:
+            raise RuntimeError("A profile-owned GUI page failed at scale.")
 
         timings = {
             "population": population_seconds,
@@ -333,6 +376,8 @@ def run_validation(
             "company_jobs": company_jobs_seconds,
             "profile_history": history_seconds,
             "profile_tracker": tracker_seconds,
+            "tracker_page": tracker_page_seconds,
+            "history_page": history_page_seconds,
         }
         slow_queries = {
             name: elapsed

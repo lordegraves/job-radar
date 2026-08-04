@@ -2,7 +2,7 @@
 
 The suite uses synthetic temporary databases to test the v0.1.0 upgrade path,
 pre-migration backups, atomic failure rollback, scan lifecycle state, job
-storage, and application history without accessing a live Job Radar database.
+storage, and application history without accessing a live Junior database.
 """
 
 import sqlite3

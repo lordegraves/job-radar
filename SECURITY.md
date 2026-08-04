@@ -12,7 +12,7 @@ Do not open a public issue for a suspected vulnerability.
 
 Use GitHub's private vulnerability reporting form:
 
-https://github.com/lordegraves/job-radar/security/advisories/new
+https://github.com/lordegraves/junior/security/advisories/new
 
 If that form is unavailable, contact:
 
@@ -32,7 +32,7 @@ coordinated release guidance before public disclosure.
 
 Official downloads are published only from:
 
-https://github.com/lordegraves/job-radar/releases
+https://github.com/lordegraves/junior/releases
 
 Every release must publish a SHA-256 checksum file. Verify the installer against
 that checksum before running it. Unsigned field-test installers can trigger a

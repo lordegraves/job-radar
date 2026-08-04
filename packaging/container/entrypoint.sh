@@ -10,7 +10,7 @@ data_root=${JOB_RADAR_DATA_DIR:-/var/lib/junior}
 settings_path="$data_root/config/settings.yaml"
 
 if [ ! -f "$settings_path" ]; then
-    job-radar bootstrap-user-data --destination "$data_root"
+    junior bootstrap-user-data --destination "$data_root"
 fi
 
 exec gunicorn \

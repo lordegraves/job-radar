@@ -1,4 +1,4 @@
-"""Prevent two Job Radar processes from changing scan data at the same time."""
+"""Prevent two Junior processes from changing scan data at the same time."""
 
 import json
 import os
@@ -11,7 +11,7 @@ from uuid import uuid4
 
 
 class ScanAlreadyRunningError(RuntimeError):
-    """Raised when another Job Radar process already owns the scan lock."""
+    """Raised when another Junior process already owns the scan lock."""
 
 
 def build_scan_lock_path(database_path: str | Path) -> Path:
@@ -143,14 +143,14 @@ def acquire_scan_lock(database_path: str | Path) -> Iterator[Path]:
     except FileExistsError:
         if not _remove_stale_lock(lock_path):
             raise ScanAlreadyRunningError(
-                "Another Job Radar scan is already running."
+                "Another Junior scan is already running."
             ) from None
 
         try:
             _create_lock_file(lock_path, ownership_token)
         except FileExistsError:
             raise ScanAlreadyRunningError(
-                "Another Job Radar scan is already running."
+                "Another Junior scan is already running."
             ) from None
 
     try:

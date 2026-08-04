@@ -102,7 +102,7 @@ def _repair_url_backed_tracker_ids(connection: sqlite3.Connection) -> None:
             continue
 
         # Older spreadsheet imports used posting URLs as tracker primary keys.
-        # Repair them once so the GUI shows app-owned Job Radar IDs instead.
+        # Repair them once so the GUI uses stable Junior-owned IDs instead.
         connection.execute(
             """
             UPDATE application_tracker

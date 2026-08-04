@@ -1,4 +1,4 @@
-"""Define a normalized job posting and its stable Job Radar identity."""
+"""Define a normalized posting and its stable Junior-owned job identity."""
 
 from dataclasses import dataclass
 from hashlib import sha1

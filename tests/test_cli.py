@@ -2,7 +2,7 @@
 
 These tests cover scans, lifecycle records, reports, email handoff, bootstrap,
 history, database initialization, and tracker commands using temporary or
-invented data rather than a real Job Radar workspace.
+invented data rather than a real Junior workspace.
 """
 
 import json
@@ -1823,7 +1823,7 @@ logs_path: logs
     )
     monkeypatch.chdir(repository_root)
     monkeypatch.setenv("JOB_RADAR_DATA_DIR", str(user_data_root))
-    monkeypatch.setattr(sys, "argv", ["job-radar", "init-db"])
+    monkeypatch.setattr(sys, "argv", ["junior", "init-db"])
 
     main()
 
@@ -1856,7 +1856,7 @@ logs_path: logs
     )
     monkeypatch.chdir(repository_root)
     monkeypatch.setenv("JOB_RADAR_DATA_DIR", str(user_data_root))
-    monkeypatch.setattr(sys, "argv", ["job-radar", "db", "init"])
+    monkeypatch.setattr(sys, "argv", ["junior", "db", "init"])
 
     main()
 
@@ -2095,7 +2095,7 @@ logs_path: {tmp_path}
     assert f"Database: {database_file}" in output
     assert "Applications tracked: 1" in output
     assert "- Example Mobility — Senior Site Reliability Engineer" in output
-    assert "Job Radar ID: jr-example-mobility-12345678" in output
+    assert "Junior ID: jr-example-mobility-12345678" in output
     assert "Status: applied" in output
     assert "Workflow: follow_up_scheduled" in output
     assert "Follow up on: 2099-07-10" in output
@@ -2372,7 +2372,7 @@ logs_path: {tmp_path}
 
     assert "Application tracker updated" in output
     assert f"Database: {database_file}" in output
-    assert "Job Radar ID: jr-example-mobility-12345678" in output
+    assert "Junior ID: jr-example-mobility-12345678" in output
     assert "Status: applied" in output
     assert "Follow up on: 2099-07-10" in output
     assert "Applied on: 2026-07-03" in output
@@ -2420,7 +2420,7 @@ logs_path: {tmp_path}
 
     assert "Application tracker update failed" in output
     assert f"Database: {database_file}" in output
-    assert "Job Radar ID: jr-missing-00000000" in output
+    assert "Junior ID: jr-missing-00000000" in output
     assert "Reason: tracked application was not found" in output
 
 
@@ -2507,7 +2507,7 @@ logs_path: {tmp_path}
     assert "Application tracker entry saved" in output
     assert f"Database: {database_file}" in output
     assert "Result: new" in output
-    assert "Job Radar ID: jr-manual-12345678" in output
+    assert "Junior ID: jr-manual-12345678" in output
     assert "Company: Example AI" in output
     assert "Role: Senior Site Reliability Engineer" in output
     assert "Status: applied" in output
@@ -2523,7 +2523,7 @@ logs_path: {tmp_path}
 
     assert "Applications tracked: 1" in list_output
     assert "- Example AI — Senior Site Reliability Engineer" in list_output
-    assert "Job Radar ID: jr-manual-12345678" in list_output
+    assert "Junior ID: jr-manual-12345678" in list_output
     assert "Status: applied" in list_output
     assert "Applied on: 2026-07-03" in list_output
     assert "Last activity on: 2026-07-05" in list_output

@@ -53,8 +53,8 @@ def test_project_declares_complete_gpl_v3_only_license() -> None:
 
 def test_package_exposes_installed_version() -> None:
     assert __version__ == version("job-radar")
-    assert __build__ == "RC6 Build 1.11"
-    assert __display_version__ == f"{__version__} — RC6 Build 1.11"
+    assert __build__ == "RC6 Build 1.12"
+    assert __display_version__ == f"{__version__} — RC6 Build 1.12"
 
 
 def test_windows_packaging_uses_the_shared_field_test_build() -> None:
@@ -195,12 +195,14 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
             for name in archive_names
         )
 
+    assert "junior = job_radar.cli:main" in entry_points
+    assert "junior-web = job_radar.web_app:main" in entry_points
     assert "job-radar = job_radar.cli:main" in entry_points
-    assert "job-radar-web = job_radar.web_app:main" in entry_points
     assert (
-        "job-radar-desktop = job_radar.desktop_launcher:main"
+        "junior-desktop = job_radar.desktop_launcher:main"
         in entry_points
     )
+    assert "job-radar-desktop = job_radar.desktop_launcher:main" in entry_points
     assert "License-Expression: GPL-3.0-only" in metadata
     assert "GNU GENERAL PUBLIC LICENSE" in packaged_license
     assert "Version 3, 29 June 2007" in packaged_license
@@ -442,7 +444,7 @@ def test_installed_wheel_runs_outside_source_checkout(
         capture_output=True,
         text=True,
     )
-    assert cli_version.stdout.strip() == f"job-radar {__version__}"
+    assert cli_version.stdout.strip() == f"junior {__version__}"
 
     web_help = subprocess.run(
         [

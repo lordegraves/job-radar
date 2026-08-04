@@ -30,7 +30,7 @@ def test_configuration_startup_error_explains_missing_settings(
         in message
     )
     assert "What to do:" in message
-    assert "job-radar bootstrap-user-data" in message
+    assert "junior bootstrap-user-data" in message
     assert "Then start junior again." in message
     assert "Technical details:" in message
     assert str(settings_path) in message
@@ -89,7 +89,7 @@ def test_main_reports_missing_settings_without_traceback(
         sys,
         "argv",
         [
-            "job-radar-web",
+            "junior-web",
             "--settings",
             str(settings_path),
         ],
@@ -103,7 +103,7 @@ def test_main_reports_missing_settings_without_traceback(
     assert exit_error.value.code == 1
     assert captured.out == ""
     assert "settings file was not found" in captured.err
-    assert "job-radar bootstrap-user-data" in captured.err
+    assert "junior bootstrap-user-data" in captured.err
     assert f"Config file does not exist: {settings_path.resolve()}" in captured.err
     assert "Traceback" not in captured.err
 
@@ -120,7 +120,7 @@ def test_main_reports_unexpected_failure_and_support_contact(
         sys,
         "argv",
         [
-            "job-radar-web",
+            "junior-web",
             "--settings",
             str(settings_path),
         ],
@@ -197,7 +197,7 @@ def test_main_reports_server_startup_failure_and_support_contact(
         sys,
         "argv",
         [
-            "job-radar-web",
+            "junior-web",
             "--settings",
             str(settings_path),
         ],

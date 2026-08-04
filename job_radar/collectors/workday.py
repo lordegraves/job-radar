@@ -32,7 +32,7 @@ _PLACEHOLDER_JOB_IDS = {"job", "job posting", "spotlight job"}
 WORKDAY_HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
-    "User-Agent": "job-radar/0.1",
+    "User-Agent": "junior/0.2",
 }
 
 

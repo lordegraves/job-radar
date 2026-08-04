@@ -1,4 +1,4 @@
-"""Own Job Radar's main SQLite schema, migrations, and stored scan history.
+"""Own Junior's main SQLite schema, migrations, and stored scan history.
 
 This module creates and upgrades the database, records scan lifecycle state,
 stores job postings, and preserves application history. Existing databases are

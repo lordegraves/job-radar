@@ -262,9 +262,9 @@ Launching Junior again does not start another copy against the same data, even i
 
 To close a desktop-launched session, open **Settings** and choose **Exit Junior**. The confirmation page means the local server received the shutdown request. You may close the window. If a scan is running, Junior finishes its protected writes before the process fully exits. This control is intentionally absent in browser/server mode, where another process owns the server lifecycle.
 
-Advanced users may deliberately run `job-radar-desktop --browser` to use the
+Advanced users may deliberately run `junior-desktop --browser` to use the
 same local interface in the default browser. Developers and externally managed
-processes may use `job-radar-desktop --no-browser`. These are not required for
+processes may use `junior-desktop --no-browser`. These are not required for
 normal Windows use.
 
 From an activated development environment:
@@ -585,7 +585,7 @@ Open **Settings**, then **Set up scan scheduling**. Choose whether scheduling is
 
 On Windows, **Apply schedule to Windows** creates or updates only `\Junior Scheduled Scan`. Junior can inspect, disable, or remove that task from the same page. Junior's window does not need to remain open, and the task can run while the computer is locked. The Windows user must remain signed in, and the computer must be awake and powered on at the scheduled time. The task runs with normal privileges and stores no Windows password.
 
-On Linux, the equivalent controls manage `junior-scan.service` and `junior-scan.timer` in the current user's systemd directory. Junior marks both files, refuses to overwrite unmarked files with the same names, writes updates atomically, and restores the prior files if systemd rejects an update. A dedicated Linux server account can use the same user timer and `job-radar-scheduled --user-data-root <path>` entry point; it does not have a separate scan implementation.
+On Linux, the equivalent controls manage `junior-scan.service` and `junior-scan.timer` in the current user's systemd directory. Junior marks both files, refuses to overwrite unmarked files with the same names, writes updates atomically, and restores the prior files if systemd rejects an update. A dedicated Linux server account can use the same user timer and `junior-scheduled --user-data-root <path>` entry point; it does not have a separate scan implementation. The released `job-radar-scheduled` command remains a compatibility alias.
 
 Disabling an operating-system schedule leaves its definition available for later use. Removing it deletes only Junior's own task or marked unit files. Neither action deletes profiles, scan history, reports, companies, or application data.
 

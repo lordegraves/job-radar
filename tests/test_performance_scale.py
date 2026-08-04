@@ -19,4 +19,6 @@ def test_scale_validator_runs_with_small_fictional_dataset() -> None:
         "company_jobs",
         "profile_history",
         "profile_tracker",
+        "tracker_page",
+        "history_page",
     }

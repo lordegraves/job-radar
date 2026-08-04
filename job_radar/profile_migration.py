@@ -1,7 +1,7 @@
 """Plan and perform backup-first migration of one legacy YAML profile.
 
 The original profile and resume files are read-only migration sources. Every
-write goes to Job Radar's managed user-data area, and a private recovery bundle
+write goes to Junior's managed user-data area, and a private recovery bundle
 is completed before a managed profile record or resume directory is created.
 """
 

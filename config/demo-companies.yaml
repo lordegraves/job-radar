@@ -2,7 +2,7 @@
 # These entries are fictional placeholders, not real scan targets.
 #
 # New user workspaces begin with an empty target-companies.yaml.
-# Add real companies through the Job Radar GUI before running a scan.
+# Add real companies through the Junior GUI before running a scan.
 
 companies:
   - company_key: example_ai

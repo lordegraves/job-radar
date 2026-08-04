@@ -75,11 +75,14 @@ and never requires deletion of a working 1.x database or profile.
 
 ## Entry points and operating modes
 
-- `job-radar` / `job_radar.cli`: developer, automation, validation, scan, history, database, and tracker commands.
-- `job-radar-web` / `job_radar.web_app`: local browser/server mode. An explicit settings path may be supplied; otherwise runtime-path resolution selects bootstrapped user settings when present and falls back to repository settings for development compatibility.
-- `job-radar-desktop` / `job_radar.desktop_launcher`: the native desktop launcher. It prepares packaged user configuration when needed, starts a local Werkzeug server, waits for readiness, and displays the shared interface in pywebview. `--browser` deliberately opens the same interface in the default browser, while `--no-browser` leaves the local server externally managed.
-- `job-radar-scheduled` / `job_radar.scheduled_scan`: the unattended scan entry point. It reads the saved schedule, exits safely when scheduling is off, and calls the same scan service used by GUI and CLI scans.
-- `job-radar-backup` / `job_radar.scheduled_backup`: the orchestrator-safe backup entry point. It creates a verified bundle through the shared backup service and prunes only older scheduler-owned bundles according to explicit retention.
+- `junior` / `job_radar.cli`: developer, automation, validation, scan, history, database, and tracker commands.
+- `junior-web` / `job_radar.web_app`: local browser/server mode. An explicit settings path may be supplied; otherwise runtime-path resolution selects bootstrapped user settings when present and falls back to repository settings for development compatibility.
+- `junior-desktop` / `job_radar.desktop_launcher`: the native desktop launcher. It prepares packaged user configuration when needed, starts a local Werkzeug server, waits for readiness, and displays the shared interface in pywebview. `--browser` deliberately opens the same interface in the default browser, while `--no-browser` leaves the local server externally managed.
+- `junior-scheduled` / `job_radar.scheduled_scan`: the unattended scan entry point. It reads the saved schedule, exits safely when scheduling is off, and calls the same scan service used by GUI and CLI scans.
+- `junior-backup` / `job_radar.scheduled_backup`: the orchestrator-safe backup entry point. It creates a verified bundle through the shared backup service and prunes only older scheduler-owned bundles according to explicit retention.
+
+The released `job-radar*` command names remain compatibility aliases so
+existing scripts, schedules, containers, and upgrades continue to work.
 - Windows Task Scheduler and Linux systemd user timers invoke the shared scheduled entry point. Container mode runs the shared Flask application under Gunicorn with one externally mounted user-data root. Kubernetes uses the same image, services, storage model, scheduled-scan entry point, and verified backup service.
 
 Kubernetes deliberately uses one application replica with a `Recreate` deployment strategy because SQLite is a single-writer local database. The Deployment and suspended CronJobs share one persistent volume. Scan locking protects the shared scan lifecycle; `concurrencyPolicy: Forbid` prevents overlapping jobs of the same scheduled type. The private Service does not add authentication, so network exposure remains an operator-owned security boundary.
@@ -168,7 +171,7 @@ CLI and GUI scan execution must call the same service.
 
 `schedule_service.py` owns the durable, application-wide schedule and scheduled-run summary. `scheduler_integration.py` selects the host integration without changing scan behavior. `windows_scheduler.py` manages only Junior's named Task Scheduler entry. `linux_scheduler.py` manages only Junior-marked systemd user service/timer files and rolls their prior contents back if systemd rejects an update. Both integrations invoke `scheduled_scan.py`; neither contains its own collection, scoring, report, or email rules.
 
-Linux standalone use installs the marked units under the current user's systemd configuration. A server may run the same user timer under a dedicated service account and pass that account's explicit user-data root to `job-radar-scheduled`. System-wide packaging and service-account provisioning remain deployment concerns rather than a second scheduler implementation.
+Linux standalone use installs the marked units under the current user's systemd configuration. A server may run the same user timer under a dedicated service account and pass that account's explicit user-data root to `junior-scheduled`. System-wide packaging and service-account provisioning remain deployment concerns rather than a second scheduler implementation.
 
 ### Scoring and recommendation policy
 
@@ -297,7 +300,9 @@ Templates render data prepared by routes and services. Business behavior should 
 
 ## Identity
 
-Scanned postings receive stable app-owned Job Radar IDs. The established label remains for data compatibility during the branding transition.
+Scanned postings receive stable app-owned Junior IDs. Existing `job_radar_id`
+database fields and `job-radar-id:` import keys remain unchanged so upgrades
+and historical records continue to match safely.
 
 Manual tracker records receive app-owned `jr_manual_*` IDs. Posting URLs are evidence and fallback matching signals, not primary keys.
 
