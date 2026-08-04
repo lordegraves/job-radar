@@ -1,10 +1,14 @@
 """Verify Eightfold public search results become normalized Junior jobs."""
 
+import threading
+
 import pytest
 import requests
 
 from job_radar.collectors.eightfold import collect_eightfold_jobs
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.incremental_cache import DETAIL_PLANNER_CONFIG_KEY
+from job_radar.detail_retrieval import DetailRetrievalDecision
 
 
 class _Response:
@@ -13,6 +17,48 @@ class _Response:
 
     def json(self):
         return self._payload
+
+
+def test_eightfold_prefetches_known_result_pages_with_two_workers(monkeypatch) -> None:
+    barrier = threading.Barrier(2)
+    starts: list[int] = []
+
+    def fake_get_response(url, **kwargs):
+        if not url.endswith("/api/pcsx/search"):
+            raise AssertionError("Unrelated summaries must not fetch details.")
+        start = kwargs["params"]["start"]
+        starts.append(start)
+        if start in {20, 40}:
+            barrier.wait(timeout=1)
+        positions = [
+            {
+                "id": start + offset + 1,
+                "name": f"Sales Role {start + offset}",
+                "positionUrl": f"/careers/job/{start + offset + 1}",
+            }
+            for offset in range(20)
+        ]
+        return _Response({"data": {"count": 60, "positions": positions}})
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+    jobs = collect_eightfold_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_url": "https://apply.example.com",
+            "domain": "example.com",
+            "max_pages": 3,
+            DETAIL_PLANNER_CONFIG_KEY: lambda _title, _location: (
+                DetailRetrievalDecision(False, "clearly unrelated")
+            ),
+        }
+    )
+
+    assert len(jobs) == 60
+    assert sorted(starts) == [0, 20, 40]
 
 
 def test_eightfold_collector_fetches_search_and_detail(monkeypatch) -> None:
@@ -69,6 +115,52 @@ def test_eightfold_collector_fetches_search_and_detail(monkeypatch) -> None:
     assert jobs[0].source_url == "https://apply.example.com/careers/job/123"
     assert calls[0][1]["params"]["domain"] == "example.com"
     assert calls[1][1]["params"]["position_id"] == "123"
+
+
+def test_eightfold_skips_unrelated_position_detail(monkeypatch) -> None:
+    calls = []
+
+    def fake_get_response(url, **kwargs):
+        calls.append(url)
+        assert url.endswith("/api/pcsx/search")
+        return _Response(
+            {
+                "data": {
+                    "count": 1,
+                    "positions": [
+                        {
+                            "id": 456,
+                            "displayJobId": "JR-456",
+                            "name": "Senior Tax Accountant",
+                            "locations": ["Washington, United States"],
+                            "positionUrl": "/careers/job/456",
+                        }
+                    ],
+                }
+            }
+        )
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+    jobs = collect_eightfold_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_type": "eightfold",
+            "source_url": "https://apply.example.com",
+            "domain": "example.com",
+            DETAIL_PLANNER_CONFIG_KEY: lambda title, location: (
+                DetailRetrievalDecision(False, "clearly unrelated")
+            ),
+        }
+    )
+
+    assert calls == ["https://apply.example.com/api/pcsx/search"]
+    assert len(jobs) == 1
+    assert jobs[0].detail_retrieval_reason == "clearly unrelated"
+    assert jobs[0].detail_retrieval_state == "skipped_unrelated"
 
 
 def test_microsoft_url_detects_eightfold_source() -> None:
@@ -239,6 +331,7 @@ def test_eightfold_opens_detail_circuit_and_keeps_all_listings(monkeypatch) -> N
     assert len(jobs) == 5
     assert detail_calls == 3
     assert all(job.description == "Operate reliable systems." for job in jobs)
+    assert all(job.detail_retrieval_state == "unavailable" for job in jobs)
     assert len(config[WARNINGS_CONFIG_KEY]) == 1
     assert "evaluated conservatively as incomplete" in config[WARNINGS_CONFIG_KEY][0]
 
@@ -303,10 +396,10 @@ def test_eightfold_reuses_fresh_unchanged_detail(monkeypatch) -> None:
             "id": "123",
             "title": "Platform Engineer",
             "path": "/careers/job/123",
-            "locations": ["Remote"],
-            "workstyle": None,
-        }
-    )
+                "locations": ["Remote"],
+                "workstyle": None,
+            }
+        )
     cached = CachedSourcePosting(
         posting=JobPosting(
             company_key="example",
@@ -316,7 +409,7 @@ def test_eightfold_reuses_fresh_unchanged_detail(monkeypatch) -> None:
             source_url="https://apply.example.com/careers/job/123",
             title="Platform Engineer",
             location="Remote",
-            description="Complete cached responsibilities.",
+            description="Complete cached responsibilities and qualifications. " * 8,
             canonical_key="example",
             content_hash="cached",
         ),
@@ -346,7 +439,68 @@ def test_eightfold_reuses_fresh_unchanged_detail(monkeypatch) -> None:
         }
     )
 
-    assert jobs[0].description == "Complete cached responsibilities."
+    assert jobs[0].description == (
+        "Complete cached responsibilities and qualifications. " * 8
+    )
+
+
+def test_eightfold_reuses_fresh_detail_when_summary_metadata_changes(
+    monkeypatch,
+) -> None:
+    from datetime import UTC, datetime
+
+    from job_radar.collectors.incremental_cache import CACHE_CONFIG_KEY
+    from job_radar.models import JobPosting
+    from job_radar.storage import CachedSourcePosting
+
+    raw_position = {
+        "id": 123,
+        "displayJobId": "JR123",
+        "name": "Platform Engineer",
+        "locations": ["Remote - United States"],
+        "positionUrl": "/careers/job/123",
+        "efcustomTextJobRequisitionWorkstyle": "Remote",
+    }
+    cached = CachedSourcePosting(
+        posting=JobPosting(
+            company_key="example",
+            company_name="Example",
+            source_type="eightfold",
+            source_job_id="JR123",
+            source_url="https://apply.example.com/careers/job/123",
+            title="Platform Engineer",
+            location="United States, Multiple Locations",
+            description="Complete cached responsibilities and qualifications. " * 8,
+            canonical_key="example",
+            content_hash="cached",
+        ),
+        listing_fingerprint="older-summary-metadata",
+        detail_verified_at=datetime.now(UTC).isoformat(),
+    )
+
+    def fake_get_response(url, **kwargs):
+        if url.endswith("/api/pcsx/search"):
+            return _Response({"data": {"count": 1, "positions": [raw_position]}})
+        raise AssertionError("fresh cached detail should avoid a detail request")
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold.get_response",
+        fake_get_response,
+    )
+    jobs = collect_eightfold_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_type": "eightfold",
+            "source_url": "https://apply.example.com",
+            "domain": "example.com",
+            CACHE_CONFIG_KEY: {"JR123": cached},
+        }
+    )
+
+    assert jobs[0].description == cached.posting.description
+    assert jobs[0].location == "Remote - United States"
+    assert jobs[0].remote_status == "Remote"
 
 
 def test_eightfold_uses_actual_server_page_size_and_keeps_fetching(

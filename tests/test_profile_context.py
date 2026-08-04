@@ -66,9 +66,9 @@ def test_load_active_candidate_context_uses_selected_managed_profile(
     assert context.candidate_profile.preferred_base_usd == 150000
     assert context.candidate_profile.core_strengths == ["Platform operations"]
     assert context.candidate_profile.avoid == ["Commission sales"]
-    assert context.resume_text == "# Managed Example Platform operations"
+    assert context.resume_text == "# Managed Example\nPlatform operations"
     assert normalized_path.read_text(encoding="utf-8") == (
-        "# Managed Example Platform operations\n"
+        "# Managed Example\nPlatform operations\n"
     )
 
 

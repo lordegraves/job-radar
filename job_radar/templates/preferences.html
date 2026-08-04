@@ -443,7 +443,7 @@
             <div class="input-row role-input-row">
                 <div class="search-box">
                     <label for="occupation-search">Find an occupation</label>
-                    <span class="field-help">Search the occupation catalog, or enter your own wording and press Enter when a changing title is not listed. Try “baker” or “head cook.”</span>
+                    <span class="field-help">Type your own role and press Enter to use those exact words. To use a catalog suggestion instead, select it or press Arrow Down. Try “baker” or “head cook.”</span>
                     <input id="occupation-search" type="search" autocomplete="off" placeholder="Start typing an occupation" aria-autocomplete="list" aria-controls="occupation-suggestions" aria-expanded="false">
                     <div id="occupation-suggestions" class="suggestions" role="list" aria-label="Occupation suggestions"></div>
                 </div>
@@ -806,11 +806,8 @@
         }
         if (event.key !== "Enter") return;
         event.preventDefault();
-        const firstSuggestion = occupationSuggestions.querySelector(".suggestion-button");
-        if (occupationSuggestions.classList.contains("is-visible") && firstSuggestion) {
-            firstSuggestion.click();
-            return;
-        }
+        // Enter belongs to the user's exact wording. Catalog choices remain
+        // available by mouse or by moving focus into the suggestion list.
         addOccupation();
     });
 

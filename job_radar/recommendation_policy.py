@@ -76,14 +76,39 @@ def evaluate_potential_top_match_eligibility(
     scoring_config: dict[str, Any],
     resume_match: ResumeMatchResult | None = None,
 ) -> bool:
-    """Allow only unresolved location facts through the strict role-fit gate."""
+    """Keep a strong fit visible when location or legacy score is unresolved."""
 
-    if location_status not in {"conditional", "mixed", "unknown"}:
+    if location_status not in {
+        "allowed",
+        "allowed_with_travel",
+        "conditional",
+        "mixed",
+        "unknown",
+    }:
         return False
+
+    if resume_match is not None and resume_match.label not in {
+        "Strong",
+        "Very Strong",
+    }:
+        return False
+
+    if (
+        resume_match is not None
+        and not resume_match.gaps
+        and resume_match.requirements_reviewed
+        and len(resume_match.supported_requirements or [])
+        == len(resume_match.requirements_reviewed)
+    ):
+        # A fully supported mandatory-qualification section is stronger evidence
+        # than a legacy keyword list that cannot cover every employer's wording.
+        return True
 
     eligible_without_location, _reasons = evaluate_top_match_eligibility(
         posting=posting,
-        score=score,
+        # Potential matches may fall below the legacy keyword score only after
+        # the requirement comparison independently establishes a Strong fit.
+        score=max(score, scoring_config["top_matches"]["min_score"]),
         score_reasons=score_reasons,
         location_status="allowed",
         scoring_config=scoring_config,

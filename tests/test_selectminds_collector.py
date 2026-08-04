@@ -6,7 +6,9 @@ import pytest
 import requests
 
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.incremental_cache import DETAIL_PLANNER_CONFIG_KEY
 from job_radar.collectors.selectminds import collect_selectminds_jobs
+from job_radar.detail_retrieval import DetailRetrievalDecision
 
 
 class FakeResponse:
@@ -158,3 +160,57 @@ def test_collect_selectminds_jobs_wraps_request_errors(monkeypatch):
 
     with pytest.raises(CollectorError, match="SelectMinds request failed"):
         collect_selectminds_jobs(_config())
+
+
+def test_collect_selectminds_jobs_skips_clearly_unrelated_detail(monkeypatch):
+    listing_html = """
+    <p><a href="/jobs/senior-tax-accountant-1234" class="job_link font_bold">Senior Tax Accountant</a></p>
+    <p class="jlr_description">Prepare corporate tax filings.</p>
+    """
+    requested_urls = []
+
+    def fake_get(url, headers, timeout):
+        requested_urls.append(url)
+        return FakeResponse(listing_html)
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    config = _config()
+    config[DETAIL_PLANNER_CONFIG_KEY] = lambda title, location: (
+        DetailRetrievalDecision(False, "clearly unrelated")
+    )
+
+    jobs = collect_selectminds_jobs(config)
+
+    assert requested_urls == [config["source_url"]]
+    assert len(jobs) == 1
+    assert jobs[0].detail_retrieval_reason == "clearly unrelated"
+    assert jobs[0].detail_retrieval_state == "skipped_unrelated"
+
+
+def test_collect_selectminds_jobs_reads_real_detail_container_shape(monkeypatch):
+    listing_html = """
+    <a href="/jobs/platform-engineer-7491" class="job_link">Platform Engineer</a>
+    <p class="jlr_description">Help operate HPC systems.</p>
+    """
+    detail_html = """
+    <h4 class="primary_location">🔍 Bay Area, California, United States</h4>
+    <div id="description_box" class="main_content_box">
+      <p>Build and manage Linux and HPC infrastructure.</p>
+      <p>Work modality: This position requires substantial on-site presence,
+      but hybrid schedules may be considered. Hybrid work includes work
+      on-site at Lawrence Berkeley National Lab in Berkeley, California.</p>
+    </div>
+    """
+
+    def fake_get(url, headers, timeout):
+        if url == _config()["source_url"]:
+            return FakeResponse(listing_html)
+        return FakeResponse(detail_html)
+
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    jobs = collect_selectminds_jobs(_config())
+
+    assert len(jobs) == 1
+    assert jobs[0].location == "Bay Area, California, United States"
+    assert "requires substantial on-site presence" in jobs[0].description

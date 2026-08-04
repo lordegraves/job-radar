@@ -126,7 +126,9 @@ def test_migration_backs_up_sources_and_preserves_scan_behavior(
     )
     assert context.candidate_profile.learning_or_gap == legacy_candidate.learning_or_gap
     assert context.candidate_profile.avoid == legacy_candidate.avoid
-    assert context.resume_text == "# Invented Candidate Linux infrastructure and HPC operations"
+    assert context.resume_text == (
+        "# Invented Candidate\nLinux infrastructure and HPC operations"
+    )
 
 
 def test_migration_refuses_duplicate_profile_name_without_new_backup(

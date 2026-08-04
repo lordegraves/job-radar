@@ -714,6 +714,30 @@ def test_potential_top_match_keeps_existing_role_fit_gate() -> None:
     )
 
 
+def test_fully_supported_required_section_can_replace_legacy_strong_signal() -> None:
+    posting = make_posting(
+        title="Senior Storage Production Engineer",
+        description="Required Qualifications\nExperience operating storage systems.",
+        location="Remote",
+    )
+    resume_match = ResumeMatchResult(
+        label="Strong",
+        evidence=["storage operations"],
+        gaps=[],
+        requirements_reviewed=["Experience operating storage systems."],
+        supported_requirements=["Experience operating storage systems."],
+    )
+
+    assert evaluate_potential_top_match_eligibility(
+        posting=posting,
+        score=80,
+        score_reasons=[],
+        location_status="allowed",
+        scoring_config=make_scoring_config(),
+        resume_match=resume_match,
+    )
+
+
 def test_critical_resume_gap_blocks_every_recommendation_bucket() -> None:
     posting = make_posting(
         title="Principal Security Engineer",

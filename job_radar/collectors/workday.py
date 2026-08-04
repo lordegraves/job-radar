@@ -1,12 +1,14 @@
 """Collect and normalize jobs from Workday recruiting APIs."""
 
 from concurrent.futures import ThreadPoolExecutor
+import time
 from typing import Any
 
 import requests
 
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.incremental_cache import (
+    DETAIL_PLANNER_CONFIG_KEY,
     get_cached_posting,
     listing_fingerprint,
     record_listing,
@@ -18,7 +20,13 @@ from job_radar.normalize import make_canonical_key, make_content_hash
 
 DEFAULT_WORKDAY_LIMIT = 20
 DEFAULT_WORKDAY_MAX_PAGES = 50
-WORKDAY_DETAIL_NORMALIZATION_VERSION = 2
+WORKDAY_DETAIL_NORMALIZATION_VERSION = 4
+WORKDAY_SEARCH_ATTEMPTS = 3
+WORKDAY_SEARCH_RETRY_SECONDS = 1.0
+WORKDAY_DETAIL_ATTEMPTS = 4
+WORKDAY_DETAIL_RETRY_SECONDS = 0.5
+
+_PLACEHOLDER_JOB_IDS = {"job", "job posting", "spotlight job"}
 
 
 WORKDAY_HEADERS = {
@@ -42,10 +50,18 @@ def _get_job_id(job: dict[str, Any]) -> str | None:
         value = job.get(field_name)
 
         if isinstance(value, list) and value:
-            return str(value[0])
+            candidate = str(value[0]).strip()
+            if candidate.casefold() not in _PLACEHOLDER_JOB_IDS:
+                return candidate
 
-        if value:
-            return str(value)
+        elif value:
+            candidate = str(value).strip()
+            if candidate.casefold() not in _PLACEHOLDER_JOB_IDS:
+                return candidate
+
+    external_path = job.get("externalPath")
+    if external_path:
+        return str(external_path).strip() or None
 
     return None
 
@@ -133,6 +149,7 @@ def _merge_workday_detail(
         "externalUrl": ("externalUrl",),
         "timeType": ("timeType",),
     }
+
     for target, candidates in field_map.items():
         for candidate in candidates:
             value = detail.get(candidate)
@@ -148,6 +165,45 @@ def _merge_workday_detail(
         )
 
     return merged
+
+
+def _fetch_workday_page(
+    source_url: str,
+    *,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Retry a transient page without exposing response bodies or raw errors."""
+
+    for attempt in range(WORKDAY_SEARCH_ATTEMPTS):
+        try:
+            response = requests.post(
+                source_url,
+                json=payload,
+                headers=WORKDAY_HEADERS,
+                timeout=30,
+            )
+            response.raise_for_status()
+            response_payload = response.json()
+        except (requests.RequestException, ValueError) as error:
+            if attempt + 1 < WORKDAY_SEARCH_ATTEMPTS:
+                time.sleep(WORKDAY_SEARCH_RETRY_SECONDS * (attempt + 1))
+                continue
+            raise CollectorError(
+                "Workday did not return a readable job-results page after "
+                f"{WORKDAY_SEARCH_ATTEMPTS} attempts.",
+                failure_stage="results_pagination_request",
+            ) from error
+        if not isinstance(response_payload, dict):
+            raise CollectorError(
+                "Workday returned an unreadable job-results page.",
+                failure_stage="results_pagination_response",
+            )
+        return response_payload
+
+    raise CollectorError(
+        "Workday did not return a job-results page.",
+        failure_stage="results_pagination_request",
+    )
 
 
 def _fetch_workday_detail(
@@ -168,6 +224,17 @@ def _fetch_workday_detail(
         return raw_job
 
     identity = _get_job_id(raw_job) or str(external_path)
+    planner = (
+        company_config.get(DETAIL_PLANNER_CONFIG_KEY)
+        if company_config is not None
+        else None
+    )
+    if callable(planner):
+        decision = planner(_get_title(raw_job) or "", _get_location(raw_job))
+        if not decision.retrieve:
+            skipped = dict(raw_job)
+            skipped["_junior_detail_retrieval_reason"] = decision.reason
+            return skipped
     fingerprint = listing_fingerprint(
         {
             "identity": identity,
@@ -206,18 +273,25 @@ def _fetch_workday_detail(
             reused=False,
         )
 
-    try:
-        response = requests.get(
-            detail_url,
-            headers=WORKDAY_HEADERS,
-            timeout=30,
-        )
-        response.raise_for_status()
-        detail_payload = response.json()
-    except (requests.RequestException, ValueError):
-        # Preserve the listing result. The shared evaluator will explicitly
-        # treat an incomplete description as unverified rather than "no gaps."
-        return raw_job
+    detail_payload: object | None = None
+    for attempt in range(WORKDAY_DETAIL_ATTEMPTS):
+        try:
+            response = requests.get(
+                detail_url,
+                headers=WORKDAY_HEADERS,
+                timeout=30,
+            )
+            response.raise_for_status()
+            detail_payload = response.json()
+            break
+        except (requests.RequestException, ValueError):
+            # Workday detail edges can fail briefly while their search API is
+            # still healthy. Retry each independent listing with a small
+            # backoff, then preserve it as incomplete rather than inventing
+            # qualification evidence.
+            if attempt + 1 < WORKDAY_DETAIL_ATTEMPTS:
+                time.sleep(WORKDAY_DETAIL_RETRY_SECONDS * (2**attempt))
+            continue
 
     if not isinstance(detail_payload, dict):
         return raw_job
@@ -296,6 +370,14 @@ def parse_workday_jobs(
                 description=description,
                 canonical_key=canonical_key,
                 content_hash=content_hash,
+                detail_retrieval_reason=raw_job.get(
+                    "_junior_detail_retrieval_reason"
+                ),
+                detail_retrieval_state=(
+                    "skipped_unrelated"
+                    if raw_job.get("_junior_detail_retrieval_reason")
+                    else None
+                ),
             )
         )
 
@@ -325,28 +407,10 @@ def collect_workday_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
 
     for _page_index in range(max_pages):
         payload = _build_workday_payload(offset=offset, limit=limit)
-
-        try:
-            response = requests.post(
-                str(source_url),
-                json=payload,
-                headers=WORKDAY_HEADERS,
-                timeout=30,
-            )
-            response.raise_for_status()
-        except requests.HTTPError as error:
-            response_body = response.text[:500].replace("\n", " ")
-            raise CollectorError(
-                f"Failed to fetch Workday jobs: {error}; "
-                f"response_body={response_body}"
-            ) from error
-        except requests.RequestException as error:
-            raise CollectorError(f"Failed to fetch Workday jobs: {error}") from error
-
-        response_payload = response.json()
-
-        if not isinstance(response_payload, dict):
-            raise CollectorError("Workday response JSON must be an object")
+        response_payload = _fetch_workday_page(
+            str(source_url),
+            payload=payload,
+        )
 
         total = response_payload.get("total")
         raw_jobs = response_payload.get("jobPostings")

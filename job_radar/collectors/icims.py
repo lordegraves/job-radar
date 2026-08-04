@@ -15,6 +15,17 @@ from job_radar.normalize import make_canonical_key, make_content_hash
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_USER_AGENT = "JobRadar/0.1 local career-source scanner"
 MAX_PAGES = 5
+AUTHORITATIVE_EMPTY_CONFIG_KEY = "_icims_authoritative_empty_result"
+
+
+def _is_authoritative_empty_result(html: str) -> bool:
+    """Recognize iCIMS' explicit result for an unfiltered board with no jobs."""
+
+    normalized = " ".join(html.lower().split())
+    return (
+        "no jobs were found that match your search criteria" in normalized
+        or "there are currently no open positions" in normalized
+    )
 
 
 def _clean_title(value: str) -> str:
@@ -144,7 +155,21 @@ def _build_search_url(source_url: str) -> str:
     parsed = urlparse(source_url)
 
     if "/jobs/search" in parsed.path:
-        search_url = source_url
+        query_params = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        # A bare /jobs/search URL renders the iCIMS shell but may not execute
+        # an unfiltered search. Supply the same parameters as the Jobs base.
+        query_params.setdefault("ss", "1")
+        query_params.setdefault("searchRelation", "keyword_all")
+        search_url = urlunparse(
+            (
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                urlencode(query_params),
+                parsed.fragment,
+            )
+        )
     else:
         base = source_url.rstrip("/")
         if base.endswith("/jobs"):
@@ -245,6 +270,7 @@ def _parse_icims_html(
 
 
 def collect_icims_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
+    company_config.pop(AUTHORITATIVE_EMPTY_CONFIG_KEY, None)
     next_url: str | None = _build_search_url(str(company_config["source_url"]))
     postings: list[JobPosting] = []
     seen_urls: set[str] = set()
@@ -265,6 +291,10 @@ def collect_icims_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         )
 
         page_postings = _parse_icims_html(company_config, response.text, current_url)
+        if not page_postings and _is_authoritative_empty_result(response.text):
+            # This is a valid, unfiltered iCIMS response rather than a parser or
+            # discovery failure. Preserve that distinction for scan diagnostics.
+            company_config[AUTHORITATIVE_EMPTY_CONFIG_KEY] = True
         for posting in page_postings:
             if posting.source_url in seen_urls:
                 continue

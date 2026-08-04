@@ -205,7 +205,7 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
 
     monkeypatch.setattr(
         "job_radar.employer_connection_service.collect_jobs_for_company",
-        lambda config: [],
+        lambda config: [object()],
     )
     validation = client.post("/setup/validate")
     assert validation.headers["Location"] == "/setup/review"

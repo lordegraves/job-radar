@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from job_radar.collectors.ukg import collect_ukg_jobs
+from job_radar.collectors.ukg import _workplace_status, collect_ukg_jobs
 
 
 class FakeResponse:
@@ -114,3 +114,10 @@ def test_collect_ukg_jobs_uses_public_board_and_detail_data(
     assert job.content_hash
     assert fake_session.post_payloads[0]["opportunitySearch"]["Top"] == 50
     assert fake_session.post_payloads[0]["opportunitySearch"]["Skip"] == 0
+
+
+def test_ukg_numeric_workplace_codes_are_translated_conservatively() -> None:
+    assert _workplace_status(0) is None
+    assert _workplace_status("1") == "On-site"
+    assert _workplace_status(2) == "Remote"
+    assert _workplace_status("Hybrid") == "Hybrid"

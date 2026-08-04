@@ -12,6 +12,16 @@ retention:
 company_discovery:
   external_lookup: false
 
+# Optional external advisory is off until the user reviews and accepts the
+# privacy warning, then stores an API key in the OS credential manager.
+llm:
+  enabled: false
+  provider: openai
+  model: gpt-5.6-sol
+  credential_key: ""
+  privacy_acknowledged: false
+  max_reviews_per_scan: 25
+
 email:
   enabled: false
   sender: ""

@@ -162,18 +162,23 @@
     <div
         id="latest-output"
         class="latest-output-card"
-        {% if not scan_status.has_results and scan_result != "success" %}hidden{% endif %}
+        data-has-completed-results="{{ 'true' if full_scan_receipt.has_results else 'false' }}"
+        {% if not full_scan_receipt.has_results and scan_result != "success" %}hidden{% endif %}
     >
         <p>
-            <strong>Latest scan completed.</strong>
-            <span id="latest-output-summary">Review the jobs from the latest successful scan.</span>
+            <strong id="latest-output-heading">
+                {% if scan_status.is_running %}Previous completed full scan.{% else %}Most recent full scan completed.{% endif %}
+            </strong>
+            <span id="latest-output-summary">
+                {% if scan_status.is_running %}These results were completed before the scan currently running.{% else %}Review the jobs from the most recent successful scan.{% endif %}
+            </span>
         </p>
         <ul class="scan-result-summary-list" aria-label="Latest completed scan summary">
-            <li><strong>Duration:</strong> <span id="latest-duration">{{ scan_status.elapsed_label or "Unknown" }}</span></li>
-            <li><strong>Collection:</strong> <span id="latest-companies">{{ scan_status.companies_scanned }}</span> company sources; <span id="latest-jobs">{{ scan_status.jobs_found }}</span> jobs collected.</li>
-            <li><strong>Recommendation outcome:</strong> <span id="latest-top-matches">{{ scan_status.top_matches_count }}</span> top matches; <span id="latest-review-needed">{{ scan_status.review_needed_count }}</span> need review; <span id="latest-not-actionable">{{ scan_status.jobs_not_actionable }}</span> not actionable.</li>
-            <li><strong>Job changes:</strong> <span id="latest-new-jobs">{{ scan_status.jobs_new }}</span> new; <span id="latest-seen-jobs">{{ scan_status.jobs_seen }}</span> previously seen; <span id="latest-changed-jobs">{{ scan_status.jobs_changed }}</span> changed.</li>
-            <li><strong>Source health:</strong> <span id="latest-warnings">{{ scan_status.collector_errors }}</span> warnings.</li>
+            <li><strong>Duration:</strong> <span id="latest-duration">{{ full_scan_receipt.elapsed_label or "Unknown" }}</span></li>
+            <li><strong>Collection:</strong> <span id="latest-companies">{{ full_scan_receipt.companies_scanned }}</span> company sources; <span id="latest-jobs">{{ full_scan_receipt.jobs_found }}</span> jobs collected.</li>
+            <li><strong>Recommendation outcome:</strong> <span id="latest-top-matches">{{ full_scan_receipt.top_matches_count }}</span> top matches; <span id="latest-review-needed">{{ full_scan_receipt.review_needed_count }}</span> need review; <span id="latest-not-actionable">{{ full_scan_receipt.jobs_not_actionable }}</span> not actionable.</li>
+            <li><strong>Job changes:</strong> <span id="latest-new-jobs">{{ full_scan_receipt.jobs_new }}</span> new; <span id="latest-seen-jobs">{{ full_scan_receipt.jobs_seen }}</span> previously seen; <span id="latest-changed-jobs">{{ full_scan_receipt.jobs_changed }}</span> changed.</li>
+            <li><strong>Source health:</strong> <span id="latest-warnings">{{ full_scan_receipt.collector_errors }}</span> warnings.</li>
         </ul>
         <div class="latest-output-links">
             <a href="{{ url_for('review_jobs') }}">Review jobs</a>
@@ -181,6 +186,24 @@
             <a href="{{ url_for('report_view', report_name='target-email-preview.txt') }}">Email preview</a>
         </div>
     </div>
+
+    {% if selected_scan_receipt.has_results %}
+    <div class="latest-output-card">
+        <p>
+            <strong id="selected-output-heading">
+                {% if scan_status.is_running %}Previous selected-company scan completed.{% else %}Most recent selected-company scan completed.{% endif %}
+            </strong>
+        </p>
+        <p id="selected-output-context" class="muted" {% if not scan_status.is_running %}hidden{% endif %}>
+            These results were completed before the scan currently running.
+        </p>
+        <ul class="scan-result-summary-list" aria-label="Latest selected-company scan summary">
+            <li><strong>Duration:</strong> {{ selected_scan_receipt.elapsed_label or "Unknown" }}</li>
+            <li><strong>Collection:</strong> {{ selected_scan_receipt.companies_scanned }} company sources; {{ selected_scan_receipt.jobs_found }} jobs collected.</li>
+            <li><strong>Recommendation outcome:</strong> {{ selected_scan_receipt.top_matches_count }} top matches; {{ selected_scan_receipt.review_needed_count }} need review; {{ selected_scan_receipt.jobs_not_actionable }} not actionable.</li>
+        </ul>
+    </div>
+    {% endif %}
 
     <p>After running a scan, use the latest scan links here or open
         <a href="{{ url_for('review_jobs') }}">Review Jobs</a>.
@@ -245,7 +268,7 @@
 
 {% if scan_summary.available and scan_summary.errors %}
 <details class="scan-details" id="latest-scan-summary" open>
-    <summary>Latest scan problems</summary>
+    <summary id="scan-problems-heading">{% if scan_status.is_running %}Previous completed scan problems{% else %}Most recent completed scan problems{% endif %}</summary>
     <p>
         <strong>
             {{ scan_summary.errors|length }} company source
@@ -269,7 +292,7 @@
 </details>
 {% elif scan_summary.available %}
 <div class="scan-success-summary" id="latest-scan-summary">
-    <strong>Latest scan completed successfully.</strong>
+    <strong id="scan-problems-heading">{% if scan_status.is_running %}The previous scan completed successfully.{% else %}The most recent scan completed successfully.{% endif %}</strong>
     No company-source problems were found.
 </div>
 {% else %}
@@ -301,7 +324,11 @@
     const scanFailure = document.getElementById("scan-failure");
     const scanFailureSummary = document.getElementById("scan-failure-summary");
     const latestOutput = document.getElementById("latest-output");
+    const latestOutputHeading = document.getElementById("latest-output-heading");
     const latestOutputSummary = document.getElementById("latest-output-summary");
+    const selectedOutputHeading = document.getElementById("selected-output-heading");
+    const selectedOutputContext = document.getElementById("selected-output-context");
+    const scanProblemsHeading = document.getElementById("scan-problems-heading");
     const latestDuration = document.getElementById("latest-duration");
     const latestCompanies = document.getElementById("latest-companies");
     const latestJobs = document.getElementById("latest-jobs");
@@ -316,6 +343,7 @@
     let elapsedBaseline = 0;
     let elapsedBaselineAt = Date.now();
     let scanIsRunning = initialScanStatus.is_running;
+    const hasCompletedFullScan = latestOutput.dataset.hasCompletedResults === "true";
 
     function formatClock(totalSeconds) {
         const value = Math.max(0, Math.floor(totalSeconds || 0));
@@ -358,14 +386,35 @@
 
         scanRunning.hidden = !status.is_running;
         scanFailure.hidden = status.status !== "failed";
-        latestOutput.hidden = !status.has_results;
+        latestOutput.hidden = status.is_running
+            ? !hasCompletedFullScan
+            : !status.has_results;
+        latestOutputHeading.textContent = status.is_running
+            ? "Previous completed full scan."
+            : "Most recent full scan completed.";
+        if (selectedOutputHeading) {
+            selectedOutputHeading.textContent = status.is_running
+                ? "Previous selected-company scan completed."
+                : "Most recent selected-company scan completed.";
+            selectedOutputContext.hidden = !status.is_running;
+        }
+        if (scanProblemsHeading) {
+            const problemsSummary = scanProblemsHeading.tagName === "SUMMARY";
+            scanProblemsHeading.textContent = problemsSummary
+                ? (status.is_running
+                    ? "Previous completed scan problems"
+                    : "Most recent completed scan problems")
+                : (status.is_running
+                    ? "The previous scan completed successfully."
+                    : "The most recent scan completed successfully.");
+        }
 
         scanStage.textContent = status.stage_label;
-        if (status.has_results) {
+        if (status.has_results && status.trigger_source !== "manual:selected") {
             const duration = formatDuration(status.elapsed_seconds);
             latestOutputSummary.textContent = duration
-                ? `Junior checked ${status.companies_scanned} company sources in ${duration}. Review the jobs from the latest successful scan.`
-                : "Review the jobs from the latest successful scan.";
+                ? `Junior checked ${status.companies_scanned} company sources in ${duration}. Review the jobs from the most recent successful scan.`
+                : "Review the jobs from the most recent successful scan.";
             latestDuration.textContent = duration || "Unknown";
             latestCompanies.textContent = status.companies_scanned;
             latestJobs.textContent = status.jobs_found;
@@ -412,7 +461,20 @@
         scanButton.textContent = "Starting scan...";
         scanRunning.hidden = false;
         scanFailure.hidden = true;
-        latestOutput.hidden = true;
+        latestOutput.hidden = !hasCompletedFullScan;
+        latestOutputHeading.textContent = "Previous completed full scan.";
+        latestOutputSummary.textContent =
+            "These results were completed before the scan currently running.";
+        if (selectedOutputHeading) {
+            selectedOutputHeading.textContent =
+                "Previous selected-company scan completed.";
+            selectedOutputContext.hidden = false;
+        }
+        if (scanProblemsHeading) {
+            scanProblemsHeading.textContent = scanProblemsHeading.tagName === "SUMMARY"
+                ? "Previous completed scan problems"
+                : "The previous scan completed successfully.";
+        }
         scanStage.textContent = "Starting scan";
         scanProgress.removeAttribute("value");
         scanProgressCounts.textContent = "Scan is starting. ";
@@ -462,6 +524,20 @@
         scanButton.disabled = true;
         scanRunning.hidden = false;
         scanFailure.hidden = true;
+        latestOutput.hidden = !hasCompletedFullScan;
+        latestOutputHeading.textContent = "Previous completed full scan.";
+        latestOutputSummary.textContent =
+            "These results were completed before the scan currently running.";
+        if (selectedOutputHeading) {
+            selectedOutputHeading.textContent =
+                "Previous selected-company scan completed.";
+            selectedOutputContext.hidden = false;
+        }
+        if (scanProblemsHeading) {
+            scanProblemsHeading.textContent = scanProblemsHeading.tagName === "SUMMARY"
+                ? "Previous completed scan problems"
+                : "The previous scan completed successfully.";
+        }
         scanStage.textContent = "Starting selected-company scan";
         scanProgress.removeAttribute("value");
         scanProgressCounts.textContent =

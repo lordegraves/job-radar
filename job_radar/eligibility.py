@@ -840,7 +840,18 @@ def _evaluate_work_authorization(
         "unable to sponsor",
         "cannot sponsor",
     )
-    if not any(marker in text for marker in markers):
+    citizenship_requirement = any(
+        re.search(pattern, text)
+        for pattern in (
+            r"\b(?:must|shall)\s+be\s+(?:an?\s+)?u\.?s\.?\s+citizen\b",
+            r"\bu\.?s\.?\s+citizenship\s+(?:is\s+)?required\b",
+            r"\brequires?\s+u\.?s\.?\s+citizenship\b",
+            r"\bonly\s+u\.?s\.?\s+citizens?\s+(?:will\s+be\s+)?considered\b",
+            r"\brestrict(?:s|ed)?\s+(?:access\s+)?to\s+(?:individuals|applicants|candidates)\s+with\s+u\.?s\.?\s+citizenship\b",
+            r"\bonly\s+(?:applicants|candidates)\s+that\s+are\s+u\.?s\.?\s+citizens?\s+(?:will\s+be\s+)?considered\b",
+        )
+    )
+    if not any(marker in text for marker in markers) and not citizenship_requirement:
         return None
 
     return EligibilityResult(
@@ -927,6 +938,61 @@ def _evaluate_remote_arrangement(
     posting: JobPosting,
     preferences: ProfilePreferences,
 ) -> EligibilityResult:
+    selected_locations = tuple(
+        location.label for location in preferences.location_selections
+    ) or preferences.preferred_locations
+    specific_remote_location = _extract_remote_specific_location(posting.location)
+
+    if specific_remote_location is not None:
+        if not selected_locations:
+            return EligibilityResult(
+                status=ELIGIBILITY_NEEDS_REVIEW,
+                reasons=(
+                    EligibilityReason(
+                        code="remote_region_needs_confirmation",
+                        message=(
+                            "The job is remote but restricted to a specific "
+                            "geographic area, and this profile has no selected "
+                            "locations for comparison."
+                        ),
+                    ),
+                ),
+            )
+        normalized_posting_location = _normalize_location_label(
+            specific_remote_location
+        )
+        if any(
+            _location_labels_match(
+                posting_location=normalized_posting_location,
+                selected_location=_normalize_location_label(selected_location),
+            )
+            for selected_location in selected_locations
+        ):
+            return EligibilityResult(
+                status=ELIGIBILITY_ELIGIBLE,
+                reasons=(
+                    EligibilityReason(
+                        code="remote_region_matches_selected_area",
+                        message=(
+                            "The job is remote and its geographic restriction "
+                            "matches one of this profile's selected locations."
+                        ),
+                    ),
+                ),
+            )
+        return EligibilityResult(
+            status=ELIGIBILITY_NOT_ELIGIBLE,
+            reasons=(
+                EligibilityReason(
+                    code="remote_region_outside_selected_areas",
+                    message=(
+                        f"The job is remote within {specific_remote_location}, "
+                        "which is outside this profile's selected locations."
+                    ),
+                ),
+            ),
+        )
+
     posting_state = _extract_remote_restriction_state(posting.location)
 
     if posting_state is None:
@@ -939,10 +1005,6 @@ def _evaluate_remote_arrangement(
                 ),
             ),
         )
-
-    selected_locations = tuple(
-        location.label for location in preferences.location_selections
-    ) or preferences.preferred_locations
 
     if not selected_locations:
         return EligibilityResult(
@@ -1066,7 +1128,10 @@ def _evaluate_location_based_arrangement(
                 ),
             )
 
-    if _looks_like_specific_city_state(posting.location):
+    if (
+        _looks_like_specific_city_state(posting.location)
+        or _contains_concrete_location_amid_broad_markers(posting.location)
+    ):
         approved_locations = "; ".join(selected_locations)
         return EligibilityResult(
             status=ELIGIBILITY_NOT_ELIGIBLE,
@@ -1098,6 +1163,10 @@ def _evaluate_location_based_arrangement(
 
 def _normalize_location_label(value: str | None) -> str:
     normalized = clean_text(value).lower()
+
+    # ATS feeds use both "Ft. Collins" and "Fort Collins". Canonicalize the
+    # abbreviation before punctuation is removed so one city stays one area.
+    normalized = re.sub(r"\bft\.?\s+", "fort ", normalized)
 
     arrangement_markers = (
         "on-site",
@@ -1185,6 +1254,12 @@ def _extract_remote_restriction_state(value: str | None) -> str | None:
     if not normalized:
         return None
 
+    if _offers_unrestricted_remote_alternative(value):
+        return None
+
+    if _has_national_remote_option(value):
+        return None
+
     multi_location_markers = (
         ";",
         "|",
@@ -1207,6 +1282,176 @@ def _extract_remote_restriction_state(value: str | None) -> str | None:
         return None
 
     return _extract_state_abbreviation(value)
+
+
+def _extract_remote_specific_location(value: str | None) -> str | None:
+    """Return a concrete geographic scope after removing remote/broad labels."""
+
+    normalized = clean_text(value).lower()
+    if not normalized:
+        return None
+
+    # "Pittsburgh, PA or Remote" offers remote work as an alternative to the
+    # named office. The office is not a residency restriction on remote work.
+    if _offers_unrestricted_remote_alternative(value):
+        return None
+
+    # A feed may concatenate offices and remote choices into one comma-heavy
+    # label. One explicit national option makes the job nationally remote even
+    # when neighboring options name states or offices.
+    if _has_national_remote_option(value):
+        return None
+
+    if ";" in normalized or "|" in normalized:
+        segments = [
+            clean_text(segment)
+            for segment in re.split(r"[;|]", normalized)
+            if clean_text(segment)
+        ]
+        explicit_remote_segments = [
+            segment
+            for segment in segments
+            if segment in {"remote", "virtual", "fully remote"}
+        ]
+        adjacent_geographic_scopes = [
+            segment
+            for segment in segments
+            if segment not in explicit_remote_segments
+            and _looks_like_country_or_broad_region_scope(segment)
+        ]
+        if explicit_remote_segments and adjacent_geographic_scopes:
+            # Some feeds serialize one scoped option as two fields, for example
+            # "India; Remote" or "Remote | India". Keep the country/region;
+            # dropping it turns restricted remote work into worldwide remote.
+            return ", ".join(adjacent_geographic_scopes)
+        remote_segments = [
+            segment
+            for segment in segments
+            if "remote" in segment or "virtual" in segment
+        ]
+        if remote_segments:
+            if any(
+                re.search(
+                    r"\b(?:u\.?s\.?|usa|united states(?: of america)?)"
+                    r"\s*,?\s*(?:remote|virtual)\b",
+                    segment,
+                )
+                for segment in remote_segments
+            ):
+                return None
+            normalized = remote_segments[0]
+        elif any(
+            marker in normalized
+            for marker in ("multiple locations", "various locations")
+        ):
+            return None
+
+    reduced = normalized
+    for marker in (
+        "remote-friendly",
+        "remote friendly",
+        "remote",
+        "virtual",
+        "united states of america",
+        "united states",
+        "nationwide",
+        "us only",
+        "u.s. only",
+        "worldwide",
+        "global",
+    ):
+        reduced = reduced.replace(marker, " ")
+    reduced = re.sub(r"\b(?:u\.?s\.?a?)\b", " ", reduced)
+    reduced = clean_text(re.sub(r"[,/:()\[\]|-]+", " ", reduced))
+    return reduced or None
+
+
+_COUNTRY_OR_BROAD_REGION_SCOPES = {
+    "africa",
+    "apac",
+    "argentina",
+    "asia",
+    "australia",
+    "austria",
+    "belgium",
+    "brazil",
+    "canada",
+    "china",
+    "czech republic",
+    "denmark",
+    "emea",
+    "europe",
+    "finland",
+    "france",
+    "germany",
+    "hungary",
+    "india",
+    "indonesia",
+    "ireland",
+    "israel",
+    "italy",
+    "japan",
+    "latin america",
+    "malaysia",
+    "mexico",
+    "netherlands",
+    "new zealand",
+    "norway",
+    "philippines",
+    "poland",
+    "portugal",
+    "romania",
+    "saudi arabia",
+    "singapore",
+    "south africa",
+    "south america",
+    "south korea",
+    "spain",
+    "sweden",
+    "switzerland",
+    "taiwan",
+    "thailand",
+    "united arab emirates",
+    "united kingdom",
+    "vietnam",
+}
+
+
+def _looks_like_country_or_broad_region_scope(value: str) -> bool:
+    """Recognize a country/region field paired with a separate remote field."""
+
+    normalized = _normalize_location_label(value)
+    return normalized in _COUNTRY_OR_BROAD_REGION_SCOPES
+
+
+def _offers_unrestricted_remote_alternative(value: str | None) -> bool:
+    """Recognize a US office location followed by a remote alternative."""
+
+    normalized = clean_text(value)
+    match = re.search(
+        r"^(?P<office>.+?)\s+or\s+(?:fully\s+)?remote\b",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    if match is None:
+        return False
+    office = clean_text(match.group("office"))
+    # Requiring a city/state-shaped office keeps country-scoped wording such
+    # as "India or Remote" from becoming unrestricted worldwide remote work.
+    return "," in office and _extract_state_abbreviation(office) is not None
+
+
+def _has_national_remote_option(value: str | None) -> bool:
+    """Return whether one listed option explicitly offers nationwide US remote."""
+
+    return bool(
+        re.search(
+            r"\b(?:u\.?s\.?|usa|united states(?: of america)?)"
+            r"\s*,?\s*remote\b",
+            clean_text(value),
+            flags=re.IGNORECASE,
+        )
+    )
 
 
 def _extract_state_abbreviation(value: str | None) -> str | None:
@@ -1281,11 +1526,52 @@ def _location_labels_match(
     if not posting_location or not selected_location:
         return False
 
-    return (
+    if (
         posting_location == selected_location
         or posting_location in selected_location
         or selected_location in posting_location
-    )
+    ):
+        return True
+
+    # Collectors order location parts differently and may return several
+    # offices in one field. Match a selected city/state when all meaningful
+    # tokens occur in the posting, regardless of order or country labels.
+    ignored_tokens = {
+        "all",
+        "america",
+        "location",
+        "locations",
+        "of",
+        "state",
+        "states",
+        "united",
+        "us",
+        "usa",
+    }
+    selected_tokens = [
+        token for token in selected_location.split() if token not in ignored_tokens
+    ]
+    posting_tokens = [
+        token for token in posting_location.split() if token not in ignored_tokens
+    ]
+    if len(selected_tokens) < 2:
+        return False
+
+    selected_state = selected_tokens[-1]
+    selected_city = selected_tokens[:-1]
+    city_width = len(selected_city)
+    for index in range(len(posting_tokens) - city_width + 1):
+        if posting_tokens[index : index + city_width] != selected_city:
+            continue
+        state_before = index > 0 and posting_tokens[index - 1] == selected_state
+        state_after_index = index + city_width
+        state_after = (
+            state_after_index < len(posting_tokens)
+            and posting_tokens[state_after_index] == selected_state
+        )
+        if state_before or state_after:
+            return True
+    return False
 
 
 def _looks_like_specific_city_state(value: str | None) -> bool:
@@ -1338,6 +1624,31 @@ def _looks_like_specific_city_state(value: str | None) -> bool:
     return any(character.isalpha() for character in normalized)
 
 
+def _contains_concrete_location_amid_broad_markers(
+    value: str | None,
+) -> bool:
+    """Keep generic multi-location labels from hiding listed cities or regions."""
+
+    normalized = clean_text(value).lower()
+    if not normalized:
+        return False
+    reduced = normalized
+    for marker in (
+        "multiple locations",
+        "various locations",
+        "united states of america",
+        "united states",
+        "north america",
+        "worldwide",
+        "global",
+        "regional",
+    ):
+        reduced = reduced.replace(marker, " ")
+    reduced = re.sub(r"\b(?:u\.?s\.?a?|n/?a)\b", " ", reduced)
+    reduced = re.sub(r"[^a-z]+", " ", reduced).strip()
+    return bool(reduced)
+
+
 def _specific_location_for_evaluation(posting: JobPosting) -> str | None:
     """Return concrete location evidence from ATS metadata or a title suffix."""
 
@@ -1377,6 +1688,9 @@ def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
                 r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+hybrid\b",
                 r"\bhybrid\s+(?:role|position|job|work arrangement)\b",
                 r"\bhybrid\s+schedules?\s+may\s+be\s+considered\b",
+                r"\bexpect\s+(?:all\s+)?staff\s+to\s+be\s+in\s+"
+                r"(?:one\s+of\s+)?(?:our\s+)?offices?\s+at\s+least\s+"
+                r"\d{1,3}%\s+of\s+the\s+time\b",
                 r"\bcombination\s+of\s+performing\s+work\s+on[- ]?site\b"
                 r".{0,180}\btelework\b",
                 r"\bworkplace\s+type\s*:\s*hybrid\b",
@@ -1399,6 +1713,8 @@ def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
         (
             ARRANGEMENT_REMOTE,
             (
+                r"\bhybrid\s+or\s+(?:fully\s+)?remote\s+work\s+"
+                r"arrangements?\s+(?:is|are\s+)?available\b",
                 r"\b(?:this|the)\s+(?:role|position|job)\s+is\s+"
                 r"(?:fully\s+)?remote\b",
                 r"\b(?:fully\s+)?remote\s+(?:role|position|job|work arrangement)\b",

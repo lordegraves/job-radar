@@ -3,7 +3,7 @@
 import json
 import os
 import threading
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 
@@ -41,6 +41,7 @@ from job_radar.tracker.tracker_storage import (
     upsert_application,
 )
 from job_radar.web_app import create_app
+from job_radar.web_routes.scan import _build_scan_status_payload
 
 
 def mark_existing_installation(database_file: Path) -> None:
@@ -2393,7 +2394,7 @@ candidate:
         "# Updated Resume\n\nLinux infrastructure and HPC operations"
     )
     assert normalized_resume_file.read_text(encoding="utf-8") == (
-        "# Updated Resume Linux infrastructure and HPC operations\n"
+        "# Updated Resume\nLinux infrastructure and HPC operations\n"
     )
     assert "# Updated Resume" in html
     assert "Linux infrastructure and HPC operations" in html
@@ -2728,6 +2729,10 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "Email" in settings_html
     assert "Disabled" in settings_html
     assert "The password is stored by your operating system" in settings_html
+    assert "LLM advisory assistance" in settings_html
+    assert "Off by default" in settings_html
+    assert "complete active résumé" in settings_html
+    assert "API use is billed separately" in settings_html
     assert "Health checks, version information" in settings_html
     assert "Exit Junior" not in settings_html
     assert "Save retention settings" in settings_html
@@ -2736,6 +2741,7 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
         "retention-settings",
         "email-settings",
         "schedule-settings",
+        "llm-settings",
         "company-discovery-settings",
     ):
         assert f'id="{section_id}"' in normalized_settings_html
@@ -3066,7 +3072,7 @@ def test_scan_page_shows_user_scan_controls_and_results_summary(
     assert 'button[data-submit-pending-label]' in html
     assert "<summary>Scan selected companies</summary>" in normalized_html
     assert "Select all companies" in html
-    assert "<summary>Latest scan problems</summary>" in normalized_html
+    assert "Most recent completed scan problems" in normalized_html
     assert "1 company source problem needs attention." in normalized_html
     assert "Example Company" in html
     assert "The public job source did not respond." in html
@@ -3126,6 +3132,9 @@ def test_scan_page_restores_active_scan_progress(
     assert "window.setInterval(paintElapsedClock, 1000);" in html
     assert 'id="latest-output-summary"' in html
     assert "formatDuration(status.elapsed_seconds)" in html
+    assert "Previous completed full scan." in html
+    assert "Previous selected-company scan completed." in html
+    assert "Previous completed scan problems" in html
     assert "await new Promise(window.requestAnimationFrame);" in html
 
 
@@ -3253,7 +3262,7 @@ def test_scan_status_endpoint_exposes_completed_report_links(
     assert status_payload["review_needed_count"] == 8
 
     assert page_response.status_code == 200
-    assert "Latest scan completed." in page_html
+    assert "Most recent full scan completed." in page_html
     assert 'aria-label="Latest completed scan summary"' in page_html
     assert '<span id="latest-duration">5m 00s</span>' in page_html
     assert '<span id="latest-jobs">500</span> jobs collected.' in page_html
@@ -3263,6 +3272,114 @@ def test_scan_status_endpoint_exposes_completed_report_links(
     assert 'class="scan-result-metrics"' not in page_html
     assert "/reports/view/target-scan.html" in page_html
     assert "/reports/view/target-email-preview.txt" in page_html
+
+
+def test_scan_status_reports_starting_instead_of_previous_scan_during_worker_race(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+    previous_id = start_scan_run(
+        database_file,
+        requested_at="2026-07-31T12:00:00+00:00",
+        companies_requested=74,
+        companies_enabled=74,
+    )
+    complete_scan_run(
+        database_file,
+        scan_run_id=previous_id,
+        generated_at="2026-07-31T12:05:00+00:00",
+        finished_at="2026-07-31T12:05:00+00:00",
+        companies_scanned=74,
+        jobs_collected=18000,
+        actionable_jobs_stored=20,
+        jobs_not_actionable=17980,
+        jobs_new=5,
+        jobs_seen=15,
+        jobs_changed=0,
+        collector_errors=0,
+        top_matches_count=1,
+        review_needed_count=19,
+        report_status="completed",
+        email_status="not_requested",
+    )
+    class RunningWorker:
+        is_running = True
+        failed = False
+
+    payload = _build_scan_status_payload(
+        database_file,
+        scan_runner=RunningWorker(),
+    )
+    assert payload["status"] == "running"
+    assert payload["stage"] == "starting"
+    assert payload["has_results"] is False
+    assert payload["scan_run_id"] is None
+
+
+def test_scan_page_keeps_full_and_selected_scan_receipts_separate(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    initialize_database(database_file)
+
+    def add_completed_scan(trigger, requested_at, finished_at, companies, jobs):
+        scan_run_id = start_scan_run(
+            database_file,
+            requested_at=requested_at,
+            companies_requested=companies,
+            companies_enabled=companies,
+            trigger_source=trigger,
+        )
+        complete_scan_run(
+            database_file,
+            scan_run_id=scan_run_id,
+            generated_at=finished_at,
+            finished_at=finished_at,
+            companies_scanned=companies,
+            jobs_collected=jobs,
+            actionable_jobs_stored=1,
+            jobs_not_actionable=jobs - 1,
+            jobs_new=1,
+            jobs_seen=jobs - 1,
+            jobs_changed=0,
+            collector_errors=0,
+            top_matches_count=1,
+            review_needed_count=0,
+            report_status="completed",
+            email_status="not_requested",
+        )
+
+    add_completed_scan(
+        "manual",
+        "2026-07-31T12:00:00+00:00",
+        "2026-07-31T12:35:00+00:00",
+        74,
+        19000,
+    )
+    add_completed_scan(
+        "manual:selected",
+        "2026-07-31T13:00:00+00:00",
+        "2026-07-31T13:03:00+00:00",
+        2,
+        1200,
+    )
+
+    html = create_app(settings_path=str(settings_file)).test_client().get(
+        "/scan"
+    ).get_data(as_text=True)
+
+    assert "Most recent full scan completed." in html
+    assert '<span id="latest-duration">35m 00s</span>' in html
+    assert '<span id="latest-companies">74</span>' in html
+    assert '<span id="latest-jobs">19000</span>' in html
+    assert "Most recent selected-company scan completed." in html
+    assert "3m 00s" in html
+    assert "2 company sources; 1200 jobs collected." in html
 
 
 def test_scan_run_calls_handle_scan_and_redirects(
@@ -3460,6 +3577,9 @@ def test_every_page_includes_global_scan_monitor(tmp_path: Path) -> None:
     assert "activityToggle.hidden = true" in html
     assert "status.elapsed_seconds" in html
     assert "window.location.pathname === scanPageUrl" in html
+    assert "window.location.reload()" in html
+    assert "scanDerivedPage" in html
+    assert "pageHasUnsavedReviewChanges" in html
 
 
 def test_index_page_links_to_reports(tmp_path: Path) -> None:
@@ -3844,7 +3964,7 @@ def test_tracker_page_sorts_by_workflow_priority(tmp_path: Path) -> None:
             company_name="WaitingCo",
             role_title="Cluster Engineer",
             status="applied",
-            last_activity_on="2026-07-01",
+            last_activity_on=(date.today() - timedelta(days=7)).isoformat(),
         ),
     )
     upsert_application(
@@ -4233,7 +4353,7 @@ def test_tracker_page_filters_to_needs_action(tmp_path: Path) -> None:
             company_name="WaitingCo",
             role_title="Cluster Engineer",
             status="applied",
-            last_activity_on="2026-07-01",
+            last_activity_on=(date.today() - timedelta(days=7)).isoformat(),
         ),
     )
 
@@ -4273,7 +4393,7 @@ def test_tracker_page_filters_to_needs_review(tmp_path: Path) -> None:
             company_name="WaitingCo",
             role_title="Cluster Engineer",
             status="applied",
-            last_activity_on="2026-07-01",
+            last_activity_on=(date.today() - timedelta(days=7)).isoformat(),
         ),
     )
 
@@ -5338,7 +5458,8 @@ review_needed:
     assert 'id="add-occupation"' not in html
     assert 'id="add-location"' not in html
     assert 'aria-live="polite"' in html
-    assert "enter your own wording" in html
+    assert "press Enter to use those exact words" in html
+    assert "Enter belongs to the user's exact wording" in html
     assert "Workplace arrangements" in html
     assert "City, state, or ZIP" in html
     assert "Your profile at a glance" in html
@@ -5742,6 +5863,21 @@ candidate:
     assert str(resume_file) in html
     assert str(normalized_resume_file) in html
     assert str(repository_root / "profiles") not in html
+
+
+def test_test_environment_banner_is_explicit(tmp_path: Path, monkeypatch) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    monkeypatch.setenv("JUNIOR_TEST_ENVIRONMENT_LABEL", "REAL-DATA TEST COPY")
+
+    html = create_app(settings_path=str(settings_file)).test_client().get(
+        "/",
+        follow_redirects=True,
+    ).get_data(as_text=True)
+
+    assert "REAL-DATA TEST COPY" in html
+    assert "changes here affect only the isolated test copy" in html
 
 
 def test_main_pages_share_full_navigation(tmp_path: Path) -> None:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urljoin
@@ -14,12 +15,15 @@ import requests
 from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.incremental_cache import (
+    DETAIL_PLANNER_CONFIG_KEY,
     get_cached_posting,
+    get_recent_cached_posting,
     listing_fingerprint,
     record_collection_warning,
     record_listing,
     report_progress,
 )
+from job_radar.detail_retrieval import DetailRetrievalDecision
 from job_radar.collectors.pagination import get_max_pages, get_page_size
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
@@ -30,11 +34,12 @@ DEFAULT_MAX_PAGES = 100
 DETAIL_REQUEST_ATTEMPTS = 3
 DETAIL_RETRY_DELAY_SECONDS = 1.0
 DETAIL_REQUEST_TIMEOUT_SECONDS = 10
-DETAIL_ENRICHMENT_BUDGET_SECONDS = 300
+DETAIL_ENRICHMENT_BUDGET_SECONDS = 420
 DETAIL_FAILURE_CIRCUIT_LIMIT = 3
 SEARCH_REQUEST_ATTEMPTS = 5
 SEARCH_RETRY_DELAY_SECONDS = 2.0
 REQUEST_PACING_SECONDS = 0.1
+SEARCH_PAGE_WORKERS = 2
 
 
 @dataclass
@@ -52,7 +57,7 @@ class _DetailPolicy:
         if self.disabled_reason is not None:
             return False
         if time.monotonic() - self.started_at >= DETAIL_ENRICHMENT_BUDGET_SECONDS:
-            self.disabled_reason = "the five-minute description budget was reached"
+            self.disabled_reason = "the seven-minute description budget was reached"
             return False
         return True
 
@@ -85,6 +90,13 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     # scan, not merely prove that Eightfold's search page can be reached.
     detail_probe_pending = connection_test and max_pages in {1, 2}
     detail_policy = _DetailPolicy(started_at=time.monotonic())
+    prefetched_pages = _prefetch_known_search_pages(
+        source_url=source_url,
+        domain=domain,
+        company_name=company_name,
+        max_pages=max_pages,
+        connection_test=connection_test,
+    )
 
     start = 0
     for page_index in range(max_pages):
@@ -102,13 +114,15 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
             if page_index == 0
             else "results_pagination_response"
         )
-        response = _fetch_search_page(
-            source_url=source_url,
-            domain=domain,
-            start=start,
-            company_name=company_name,
-            failure_stage=request_stage,
-        )
+        response = prefetched_pages.get(start)
+        if response is None:
+            response = _fetch_search_page(
+                source_url=source_url,
+                domain=domain,
+                start=start,
+                company_name=company_name,
+                failure_stage=request_stage,
+            )
 
         try:
             payload = response.json()
@@ -184,6 +198,60 @@ def collect_eightfold_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
     return postings
 
 
+def _prefetch_known_search_pages(
+    *,
+    source_url: str,
+    domain: str,
+    company_name: str,
+    max_pages: int,
+    connection_test: bool,
+) -> dict[int, requests.Response]:
+    """Fetch a known finite Eightfold result set with bounded concurrency."""
+
+    if connection_test or max_pages <= 1:
+        return {}
+    first = _fetch_search_page(
+        source_url=source_url,
+        domain=domain,
+        start=0,
+        company_name=company_name,
+        failure_stage="initial_search_request",
+    )
+    try:
+        payload = first.json()
+    except ValueError:
+        # Let the normal parser produce the established safe response error.
+        return {0: first}
+    data = payload.get("data") if isinstance(payload, dict) else None
+    positions = data.get("positions") if isinstance(data, dict) else None
+    count = data.get("count") if isinstance(data, dict) else None
+    if (
+        not isinstance(positions, list)
+        or not positions
+        or not isinstance(count, int)
+        or count <= len(positions)
+    ):
+        return {0: first}
+
+    page_width = len(positions)
+    starts = list(range(page_width, count, page_width))[: max_pages - 1]
+
+    def fetch(start: int) -> requests.Response:
+        return _fetch_search_page(
+            source_url=source_url,
+            domain=domain,
+            start=start,
+            company_name=company_name,
+            failure_stage="results_pagination_request",
+        )
+
+    with ThreadPoolExecutor(
+        max_workers=min(SEARCH_PAGE_WORKERS, len(starts))
+    ) as executor:
+        responses = list(executor.map(fetch, starts))
+    return {0: first, **dict(zip(starts, responses, strict=True))}
+
+
 def _build_posting(
     *,
     company_key: str,
@@ -216,17 +284,44 @@ def _build_posting(
             ),
         }
     )
+    locations = raw_position.get("locations") or []
+    listing_location = ", ".join(str(item) for item in locations if item) or None
+    retrieval_decision = DetailRetrievalDecision(True, "planner_not_configured")
+    planner = (
+        company_config.get(DETAIL_PLANNER_CONFIG_KEY)
+        if company_config is not None
+        else None
+    )
+    if callable(planner) and not strict_details:
+        retrieval_decision = planner(title, listing_location)
+    retrieve_details = fetch_details and retrieval_decision.retrieve
     cached = (
         get_cached_posting(
             company_config,
             identity=listing_identity,
             fingerprint=fingerprint,
         )
-        if company_config is not None and fetch_details
+        if company_config is not None and retrieve_details
         else None
     )
+    posting_url = urljoin(f"{source_url}/", position_path)
+    if cached is None and company_config is not None and retrieve_details:
+        recent_cached = get_recent_cached_posting(
+            company_config,
+            identity=listing_identity,
+        )
+        if (
+            recent_cached is not None
+            and recent_cached.posting.title == title
+            and recent_cached.posting.source_url == posting_url
+        ):
+            # Eightfold may reorder or relabel summary metadata without
+            # changing the underlying job. Reuse the fresh description while
+            # retaining current listing location and workstyle fields.
+            cached = recent_cached
     detail: dict[str, Any] = {}
-    if fetch_details and cached is None:
+    detail_unavailable = False
+    if retrieve_details and cached is None:
         allowed = detail_policy is None or detail_policy.allowed
         if allowed:
             if company_config is not None and detail_policy is not None:
@@ -246,6 +341,7 @@ def _build_posting(
             except CollectorError:
                 if strict_details:
                     raise
+                detail_unavailable = True
                 if detail_policy is not None:
                     detail_policy.failed()
             else:
@@ -253,6 +349,7 @@ def _build_posting(
                     detail_policy.succeeded()
         elif detail_policy is not None:
             detail_policy.skipped += 1
+            detail_unavailable = True
     if company_config is not None and (cached is not None or detail):
         record_listing(
             company_config,
@@ -262,25 +359,31 @@ def _build_posting(
         )
     if cached is not None:
         cached_posting = cached.posting
+        listing_remote_status = str(
+            raw_position.get("efcustomTextJobRequisitionWorkstyle")
+            or raw_position.get("workLocationOption")
+            or ""
+        ).strip() or None
+        current_location = listing_location or cached_posting.location
         return JobPosting(
             company_key=company_key,
             company_name=company_name,
             source_type="eightfold",
-            source_url=cached_posting.source_url,
+            source_url=posting_url,
             title=title,
-            location=cached_posting.location,
+            location=current_location,
             description=cached_posting.description,
             source_job_id=cached_posting.source_job_id,
-            remote_status=cached_posting.remote_status,
+            remote_status=listing_remote_status or cached_posting.remote_status,
             salary_text=cached_posting.salary_text,
             canonical_key=make_canonical_key(
                 company_name,
                 title,
-                cached_posting.location,
+                current_location,
             ),
             content_hash=make_content_hash(
                 title,
-                cached_posting.location,
+                current_location,
                 cached_posting.description,
             ),
         )
@@ -303,8 +406,6 @@ def _build_posting(
     # Use the identity advertised by the listing so incremental lookup can
     # decide whether a detail request is needed before making that request.
     source_job_id = listing_identity
-    posting_url = urljoin(f"{source_url}/", position_path)
-
     return JobPosting(
         company_key=company_key,
         company_name=company_name,
@@ -318,6 +419,18 @@ def _build_posting(
         salary_text=None,
         canonical_key=make_canonical_key(company_name, title, location),
         content_hash=make_content_hash(title, location, description),
+        detail_retrieval_reason=(
+            None if retrieval_decision.retrieve else retrieval_decision.reason
+        ),
+        detail_retrieval_state=(
+            "unavailable"
+            if detail_unavailable
+            else (
+                "skipped_unrelated"
+                if not retrieval_decision.retrieve
+                else None
+            )
+        ),
     )
 
 
@@ -431,6 +544,59 @@ def _fetch_position_detail(
             failure_stage="position_detail_response",
         )
     return data
+
+
+def enrich_cached_eightfold_posting(
+    posting: JobPosting,
+    company_config: dict[str, Any],
+) -> JobPosting:
+    """Retry one plausible cached summary through Eightfold's detail service."""
+
+    if not posting.source_job_id:
+        return JobPosting(
+            **{**posting.__dict__, "detail_retrieval_state": "unavailable"}
+        )
+    try:
+        detail = _fetch_position_detail(
+            source_url=str(company_config["source_url"]).rstrip("/"),
+            domain=str(company_config["domain"]),
+            position_id=posting.source_job_id,
+            company_name=str(company_config["name"]),
+        )
+    except CollectorError:
+        return JobPosting(
+            **{**posting.__dict__, "detail_retrieval_state": "unavailable"}
+        )
+    locations = detail.get("locations") or []
+    location = ", ".join(str(item) for item in locations if item) or posting.location
+    description = _plain_text(
+        detail.get("jobDescription") or detail.get("description")
+    )
+    remote_status = str(
+        detail.get("efcustomTextJobRequisitionWorkstyle")
+        or detail.get("workLocationOption")
+        or posting.remote_status
+        or ""
+    ).strip() or None
+    return JobPosting(
+        **{
+            **posting.__dict__,
+            "location": location,
+            "description": description,
+            "remote_status": remote_status,
+            "canonical_key": make_canonical_key(
+                posting.company_key,
+                posting.title,
+                location,
+            ),
+            "content_hash": make_content_hash(
+                posting.title,
+                location,
+                description,
+            ),
+            "detail_retrieval_state": None if description else "unavailable",
+        }
+    )
 
 
 def _plain_text(value: Any) -> str | None:

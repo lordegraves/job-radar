@@ -226,7 +226,7 @@ def test_managed_resume_upload_uses_app_owned_names(tmp_path: Path) -> None:
     )
     assert (resume_directory / "resume.normalized.txt").read_text(
         encoding="utf-8"
-    ) == "# Example Candidate Linux and platform operations\n"
+    ) == "# Example Candidate\nLinux and platform operations\n"
     assert not (resume_directory / "My Resume Final Version.md").exists()
 
 

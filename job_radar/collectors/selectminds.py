@@ -11,6 +11,8 @@ import requests
 
 from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.incremental_cache import DETAIL_PLANNER_CONFIG_KEY
+from job_radar.detail_retrieval import DetailRetrievalDecision
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
 
@@ -113,8 +115,10 @@ class SelectMindsDetailParser(HTMLParser):
         super().__init__()
         self._detail_depth = 0
         self._capture_json_ld = False
+        self._capture_location = False
         self._json_ld_parts: list[str] = []
         self._detail_parts: list[str] = []
+        self._location_parts: list[str] = []
         self.structured_data: list[dict[str, Any]] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -129,9 +133,14 @@ class SelectMindsDetailParser(HTMLParser):
             self._json_ld_parts = []
             return
 
+        if tag == "h4" and "primary_location" in class_names:
+            self._capture_location = True
+
+
         if self._detail_depth:
             self._detail_depth += 1
         elif class_names.intersection(self._DETAIL_CLASSES) or element_id in {
+            "description_box",
             "job-description",
             "job_description",
             "jobdescription",
@@ -139,6 +148,9 @@ class SelectMindsDetailParser(HTMLParser):
             self._detail_depth = 1
 
     def handle_endtag(self, tag: str) -> None:
+        if tag == "h4" and self._capture_location:
+            self._capture_location = False
+
         if tag == "script" and self._capture_json_ld:
             self._capture_json_ld = False
             self._load_json_ld("".join(self._json_ld_parts))
@@ -150,6 +162,10 @@ class SelectMindsDetailParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._capture_json_ld:
             self._json_ld_parts.append(data)
+        elif self._capture_location:
+            text = data.strip()
+            if text and text != "🔍":
+                self._location_parts.append(text)
         elif self._detail_depth:
             text = data.strip()
             if text:
@@ -174,7 +190,7 @@ class SelectMindsDetailParser(HTMLParser):
             }
         return {
             "description": _clean_text(" ".join(self._detail_parts)),
-            "location": None,
+            "location": _clean_location(" ".join(self._location_parts)),
             "employment_type": None,
         }
 
@@ -217,7 +233,8 @@ def collect_selectminds_jobs(company_config: dict[str, Any]) -> list[JobPosting]
 
     for job in parser.jobs:
         source_job_url = _clean_text(job.get("source_url"))
-        if source_job_url:
+        retrieval_decision = _detail_retrieval_decision(company_config, job)
+        if source_job_url and retrieval_decision.retrieve:
             try:
                 detail_html = _fetch_selectminds_page(source_job_url)
             except requests.RequestException:
@@ -238,6 +255,9 @@ def collect_selectminds_jobs(company_config: dict[str, Any]) -> list[JobPosting]
             company_name=company_name,
             source_type="selectminds",
             job=job,
+            detail_retrieval_reason=(
+                None if retrieval_decision.retrieve else retrieval_decision.reason
+            ),
         )
 
         if posting is None:
@@ -271,6 +291,7 @@ def _build_posting(
     company_name: str,
     source_type: str,
     job: dict[str, str | None],
+    detail_retrieval_reason: str | None = None,
 ) -> JobPosting | None:
     title = _clean_text(job.get("title"))
     source_url = _clean_text(job.get("source_url"))
@@ -294,6 +315,10 @@ def _build_posting(
         salary_text=None,
         canonical_key=None,
         content_hash=None,
+        detail_retrieval_reason=detail_retrieval_reason,
+        detail_retrieval_state=(
+            "skipped_unrelated" if detail_retrieval_reason else None
+        ),
     )
 
     return JobPosting(
@@ -317,7 +342,19 @@ def _build_posting(
             posting.location,
             posting.description,
         ),
+        detail_retrieval_reason=posting.detail_retrieval_reason,
+        detail_retrieval_state=posting.detail_retrieval_state,
     )
+
+
+def _detail_retrieval_decision(
+    company_config: dict[str, Any],
+    job: dict[str, str | None],
+) -> DetailRetrievalDecision:
+    planner = company_config.get(DETAIL_PLANNER_CONFIG_KEY)
+    if not callable(planner):
+        return DetailRetrievalDecision(True, "planner_not_configured")
+    return planner(_clean_text(job.get("title")) or "", None)
 
 
 def _build_description(job: dict[str, str | None]) -> str | None:
@@ -402,3 +439,10 @@ def _clean_text(value: Any) -> str | None:
 
     text = str(value).strip()
     return text or None
+
+
+def _clean_location(value: Any) -> str | None:
+    text = _clean_text(value)
+    if text is None:
+        return None
+    return text.lstrip("🔍 ") or None

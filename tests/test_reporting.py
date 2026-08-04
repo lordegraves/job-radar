@@ -1,5 +1,7 @@
 """Tests HTML report content, recommendation explanations, escaping, and output."""
 
+from dataclasses import replace
+
 from pathlib import Path
 
 from job_radar.eligibility import EligibilityReason, EligibilityResult
@@ -7,6 +9,14 @@ from job_radar.models import JobPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.html_report import render_html_report, write_html_report
 from job_radar.report_models import ScanError, ScanReport
+from job_radar.report_view_model import is_review_needed_report_posting
+from job_radar.recommendations import (
+    _format_resume_evidence,
+    _format_resume_gaps,
+    _get_action_rationale,
+    _get_hiring_risk_flags,
+)
+from job_radar.resume_match import ResumeMatchResult
 from job_radar.scored_posting import ScoredPosting
 
 
@@ -213,9 +223,69 @@ def test_needs_review_eligibility_blocks_direct_apply_recommendation() -> None:
 
     assert _get_recommended_action(scored_posting) == "Needs your review"
     assert _get_action_rationale(scored_posting) == (
-        "Needs review before applying. "
-        "The posting does not provide usable compensation."
+        "Needs review before applying. See the review items below."
     )
+
+
+def test_incomplete_tracked_job_does_not_claim_no_strengths_or_gaps() -> None:
+    posting = replace(
+        make_posting(description="Short listing teaser"),
+        normalization_state="incomplete",
+        normalization_issues=("incomplete_description",),
+    )
+    scored = ScoredPosting(posting=posting, score=1, score_reasons=[])
+
+    assert _format_resume_evidence(scored) == (
+        "Not verified because the complete job description was unavailable"
+    )
+    assert _format_resume_gaps(scored) == (
+        "Qualification gaps could not be verified without the complete job description"
+    )
+
+
+def test_confirmed_location_mismatch_is_not_described_as_uncertain() -> None:
+    scored = ScoredPosting(
+        posting=make_posting(),
+        score=20,
+        score_reasons=[],
+        location_status="unknown",
+        eligibility=EligibilityResult(
+            status="not_eligible",
+            reasons=[
+                EligibilityReason(
+                    code="location_outside_selected_areas",
+                    message="The job is outside the selected areas.",
+                )
+            ],
+        ),
+    )
+
+    assert _get_hiring_risk_flags(scored) == ["hard location mismatch"]
+    assert "outside your selected area" in _get_action_rationale(scored)
+    assert "needs confirmation" not in _get_action_rationale(scored)
+
+
+def test_practical_unknown_does_not_rescue_weak_occupational_match() -> None:
+    posting = make_posting(title="Senior Enterprise Account Executive, HPC & AI")
+    scored = ScoredPosting(
+        posting=posting,
+        score=170,
+        score_reasons=["+10 title:hpc", "+8 body:infrastructure"],
+        location_status="unknown",
+        review_needed_eligible=False,
+        resume_match=ResumeMatchResult(label="Weak", evidence=[], gaps=[]),
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=[
+                EligibilityReason(
+                    code="workplace_arrangement_unclear",
+                    message="Workplace is unclear.",
+                )
+            ],
+        ),
+    )
+
+    assert is_review_needed_report_posting(scored) is False
 
 
 def test_tracked_application_overrides_not_eligible_recommendation() -> None:
@@ -666,6 +736,26 @@ def test_clean_apply_allows_very_strong_resume_match() -> None:
     )
 
     assert _get_recommended_action(scored_posting) == "Apply"
+
+
+def test_potential_match_with_material_gap_does_not_recommend_apply() -> None:
+    from job_radar.recommendations import _get_recommended_action
+    from job_radar.resume_match import ResumeMatchResult
+
+    scored_posting = ScoredPosting(
+        posting=make_posting(title="Senior Platform Engineer"),
+        score=150,
+        score_reasons=["+30 title:platform"],
+        location_status="allowed",
+        potential_top_match_eligible=True,
+        resume_match=ResumeMatchResult(
+            label="Strong",
+            evidence=["Linux infrastructure"],
+            gaps=["No clear GPU software-stack experience"],
+        ),
+    )
+
+    assert _get_recommended_action(scored_posting) == "Needs your review"
 
 
 def test_hiring_probability_requires_very_strong_resume_match_for_high() -> None:

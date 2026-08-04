@@ -12,14 +12,16 @@ def test_load_resume_text_reads_markdown(tmp_path) -> None:
     resume_path = tmp_path / "resume.md"
     resume_path.write_text("# Resume\n\nLinux infrastructure and HPC operations", encoding="utf-8")
 
-    assert load_resume_text(resume_path) == "# Resume Linux infrastructure and HPC operations"
+    assert load_resume_text(resume_path) == (
+        "# Resume\nLinux infrastructure and HPC operations"
+    )
 
 
 def test_load_resume_text_reads_txt(tmp_path) -> None:
     resume_path = tmp_path / "resume.txt"
     resume_path.write_text("Cluster systems\nStorage operations", encoding="utf-8")
 
-    assert load_resume_text(resume_path) == "Cluster systems Storage operations"
+    assert load_resume_text(resume_path) == "Cluster systems\nStorage operations"
 
 
 def test_load_resume_text_reads_docx(tmp_path) -> None:
@@ -35,7 +37,7 @@ def test_load_resume_text_reads_docx(tmp_path) -> None:
     document.save(resume_path)
 
     assert load_resume_text(resume_path) == (
-        "Linux infrastructure HPC operations Cluster systems Storage operations"
+        "Linux infrastructure\nHPC operations\nCluster systems Storage operations"
     )
 
 
@@ -82,4 +84,4 @@ def test_write_normalized_resume_text(tmp_path) -> None:
 
     write_normalized_resume_text(resume_path, normalized_path)
 
-    assert normalized_path.read_text(encoding="utf-8") == "Linux Infrastructure\n"
+    assert normalized_path.read_text(encoding="utf-8") == "Linux\nInfrastructure\n"

@@ -45,7 +45,11 @@ _SAFE_FIELDS = {
     "failure_reason",
     "elapsed_seconds",
     "company_elapsed_seconds",
+    "company_queue_seconds",
     "phase_elapsed_seconds",
+    "jobs_llm_reviewed",
+    "jobs_llm_reused",
+    "llm_failures",
 }
 
 

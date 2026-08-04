@@ -9,6 +9,8 @@ from job_radar.collectors.workday import (
     collect_workday_jobs,
     parse_workday_jobs,
 )
+from job_radar.collectors.incremental_cache import DETAIL_PLANNER_CONFIG_KEY
+from job_radar.detail_retrieval import DetailRetrievalDecision
 
 
 @pytest.fixture(autouse=True)
@@ -69,6 +71,33 @@ def test_parse_workday_jobs_returns_job_postings() -> None:
         == "example-company:senior-infrastructure-engineer:remote"
     )
     assert posting.content_hash is not None
+
+
+def test_parse_workday_jobs_uses_external_path_for_placeholder_job_id() -> None:
+    company_config = {
+        "company_key": "intel",
+        "name": "Intel",
+        "source_type": "workday",
+        "source_url": "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/jobs",
+        "source_base_url": "https://intel.wd1.myworkdayjobs.com/External",
+    }
+    external_path = "/job/US/Infrastructure-Engineer_JR123"
+
+    postings = parse_workday_jobs(
+        company_config,
+        {
+            "jobPostings": [
+                {
+                    "title": "Infrastructure Engineer",
+                    "externalPath": external_path,
+                    "bulletFields": ["Spotlight Job"],
+                    "locationsText": "US",
+                }
+            ]
+        },
+    )
+
+    assert postings[0].source_job_id == external_path
 
 
 def test_parse_workday_jobs_uses_external_url_when_present() -> None:
@@ -295,6 +324,247 @@ def test_collect_workday_jobs_fetches_complete_job_detail(
     assert "Employment type: Full time" in (postings[0].description or "")
 
 
+def test_collect_workday_jobs_retries_one_transient_detail_failure(
+    monkeypatch,
+) -> None:
+    company_config = {
+        "company_key": "woodward",
+        "name": "Woodward",
+        "source_type": "workday",
+        "source_url": (
+            "https://woodward.wd5.myworkdayjobs.com/"
+            "wday/cxs/woodward/woodward/jobs"
+        ),
+        "source_base_url": "https://woodward.wd5.myworkdayjobs.com/woodward",
+        "max_pages": 1,
+    }
+
+    class SearchResponse:
+        text = ""
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "total": 1,
+                "jobPostings": [
+                    {
+                        "title": "Operations Supervisor",
+                        "locationsText": "Niles, IL, US",
+                        "bulletFields": ["JR112720"],
+                        "externalPath": (
+                            "/job/Niles-IL-US/Operations-Supervisor_JR112720-1"
+                        ),
+                    }
+                ],
+            }
+
+    class DetailResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "jobPostingInfo": {
+                    "title": "Operations Supervisor",
+                    "location": "Niles, IL, US",
+                    "jobDescription": "Required qualifications. " + "Operations " * 30,
+                }
+            }
+
+    detail_attempts = 0
+
+    def fake_get(*_args, **_kwargs):
+        nonlocal detail_attempts
+        detail_attempts += 1
+        if detail_attempts == 1:
+            raise requests.ConnectionError("temporary edge failure")
+        return DetailResponse()
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.post",
+        lambda *args, **kwargs: SearchResponse(),
+    )
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.get",
+        fake_get,
+    )
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.time.sleep",
+        lambda _delay: None,
+    )
+
+    postings = collect_workday_jobs(company_config)
+
+    assert detail_attempts == 2
+    assert postings[0].description.startswith("Required qualifications")
+
+
+def test_collect_workday_jobs_retries_detail_with_bounded_backoff(
+    monkeypatch,
+) -> None:
+    company_config = {
+        "company_key": "example_company",
+        "name": "Example Company",
+        "source_type": "workday",
+        "source_url": "https://example.test/wday/cxs/example/External/jobs",
+        "source_base_url": "https://example.test/External",
+        "max_pages": 1,
+    }
+    attempts = 0
+    delays: list[float] = []
+
+    class SearchResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "total": 1,
+                "jobPostings": [
+                    {
+                        "title": "Infrastructure Engineer",
+                        "locationsText": "Remote",
+                        "externalPath": "/job/Remote/Engineer_R1",
+                        "bulletFields": ["R1"],
+                    }
+                ],
+            }
+
+    class DetailResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "jobPostingInfo": {
+                    "jobDescription": "Required Linux experience. " * 10,
+                }
+            }
+
+    def fake_get(*_args, **_kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts < 4:
+            raise requests.ConnectionError("test-only transient failure")
+        return DetailResponse()
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.post",
+        lambda *args, **kwargs: SearchResponse(),
+    )
+    monkeypatch.setattr("job_radar.collectors.workday.requests.get", fake_get)
+    monkeypatch.setattr("job_radar.collectors.workday.time.sleep", delays.append)
+
+    postings = collect_workday_jobs(company_config)
+
+    assert attempts == 4
+    assert delays == [0.5, 1.0, 2.0]
+    assert postings[0].description.startswith("Required Linux experience")
+
+
+def test_collect_workday_jobs_retries_transient_search_page_failure(
+    monkeypatch,
+) -> None:
+    company_config = {
+        "company_key": "example_company",
+        "name": "Example Company",
+        "source_type": "workday",
+        "source_url": "https://example.test/wday/cxs/example/External/jobs",
+        "source_base_url": "https://example.test/External",
+        "max_pages": 1,
+    }
+    attempts = 0
+
+    class SearchResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "total": 1,
+                "jobPostings": [
+                    {
+                        "title": "Infrastructure Engineer",
+                        "locationsText": "Remote",
+                        "description": "Operate Linux infrastructure. " * 10,
+                        "externalPath": "/job/Remote/Engineer_R1",
+                        "bulletFields": ["R1"],
+                    }
+                ],
+            }
+
+    def fake_post(*_args, **_kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise requests.ConnectionError("test-only transient failure")
+        return SearchResponse()
+
+    monkeypatch.setattr("job_radar.collectors.workday.requests.post", fake_post)
+    monkeypatch.setattr("job_radar.collectors.workday.time.sleep", lambda _delay: None)
+
+    postings = collect_workday_jobs(company_config)
+
+    assert attempts == 2
+    assert len(postings) == 1
+
+
+def test_collect_workday_jobs_skips_detail_when_shared_planner_is_conclusive(
+    monkeypatch,
+) -> None:
+    requests_seen: list[str] = []
+
+    class SearchResponse:
+        text = ""
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "total": 1,
+                "jobPostings": [
+                    {
+                        "title": "Senior Tax Accountant",
+                        "locationsText": "Houston, Texas",
+                        "bulletFields": ["R100"],
+                        "externalPath": "/job/Houston/Senior-Tax-Accountant_R100",
+                    }
+                ],
+            }
+
+    def fake_post(url, **_kwargs):
+        return SearchResponse()
+
+    def fake_get(url, **_kwargs):
+        requests_seen.append(url)
+        raise AssertionError("detail retrieval should have been skipped")
+
+    monkeypatch.setattr("job_radar.collectors.workday.requests.post", fake_post)
+    monkeypatch.setattr("job_radar.collectors.workday.requests.get", fake_get)
+    config = {
+        "company_key": "example_company",
+        "name": "Example Company",
+        "source_type": "workday",
+        "source_url": "https://example.test/wday/cxs/example/External/jobs",
+        "source_base_url": "https://example.test/External",
+        "max_pages": 1,
+    }
+    config[DETAIL_PLANNER_CONFIG_KEY] = lambda _title, _location: (
+        DetailRetrievalDecision(False, "Clearly unrelated title.")
+    )
+
+    postings = collect_workday_jobs(config)
+
+    assert requests_seen == []
+    assert len(postings) == 1
+    assert postings[0].description is None
+    assert postings[0].detail_retrieval_reason == "Clearly unrelated title."
+    assert postings[0].detail_retrieval_state == "skipped_unrelated"
+
+
 def test_collect_workday_jobs_reuses_fresh_unchanged_detail(
     monkeypatch,
 ) -> None:
@@ -321,7 +591,7 @@ def test_collect_workday_jobs_reuses_fresh_unchanged_detail(
         source_url="https://example.test/job/R1",
         title="Platform Engineer",
         location="Remote",
-        description="Complete cached responsibilities.",
+        description="Complete cached responsibilities and qualifications. " * 8,
         canonical_key="example",
         content_hash="cached",
     )
@@ -331,8 +601,8 @@ def test_collect_workday_jobs_reuses_fresh_unchanged_detail(
             "title": "Platform Engineer",
             "location": "Remote",
             "external_path": raw_job["externalPath"],
-            "normalization_version": WORKDAY_DETAIL_NORMALIZATION_VERSION,
-        }
+                "normalization_version": WORKDAY_DETAIL_NORMALIZATION_VERSION,
+            }
     )
     company_config = {
         "company_key": "example_company",
@@ -370,7 +640,100 @@ def test_collect_workday_jobs_reuses_fresh_unchanged_detail(
 
     postings = collect_workday_jobs(company_config)
 
-    assert postings[0].description == "Complete cached responsibilities."
+    assert postings[0].description == (
+        "Complete cached responsibilities and qualifications. " * 8
+    )
+
+
+def test_collect_workday_jobs_retries_legacy_incomplete_cached_detail(
+    monkeypatch,
+) -> None:
+    from datetime import UTC, datetime
+
+    from job_radar.collectors.incremental_cache import (
+        CACHE_CONFIG_KEY,
+        listing_fingerprint,
+    )
+    from job_radar.models import JobPosting
+    from job_radar.storage import CachedSourcePosting
+
+    raw_job = {
+        "title": "Platform Engineer",
+        "externalPath": "/job/Remote/Platform-Engineer_R1",
+        "locationsText": "Remote",
+        "bulletFields": ["R1"],
+    }
+    fingerprint = listing_fingerprint(
+        {
+            "identity": "R1",
+            "title": "Platform Engineer",
+            "location": "Remote",
+            "external_path": raw_job["externalPath"],
+            "normalization_version": WORKDAY_DETAIL_NORMALIZATION_VERSION,
+        }
+    )
+    company_config = {
+        "company_key": "example_company",
+        "name": "Example Company",
+        "source_type": "workday",
+        "source_url": "https://example.test/wday/cxs/example/External/jobs",
+        "source_base_url": "https://example.test/External",
+        "max_pages": 1,
+        CACHE_CONFIG_KEY: {
+            "R1": CachedSourcePosting(
+                posting=JobPosting(
+                    company_key="example_company",
+                    company_name="Example Company",
+                    source_type="workday",
+                    source_job_id="R1",
+                    source_url="https://example.test/job/R1",
+                    title="Platform Engineer",
+                    location="Remote",
+                    description=None,
+                    canonical_key="example",
+                    content_hash="legacy-incomplete",
+                ),
+                listing_fingerprint=fingerprint,
+                detail_verified_at=datetime.now(UTC).isoformat(),
+            )
+        },
+    }
+
+    class SearchResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"total": 1, "jobPostings": [raw_job]}
+
+    class DetailResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "jobPostingInfo": {
+                    "jobDescription": "Required Linux experience. " * 10,
+                }
+            }
+
+    detail_requests = 0
+
+    def fake_get(*_args, **_kwargs):
+        nonlocal detail_requests
+        detail_requests += 1
+        return DetailResponse()
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.post",
+        lambda *args, **kwargs: SearchResponse(),
+    )
+    monkeypatch.setattr("job_radar.collectors.workday.requests.get", fake_get)
+
+    postings = collect_workday_jobs(company_config)
+
+    assert detail_requests == 1
+    assert postings[0].description.startswith("Required Linux experience")
 
 
 def test_collect_workday_jobs_ignores_false_zero_total_on_later_pages(

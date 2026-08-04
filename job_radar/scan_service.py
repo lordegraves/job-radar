@@ -1,18 +1,31 @@
 """Coordinate the full scan from collection through storage, reports, and email."""
 
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 import re
-from time import monotonic
+from threading import Lock
+from time import monotonic, sleep
 
 from job_radar.candidate_profile import CandidateProfile
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.detail_page import (
+    DETAIL_PAGE_SOURCE_TYPES,
+    enrich_from_public_detail_page,
+)
+from job_radar.collectors.eightfold import enrich_cached_eightfold_posting
 from job_radar.collectors.incremental_cache import (
     CACHE_CONFIG_KEY,
+    DETAIL_CACHE_MAX_AGE,
+    DETAIL_PLANNER_CONFIG_KEY,
     FINGERPRINTS_CONFIG_KEY,
     PROGRESS_CONFIG_KEY,
     REUSED_CONFIG_KEY,
     WARNINGS_CONFIG_KEY,
+    WARNING_TYPES_CONFIG_KEY,
+    record_collection_warning,
+    report_progress,
 )
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import (
@@ -42,7 +55,14 @@ from job_radar.history_match import (
 )
 from job_radar.history_summary import build_history_summary
 from job_radar.job_decision_service import get_decided_job_ids
-from job_radar.normalize import clean_text
+from job_radar.llm_advisory import LlmAdvisoryError, LlmFitReview, review_job_fit
+from job_radar.llm_advisory_cache import (
+    advisory_input_hash,
+    fetch_cached_advisory,
+    store_advisory,
+)
+from job_radar.models import JobPosting
+from job_radar.normalize import clean_text, normalize_job_postings
 from job_radar.profile_context import load_active_candidate_context
 from job_radar.profile_storage import get_active_profile
 from job_radar.profile_scoring import resolve_effective_scoring_config
@@ -54,6 +74,7 @@ from job_radar.report_view_model import (
     is_review_needed_report_posting,
     is_top_match_report_posting,
 )
+from job_radar.detail_retrieval import build_detail_retrieval_planner
 from job_radar.evaluation_audit import (
     EVALUATION_AUDIT_NAME,
     TARGETED_EVALUATION_AUDIT_NAME,
@@ -66,7 +87,7 @@ from job_radar.retention_service import (
 from job_radar.raw_scan_export import RAW_SCAN_ARCHIVE_NAME, write_raw_scan_export
 from job_radar.runtime_paths import DEFAULT_SCORING_CONFIG_PATH, RuntimePaths
 from job_radar.scored_posting import ScoredPosting
-from job_radar.resume_match import match_resume_to_posting
+from job_radar.resume_match import ResumeMatchResult, match_resume_to_posting
 from job_radar.scan_lock import acquire_scan_lock
 from job_radar.recommendation_policy import (
     evaluate_potential_top_match_eligibility,
@@ -97,6 +118,156 @@ from job_radar.storage import (
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import get_application_workflow_state
 from job_radar.tracker.tracker_storage import get_application, list_applications
+
+
+_GENERAL_COLLECTION_WORKERS = 2
+_WORKDAY_COLLECTION_WORKERS = 2
+_EIGHTFOLD_COLLECTION_WORKERS = 1
+_COLLECTOR_STARTED_AT_CONFIG_KEY = "_collector_started_at"
+_COLLECTION_RETRY_DELAY_SECONDS = 2.0
+_FALLBACK_DETAIL_MAX_ATTEMPTS = 10
+_FALLBACK_DETAIL_FAILURE_LIMIT = 3
+
+
+def _collection_pool_name(source_type: str) -> str:
+    if source_type == "workday":
+        return "workday"
+    if source_type == "eightfold":
+        return "eightfold"
+    return "general"
+
+
+def _collect_company_with_start_progress(
+    collection_config: dict[str, object],
+) -> list[JobPosting]:
+    # A future may wait behind another tenant. Record the real collector start
+    # so per-company diagnostics do not mislabel worker-queue time as source time.
+    collection_config[_COLLECTOR_STARTED_AT_CONFIG_KEY] = monotonic()
+    callback = collection_config.get(PROGRESS_CONFIG_KEY)
+    if callable(callback):
+        callback("Reading company job source")
+    try:
+        return collect_jobs_for_company(collection_config)
+    except CollectorError as first_error:
+        diagnostic = classify_collector_failure(first_error)
+        source_type = str(collection_config.get("source_type") or "")
+        # Eightfold already applies a larger source-specific retry budget.
+        # Other collectors get one bounded retry before cache fallback.
+        if diagnostic.category == "network" and source_type != "eightfold":
+            report_progress(collection_config, "Retrying company job source")
+            sleep(_COLLECTION_RETRY_DELAY_SECONDS)
+            try:
+                return collect_jobs_for_company(collection_config)
+            except CollectorError as retry_error:
+                diagnostic = classify_collector_failure(retry_error)
+                if diagnostic.category != "network":
+                    raise
+        cached_postings = _fresh_cached_fallback_postings(collection_config)
+        if diagnostic.category != "network" or not cached_postings:
+            raise
+        complete_count = sum(
+            posting.normalization_state == "complete" for posting in cached_postings
+        )
+        incomplete_count = sum(
+            posting.normalization_state == "incomplete" for posting in cached_postings
+        )
+        message = (
+            "Junior temporarily could not refresh this source. It recovered "
+            f"{complete_count} complete cached listing(s)"
+        )
+        if incomplete_count:
+            message += (
+                f" and visibly withheld {incomplete_count} plausible cached "
+                "listing(s) whose descriptions remain incomplete"
+            )
+        message += "."
+        record_collection_warning(
+            collection_config,
+            message,
+            warning_type="source_cache_fallback",
+        )
+        return cached_postings
+
+
+def _fresh_cached_fallback_postings(
+    collection_config: dict[str, object],
+) -> list[JobPosting]:
+    """Return only recently verified cached records after a transient outage."""
+
+    cache = collection_config.get(CACHE_CONFIG_KEY)
+    if not isinstance(cache, dict):
+        return []
+    now = datetime.now(UTC)
+    postings: list[JobPosting] = []
+    detail_attempts = 0
+    consecutive_detail_failures = 0
+    for cached in cache.values():
+        posting = getattr(cached, "posting", None)
+        verified_text = getattr(cached, "detail_verified_at", None)
+        if not isinstance(posting, JobPosting) or not isinstance(verified_text, str):
+            continue
+        try:
+            verified_at = datetime.fromisoformat(verified_text.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if verified_at.tzinfo is None:
+            verified_at = verified_at.replace(tzinfo=UTC)
+        if now - verified_at > DETAIL_CACHE_MAX_AGE:
+            continue
+        posting = normalize_job_postings([posting])[0]
+        planner = collection_config.get(DETAIL_PLANNER_CONFIG_KEY)
+        decision = planner(posting.title, posting.location) if callable(planner) else None
+        if posting.normalization_state == "incomplete" and decision is not None:
+            if not decision.retrieve:
+                posting = replace(
+                    posting,
+                    detail_retrieval_reason=decision.reason,
+                    detail_retrieval_state="skipped_unrelated",
+                )
+            elif (
+                detail_attempts < _FALLBACK_DETAIL_MAX_ATTEMPTS
+                and consecutive_detail_failures < _FALLBACK_DETAIL_FAILURE_LIMIT
+            ):
+                original = posting
+                if posting.source_type == "eightfold":
+                    posting = enrich_cached_eightfold_posting(
+                        posting,
+                        collection_config,
+                    )
+                elif posting.source_type in DETAIL_PAGE_SOURCE_TYPES:
+                    posting = enrich_from_public_detail_page(
+                        posting,
+                        source_api_url=(
+                            str(collection_config.get("source_url") or "") or None
+                        ),
+                    )
+                detail_attempts += 1
+                if posting.detail_retrieval_state == "unavailable":
+                    consecutive_detail_failures += 1
+                elif posting.description and posting.description != original.description:
+                    consecutive_detail_failures = 0
+            posting = normalize_job_postings([posting])[0]
+        fallback_state = (
+            "cached_source_fallback"
+            if posting.normalization_state == "complete"
+            else (
+                "skipped_unrelated"
+                if posting.normalization_state == "skipped_unrelated"
+                else "cached_source_fallback_incomplete"
+            )
+        )
+        postings.append(
+            replace(
+                posting,
+                detail_retrieval_state=fallback_state,
+                normalization_issues=tuple(
+                    dict.fromkeys(
+                        (*posting.normalization_issues, "source_cache_fallback")
+                    )
+                ),
+            )
+        )
+    return normalize_job_postings(postings)
 
 
 def _find_profile_avoid_matches(
@@ -340,6 +511,178 @@ def _record_company_evaluation_diagnostics(
         )
 
 
+def _apply_normalization_quality_gate(
+    posting: JobPosting,
+    *,
+    top_match_eligible: bool,
+    review_needed_eligible: bool,
+    potential_top_match_eligible: bool,
+) -> tuple[bool, bool, bool]:
+    """Prevent incomplete source evidence from becoming a recommendation."""
+
+    if posting.normalization_state != "incomplete":
+        return (
+            top_match_eligible,
+            review_needed_eligible,
+            potential_top_match_eligible,
+        )
+    return False, False, False
+
+
+def _augment_ambiguous_jobs_with_llm(
+    scored_postings: list[ScoredPosting],
+    *,
+    settings: ApplicationSettings,
+    database_path: str,
+    profile_id: str | None,
+    resume_text: str | None,
+    scoring_config: dict[str, object],
+) -> tuple[list[ScoredPosting], int, int, int]:
+    """Review a bounded plausible set; hard eligibility remains unchanged."""
+
+    if (
+        not settings.llm.enabled
+        or not profile_id
+        or not resume_text
+    ):
+        return scored_postings, 0, 0, 0
+    review_floor = int(scoring_config["review_needed"]["min_score"])
+    candidates = [
+        (index, item)
+        for index, item in enumerate(scored_postings)
+        if item.resume_match is not None
+        and item.posting.normalization_state == "complete"
+        and item.score >= review_floor
+        and not (
+            item.eligibility is not None
+            and item.eligibility.status == "not_eligible"
+        )
+        and item.application is None
+    ]
+    candidates.sort(key=lambda entry: entry[1].score, reverse=True)
+    candidates = candidates[: settings.llm.max_reviews_per_scan]
+    if not candidates:
+        return scored_postings, 0, 0, 0
+
+    def perform(entry: tuple[int, ScoredPosting]):
+        index, item = entry
+        deterministic = item.resume_match
+        if deterministic is None:
+            return index, None, False, False
+        input_hash = advisory_input_hash(
+            settings=settings.llm,
+            posting=item.posting,
+            resume_text=resume_text,
+            deterministic_match=deterministic,
+        )
+        cached = fetch_cached_advisory(
+            database_path,
+            profile_id=profile_id,
+            job_radar_id=item.posting.job_radar_id,
+            input_hash=input_hash,
+        )
+        if cached is not None:
+            return index, cached, True, False
+        try:
+            review = review_job_fit(
+                settings=settings.llm,
+                posting=item.posting,
+                resume_text=resume_text,
+                deterministic_match=deterministic,
+            )
+        except LlmAdvisoryError:
+            return index, None, False, True
+        store_advisory(
+            database_path,
+            profile_id=profile_id,
+            job_radar_id=item.posting.job_radar_id,
+            input_hash=input_hash,
+            review=review,
+        )
+        return index, review, False, False
+
+    reviewed = reused = failed = 0
+    updated = list(scored_postings)
+    with ThreadPoolExecutor(max_workers=min(3, len(candidates))) as executor:
+        for index, review, was_reused, did_fail in executor.map(perform, candidates):
+            reused += int(was_reused)
+            failed += int(did_fail)
+            if review is None:
+                continue
+            reviewed += int(not was_reused)
+            updated[index] = _apply_llm_fit_review(
+                updated[index],
+                review=review,
+                scoring_config=scoring_config,
+            )
+    return updated, reviewed, reused, failed
+
+
+def _apply_llm_fit_review(
+    item: ScoredPosting,
+    *,
+    review: LlmFitReview,
+    scoring_config: dict[str, object],
+) -> ScoredPosting:
+    """Replace only professional-fit evidence, never practical eligibility."""
+
+    deterministic = item.resume_match
+    if deterministic is None:
+        return item
+    gaps = [gap.summary for gap in review.material_gaps]
+    label = {
+        "strong": "Strong",
+        "plausible": "Moderate",
+        "weak": "Poor Fit",
+    }[review.fit_assessment]
+    merged_match = ResumeMatchResult(
+        label=label,
+        evidence=list(review.evidence) or deterministic.evidence,
+        gaps=gaps,
+        critical_gaps=(gaps if review.fit_assessment == "weak" else []),
+        requirements_reviewed=deterministic.requirements_reviewed,
+    )
+    top, top_reasons = evaluate_top_match_eligibility(
+        posting=item.posting,
+        score=item.score,
+        score_reasons=item.score_reasons,
+        location_status=item.location_status,
+        scoring_config=scoring_config,
+        resume_match=merged_match,
+    )
+    review_needed = evaluate_review_needed_eligibility(
+        score=item.score,
+        score_reasons=item.score_reasons,
+        location_status=item.location_status,
+        top_match_eligible=top,
+        scoring_config=scoring_config,
+        resume_match=merged_match,
+    )
+    potential = evaluate_potential_top_match_eligibility(
+        posting=item.posting,
+        score=item.score,
+        score_reasons=item.score_reasons,
+        location_status=item.location_status,
+        scoring_config=scoring_config,
+        resume_match=merged_match,
+    )
+    top, review_needed, potential = _apply_normalization_quality_gate(
+        item.posting,
+        top_match_eligible=top,
+        review_needed_eligible=review_needed,
+        potential_top_match_eligible=potential,
+    )
+    return replace(
+        item,
+        resume_match=merged_match,
+        top_match_eligible=top,
+        review_needed_eligible=review_needed,
+        potential_top_match_eligible=potential,
+        top_match_reasons=top_reasons,
+        llm_review=review,
+    )
+
+
 def handle_scan(
     config_path: str,
     settings_path: str,
@@ -362,6 +705,24 @@ def handle_scan(
     database_path = runtime_paths.database_path
     resolved_report_path = runtime_paths.resolve(report_path)
     resolved_email_preview_path = runtime_paths.resolve_optional(email_preview_path)
+
+    # A targeted validation scan must never replace the durable full-scan
+    # inbox. Protect that boundary here as well as in the web route so every
+    # caller (GUI, CLI, or a future launcher) gets the same safe behavior.
+    if selected_employer_ids is not None:
+        if resolved_report_path.name == "target-scan.html":
+            resolved_report_path = (
+                resolved_report_path.parent / "targeted-scan.html"
+            )
+        if (
+            resolved_email_preview_path is not None
+            and resolved_email_preview_path.name
+            == "target-email-preview.txt"
+        ):
+            resolved_email_preview_path = (
+                resolved_email_preview_path.parent
+                / "targeted-email-preview.txt"
+            )
 
     with acquire_scan_lock(database_path):
         _handle_scan_unlocked(
@@ -458,6 +819,9 @@ def _handle_scan_unlocked(
             if candidate_context.managed_profile is not None
             else None
         )
+        detail_retrieval_planner, _detail_planner_signature = (
+            build_detail_retrieval_planner(candidate_profile, scoring_config)
+        )
 
         print("Scan requested")
         print(f"Config: {config_path}")
@@ -471,6 +835,7 @@ def _handle_scan_unlocked(
         jobs_seen = 0
         jobs_changed = 0
         collected_postings = []
+        collected_by_company: dict[int, list[JobPosting]] = {}
 
         current_stage = "collection"
         update_scan_run_progress(
@@ -479,86 +844,230 @@ def _handle_scan_unlocked(
             current_stage=current_stage,
         )
 
-        for company_number, company in enumerate(companies, start=1):
-            company_started = monotonic()
-            company_key = company["company_key"]
-            company_name = company["name"]
-            source_type = company["source_type"]
+        progress_lock = Lock()
+        future_context: dict[
+            Future[list[JobPosting]],
+            tuple[int, dict[str, object], dict[str, object], float],
+        ] = {}
 
-            print(f"- {company_key} ({company_name}) source_type={source_type}")
-
-            update_scan_run_progress(
-                database_path,
-                scan_run_id=scan_run_id,
-                current_stage="collection",
-                companies_scanned=companies_scanned,
-                jobs_found=total_jobs,
-                collector_errors=len(collector_errors),
-                current_company_name=str(company_name),
-                current_company_number=company_number,
-                current_source_type=str(source_type),
-                current_operation="Starting company job source",
-            )
-
-            try:
+        # Separate pools prevent a queued rate-limited ATS tenant from occupying
+        # a general worker while it waits. Eightfold remains serialized; Workday
+        # gets modest overlap; other independent sources share two workers.
+        with (
+            ThreadPoolExecutor(
+                max_workers=_GENERAL_COLLECTION_WORKERS
+            ) as general_executor,
+            ThreadPoolExecutor(
+                max_workers=_WORKDAY_COLLECTION_WORKERS
+            ) as workday_executor,
+            ThreadPoolExecutor(
+                max_workers=_EIGHTFOLD_COLLECTION_WORKERS
+            ) as eightfold_executor,
+        ):
+            for company_number, company in enumerate(companies, start=1):
+                company_key = company["company_key"]
+                company_name = company["name"]
+                source_type = company["source_type"]
                 collection_config = dict(company)
                 collection_config[CACHE_CONFIG_KEY] = fetch_source_posting_cache(
                     database_path,
                     str(company_key),
                     str(source_type),
                 )
-                last_progress_write = 0.0
+                collection_config[DETAIL_PLANNER_CONFIG_KEY] = (
+                    detail_retrieval_planner
+                )
+                last_progress_write = [0.0]
 
-                def report_collection_progress(operation: str) -> None:
-                    nonlocal last_progress_write
+                def report_collection_progress(
+                    operation: str,
+                    *,
+                    number: int = company_number,
+                    name: str = str(company_name),
+                    source: str = str(source_type),
+                    last_write: list[float] = last_progress_write,
+                ) -> None:
                     now = monotonic()
-                    if now - last_progress_write < 1.0:
-                        return
-                    last_progress_write = now
+                    with progress_lock:
+                        if now - last_write[0] < 1.0:
+                            return
+                        last_write[0] = now
+                        update_scan_run_progress(
+                            database_path,
+                            scan_run_id=scan_run_id,
+                            current_stage="collection",
+                            companies_scanned=companies_scanned,
+                            jobs_found=total_jobs,
+                            collector_errors=len(collector_errors),
+                            current_company_name=name,
+                            current_company_number=number,
+                            current_source_type=source,
+                            current_operation=operation,
+                        )
+
+                collection_config[PROGRESS_CONFIG_KEY] = report_collection_progress
+                pool_name = _collection_pool_name(str(source_type))
+                source_executor = general_executor
+                if pool_name == "workday":
+                    source_executor = workday_executor
+                elif pool_name == "eightfold":
+                    source_executor = eightfold_executor
+                future = source_executor.submit(
+                    _collect_company_with_start_progress,
+                    collection_config,
+                )
+                future_context[future] = (
+                    company_number,
+                    company,
+                    collection_config,
+                    monotonic(),
+                )
+
+            for future in as_completed(future_context):
+                (
+                    company_number,
+                    company,
+                    collection_config,
+                    company_started,
+                ) = future_context[future]
+                company_key = company["company_key"]
+                company_name = company["name"]
+                source_type = company["source_type"]
+                collector_started = collection_config.get(
+                    _COLLECTOR_STARTED_AT_CONFIG_KEY,
+                    company_started,
+                )
+                if not isinstance(collector_started, (int, float)):
+                    collector_started = company_started
+                company_queue_seconds = round(
+                    max(0.0, float(collector_started) - company_started),
+                    3,
+                )
+                print(
+                    f"- {company_key} ({company_name}) "
+                    f"source_type={source_type}"
+                )
+
+                try:
+                    postings = future.result()
+                except CollectorError as error:
+                    diagnostic = classify_collector_failure(error)
+                    error_type_parts = [diagnostic.category]
+                    if diagnostic.failure_stage is not None:
+                        error_type_parts.append(diagnostic.failure_stage)
+                    error_type_parts.append("failure")
+                    diagnostic_error_type = "_".join(error_type_parts)
+                    record_scan_connection_result(
+                        database_path,
+                        company_key,
+                        failure_category=diagnostic.category,
+                        failure_message=diagnostic.message,
+                    )
+                    collector_errors.append(
+                        ScanError(
+                            company_key=company_key,
+                            company_name=company_name,
+                            source_type=source_type,
+                            message=diagnostic.message,
+                        )
+                    )
+                    record_scan_error(
+                        database_path,
+                        scan_run_id=scan_run_id,
+                        company_key=company_key,
+                        source_type=source_type,
+                        error_type=diagnostic_error_type,
+                        error_message=diagnostic.message,
+                    )
+                    companies_scanned += 1
                     update_scan_run_progress(
                         database_path,
                         scan_run_id=scan_run_id,
-                        current_stage="collection",
+                        current_stage=current_stage,
                         companies_scanned=companies_scanned,
                         jobs_found=total_jobs,
                         collector_errors=len(collector_errors),
-                        current_company_name=str(company_name),
-                        current_company_number=company_number,
-                        current_source_type=str(source_type),
-                        current_operation=operation,
                     )
+                    print(f"  ERROR: {diagnostic.message}")
+                    record_scan_diagnostic(
+                        logs_path,
+                        event="company_collection_failed",
+                        scan_run_id=scan_run_id,
+                        stage=current_stage,
+                        company_number=company_number,
+                        company_id=company_key,
+                        source_type=source_type,
+                        failure_reason=diagnostic.message,
+                        companies_scanned=companies_scanned,
+                        jobs_found=total_jobs,
+                        collector_errors=len(collector_errors),
+                        failure_category=diagnostic.category,
+                        failure_stage=diagnostic.failure_stage,
+                        company_queue_seconds=company_queue_seconds,
+                        company_elapsed_seconds=elapsed_seconds(
+                            float(collector_started)
+                        ),
+                        elapsed_seconds=elapsed_seconds(diagnostic_started),
+                    )
+                    continue
 
-                collection_config[PROGRESS_CONFIG_KEY] = report_collection_progress
-                postings = collect_jobs_for_company(collection_config)
-            except CollectorError as error:
-                diagnostic = classify_collector_failure(error)
-                error_type_parts = [diagnostic.category]
-                if diagnostic.failure_stage is not None:
-                    error_type_parts.append(diagnostic.failure_stage)
-                error_type_parts.append("failure")
-                diagnostic_error_type = "_".join(error_type_parts)
+                total_jobs += len(postings)
+                observed_at = datetime.now(UTC).isoformat()
+                listing_fingerprints = collection_config.get(
+                    FINGERPRINTS_CONFIG_KEY,
+                    {},
+                )
+                reused_identities = collection_config.get(REUSED_CONFIG_KEY, set())
+                replace_source_posting_cache(
+                    database_path,
+                    company_key=str(company_key),
+                    company_name=str(company_name),
+                    source_type=str(source_type),
+                    postings=postings,
+                    listing_fingerprints=(
+                        listing_fingerprints
+                        if isinstance(listing_fingerprints, dict)
+                        else {}
+                    ),
+                    reused_identities=(
+                        reused_identities
+                        if isinstance(reused_identities, set)
+                        else set()
+                    ),
+                    observed_at=observed_at,
+                )
                 record_scan_connection_result(
                     database_path,
                     company_key,
-                    failure_category=diagnostic.category,
-                    failure_message=diagnostic.message,
+                    job_count=len(postings),
                 )
-                collector_errors.append(
-                    ScanError(
-                        company_key=company_key,
-                        company_name=company_name,
-                        source_type=source_type,
-                        message=diagnostic.message,
-                    )
-                )
-                record_scan_error(
-                    database_path,
-                    scan_run_id=scan_run_id,
-                    company_key=company_key,
-                    source_type=source_type,
-                    error_type=diagnostic_error_type,
-                    error_message=diagnostic.message,
-                )
+                collection_warnings = collection_config.get(WARNINGS_CONFIG_KEY, [])
+                warning_types = collection_config.get(WARNING_TYPES_CONFIG_KEY, {})
+                if isinstance(collection_warnings, list):
+                    for warning in collection_warnings:
+                        message = str(warning)
+                        collector_errors.append(
+                            ScanError(
+                                company_key=company_key,
+                                company_name=company_name,
+                                source_type=source_type,
+                                message=message,
+                            )
+                        )
+                        record_scan_error(
+                            database_path,
+                            scan_run_id=scan_run_id,
+                            company_key=company_key,
+                            source_type=source_type,
+                            error_type=(
+                                str(warning_types.get(message))
+                                if isinstance(warning_types, dict)
+                                and warning_types.get(message)
+                                else "incomplete_position_detail_response_failure"
+                            ),
+                            error_message=message,
+                        )
+                collected_by_company[company_number] = postings
                 companies_scanned += 1
                 update_scan_run_progress(
                     database_path,
@@ -568,101 +1077,25 @@ def _handle_scan_unlocked(
                     jobs_found=total_jobs,
                     collector_errors=len(collector_errors),
                 )
-                print(f"  ERROR: {diagnostic.message}")
+                print(f"  collected_jobs={len(postings)}")
                 record_scan_diagnostic(
                     logs_path,
-                    event="company_collection_failed",
+                    event="company_collection_completed",
                     scan_run_id=scan_run_id,
                     stage=current_stage,
                     company_number=company_number,
                     company_id=company_key,
                     source_type=source_type,
-                    failure_reason=diagnostic.message,
                     companies_scanned=companies_scanned,
-                    jobs_found=total_jobs,
-                    collector_errors=len(collector_errors),
-                    failure_category=diagnostic.category,
-                    failure_stage=diagnostic.failure_stage,
-                    company_elapsed_seconds=elapsed_seconds(company_started),
+                    jobs_found=len(postings),
+                    jobs_reused=len(reused_identities),
+                    company_queue_seconds=company_queue_seconds,
+                    company_elapsed_seconds=elapsed_seconds(float(collector_started)),
                     elapsed_seconds=elapsed_seconds(diagnostic_started),
                 )
-                continue
 
-            total_jobs += len(postings)
-            observed_at = datetime.now(UTC).isoformat()
-            listing_fingerprints = collection_config.get(
-                FINGERPRINTS_CONFIG_KEY,
-                {},
-            )
-            reused_identities = collection_config.get(REUSED_CONFIG_KEY, set())
-            replace_source_posting_cache(
-                database_path,
-                company_key=str(company_key),
-                company_name=str(company_name),
-                source_type=str(source_type),
-                postings=postings,
-                listing_fingerprints=(
-                    listing_fingerprints
-                    if isinstance(listing_fingerprints, dict)
-                    else {}
-                ),
-                reused_identities=(
-                    reused_identities
-                    if isinstance(reused_identities, set)
-                    else set()
-                ),
-                observed_at=observed_at,
-            )
-            record_scan_connection_result(
-                database_path,
-                company_key,
-                job_count=len(postings),
-            )
-            collection_warnings = collection_config.get(WARNINGS_CONFIG_KEY, [])
-            if isinstance(collection_warnings, list):
-                for warning in collection_warnings:
-                    message = str(warning)
-                    collector_errors.append(
-                        ScanError(
-                            company_key=company_key,
-                            company_name=company_name,
-                            source_type=source_type,
-                            message=message,
-                        )
-                    )
-                    record_scan_error(
-                        database_path,
-                        scan_run_id=scan_run_id,
-                        company_key=company_key,
-                        source_type=source_type,
-                        error_type="incomplete_position_detail_response_failure",
-                        error_message=message,
-                    )
-            collected_postings.extend(postings)
-            companies_scanned += 1
-            update_scan_run_progress(
-                database_path,
-                scan_run_id=scan_run_id,
-                current_stage=current_stage,
-                companies_scanned=companies_scanned,
-                jobs_found=total_jobs,
-                collector_errors=len(collector_errors),
-            )
-            print(f"  collected_jobs={len(postings)}")
-            record_scan_diagnostic(
-                logs_path,
-                event="company_collection_completed",
-                scan_run_id=scan_run_id,
-                stage=current_stage,
-                company_number=company_number,
-                company_id=company_key,
-                source_type=source_type,
-                companies_scanned=companies_scanned,
-                jobs_found=len(postings),
-                jobs_reused=len(reused_identities),
-                company_elapsed_seconds=elapsed_seconds(company_started),
-                elapsed_seconds=elapsed_seconds(diagnostic_started),
-            )
+        for company_number in sorted(collected_by_company):
+            collected_postings.extend(collected_by_company[company_number])
 
         current_stage = "scoring"
         scoring_started = monotonic()
@@ -705,10 +1138,41 @@ def _handle_scan_unlocked(
                 for evidence in score_evidence
             ]
             location_status = classify_location(posting, scoring_config)
-            resume_match = match_resume_to_posting(
+            compensation_text = posting.salary_text or (
+                extract_annual_compensation_text(posting.description)
+            )
+            compensation = evaluate_compensation(
+                salary_text=compensation_text,
+                compensation_floor_usd=(
+                    candidate_profile.compensation_floor_usd
+                    if candidate_profile is not None
+                    else None
+                ),
+            )
+            eligibility = evaluate_practical_eligibility(
                 posting=posting,
-                candidate_profile=candidate_profile,
-                resume_text=resume_text,
+                preferences=job_preferences,
+                compensation=compensation,
+            )
+            skip_resume_comparison = bool(
+                posting.normalization_state == "incomplete"
+                or (
+                    eligibility is not None
+                    and eligibility.status == "not_eligible"
+                    and not bool(
+                        job_preferences
+                        and job_preferences.include_strong_location_outliers
+                    )
+                )
+            )
+            resume_match = (
+                None
+                if skip_resume_comparison
+                else match_resume_to_posting(
+                    posting=posting,
+                    candidate_profile=candidate_profile,
+                    resume_text=resume_text,
+                )
             )
             top_match_eligible, top_match_reasons = evaluate_top_match_eligibility(
                 posting=posting,
@@ -738,18 +1202,6 @@ def _handle_scan_unlocked(
                 )
             )
 
-            compensation_text = posting.salary_text or (
-                extract_annual_compensation_text(posting.description)
-            )
-            compensation = evaluate_compensation(
-                salary_text=compensation_text,
-                compensation_floor_usd=(
-                    candidate_profile.compensation_floor_usd
-                    if candidate_profile is not None
-                    else None
-                ),
-            )
-
             history_matches = find_history_matches(
                 posting=posting,
                 history_records=history_records,
@@ -764,11 +1216,17 @@ def _handle_scan_unlocked(
                 profile_id=profile_id,
             )
 
-            eligibility = evaluate_practical_eligibility(
-                posting=posting,
-                preferences=job_preferences,
-                compensation=compensation,
+            (
+                top_match_eligible,
+                review_needed_eligible,
+                potential_top_match_eligible,
+            ) = _apply_normalization_quality_gate(
+                posting,
+                top_match_eligible=top_match_eligible,
+                review_needed_eligible=review_needed_eligible,
+                potential_top_match_eligible=potential_top_match_eligible,
             )
+
             location_outlier_eligible = (
                 bool(
                     job_preferences
@@ -815,6 +1273,27 @@ def _handle_scan_unlocked(
                     # not become tracked simply because they scored well.
                     application=application,
                 )
+            )
+
+        scored_postings, llm_reviewed, llm_reused, llm_failed = (
+            _augment_ambiguous_jobs_with_llm(
+                scored_postings,
+                settings=settings,
+                database_path=database_path,
+                profile_id=profile_id,
+                resume_text=resume_text,
+                scoring_config=scoring_config,
+            )
+        )
+        if settings.llm.enabled:
+            record_scan_diagnostic(
+                logs_path,
+                event="llm_advisory_completed",
+                scan_run_id=scan_run_id,
+                stage=current_stage,
+                jobs_llm_reviewed=llm_reviewed,
+                jobs_llm_reused=llm_reused,
+                llm_failures=llm_failed,
             )
 
         record_scan_diagnostic(
@@ -903,6 +1382,12 @@ def _handle_scan_unlocked(
         evaluation_audit_path = (
             Path(report_path).parent / evaluation_audit_name
         )
+        raw_scan_name = (
+            "targeted-scan-raw.zip"
+            if selected_employer_ids
+            else RAW_SCAN_ARCHIVE_NAME
+        )
+        raw_scan_path = Path(report_path).parent / raw_scan_name
 
         report = ScanReport(
             companies_enabled=len(companies),
@@ -940,7 +1425,7 @@ def _handle_scan_unlocked(
             snapshot_path=Path(report_path).with_suffix(".json"),
             email_preview_path=email_preview_path,
             evaluation_audit_path=evaluation_audit_path,
-            raw_scan_path=Path(report_path).parent / RAW_SCAN_ARCHIVE_NAME,
+            raw_scan_path=raw_scan_path,
         )
 
         written_html_report_path = write_html_report(
@@ -962,7 +1447,7 @@ def _handle_scan_unlocked(
             )
 
         write_raw_scan_export(
-            Path(report_path).parent / RAW_SCAN_ARCHIVE_NAME,
+            raw_scan_path,
             report,
         )
         evaluation_audit_summary = write_evaluation_audit(

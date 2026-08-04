@@ -112,6 +112,49 @@ def test_connection_failure_sanitizes_raw_network_error(
     assert secret_text not in stored
 
 
+def test_empty_connection_result_requires_source_review(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    employer_id = _create_test_employer(
+        database_path,
+        source_slug="retired-board",
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_connection_service.collect_jobs_for_company",
+        lambda _config: [],
+    )
+
+    result = run_employer_connection_test(database_path, employer_id)
+
+    assert result.state == "error"
+    assert result.category == "empty_source"
+    assert result.job_count == 0
+    assert "source may have changed" in (result.message or "")
+    assert result.last_success_at is None
+    assert result.last_error_at is not None
+
+
+def test_empty_scan_result_replaces_stale_success_with_source_review(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    employer_id = _create_test_employer(
+        database_path,
+        source_slug="retired-board",
+    )
+    record_scan_connection_result(database_path, employer_id, job_count=3)
+
+    record_scan_connection_result(database_path, employer_id, job_count=0)
+    result = get_employer_connection_health(database_path, employer_id)
+
+    assert result.state == "error"
+    assert result.category == "empty_source"
+    assert result.job_count == 0
+    assert "source may have changed" in (result.message or "")
+
+
 def test_successful_scan_replaces_an_older_connection_failure(
     tmp_path: Path,
 ) -> None:

@@ -57,6 +57,7 @@ class JobOutputViewModel:
     eligibility_label: str
     eligibility_reasons: tuple[str, ...]
     eligibility_reason_text: str
+    llm_advisory_label: str
 
 
 def build_job_output_view_model(
@@ -124,6 +125,11 @@ def build_job_output_view_model(
         eligibility_label=eligibility_label,
         eligibility_reasons=eligibility_reasons,
         eligibility_reason_text=eligibility_reason_text,
+        llm_advisory_label=(
+            f"OpenAI-assisted ({scored_posting.llm_review.model})"
+            if scored_posting.llm_review is not None
+            else ""
+        ),
     )
 
 
@@ -251,7 +257,8 @@ def is_potential_top_match_report_posting(
             or scored_posting.potential_top_match_eligible
         )
         and scored_posting.eligibility is not None
-        and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
+        and scored_posting.eligibility.status
+        in {"eligible", ELIGIBILITY_NEEDS_REVIEW}
     )
 
 
@@ -328,6 +335,9 @@ def is_email_review_needed_posting(scored_posting: ScoredPosting) -> bool:
 def _has_occupational_relevance(scored_posting: ScoredPosting) -> bool:
     """Require actual work-fit evidence before practical unknowns trigger review."""
 
+    if scored_posting.posting.normalization_state == "incomplete":
+        return False
+
     if (
         scored_posting.top_match_eligible
         or scored_posting.potential_top_match_eligible
@@ -340,6 +350,11 @@ def _has_occupational_relevance(scored_posting: ScoredPosting) -> bool:
         and scored_posting.resume_match.label in {"Medium", "Strong", "Very Strong"}
     ):
         return True
+    if (
+        scored_posting.resume_match is not None
+        and scored_posting.resume_match.label in {"Weak", "Poor Fit"}
+    ):
+        return False
 
     positive_title_signals = 0
     positive_body_keywords: set[str] = set()

@@ -79,22 +79,45 @@ def extract_annual_compensation_text(description: str | None) -> str | None:
     annual_marker = r"(?:annually|annual|per year|a year|/year|/yr|yearly)"
     currency = r"(?:USD\s*)?"
     money = rf"{currency}\$?\s*\d{{2,3}}(?:,\d{{3}})*(?:\.\d+)?\s*[kK]?"
+    # Multi-level postings sometimes put ``USD`` after each endpoint instead
+    # of once after the whole range (for example, ``152,000 USD - 241,500
+    # USD``). Treat either placement as the same annual currency evidence.
+    range_money = rf"{money}(?:\s*USD)?"
+    explicit_currency_money = (
+        r"(?:USD\s*\$?\s*\d{2,3}(?:,\d{3})*(?:\.\d+)?\s*[kK]?|"
+        r"\$\s*\d{2,3}(?:,\d{3})*(?:\.\d+)?\s*[kK]?(?:\s*USD)?|"
+        r"\d{2,3}(?:,\d{3})*(?:\.\d+)?\s*[kK]?\s*USD)"
+    )
     range_separator = r"(?:-|–|—|to|through)"
     trailing_currency = r"(?:\s*USD)?"
     patterns = (
+        rf"({explicit_currency_money}\s*{range_separator}\s*"
+        rf"{explicit_currency_money})\s+for\s+level\s+\d+",
+        rf"{annual_marker}\s+(?:salary|pay|compensation)(?:\s+range)?\s*:\s*"
+        rf"({range_money}\s*{range_separator}\s*{range_money}){trailing_currency}",
         rf"(?:salary|pay|compensation)(?:\s+range)?[^.;:\n]{{0,30}}"
-        rf"({money}\s*{range_separator}\s*{money}){trailing_currency}"
+        rf"({range_money}\s*{range_separator}\s*{range_money}){trailing_currency}"
         rf"(?:\s*{annual_marker})?",
-        rf"({money}\s*{range_separator}\s*{money}){trailing_currency}"
+        rf"({range_money}\s*{range_separator}\s*{range_money}){trailing_currency}"
         rf"\s*{annual_marker}",
+        # Some ATS feeds put a labeled Salary Range heading in a separate HTML
+        # node, leaving only the explicit USD range in the normalized text.
+        rf"({range_money}\s*{range_separator}\s*{range_money})\s*USD\b",
         rf"(?:salary|pay|compensation)(?:\s+is|\s+of|:)?\s*"
         rf"({money}){trailing_currency}\s*{annual_marker}",
     )
 
     for pattern in patterns:
-        match = re.search(pattern, normalized, flags=re.IGNORECASE)
-        if match is not None:
-            return match.group(0)
+        matches = [
+            match.group(0).strip()
+            for match in re.finditer(pattern, normalized, flags=re.IGNORECASE)
+        ]
+        if matches:
+            # A multi-level posting may advertise one range for each level.
+            # Preserve every range matched by the same explicit pay pattern so
+            # evaluation uses the complete advertised span instead of only the
+            # first (usually lower-level) range.
+            return "; ".join(dict.fromkeys(matches))
 
     return None
 

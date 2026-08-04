@@ -47,6 +47,11 @@ from job_radar.email_settings_service import (
     save_email_settings,
     test_email_connection,
 )
+from job_radar.llm_settings_service import (
+    LlmSettingsError,
+    load_llm_settings_form,
+    save_llm_settings,
+)
 from job_radar.retention_settings_service import (
     RetentionSettingsError,
     load_retention_settings_form,
@@ -121,6 +126,7 @@ def register_settings_routes(
             schedule_view=build_schedule_view(runtime_paths.database_path),
             scheduler_integration=inspect_scheduler(),
             discovery_form=load_company_discovery_settings_form(settings_path),
+            llm_form=load_llm_settings_form(settings_path),
             open_section=request.args.get("section", "").strip(),
         )
 
@@ -437,6 +443,27 @@ def register_settings_routes(
             return _settings_section_redirect("retention")
         flash("Report and log retention settings saved.", "success")
         return _settings_section_redirect("retention")
+
+    @app.post("/settings/llm")
+    def settings_llm_save():
+        try:
+            max_reviews = int(request.form.get("max_reviews_per_scan", "25"))
+            save_llm_settings(
+                settings_path,
+                enabled=request.form.get("enabled") == "yes",
+                provider=request.form.get("provider", "openai"),
+                model=request.form.get("model", ""),
+                privacy_acknowledged=(
+                    request.form.get("privacy_acknowledged") == "yes"
+                ),
+                max_reviews_per_scan=max_reviews,
+                credential=request.form.get("credential", ""),
+            )
+        except (LlmSettingsError, ValueError) as error:
+            flash(str(error), "error")
+            return _settings_section_redirect("llm")
+        flash("LLM advisory settings saved.", "success")
+        return _settings_section_redirect("llm")
 
     @app.post("/settings/schedule/system/apply")
     def settings_schedule_system_apply():

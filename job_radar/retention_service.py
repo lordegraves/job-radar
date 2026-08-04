@@ -136,7 +136,13 @@ def _archive_report_files(
 def _prune_report_archives(reports_directory: Path, *, keep: int) -> None:
     archives = _owned_archive_directories(reports_directory)
     for archive in archives[: max(0, len(archives) - keep)]:
-        shutil.rmtree(archive)
+        try:
+            shutil.rmtree(archive)
+        except OSError:
+            # Retention is housekeeping after the new report is durable. A
+            # locked historical archive must not change a completed scan into
+            # a failed scan; Junior can try to prune it again next time.
+            continue
 
 
 def _prune_owned_logs(logs_directory: Path, *, keep: int) -> None:
@@ -151,7 +157,12 @@ def _prune_owned_logs(logs_directory: Path, *, keep: int) -> None:
         key=lambda path: path.name,
     )
     for path in owned_logs[: max(0, len(owned_logs) - keep)]:
-        path.unlink()
+        try:
+            path.unlink()
+        except OSError:
+            # Antivirus and report viewers can briefly lock old Windows logs.
+            # Preserve the completed scan and retry cleanup on a later run.
+            continue
 
 
 def _owned_archive_directories(reports_directory: Path) -> list[Path]:
@@ -162,12 +173,23 @@ def _owned_archive_directories(reports_directory: Path) -> list[Path]:
         (
             path
             for path in archive_root.iterdir()
-            if path.is_dir()
-            and _ARCHIVE_NAME_PATTERN.fullmatch(path.name)
-            and (path / ARCHIVE_MARKER_NAME).is_file()
+            if _is_owned_archive(path)
         ),
         key=lambda path: path.name,
     )
+
+
+def _is_owned_archive(path: Path) -> bool:
+    """Ignore inaccessible history rather than failing the completed scan."""
+
+    try:
+        return bool(
+            path.is_dir()
+            and _ARCHIVE_NAME_PATTERN.fullmatch(path.name)
+            and (path / ARCHIVE_MARKER_NAME).is_file()
+        )
+    except OSError:
+        return False
 
 
 def _next_archive_name(archive_root: Path) -> str:

@@ -107,13 +107,7 @@ def test_employer_connection(
             )
         else:
             count = len(jobs)
-            noun = "job" if count == 1 else "jobs"
-            health = EmployerConnectionHealth(
-                state=SUCCESS,
-                category="connected",
-                message=f"Connection succeeded and returned {count} {noun}.",
-                job_count=count,
-            )
+            health = _collection_health(count, context="Connection")
 
     _store_health(database_path, employer_id, health)
     return get_employer_connection_health(database_path, employer_id)
@@ -175,13 +169,7 @@ def record_scan_connection_result(
         )
     else:
         count = int(job_count or 0)
-        noun = "job" if count == 1 else "jobs"
-        health = EmployerConnectionHealth(
-            state=SUCCESS,
-            category="connected",
-            message=f"Scan succeeded and returned {count} {noun}.",
-            job_count=count,
-        )
+        health = _collection_health(count, context="Scan")
     _store_health(database_path, employer_id, health)
 
 
@@ -195,6 +183,28 @@ def _error_health(category: str, message: str) -> EmployerConnectionHealth:
         state=ERROR,
         category=category,
         message=message,
+    )
+
+
+def _collection_health(count: int, *, context: str) -> EmployerConnectionHealth:
+    """Treat an empty result as ambiguous source health, not proof of success."""
+
+    if count == 0:
+        return EmployerConnectionHealth(
+            state=ERROR,
+            category="empty_source",
+            message=(
+                f"{context} reached the source but returned no jobs. The employer "
+                "may have no openings, or its recruiting source may have changed."
+            ),
+            job_count=0,
+        )
+    noun = "job" if count == 1 else "jobs"
+    return EmployerConnectionHealth(
+        state=SUCCESS,
+        category="connected",
+        message=f"{context} succeeded and returned {count} {noun}.",
+        job_count=count,
     )
 
 

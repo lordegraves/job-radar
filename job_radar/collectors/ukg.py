@@ -138,7 +138,7 @@ def collect_ukg_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         description = _plain_text(detail.get("Description")) or _clean_text(
             summary.get("BriefDescription")
         )
-        remote_status = _clean_text(summary.get("JobLocationType"))
+        remote_status = _workplace_status(summary.get("JobLocationType"))
         salary_text = _format_pay_range(detail)
         postings.append(
             JobPosting(
@@ -166,6 +166,19 @@ def collect_ukg_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         )
 
     return postings
+
+
+def _workplace_status(value: Any) -> str | None:
+    """Translate UKG's public numeric enum without inventing a work arrangement."""
+
+    text = _clean_text(value)
+    if text in {None, "0"}:
+        return None
+    if text == "1":
+        return "On-site"
+    if text == "2":
+        return "Remote"
+    return text
 
 
 def _load_detail(

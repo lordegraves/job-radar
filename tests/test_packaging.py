@@ -72,6 +72,17 @@ def test_windows_packaging_uses_the_shared_field_test_build() -> None:
     assert f'#define BuildSlug "{BUILD_SLUG}"' in installer
     assert f'ProductVersion", "0.2.0 - {__build__}"' in version_info
     assert f"Junior-Setup-0.2.0-{BUILD_SLUG}.exe" in build_script
+    assert "WizardImageFile=..\\..\\job_radar\\static\\junior_wizard.png" in installer
+    assert "WizardSmallImageFile=..\\..\\job_radar\\static\\junior_icon_v2.png" in installer
+    assert "function DetectSetupMode(): Integer;" in installer
+    assert "SetupModeInstall" in installer
+    assert "SetupModeUpdate" in installer
+    assert "SetupModeRepair" in installer
+    assert "procedure ApplyJuniorTheme();" in installer
+    assert "WizardForm.WelcomePage.Color := $0010100F" in installer
+    assert "WizardForm.PageNameLabel.Font.Color := $00F3F3F3" in installer
+    assert "WizardForm.Components[Index] is TNewStaticText" in installer
+    assert "WizardForm.Components[Index] is TNewCheckListBox" in installer
 
 
 def test_built_wheel_contains_runtime_packages_and_entry_points(
@@ -95,6 +106,7 @@ def test_built_wheel_contains_runtime_packages_and_entry_points(
             "wheel",
             ".",
             "--no-deps",
+            "--no-build-isolation",
             "--wheel-dir",
             str(wheel_directory),
         ],
@@ -239,6 +251,7 @@ def test_built_source_distribution_excludes_private_runtime_data(
             "-m",
             "build",
             "--sdist",
+            "--no-isolation",
             "--outdir",
             str(distribution_directory),
         ],
@@ -357,6 +370,7 @@ def test_installed_wheel_runs_outside_source_checkout(
             "wheel",
             ".",
             "--no-deps",
+            "--no-build-isolation",
             "--wheel-dir",
             str(wheel_directory),
         ],
@@ -552,6 +566,7 @@ logs_path: {logs_directory}
             "wheel",
             ".",
             "--no-deps",
+            "--no-build-isolation",
             "--wheel-dir",
             str(wheel_directory),
         ],

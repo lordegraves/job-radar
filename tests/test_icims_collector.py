@@ -9,6 +9,7 @@ import requests
 
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.icims import (
+    AUTHORITATIVE_EMPTY_CONFIG_KEY,
     _build_search_url,
     _extract_next_page_url,
     _extract_source_job_id,
@@ -49,6 +50,13 @@ def test_build_search_url_keeps_existing_search_url_and_adds_iframe() -> None:
     assert (
         _build_search_url(source_url)
         == "https://careers-peraton.icims.com/jobs/search?ss=1&searchRelation=keyword_all&in_iframe=1"
+    )
+
+
+def test_build_search_url_completes_bare_search_url() -> None:
+    assert (
+        _build_search_url("https://careers-ddn.icims.com/jobs/search")
+        == "https://careers-ddn.icims.com/jobs/search?ss=1&searchRelation=keyword_all&in_iframe=1"
     )
 
 
@@ -167,6 +175,22 @@ def test_collect_icims_jobs_fetches_and_parses(monkeypatch: pytest.MonkeyPatch) 
     ]
     assert len(postings) == 1
     assert postings[0].title == "Senior Linux Systems Engineer"
+
+
+def test_collect_icims_jobs_marks_explicit_empty_board_as_authoritative(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    html = """
+    <html><body>
+      <h1>Job Listings</h1>
+      <p>Sorry, no jobs were found that match your search criteria.</p>
+    </body></html>
+    """
+    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: FakeResponse(html))
+    config = _company_config()
+
+    assert collect_icims_jobs(config) == []
+    assert config[AUTHORITATIVE_EMPTY_CONFIG_KEY] is True
 
 
 def test_collect_icims_jobs_follows_next_page(

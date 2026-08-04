@@ -15,7 +15,11 @@ from job_radar.company_workspace_service import build_company_workspace
 from job_radar.report_snapshot import load_report_snapshot
 from job_radar.scan_task_runner import ScanTaskRunner
 from job_radar.scan_progress import calculate_scan_elapsed_seconds
-from job_radar.storage import fetch_active_scan_run, fetch_latest_scan_run
+from job_radar.storage import (
+    fetch_active_scan_run,
+    fetch_latest_scan_run,
+    fetch_latest_scan_run_for_trigger,
+)
 
 
 def register_scan_routes(
@@ -34,6 +38,18 @@ def register_scan_routes(
         scan_status = _build_scan_status_payload(
             runtime_paths.database_path
         )
+        full_scan_receipt = _build_scan_status_from_row(
+            fetch_latest_scan_run_for_trigger(
+                runtime_paths.database_path,
+                "manual",
+            )
+        )
+        selected_scan_receipt = _build_scan_status_from_row(
+            fetch_latest_scan_run_for_trigger(
+                runtime_paths.database_path,
+                "manual:selected",
+            )
+        )
         snapshot_name = (
             "targeted-scan.json"
             if scan_status.get("trigger_source") == "manual:selected"
@@ -50,6 +66,8 @@ def register_scan_routes(
             scan_error=request.args.get("scan_error", "").strip(),
             scan_status=scan_status,
             scan_summary=scan_summary,
+            full_scan_receipt=full_scan_receipt,
+            selected_scan_receipt=selected_scan_receipt,
             company_workspace=build_company_workspace(
                 runtime_paths.database_path
             ),
@@ -220,7 +238,25 @@ def _build_scan_status_payload(
     scan_runner: ScanTaskRunner | None = None,
 ) -> dict[str, object]:
     active_scan_run = fetch_active_scan_run(database_path)
+    # The worker starts before its durable scan row is created. During that
+    # brief window, returning the previous completed row makes the browser
+    # stop monitoring and display the previous scan as the new result.
+    if (
+        active_scan_run is None
+        and scan_runner is not None
+        and scan_runner.is_running
+    ):
+        return _build_starting_scan_payload()
     scan_run = active_scan_run or fetch_latest_scan_run(database_path)
+
+    return _build_scan_status_from_row(scan_run, scan_runner=scan_runner)
+
+
+def _build_scan_status_from_row(
+    scan_run,
+    *,
+    scan_runner: ScanTaskRunner | None = None,
+) -> dict[str, object]:
 
     if scan_run is None:
         if scan_runner is not None and scan_runner.is_running:

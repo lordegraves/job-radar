@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from job_radar.compensation import CompensationResult
 from job_radar.eligibility import EligibilityResult
 from job_radar.models import JobPosting
+from job_radar.llm_advisory import LlmFitReview
 from job_radar.resume_match import ResumeMatchResult
 from job_radar.score_evidence import ScoreEvidence
 from job_radar.tracker.tracker_models import ApplicationRecord
@@ -30,3 +31,4 @@ class ScoredPosting:
     history_risk_level: str | None = None
     history_risk_reasons: list[str] | None = None
     application: ApplicationRecord | None = None
+    llm_review: LlmFitReview | None = None

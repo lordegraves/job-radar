@@ -93,6 +93,18 @@ class CompanyDiscoverySettings:
 
 
 @dataclass(frozen=True)
+class LlmSettings:
+    """Optional external advisory settings without containing an API key."""
+
+    enabled: bool
+    provider: str
+    model: str
+    credential_key: str
+    privacy_acknowledged: bool
+    max_reviews_per_scan: int
+
+
+@dataclass(frozen=True)
 class ApplicationSettings(Mapping[str, Any]):
     """Application-owned settings loaded from the current settings YAML file.
 
@@ -109,6 +121,7 @@ class ApplicationSettings(Mapping[str, Any]):
     email: EmailSettings
     retention: RetentionSettings
     company_discovery: CompanyDiscoverySettings
+    llm: LlmSettings
     _data: dict[str, Any] = field(repr=False, compare=False)
 
     @property
@@ -220,6 +233,7 @@ def load_settings(
     company_discovery = _validate_company_discovery_settings(
         data.get("company_discovery", {})
     )
+    llm = _validate_llm_settings(data.get("llm", {}))
 
     # Preserve the original mapping shape during the compatibility migration.
     # Existing CLI and GUI callers can keep using [] and .get() until each
@@ -241,7 +255,52 @@ def load_settings(
         email=email,
         retention=retention,
         company_discovery=company_discovery,
+        llm=llm,
         _data=normalized_data,
+    )
+
+
+def _validate_llm_settings(raw_llm: Any) -> LlmSettings:
+    if raw_llm is None:
+        raw_llm = {}
+    if not isinstance(raw_llm, dict):
+        raise ConfigError("settings.yaml llm section must be a mapping")
+    enabled = raw_llm.get("enabled", False)
+    provider = raw_llm.get("provider", "openai")
+    model = raw_llm.get("model", "gpt-5.6-sol")
+    credential_key = raw_llm.get("credential_key", "")
+    acknowledged = raw_llm.get("privacy_acknowledged", False)
+    max_reviews = raw_llm.get("max_reviews_per_scan", 25)
+    if not isinstance(enabled, bool):
+        raise ConfigError("settings.yaml llm.enabled must be true or false")
+    if provider != "openai":
+        raise ConfigError("settings.yaml llm.provider must currently be openai")
+    if not isinstance(model, str) or not model.strip():
+        raise ConfigError("settings.yaml llm.model must be a non-empty string")
+    if not isinstance(credential_key, str):
+        raise ConfigError("settings.yaml llm.credential_key must be a string")
+    if not isinstance(acknowledged, bool):
+        raise ConfigError(
+            "settings.yaml llm.privacy_acknowledged must be true or false"
+        )
+    if isinstance(max_reviews, bool) or not isinstance(max_reviews, int):
+        raise ConfigError("settings.yaml llm.max_reviews_per_scan must be a number")
+    if not 1 <= max_reviews <= 100:
+        raise ConfigError(
+            "settings.yaml llm.max_reviews_per_scan must be between 1 and 100"
+        )
+    if enabled and (not acknowledged or not credential_key.strip()):
+        raise ConfigError(
+            "settings.yaml llm requires privacy acknowledgement and a secure "
+            "credential reference when enabled"
+        )
+    return LlmSettings(
+        enabled=enabled,
+        provider=provider,
+        model=model.strip(),
+        credential_key=credential_key.strip(),
+        privacy_acknowledged=acknowledged,
+        max_reviews_per_scan=max_reviews,
     )
 
 

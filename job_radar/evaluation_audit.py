@@ -102,12 +102,15 @@ def write_evaluation_audit(
                 f"[{index}] {posting.company_name} - {posting.title}",
                 f"Junior job ID: {posting.job_radar_id}",
                 f"Public posting: {posting.source_url or 'Not available'}",
+                f"Source type: {posting.source_type}",
                 f"Final outcome: {outcome}",
                 f"Reason codes: {', '.join(reasons) if reasons else 'none'}",
                 f"Score: {scored.score}",
                 f"Location status: {scored.location_status}",
                 f"Workplace: {posting.remote_status or 'Unknown'}",
                 f"Location: {posting.location or 'Unknown'}",
+                _normalization_audit_line(posting),
+                _detail_retrieval_audit_line(posting),
                 (
                     "Compensation: "
                     f"{compensation.label} ({compensation.range_label})"
@@ -127,11 +130,20 @@ def write_evaluation_audit(
                 (
                     "Requirement comparison: "
                     f"{len(resume_match.requirements_reviewed or [])} reviewed; "
-                    f"{len(resume_match.evidence)} supported; "
+                    f"{len(resume_match.supported_requirements or [])} supported; "
                     f"{len(resume_match.gaps)} gaps; "
                     f"{len(resume_match.critical_gaps or [])} critical gaps"
                     if resume_match
                     else "Requirement comparison: Not evaluated"
+                ),
+                (
+                    "LLM advisory: "
+                    f"{scored.llm_review.provider}; "
+                    f"model={scored.llm_review.model}; "
+                    f"prompt={scored.llm_review.prompt_version}; "
+                    f"fit={scored.llm_review.fit_assessment}"
+                    if scored.llm_review
+                    else "LLM advisory: Not used"
                 ),
             )
         )
@@ -180,11 +192,47 @@ def _outcome_for(scored: ScoredPosting, decided_job_ids: set[str]) -> str:
     return "omitted"
 
 
+def _detail_retrieval_audit_line(posting) -> str:
+    if posting.detail_retrieval_state == "skipped_unrelated":
+        return "Detail retrieval: Skipped after conservative listing review"
+    if posting.detail_retrieval_state == "unavailable":
+        return "Detail retrieval: Unavailable; evaluated conservatively"
+    if posting.detail_retrieval_state == "cached_source_fallback":
+        return "Detail retrieval: Complete cached detail used after source outage"
+    if posting.detail_retrieval_state == "cached_source_fallback_incomplete":
+        return "Detail retrieval: Cached fallback remained incomplete; visibly withheld"
+    if posting.detail_retrieval_state == "cached_detail_reuse":
+        return "Detail retrieval: Reused recently verified job detail"
+    if "incomplete_description" in posting.normalization_issues:
+        return "Detail retrieval: Incomplete after collection"
+    return "Detail retrieval: Complete or not required"
+
+
+def _normalization_audit_line(posting) -> str:
+    state = posting.normalization_state or "not recorded"
+    issues = ", ".join(posting.normalization_issues) or "none"
+    return f"Normalization: {state}; issues: {issues}"
+
+
 def _reason_codes_for(
     scored: ScoredPosting,
     outcome: str,
 ) -> tuple[str, ...]:
     codes: set[str] = set()
+    if scored.posting.normalization_state == "incomplete":
+        codes.add("normalization_incomplete")
+    codes.update(
+        f"normalization:{issue}"
+        for issue in scored.posting.normalization_issues
+    )
+    if scored.posting.detail_retrieval_state == "skipped_unrelated":
+        codes.add("detail_retrieval_skipped")
+    elif scored.posting.detail_retrieval_state == "unavailable":
+        codes.add("detail_retrieval_unavailable")
+    elif scored.posting.detail_retrieval_state == "cached_source_fallback":
+        codes.add("source_cache_fallback")
+    elif scored.posting.detail_retrieval_state == "cached_detail_reuse":
+        codes.add("detail_cache_reused")
     if scored.eligibility is not None:
         codes.update(reason.code for reason in scored.eligibility.reasons)
         codes.add(f"eligibility:{scored.eligibility.status}")
@@ -194,6 +242,9 @@ def _reason_codes_for(
             codes.add("resume_gaps_present")
         if scored.resume_match.critical_gaps:
             codes.add("critical_resume_gap")
+    if scored.llm_review is not None:
+        codes.add("llm_advisory_used")
+        codes.add(f"llm_fit:{scored.llm_review.fit_assessment}")
     if scored.profile_avoid_matches:
         codes.add("profile_avoid_match")
     if scored.history_risk_level:

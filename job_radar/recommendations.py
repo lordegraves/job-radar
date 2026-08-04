@@ -63,15 +63,22 @@ def _get_resume_match_label(scored_posting: ScoredPosting) -> str:
 
 
 def _format_resume_evidence(scored_posting: ScoredPosting) -> str:
+    if scored_posting.posting.normalization_state == "incomplete":
+        return "Not verified because the complete job description was unavailable"
     if scored_posting.resume_match is None or not scored_posting.resume_match.evidence:
         return "None"
     return "; ".join(scored_posting.resume_match.evidence)
 
 
 def _format_resume_gaps(scored_posting: ScoredPosting) -> str:
-    if scored_posting.resume_match is None or not scored_posting.resume_match.gaps:
+    if scored_posting.posting.normalization_state == "incomplete":
+        return "Qualification gaps could not be verified without the complete job description"
+    if scored_posting.resume_match is None:
         return "None"
-    return "; ".join(scored_posting.resume_match.gaps)
+    groups: list[str] = []
+    if scored_posting.resume_match.gaps:
+        groups.extend(scored_posting.resume_match.gaps)
+    return "\n".join(groups) if groups else "None"
 
 
 def _get_technical_match_label(scored_posting: ScoredPosting) -> str:
@@ -161,6 +168,18 @@ def _get_recommended_action(scored_posting: ScoredPosting) -> str:
             return ACTION_TAILOR_RESUME
         return ACTION_HOLD
 
+    if scored_posting.potential_top_match_eligible:
+        if resume_match in {"Very Strong", "Strong"}:
+            return (
+                ACTION_HOLD
+                if scored_posting.resume_match
+                and scored_posting.resume_match.gaps
+                else ACTION_APPLY
+            )
+        if resume_match == "Medium":
+            return ACTION_TAILOR_RESUME
+        return ACTION_HOLD
+
     if scored_posting.review_needed_eligible:
         return ACTION_HOLD
 
@@ -189,6 +208,10 @@ def _format_risk_summary(risks: list[str]) -> str:
 
 
 def _format_risk_label(risk: str) -> str:
+    if risk == RISK_HARD_LOCATION_MISMATCH:
+        return "the job is outside your selected area"
+    if risk == RISK_LOCATION_NEEDS_CONFIRMATION:
+        return "the location needs confirmation"
     if risk.startswith("profile gap: "):
         return f"the profile gap '{risk.removeprefix('profile gap: ')}'"
     if risk.startswith("profile avoid match: "):
@@ -200,7 +223,6 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
     action = _get_recommended_action(scored_posting)
     resume_match = _get_resume_match_label(scored_posting)
     risks = _get_hiring_risk_flags(scored_posting)
-    eligibility_text = _format_eligibility_reason_text(scored_posting)
 
     if action == ACTION_TRACK_STATUS:
         return TRACK_STATUS_ALREADY_APPLIED_MESSAGE
@@ -220,7 +242,7 @@ def _get_action_rationale(scored_posting: ScoredPosting) -> str:
             scored_posting.eligibility is not None
             and scored_posting.eligibility.status == ELIGIBILITY_NEEDS_REVIEW
         ):
-            rationale = f"Needs review before applying. {eligibility_text}"
+            rationale = "Needs review before applying. See the review items below."
         elif risks:
             rationale = f"Needs review because of {_format_risk_summary(risks)}."
         else:
@@ -327,7 +349,20 @@ def _get_hiring_risk_flags(scored_posting: ScoredPosting) -> list[str]:
     """Return only profile-derived or practical risks, never occupation guesses."""
 
     risks: list[str] = []
-    if scored_posting.location_status == "skipped":
+    confirmed_location_mismatch = (
+        scored_posting.eligibility is not None
+        and scored_posting.eligibility.status == ELIGIBILITY_NOT_ELIGIBLE
+        and any(
+            reason.code
+            in {
+                "specific_location_outside_selected_areas",
+                "location_outside_selected_areas",
+                "remote_region_outside_selected_areas",
+            }
+            for reason in scored_posting.eligibility.reasons
+        )
+    )
+    if scored_posting.location_status == "skipped" or confirmed_location_mismatch:
         risks.append(RISK_HARD_LOCATION_MISMATCH)
     elif scored_posting.location_status in {"mixed", "conditional", "unknown"}:
         risks.append(RISK_LOCATION_NEEDS_CONFIRMATION)

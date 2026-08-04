@@ -6,6 +6,7 @@ from job_radar.report_view_model import (
     build_job_output_view_model,
     build_report_view_model,
 )
+from job_radar.resume_match import ResumeMatchResult
 from job_radar.scan_service import _is_storage_relevant_posting
 from job_radar.scored_posting import ScoredPosting
 from job_radar.tracker.tracker_models import ApplicationRecord
@@ -22,6 +23,7 @@ def make_scored_posting(
     score_reasons: list[str] | None = None,
     top_match_reasons: list[str] | None = None,
     eligibility: EligibilityResult | None = None,
+    resume_match: ResumeMatchResult | None = None,
 ) -> ScoredPosting:
     posting = JobPosting(
         company_key="example",
@@ -63,6 +65,7 @@ def make_scored_posting(
         top_match_reasons=top_match_reasons,
         review_needed_eligible=review_needed_eligible,
         eligibility=eligibility,
+        resume_match=resume_match,
         application=application,
     )
 
@@ -456,6 +459,21 @@ def test_strong_role_with_unresolved_location_is_potential_top_match() -> None:
     assert view.potential_top_matches == [posting]
     assert view.review_needed == []
     assert _is_storage_relevant_posting(posting)
+
+
+def test_strong_eligible_role_below_keyword_threshold_is_potential_top_match() -> None:
+    posting = make_scored_posting(
+        title="Senior Storage Production Engineer",
+        potential_top_match_eligible=True,
+        eligibility=EligibilityResult(status="eligible", reasons=()),
+        resume_match=ResumeMatchResult(label="Strong", evidence=["storage"], gaps=[]),
+    )
+
+    view = build_report_view_model(scored_postings=[posting])
+
+    assert view.top_matches == []
+    assert view.potential_top_matches == [posting]
+    assert view.review_needed == []
 
 
 def test_tracked_role_preserves_track_status_when_not_eligible() -> None:

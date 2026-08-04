@@ -18,6 +18,10 @@ class JobPosting:
     salary_text: str | None = None
     canonical_key: str | None = None
     content_hash: str | None = None
+    detail_retrieval_reason: str | None = None
+    detail_retrieval_state: str | None = None
+    normalization_state: str | None = None
+    normalization_issues: tuple[str, ...] = ()
 
     @property
     def job_radar_id(self) -> str:

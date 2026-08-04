@@ -6,6 +6,35 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Brand the Windows setup wizard with Junior's logo and distinguish a new
+  installation from an update or same-build repair in the wizard title,
+  instructions, action button, and completion message.
+- Make transient source fallback deterministic: retry non-Eightfold sources
+  once, re-evaluate cached summaries through the normal detail planner, recover
+  plausible descriptions within a strict circuit breaker, distinguish complete
+  cache from visibly withheld incomplete cache, and emit one consolidated
+  warning without changing scoring behavior.
+- Recover complete plausible descriptions from fresh Microsoft/Eightfold,
+  Workday, Oracle, and public HTML sources without requiring a pre-populated
+  cache, while continuing to skip clearly unrelated detail downloads safely.
+- Automatically migrate Junior's obsolete Mistral Lever source to its verified
+  Ashby board, with a transactional backup and employer-catalog audit entry.
+- Preserve multiple level-specific salary ranges, recognize explicit hybrid-or-
+  remote and citizenship requirements, describe confirmed location mismatches
+  with certainty, and stop incomplete tracked jobs from claiming no strengths
+  or gaps.
+- Add disabled-by-default, provider-neutral LLM fit review with OpenAI as the
+  first provider, explicit résumé-transmission consent, OS credential storage,
+  bounded scan use, structured responses, unchanged-input caching, safe
+  deterministic fallback, and audit metadata.
+- Retrieve complete Oracle HCM and ADP requisition details through their
+  structured public endpoints, retry transient Workday detail failures once,
+  and distinguish plausible incomplete jobs from safely skipped unrelated
+  listing teasers.
+- Separate worker-queue time from actual per-company collection time and refine
+  advanced network failure-model gaps without claiming a candidate lacks basic
+  networking experience.
+
 - Give immediate visual acknowledgement when full scans, selected-company
   scans, and connection tests are submitted, and prevent duplicate clicks
   while Junior starts the requested work.

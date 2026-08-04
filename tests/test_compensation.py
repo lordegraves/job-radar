@@ -85,6 +85,63 @@ def test_extract_annual_compensation_from_description() -> None:
     assert evaluate_compensation(extracted, 160000).label == "Meets floor"
 
 
+def test_extract_annual_compensation_reads_annual_salary_heading() -> None:
+    extracted = extract_annual_compensation_text(
+        "The annual compensation range is listed below.\n"
+        "Annual Salary:\n$325,000 - $360,000 USD"
+    )
+
+    assert extracted == "Annual Salary: $325,000 - $360,000 USD"
+
+
+def test_extract_annual_compensation_reads_standalone_usd_range() -> None:
+    extracted = extract_annual_compensation_text(
+        "Salary Range</p><p>$200,000 — $225,000 USD</p>"
+    )
+
+    assert evaluate_compensation(extracted, 160000).range_label == (
+        "$200,000 - $225,000"
+    )
+
+
+def test_extract_annual_compensation_preserves_multiple_level_ranges() -> None:
+    extracted = extract_annual_compensation_text(
+        "Level III annual salary: $118,000 - $161,000 USD. "
+        "Level IV annual salary: $142,000 - $194,000 USD."
+    )
+
+    assert extracted is not None
+    assert "$118,000 - $161,000" in extracted
+    assert "$142,000 - $194,000" in extracted
+    assert evaluate_compensation(extracted, 160000).range_label == (
+        "$118,000 - $194,000"
+    )
+
+
+def test_extract_annual_compensation_reads_usd_after_each_level_endpoint() -> None:
+    extracted = extract_annual_compensation_text(
+        "The base salary range is 152,000 USD - 241,500 USD for Level 3, "
+        "and 184,000 USD - 287,500 USD for Level 4."
+    )
+
+    assert extracted is not None
+    assert evaluate_compensation(extracted, 160000).range_label == (
+        "$152,000 - $287,500"
+    )
+
+
+def test_extract_annual_compensation_reads_multiple_annual_salary_ranges() -> None:
+    extracted = extract_annual_compensation_text(
+        "Annual Salary Range: IT Professional III $100,400 - $180,700 USD. "
+        "Annual Salary Range: IT Professional II $83,600 - $150,500 USD."
+    )
+
+    assert extracted is not None
+    assert evaluate_compensation(extracted, 160000).range_label == (
+        "$83,600 - $180,700"
+    )
+
+
 def test_extract_annual_compensation_from_html_with_encoded_dash() -> None:
     description = (
         "<h3>Pay Transparency</h3>"

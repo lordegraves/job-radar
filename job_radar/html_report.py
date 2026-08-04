@@ -444,12 +444,12 @@ def _get_tracked_applications(
 def _get_omitted_postings(
     scored_postings: list[ScoredPosting],
 ) -> list[ScoredPosting]:
+    """Return only jobs Junior actually recommends passing."""
+
     return [
         scored_posting
         for scored_posting in scored_postings
-        if not _is_top_match_report_posting(scored_posting)
-        and not _is_review_needed_report_posting(scored_posting)
-        and _get_recommended_action(scored_posting) != ACTION_TRACK_STATUS
+        if _get_recommended_action(scored_posting) == ACTION_PASS
     ]
 
 

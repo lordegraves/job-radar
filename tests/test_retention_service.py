@@ -5,10 +5,58 @@ from pathlib import Path
 from job_radar.config import RetentionPolicySettings, RetentionSettings
 from job_radar.retention_service import (
     ARCHIVE_MARKER_NAME,
+    _is_owned_archive,
     apply_retention_after_report_write,
     archive_before_report_write,
     list_retained_report_runs,
 )
+
+
+def test_inaccessible_archive_is_not_allowed_to_fail_retention(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    archive = tmp_path / "scan-20260723T120000000000Z"
+    archive.mkdir()
+    marker = archive / ARCHIVE_MARKER_NAME
+    marker.write_text("owned", encoding="utf-8")
+    original_is_file = Path.is_file
+
+    def inaccessible_marker(path: Path) -> bool:
+        if path == marker:
+            raise PermissionError("test-only inaccessible marker")
+        return original_is_file(path)
+
+    monkeypatch.setattr(Path, "is_file", inaccessible_marker)
+
+    assert _is_owned_archive(archive) is False
+
+
+def test_locked_owned_archive_does_not_fail_completed_scan(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    reports = tmp_path / "reports"
+    logs = tmp_path / "logs"
+    archive = reports / "archive" / "scan-20260723T120000000000Z"
+    archive.mkdir(parents=True)
+    (archive / ARCHIVE_MARKER_NAME).write_text("owned", encoding="utf-8")
+
+    def locked_archive(path: Path) -> None:
+        raise PermissionError(f"test-only locked archive: {path.name}")
+
+    monkeypatch.setattr("job_radar.retention_service.shutil.rmtree", locked_archive)
+
+    apply_retention_after_report_write(
+        reports_path=reports,
+        logs_path=logs,
+        retention=RetentionSettings(
+            reports=policy("latest_only"),
+            logs=policy("latest_only"),
+        ),
+    )
+
+    assert archive.is_dir()
 
 
 def policy(mode: str, count: int = 1) -> RetentionPolicySettings:

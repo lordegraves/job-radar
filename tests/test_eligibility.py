@@ -282,6 +282,43 @@ def test_location_based_job_needs_review_for_broad_location() -> None:
     assert result.reasons[0].code == "job_location_ambiguous"
 
 
+def test_multi_location_feed_does_not_hide_listed_out_of_area_places() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location=(
+                "United States, Texas, Dallas, United States, Georgia, "
+                "Atlanta, Multiple Locations"
+            ),
+            remote_status="On-site",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("On-site",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "location_outside_selected_areas"
+
+
+def test_foreign_location_with_generic_multi_location_is_not_ambiguous() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Israel, Multiple Locations, Tel Aviv, Herzliya",
+            remote_status="On-site",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("On-site",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "location_outside_selected_areas"
+
+
 def test_unclear_workplace_arrangement_needs_review() -> None:
     result = evaluate_workplace_eligibility(
         posting=make_posting(
@@ -522,6 +559,43 @@ def test_remote_state_restriction_rejects_clear_state_mismatch() -> None:
     assert result.reasons[0].code == "remote_region_outside_selected_areas"
 
 
+def test_remote_job_restricted_to_india_is_not_eligible_for_colorado_profile() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            title="Senior Site Reliability Engineer",
+            location="India, Remote, India, Bengaluru",
+            remote_status="Remote",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "remote_region_outside_selected_areas"
+    assert "remote within india india bengaluru" in result.reasons[0].message.lower()
+
+
+def test_remote_europe_in_multi_location_label_is_not_eligible() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            title="Detection Engineering Lead",
+            location="Israel; Remote - Europe",
+            remote_status="Remote",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "remote_region_outside_selected_areas"
+
+
 @pytest.mark.parametrize(
     "location",
     [
@@ -562,6 +636,21 @@ def test_selected_employment_type_is_eligible() -> None:
     result = evaluate_practical_eligibility(
         posting=posting,
         preferences=preferences,
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[-1].code == "employment_type_selected"
+
+
+def test_labeled_full_time_employment_type_is_eligible() -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(description="Employment type: Full time"),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            employment_types=("Full-time",),
+        ),
         compensation=None,
     )
 
@@ -731,6 +820,115 @@ def test_explicit_onsite_description_overrides_loose_remote_metadata() -> None:
             description=(
                 "This role has been designed as ‘Onsite’ with an expectation that "
                 "you will primarily work from an HPE office."
+            ),
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote", "Hybrid", "On-site"),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "location_outside_selected_areas"
+
+
+def test_hybrid_or_remote_arrangements_available_is_remote_eligible() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="United States",
+            description="Hybrid or remote work arrangements are available.",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[0].code == "remote_arrangement_selected"
+
+
+@pytest.mark.parametrize(
+    "location",
+    (
+        "US, CA, Santa Clara, US, NC, Remote, US, TX, Remote, US, Remote, US, MA, Remote",
+        "US, SC, Remote; US, MA, Westford; US, TX, Austin; US, Remote",
+    ),
+)
+def test_one_national_remote_option_overrides_neighboring_state_options(
+    location: str,
+) -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(location=location, remote_status="Remote"),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[0].code == "remote_arrangement_selected"
+
+
+def test_city_or_remote_location_is_not_treated_as_city_restricted_remote() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Pittsburgh, PA or Remote",
+            remote_status="Remote",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[0].code == "remote_arrangement_selected"
+
+
+@pytest.mark.parametrize(
+    "location",
+    (
+        "India or Remote",
+        "India, Remote",
+        "India; Remote",
+        "Remote; India",
+        "India | Remote",
+        "Remote | India",
+        "India / Remote",
+        "Remote - India",
+        "Remote within India",
+    ),
+)
+def test_country_scoped_remote_wording_is_not_unrestricted(location: str) -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(location=location, remote_status="Remote"),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "remote_region_outside_selected_areas"
+
+
+def test_office_attendance_policy_overrides_remote_friendly_metadata() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location=(
+                "Boston, MA; New York City, NY; Remote-Friendly "
+                "(Travel-Required) | Washington, DC"
+            ),
+            remote_status="Remote",
+            description=(
+                "Currently, we expect all staff to be in one of our offices at "
+                "least 25% of the time. Some roles may require more office time."
             ),
         ),
         preferences=ProfilePreferences(
@@ -980,3 +1178,82 @@ def test_work_authorization_requirement_is_retained_for_review() -> None:
     assert result is not None
     assert result.status == ELIGIBILITY_NEEDS_REVIEW
     assert result.reasons[-1].code == "work_authorization_needs_review"
+
+
+@pytest.mark.parametrize(
+    "wording",
+    (
+        "Candidates must be a U.S. citizen.",
+        "U.S. citizenship is required for this position.",
+        "This role requires US citizenship.",
+        "Only US citizens will be considered.",
+        "Eligibility requirements restrict access to individuals with US citizenship.",
+        "Only applicants that are US Citizens will be considered.",
+    ),
+)
+def test_explicit_citizenship_requirement_is_retained_for_review(
+    wording: str,
+) -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(location="Remote", description=wording),
+        preferences=ProfilePreferences(work_arrangements=("Remote",)),
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NEEDS_REVIEW
+    assert result.reasons[-1].code == "work_authorization_needs_review"
+
+
+def test_selected_city_matches_country_state_city_order() -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(
+            location="United States, Wyoming, Cheyenne",
+            remote_status="On-site",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("On-site",),
+            preferred_locations=("Cheyenne, Wyoming",),
+        ),
+        compensation=None,
+    )
+
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[0].code == "location_matches_selected_area"
+
+
+def test_ft_collins_matches_fort_collins_in_multi_location_field() -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(
+            location=(
+                "Spring, Texas, United States of America, "
+                "Ft. Collins, Colorado, United States of America"
+            ),
+            remote_status="Hybrid",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Hybrid",),
+            preferred_locations=("Fort Collins, Colorado",),
+        ),
+        compensation=None,
+    )
+
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[0].code == "location_matches_selected_area"
+
+
+def test_selected_city_does_not_match_longer_city_with_same_first_word() -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(
+            location="Golden Valley, Colorado",
+            remote_status="On-site",
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("On-site",),
+            preferred_locations=("Golden, Colorado",),
+        ),
+        compensation=None,
+    )
+
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "location_outside_selected_areas"

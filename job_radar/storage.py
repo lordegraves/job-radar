@@ -6,6 +6,7 @@ backed up before numbered migrations, and pending migrations run atomically so
 a failure cannot leave only part of an upgrade applied.
 """
 
+import json
 import sqlite3
 import unicodedata
 from dataclasses import dataclass
@@ -357,6 +358,16 @@ def _schema_migrations() -> tuple:
             31,
             "add detailed scan progress",
             _migrate_detailed_scan_progress,
+        ),
+        (
+            32,
+            "add llm advisory cache",
+            _migrate_llm_advisory_cache,
+        ),
+        (
+            33,
+            "migrate obsolete Mistral Lever source to Ashby",
+            _migrate_mistral_to_ashby,
         ),
     )
 
@@ -1205,6 +1216,99 @@ def _migrate_resumable_setup(connection: sqlite3.Connection) -> None:
     )
 
 
+def _migrate_llm_advisory_cache(connection: sqlite3.Connection) -> None:
+    """Cache private derived advice without retaining prompts or credentials."""
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS llm_advisory_cache (
+            profile_id TEXT NOT NULL,
+            job_radar_id TEXT NOT NULL,
+            input_hash TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            prompt_version TEXT NOT NULL,
+            result_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_used_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (profile_id, job_radar_id, input_hash)
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_llm_advisory_cache_job
+        ON llm_advisory_cache(profile_id, job_radar_id, last_used_at DESC)
+        """
+    )
+
+
+def _migrate_mistral_to_ashby(connection: sqlite3.Connection) -> None:
+    """Replace only Junior's known obsolete Mistral Lever configuration."""
+
+    row = connection.execute(
+        """
+        SELECT employer_id, name, source_type, source_config_json
+        FROM employer_sources
+        WHERE employer_id = 'mistral_ai'
+          AND source_type = 'lever'
+        """
+    ).fetchone()
+    if row is None:
+        return
+
+    new_config = {
+        "careers_url": "https://mistral.ai/careers/",
+        "source_slug": "mistral.ai",
+    }
+    previous_state = {
+        "name": row[1],
+        "source_type": row[2],
+        "source_config_json": row[3],
+    }
+    new_state = {
+        "name": row[1],
+        "source_type": "ashby",
+        "source_config_json": json.dumps(new_config, separators=(",", ":")),
+    }
+    connection.execute(
+        """
+        UPDATE employer_sources
+        SET source_type = 'ashby',
+            source_config_json = ?,
+            validation_state = 'not_checked',
+            validation_issues_json = '[]',
+            last_validated_at = NULL,
+            last_connection_test_at = NULL,
+            last_connection_error_at = NULL,
+            last_connection_state = 'not_tested',
+            last_connection_category = NULL,
+            last_connection_message = NULL,
+            last_connection_job_count = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE employer_id = 'mistral_ai'
+          AND source_type = 'lever'
+        """,
+        (new_state["source_config_json"],),
+    )
+    connection.execute(
+        """
+        INSERT INTO employer_catalog_audit (
+            employer_id,
+            operation,
+            previous_state_json,
+            new_state_json,
+            change_source
+        )
+        VALUES ('mistral_ai', 'source_migration', ?, ?, 'schema_migration')
+        """,
+        (
+            json.dumps(previous_state, sort_keys=True),
+            json.dumps(new_state, sort_keys=True),
+        ),
+    )
+
+
 def _migrate_role_discovery(connection: sqlite3.Connection) -> None:
     """Store explained title suggestions and profile-specific feedback."""
 
@@ -1589,6 +1693,29 @@ def fetch_latest_scan_run(
             ORDER BY id DESC
             LIMIT 1
             """
+        ).fetchone()
+
+
+def fetch_latest_scan_run_for_trigger(
+    database_path: str | Path,
+    trigger_source: str,
+) -> sqlite3.Row | None:
+    """Return the newest receipt for one scan type without mixing workflows."""
+
+    db_path = Path(database_path)
+    with connect_database(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+        return connection.execute(
+            """
+            SELECT *
+            FROM scan_runs
+            WHERE trigger_source = ?
+              AND status IN ('completed', 'completed_with_warnings')
+              AND report_status = 'completed'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (trigger_source,),
         ).fetchone()
 
 
@@ -2177,6 +2304,22 @@ def replace_source_posting_cache(
                 """,
                 (company_key, source_type, identity),
             ).fetchone()
+            if posting.normalization_state == "incomplete":
+                # A failed detail request is not a verified description. Keep
+                # an older complete record available for safe fallback, but
+                # retain its old fingerprint so the next scan retries the new
+                # listing instead of treating this failure as fresh cache.
+                if existing is not None:
+                    connection.execute(
+                        """
+                        UPDATE source_posting_cache
+                        SET is_active = 1, last_seen_at = ?
+                        WHERE company_key = ? AND source_type = ?
+                          AND source_identity = ?
+                        """,
+                        (observed_at, company_key, source_type, identity),
+                    )
+                continue
             detail_verified_at = (
                 existing[0]
                 if identity in reused_identities and existing is not None

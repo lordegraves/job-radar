@@ -101,7 +101,7 @@ def test_profile_activity_migration_assigns_legacy_rows_to_active_profile(
     assert tracker_row == (profile.profile_id, "Preserve tracker data")
     assert history_row == (profile.profile_id, "Preserve history data")
     assert foreign_key_errors == []
-    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v31-*.bak"))) == 1
+    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v33-*.bak"))) == 1
 
 
 def test_clearance_migration_preserves_legacy_exclusion_behavior(
@@ -257,7 +257,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     backup_directory = tmp_path / "backups"
     backup_paths = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v31-*.bak"
+                    "job_radar.sqlite3.pre-migration-v1-v33-*.bak"
         )
     )
 
@@ -283,7 +283,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
 
     backup_paths_after_second_initialization = list(
         backup_directory.glob(
-            "job_radar.sqlite3.pre-migration-v1-v31-*.bak"
+                "job_radar.sqlite3.pre-migration-v1-v33-*.bak"
         )
     )
 
@@ -370,6 +370,8 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
             (29,),
             (30,),
             (31,),
+            (32,),
+            (33,),
     ]
     with connect_database(database_path) as connection:
         profile_columns = {
@@ -397,7 +399,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-v0.1.0.sqlite3.pre-migration-v1-v31-*.bak"
+                "synthetic-v0.1.0.sqlite3.pre-migration-v1-v33-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -440,7 +442,7 @@ def test_initialize_database_rolls_back_failed_migration(
         "_schema_migrations",
         lambda: (
             *existing_migrations,
-            (32, "synthetic failing migration", fail_after_temporary_change),
+            (34, "synthetic failing migration", fail_after_temporary_change),
         ),
     )
 
@@ -457,7 +459,7 @@ def test_initialize_database_rolls_back_failed_migration(
             """
         ).fetchone()
         migration_version = connection.execute(
-                "SELECT version FROM schema_migrations WHERE version = 32"
+                    "SELECT version FROM schema_migrations WHERE version = 34"
         ).fetchone()
         foreign_key_errors = connection.execute(
             "PRAGMA foreign_key_check"
@@ -469,7 +471,7 @@ def test_initialize_database_rolls_back_failed_migration(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-            "synthetic-current.sqlite3.pre-migration-v32-v32-*.bak"
+                "synthetic-current.sqlite3.pre-migration-v34-v34-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -511,6 +513,8 @@ def test_initialize_database_rolls_back_failed_migration(
                 (29,),
                 (30,),
                 (31,),
+                (32,),
+                (33,),
             ]
 
 
@@ -545,12 +549,52 @@ def test_initialize_database_creates_expected_tables(tmp_path: Path) -> None:
         "setup_progress",
         "role_discovery_suggestions",
         "scan_schedule",
+        "llm_advisory_cache",
         "schema_migrations",
     ]
 
     for table_name in expected_tables:
         assert table_exists(database_path, table_name)
 
+
+def test_mistral_obsolete_lever_source_migrates_to_verified_ashby(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "mistral-migration.sqlite3"
+    initialize_database(database_path)
+    with connect_database(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO employer_sources (
+                employer_id, name, source_type, source_config_json
+            )
+            VALUES ('mistral_ai', 'Mistral AI', 'lever', '{"source_slug":"mistralai"}')
+            """
+        )
+        storage._migrate_mistral_to_ashby(connection)
+        source = connection.execute(
+            """
+            SELECT source_type, source_config_json, last_connection_state
+            FROM employer_sources
+            WHERE employer_id = 'mistral_ai'
+            """
+        ).fetchone()
+        audit = connection.execute(
+            """
+            SELECT operation, change_source
+            FROM employer_catalog_audit
+            WHERE employer_id = 'mistral_ai'
+            ORDER BY audit_id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+    assert source == (
+        "ashby",
+        '{"careers_url":"https://mistral.ai/careers/","source_slug":"mistral.ai"}',
+        "not_tested",
+    )
+    assert audit == ("source_migration", "schema_migration")
 
 def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
     database_path = tmp_path / "job_radar.sqlite3"
@@ -602,6 +646,8 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
             (29, "add strong location-outlier preference"),
             (30, "add incremental source posting cache"),
             (31, "add detailed scan progress"),
+            (32, "add llm advisory cache"),
+            (33, "migrate obsolete Mistral Lever source to Ashby"),
         ]
 
 
@@ -989,6 +1035,56 @@ def test_source_posting_cache_replaces_one_company_atomically(
         posting.company_key,
         posting.source_type,
     ) == {}
+
+
+def test_incomplete_detail_is_not_marked_as_verified_cache(tmp_path: Path) -> None:
+    database_path = tmp_path / "cache.sqlite3"
+    initialize_database(database_path)
+    posting = make_posting()
+    identity = posting.source_job_id or posting.source_url
+
+    replace_source_posting_cache(
+        database_path,
+        company_key=posting.company_key,
+        company_name=posting.company_name,
+        source_type=posting.source_type,
+        postings=[posting],
+        listing_fingerprints={identity: "complete-v1"},
+        reused_identities=set(),
+        observed_at="2026-07-30T12:00:00+00:00",
+    )
+    incomplete = JobPosting(
+        company_key=posting.company_key,
+        company_name=posting.company_name,
+        source_type=posting.source_type,
+        source_url=posting.source_url,
+        source_job_id=posting.source_job_id,
+        title=posting.title,
+        location=posting.location,
+        description=None,
+        normalization_state="incomplete",
+        normalization_issues=("incomplete_description",),
+    )
+
+    replace_source_posting_cache(
+        database_path,
+        company_key=posting.company_key,
+        company_name=posting.company_name,
+        source_type=posting.source_type,
+        postings=[incomplete],
+        listing_fingerprints={identity: "changed-v2"},
+        reused_identities=set(),
+        observed_at="2026-07-31T12:00:00+00:00",
+    )
+
+    cached = fetch_source_posting_cache(
+        database_path,
+        posting.company_key,
+        posting.source_type,
+    )[identity]
+    assert cached.posting.description == posting.description
+    assert cached.listing_fingerprint == "complete-v1"
+    assert cached.detail_verified_at == "2026-07-30T12:00:00+00:00"
 
 
 def test_upsert_job_posting_returns_changed_for_different_content(tmp_path: Path) -> None:

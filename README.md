@@ -147,6 +147,33 @@ audit. Downloaded audit filenames include the scan date and time. New
 installations retain the latest 10 successful report runs by default. Existing
 installations keep their current retention setting until the user changes it.
 
+The Windows setup wizard uses Junior's dark visual design and logo. It labels
+the workflow as an installation when Junior is absent, an update when another
+build is installed, or a repair when the same build is run again. Updates and
+repairs replace application files while preserving user settings and data.
+
+### Version 1.0 accuracy release gates
+
+Junior is considered accuracy-ready for Version 1.0 only when all approved
+regression jobs produce their human-reviewed outcome, there is no confirmed
+false Top Match, no confirmed eligible relevant job is silently omitted, and a
+fresh risk-weighted sample reaches at least 95 percent agreement. The validation
+corpus must have 100 percent correct location and remote-region handling, a
+credible audit reason for every omission, visible identification of every
+plausible incomplete posting, and complete normalized data or an explicit
+source limitation from every collector. These are release gates, not aspirational
+metrics; a failed gate blocks the release until the defect is understood and
+repaired or the expected result is deliberately re-reviewed.
+
+Temporary employer-source failures do not turn incomplete cache entries into
+verified descriptions. Junior retries non-Eightfold sources once; Eightfold
+retains its source-specific retry budget. If refresh still fails, Junior runs
+recent cache entries through the same conservative detail planner, attempts a
+strictly bounded recovery for plausible summaries, safely pre-screens clearly
+unrelated titles, and visibly withholds anything that remains incomplete. One
+source warning reports the complete and withheld counts. Decision accuracy and
+source completeness therefore remain separate release measurements.
+
 ### RC6 collection and evaluation
 
 RC6 Build 1.4 makes collection and job evaluation more complete and more
@@ -202,6 +229,21 @@ trustworthy:
 - Eightfold connection tests exercise the same job-detail request used by a
   full scan. Temporary throttling and server failures are retried, and a
   remaining failure identifies the safe collection stage where it occurred.
+- Fresh Microsoft/Eightfold scans retrieve every plausible job description
+  needed for evaluation without depending on an older cache. The title-level
+  sift still avoids deep downloads for clearly unrelated work and records that
+  decision in the evaluation audit.
+- Existing Mistral AI entries that still use its retired Lever source migrate
+  transactionally to the verified Ashby board. Junior backs up the database,
+  resets the old connection result, and records the source change in its safe
+  employer-catalog audit.
+- Practical eligibility recognizes explicit citizenship and work-authorization
+  requirements, employer wording that offers hybrid or remote arrangements,
+  and multiple salary ranges for different job levels. A confirmed outside-area
+  job is no longer described as though its location were uncertain.
+- If a tracked posting lacks a complete description, Junior says that résumé
+  strengths and qualification gaps could not be verified instead of displaying
+  misleading `None` values.
 
 These rules are occupation-neutral. They use each profile's own target roles,
 résumé evidence, gaps, and exclusions rather than globally hard-coded
@@ -588,7 +630,7 @@ Every unlocked Administration subpage includes an explicit **Back to Administrat
 | Administration | Employer Catalog and collector configuration, runtime paths, database operations, backup and restore, legacy import and migration, raw diagnostics, support bundles, and installation-wide defaults affecting every profile |
 | Undecided / future | The final placement of support links, bounded diagnostic summaries, and recovery guidance will be decided when those workflows become editable |
 
-The Settings page provides normal-user controls for email, scheduling, retention, and optional external company lookup in collapsed expandable sections. The separate top-level Diagnostics page summarizes application configuration, the latest scan, company sources, and email delivery with green, yellow, red, or neutral status cards. Problems are categorized as configuration, collector, network, email, or unexpected application failures and include a plain-language next step. A separate developer-log pane shows one recognized Junior-owned log at a time as timestamped structured text and downloads a complete `.log` copy without simplifying or dropping safe fields. The on-screen view is limited to the newest 200,000 bytes. It is not a general file browser: nested paths, arbitrary logs, editing, deletion, and unrestricted downloads are rejected. Job descriptions, profile and résumé contents, credentials, tokens, environment contents, request headers, and raw exception text are neither stored in these logs nor displayed. Administration includes the global Employer Catalog, where an unlocked administrator can create and edit structured employer-source settings, run bounded local validation, test the real collector connection without importing jobs, and enable, disable, or retire an employer. A connection test records the last attempt, last success, last problem, returned-job count, and a safe troubleshooting category. It never stores raw collector or network error text, and editing source settings clears stale connection health. The employer detail page can assign an available, validated employer to any managed profile or remove one profile's assignment without affecting another profile or deleting collected history. Permanent deletion requires typing `DELETE` and is permitted only when no profile assignment or collected job references the employer; otherwise the administrator must disable or retire it. The Employer Review Queue lets unresolved profile submissions be matched to an existing employer, used to prefill a new employer, assigned after availability checks, or closed as unsupported, rejected, or duplicate. Recommendation Administration provides employer/profile diagnostics, global employer recommendation metadata and eligibility, profile-specific feedback inspection and guarded reset, and explicitly bounded rebuilds for one profile, one employer, or every profile. Recommendation maintenance has a sanitized audit and does not silently override profile feedback. Review decisions have a sanitized audit trail. New and edited employers must validate before they can be globally enabled. Disabling or retiring preserves profile assignments and collected history; an unavailable employer is omitted from scans until it is enabled again. Packaged company defaults are empty for new installations. Existing legacy definitions import only once into the active profile, never replace a user-edited database employer with the same stable ID, and remain separate from later user-owned catalog changes. Other Administration categories remain planned.
+The Settings page provides normal-user controls for email, scheduling, retention, optional external company lookup, and optional LLM advisory assistance in collapsed expandable sections. LLM assistance is disabled by default and cannot be enabled until the user acknowledges that the active résumé, selected job description, extracted requirements, and preliminary fit evidence will be sent to the configured provider. OpenAI is the initial provider. Its API key is stored only in the operating-system credential manager; ChatGPT subscriptions and OpenAI API billing are separate. Deterministic rules remain authoritative for location, remote-region restrictions, clearance, compensation, employment type, and definite omissions. LLM review is limited to a configurable number of complete, plausible, geographically eligible jobs; unchanged input reuses a versioned cached review, failures retain the deterministic result, and evaluation audits record provider, model, prompt version, and fit result without recording private prompts. The separate top-level Diagnostics page summarizes application configuration, the latest scan, company sources, and email delivery with green, yellow, red, or neutral status cards. Problems are categorized as configuration, collector, network, email, or unexpected application failures and include a plain-language next step. A separate developer-log pane shows one recognized Junior-owned log at a time as timestamped structured text and downloads a complete `.log` copy without simplifying or dropping safe fields. The on-screen view is limited to the newest 200,000 bytes. It is not a general file browser: nested paths, arbitrary logs, editing, deletion, and unrestricted downloads are rejected. Job descriptions, profile and résumé contents, credentials, tokens, environment contents, request headers, and raw exception text are neither stored in these logs nor displayed. Administration includes the global Employer Catalog, where an unlocked administrator can create and edit structured employer-source settings, run bounded local validation, test the real collector connection without importing jobs, and enable, disable, or retire an employer. A connection test records the last attempt, last success, last problem, returned-job count, and a safe troubleshooting category. It never stores raw collector or network error text, and editing source settings clears stale connection health. The employer detail page can assign an available, validated employer to any managed profile or remove one profile's assignment without affecting another profile or deleting collected history. Permanent deletion requires typing `DELETE` and is permitted only when no profile assignment or collected job references the employer; otherwise the administrator must disable or retire it. The Employer Review Queue lets unresolved profile submissions be matched to an existing employer, used to prefill a new employer, assigned after availability checks, or closed as unsupported, rejected, or duplicate. Recommendation Administration provides employer/profile diagnostics, global employer recommendation metadata and eligibility, profile-specific feedback inspection and guarded reset, and explicitly bounded rebuilds for one profile, one employer, or every profile. Recommendation maintenance has a sanitized audit and does not silently override profile feedback. Review decisions have a sanitized audit trail. New and edited employers must validate before they can be globally enabled. Disabling or retiring preserves profile assignments and collected history; an unavailable employer is omitted from scans until it is enabled again. Packaged company defaults are empty for new installations. Existing legacy definitions import only once into the active profile, never replace a user-edited database employer with the same stable ID, and remain separate from later user-owned catalog changes. Other Administration categories remain planned.
 
 Developer logs retain allowlisted scan, decision, company-discovery, update,
 and startup events as dated records. New structured operational events identify

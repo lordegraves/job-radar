@@ -287,8 +287,8 @@ def test_admin_connection_test_shows_safe_result(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Connection succeeded and returned 0 jobs." in html
-    assert "Source connection</dt><dd>Connected" in html
+    assert "source may have changed" in html
+    assert "Source connection</dt><dd>Needs attention" in html
 
 
 def test_administrator_assigns_and_removes_one_profile_only(

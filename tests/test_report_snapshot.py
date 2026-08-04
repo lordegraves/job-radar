@@ -141,6 +141,41 @@ def test_build_report_snapshot_partitions_gui_sections() -> None:
     assert snapshot.collector_errors[0].message == "Request timed out."
 
 
+def test_potential_top_match_is_not_duplicated_in_passed_jobs() -> None:
+    potential = make_scored_posting(
+        title="Datacenter Infrastructure Specialist",
+        top_match_eligible=True,
+        review_needed_eligible=True,
+        eligibility=EligibilityResult(
+            status="needs_review",
+            reasons=(
+                EligibilityReason(
+                    code="compensation_unknown",
+                    message="The posting does not provide usable compensation.",
+                ),
+            ),
+        ),
+    )
+    report = ScanReport(
+        companies_enabled=1,
+        jobs_collected=1,
+        jobs_new=0,
+        jobs_seen=1,
+        jobs_changed=0,
+        collector_errors=[],
+        postings=[potential.posting],
+        scored_postings=[potential],
+        omitted_scored_postings=[],
+    )
+
+    snapshot = build_report_snapshot(report)
+
+    assert [job.title for job in snapshot.potential_top_matches] == [
+        "Datacenter Infrastructure Specialist"
+    ]
+    assert snapshot.passed_not_recommended == []
+
+
 def test_write_and_load_report_snapshot_round_trip(tmp_path: Path) -> None:
     snapshot_path = tmp_path / "target-scan.json"
 

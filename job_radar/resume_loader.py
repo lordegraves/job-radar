@@ -6,9 +6,6 @@ from docx import Document
 from pypdf import PdfReader
 
 from job_radar.config import ConfigError
-from job_radar.normalize import clean_text
-
-
 # Keep resume format support centralized here so CLI scans, resume matching,
 # and future GUI uploads all normalize resumes through the same path.
 SUPPORTED_RESUME_EXTENSIONS = {".docx", ".md", ".pdf", ".txt"}
@@ -29,7 +26,10 @@ def load_resume_text(path: str | Path) -> str:
         raise ConfigError(f"Resume file does not exist: {resume_path}")
 
     text = _read_resume_text(resume_path, extension)
-    normalized_text = clean_text(text)
+    # Preserve paragraph and bullet boundaries. Résumé comparison treats one
+    # line as one coherent piece of evidence; flattening the document allowed
+    # unrelated words from distant jobs to prove a qualification together.
+    normalized_text = _clean_display_text(text)
 
     # A PDF can be a valid file but still produce no useful text, for example
     # if it is scanned as images. Treat that the same as an empty resume.

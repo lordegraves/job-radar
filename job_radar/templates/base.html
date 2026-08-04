@@ -99,6 +99,16 @@
             z-index: 10;
         }
 
+        .test-environment-banner {
+            background: #5b3b00;
+            border: 1px solid #d99b22;
+            border-radius: 8px;
+            color: #fff4d6;
+            font-weight: 700;
+            margin-bottom: 18px;
+            padding: 12px 16px;
+        }
+
         .app-header-inner {
             align-items: center;
             display: flex;
@@ -748,6 +758,11 @@
     </header>
 
     <main id="main-content" class="page" tabindex="-1">
+{% if junior_test_environment_label %}
+        <div class="test-environment-banner" role="status">
+            {{ junior_test_environment_label }} — changes here affect only the isolated test copy.
+        </div>
+{% endif %}
 {% if junior_update_result %}
         <div class="page-card flash-message{% if junior_update_result.status == 'error' %} validation-message{% endif %}" role="{% if junior_update_result.status == 'error' %}alert{% else %}status{% endif %}">
             <strong>{{ junior_update_result.message }}</strong>
@@ -813,6 +828,12 @@
             const statusUrl = "{{ url_for('scan_status') }}";
             const reportsUrl = "{{ url_for('review_jobs') }}";
             const scanPageUrl = "{{ url_for('scan') }}";
+            const scanDerivedPage = {{ (
+                request.endpoint in [
+                    'index', 'scan', 'review_jobs', 'report_section_view',
+                    'reports', 'settings_diagnostics', 'settings_scan_diagnostics'
+                ]
+            ) | tojson }};
             const activityToggle = document.getElementById("scan-activity-toggle");
             const activityDot = document.getElementById("scan-activity-dot");
             const activityLabel = document.getElementById("scan-activity-label");
@@ -829,6 +850,16 @@
             let awaitingScanStart =
                 sessionStorage.getItem("juniorAwaitingScanStart") === "true";
             let latestObservedScanId = null;
+            let pageHasUnsavedReviewChanges = false;
+
+            if (window.location.pathname === reportsUrl) {
+                document.addEventListener("input", () => {
+                    pageHasUnsavedReviewChanges = true;
+                });
+                document.addEventListener("change", () => {
+                    pageHasUnsavedReviewChanges = true;
+                });
+            }
 
             function clearScanWatch() {
                 sawRunningScan = false;
@@ -954,6 +985,12 @@
                     }
 
                     clearScanWatch();
+                    if (scanDerivedPage && !pageHasUnsavedReviewChanges) {
+                        // Re-render scan-derived counts, cards, and links from the
+                        // durable result. Preserve a Review Jobs form being edited.
+                        window.setTimeout(() => window.location.reload(), 250);
+                        return;
+                    }
                 } else if (
                     awaitingScanStart
                     && currentScanId !== null

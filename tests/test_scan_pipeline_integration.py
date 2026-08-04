@@ -7,10 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from job_radar.cli import handle_scan
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
-from job_radar.scan_service import _exclude_decided_postings
+from job_radar.scan_service import _exclude_decided_postings, handle_scan
 
 
 def make_fake_posting() -> JobPosting:
@@ -96,6 +95,35 @@ top_matches:
     )
 
     return config_file, settings_file, database_file, report_file, scoring_file
+
+
+def test_selected_scan_cannot_replace_default_full_scan_outputs(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_file, settings_file, _, _, scoring_file = write_scan_test_files(
+        tmp_path
+    )
+    calls: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "job_radar.scan_service._handle_scan_unlocked",
+        lambda **kwargs: calls.append(kwargs),
+    )
+
+    handle_scan(
+        config_path=str(config_file),
+        settings_path=str(settings_file),
+        report_path=str(tmp_path / "target-scan.html"),
+        scoring_path=str(scoring_file),
+        email_preview_path=str(tmp_path / "target-email-preview.txt"),
+        trigger_source="selected_companies",
+        selected_employer_ids=["example_ai"],
+    )
+
+    assert calls[0]["report_path"] == str(tmp_path / "targeted-scan.html")
+    assert calls[0]["email_preview_path"] == str(
+        tmp_path / "targeted-email-preview.txt"
+    )
 
 
 def count_job_postings(database_file: Path) -> int:
@@ -247,6 +275,7 @@ def test_scan_pipeline_tracks_new_then_seen(
     targeted_audit = (
         report_file.parent / "targeted-job-evaluation-audit.txt"
     ).read_text(encoding="utf-8")
+    assert (report_file.parent / "targeted-scan-raw.zip").is_file()
     assert "Scan kind: selected" in targeted_audit
     assert "Scan run ID: 3" in targeted_audit
     assert "Example AI - Senior Infrastructure Engineer" in targeted_audit

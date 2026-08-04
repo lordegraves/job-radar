@@ -158,7 +158,7 @@ def test_save_uploaded_resume_replaces_existing_markdown_resume(tmp_path: Path) 
         "# Updated Resume\n\nLinux infrastructure and HPC operations"
     )
     assert normalized_resume_file.read_text(encoding="utf-8") == (
-        "# Updated Resume Linux infrastructure and HPC operations\n"
+        "# Updated Resume\nLinux infrastructure and HPC operations\n"
     )
 
     profile_view = build_candidate_profile_view(str(settings_file))
@@ -230,7 +230,7 @@ candidate:
         "# Updated Resume\n\nLinux infrastructure"
     )
     assert normalized_resume_file.read_text(encoding="utf-8") == (
-        "# Updated Resume Linux infrastructure\n"
+        "# Updated Resume\nLinux infrastructure\n"
     )
 
 

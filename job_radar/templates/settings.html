@@ -400,6 +400,75 @@
 
     <details
         class="settings-section"
+        id="llm-settings"
+        {% if open_section == "llm" %}open{% endif %}
+    >
+        <summary>
+            <h2>LLM advisory assistance</h2>
+            <p class="settings-summary">{% if llm_form.enabled %}Enabled — OpenAI{% else %}Off by default{% endif %}</p>
+        </summary>
+        <div class="settings-content">
+            <p>
+                Junior's tested rules remain responsible for hard eligibility and
+                obvious omissions. Optional LLM assistance can review ambiguous
+                qualifications, improve gap explanations, and help tailor a résumé
+                for a job. It operates only as an adviser.
+            </p>
+            <section class="settings-panel">
+                <h3>Important data-privacy warning</h3>
+                <p>
+                    When enabled, Junior sends the selected job description, the
+                    complete active résumé, its extracted required qualifications,
+                    and Junior's preliminary evidence and gaps to OpenAI. OpenAI also
+                    receives your IP address and ordinary connection information.
+                </p>
+                <ul class="privacy-list">
+                    <li>Do not enable this feature if you do not want résumé information sent to OpenAI.</li>
+                    <li>API use is billed separately from a ChatGPT subscription.</li>
+                    <li>Junior requests no provider-side response storage, but the provider's current data terms still apply.</li>
+                    <li>Junior never sends application-tracker notes, credentials, or unrelated profile records.</li>
+                </ul>
+            </section>
+            <form method="post" action="{{ url_for('settings_llm_save') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="provider" value="openai">
+                <div class="settings-grid">
+                    <section class="settings-panel">
+                        <h3>Provider</h3>
+                        <p><strong>OpenAI</strong> (initial supported provider)</p>
+                        <label>Model
+                            <input name="model" value="{{ llm_form.model }}" autocomplete="off">
+                        </label>
+                        <label>Maximum advisory reviews per scan
+                            <input name="max_reviews_per_scan" type="number" min="1" max="100" value="{{ llm_form.max_reviews_per_scan }}">
+                        </label>
+                    </section>
+                    <section class="settings-panel">
+                        <h3>Secure API credential</h3>
+                        <p>{% if llm_form.credential_saved %}An API key is stored in the operating-system credential manager.{% else %}No API key is stored.{% endif %}</p>
+                        <label>OpenAI API key
+                            <input name="credential" type="password" value="" autocomplete="new-password" placeholder="Leave blank to keep the saved key">
+                        </label>
+                        <p class="muted">The key is never saved in settings, SQLite, reports, logs, or diagnostics.</p>
+                    </section>
+                </div>
+                <label>
+                    <input name="privacy_acknowledged" type="checkbox" value="yes" {% if llm_form.privacy_acknowledged %}checked{% endif %}>
+                    I understand that the listed résumé and job data will be sent to OpenAI when this feature is used.
+                </label>
+                <label>
+                    <input name="enabled" type="checkbox" value="yes" {% if llm_form.enabled %}checked{% endif %}>
+                    Enable optional LLM advisory assistance
+                </label>
+                <div class="inline-actions">
+                    <button type="submit">Save LLM advisory settings</button>
+                </div>
+            </form>
+        </div>
+    </details>
+
+    <details
+        class="settings-section"
         id="company-discovery-settings"
         {% if open_section == "company-discovery" %}open{% endif %}
     >

@@ -660,7 +660,11 @@
         {% if job.resume_gaps %}
         <section class="job-section">
             <h2>Possible gaps</h2>
-            <p>{{ job.resume_gaps }}</p>
+            <ul>
+                {% for gap in job.resume_gaps.splitlines() %}
+                <li>{{ gap }}</li>
+                {% endfor %}
+            </ul>
         </section>
         {% endif %}
 
@@ -711,6 +715,13 @@
             <div class="job-signal">
                 <span>History risk</span>
                 <strong>{{ job.history_risk }}</strong>
+            </div>
+            {% endif %}
+
+            {% if job.llm_advisory_label %}
+            <div class="job-signal">
+                <span>Fit review</span>
+                <strong>{{ job.llm_advisory_label }}</strong>
             </div>
             {% endif %}
             </div>

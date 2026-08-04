@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import secrets
 import sys
 import traceback
@@ -107,6 +108,9 @@ def create_app(
             "junior_release_label": RELEASE_LABEL,
             # Keep the result visible until the user explicitly dismisses it.
             "junior_update_result": app.config.get("JOB_RADAR_UPDATE_RESULT"),
+            "junior_test_environment_label": os.environ.get(
+                "JUNIOR_TEST_ENVIRONMENT_LABEL", ""
+            ).strip(),
         }
 
     initialize_database(runtime_paths.database_path)

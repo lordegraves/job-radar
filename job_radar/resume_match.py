@@ -16,6 +16,7 @@ class ResumeMatchResult:
     gaps: list[str]
     critical_gaps: list[str] | None = None
     requirements_reviewed: list[str] | None = None
+    supported_requirements: list[str] | None = None
 
     @property
     def has_critical_gap(self) -> bool:
@@ -32,7 +33,9 @@ def match_resume_to_posting(
     if candidate_profile is None or not resume_text:
         return ResumeMatchResult(label="Unknown", evidence=[], gaps=[])
 
-    normalized_resume_text = clean_text(resume_text).lower()
+    # Preserve résumé line boundaries so one qualification cannot be "proven"
+    # by combining unrelated words from separate bullets or positions.
+    normalized_resume_text = unescape(resume_text).lower()
     description = clean_text(posting.description or "")
     if not _description_is_substantive(description):
         incomplete_gap = (
@@ -67,6 +70,22 @@ def match_resume_to_posting(
         posting_text=role_relevant_text,
     )
     requirements = _extract_required_clauses(posting.description)
+    supported_requirements = _find_supported_required_qualifications(
+        requirements=requirements,
+        resume_text=normalized_resume_text,
+    )
+    evidence = _dedupe_preserving_order(
+        evidence
+        + [
+            summary
+            for requirement in supported_requirements
+            if (summary := _summarize_supported_requirement(requirement))
+        ]
+    )
+    qualification_gaps = _find_unsupported_required_qualifications(
+        requirements=requirements,
+        resume_text=normalized_resume_text,
+    )
     critical_gaps = _find_critical_gaps(
         posting=posting,
         candidate_profile=candidate_profile,
@@ -75,7 +94,35 @@ def match_resume_to_posting(
         configured_gaps=configured_gaps,
         evidence=evidence,
     )
-    gaps = _dedupe_preserving_order(configured_gaps + critical_gaps)
+    central_platform_gaps = [
+        gap
+        for gap in qualification_gaps
+        if gap.lower().startswith("no demonstrated ownership of a production ")
+    ]
+    if central_platform_gaps:
+        # Owning the production platform is the role's central required work,
+        # not an adjacent skill that can safely remain a review-only concern.
+        critical_gaps = _dedupe_preserving_order(
+            critical_gaps + central_platform_gaps
+        )
+    # Several independent mandatory capability gaps are collectively decisive
+    # even when no single one names the role's central discipline. Reuse the
+    # concise visible gaps so reports do not gain a duplicate explanation.
+    decisive_required_gaps = (
+        len(qualification_gaps) >= 3
+        or (
+            len(requirements) >= 2
+            and len(qualification_gaps) >= 2
+            and len(qualification_gaps) * 2 >= len(requirements)
+        )
+    )
+    if decisive_required_gaps:
+        critical_gaps = _dedupe_preserving_order(
+            critical_gaps + qualification_gaps
+        )
+    gaps = _dedupe_preserving_order(
+        configured_gaps + qualification_gaps + critical_gaps
+    )
     role_alignment_confirmed = _role_alignment_is_confirmed(
         title=clean_text(posting.title).lower(),
         candidate_profile=candidate_profile,
@@ -87,11 +134,14 @@ def match_resume_to_posting(
             gaps=gaps,
             critical_gaps=critical_gaps,
             role_alignment_confirmed=role_alignment_confirmed,
+            supported_requirement_count=len(supported_requirements),
+            requirement_count=len(requirements),
         ),
         evidence=evidence,
         gaps=gaps,
         critical_gaps=critical_gaps,
         requirements_reviewed=requirements,
+        supported_requirements=supported_requirements,
     )
 
 
@@ -152,12 +202,33 @@ def _classify_resume_match(
     gaps: list[str],
     critical_gaps: list[str] | None = None,
     role_alignment_confirmed: bool = True,
+    supported_requirement_count: int = 0,
+    requirement_count: int = 0,
 ) -> str:
     if critical_gaps:
         return "Poor Fit"
 
     evidence_count = len(evidence)
     gap_count = len(gaps)
+    majority_of_requirements_supported = bool(
+        requirement_count >= 2
+        and supported_requirement_count >= 2
+        and supported_requirement_count * 2 >= requirement_count
+    )
+
+    if requirement_count >= 2 and supported_requirement_count < 2:
+        # A broad résumé can contribute several adjacent strengths, but one
+        # supported requirement is not enough evidence for a Strong verdict
+        # when the employer supplied a real multi-item requirement section.
+        return "Medium" if evidence_count >= 1 else "Weak"
+
+    if (
+        role_alignment_confirmed
+        and majority_of_requirements_supported
+        and evidence_count >= 1
+        and gap_count <= 1
+    ):
+        return "Strong"
 
     if role_alignment_confirmed and evidence_count >= 4 and gap_count == 0:
         return "Very Strong"
@@ -172,21 +243,55 @@ def _classify_resume_match(
 
 
 _REQUIREMENT_HEADINGS = (
+    "required",
+    "requirements",
     "required qualifications",
+    "other requirements",
+    "required/minimum qualifications",
+    "required minimum qualifications",
+    "experience required",
+    "education and experience required",
     "minimum qualifications",
     "must have",
     "what you need",
     "what we need",
+    "what we need to see",
     "we expect you to have",
     "you have",
     "you may be a good fit if",
+    "you may be a good fit if you",
+    "what you bring",
+    "what you'll bring",
+    "what you will bring",
+    "your background",
+    "candidate profile",
+    "technical skills",
+    "knowledge and skills",
     "you'll thrive in this role if",
     "you will thrive in this role if",
     "who you are",
     "what we're looking for",
+    "what we’re looking for",
     "what we are looking for",
+    "about you",
+    "about you (skills / qualifications)",
     "the ideal candidate",
     "qualifications",
+)
+
+_PREFERRED_HEADINGS = (
+    "preferred",
+    "preferred qualifications",
+    "desired qualifications",
+    "nice to have",
+    "nice to haves",
+    "bonus",
+    "bonus points",
+    "added bonus",
+    "strong candidates may also",
+    "it would be an added bonus if you have",
+    "ways to stand out from the crowd",
+    "additional qualifications",
 )
 
 
@@ -195,6 +300,7 @@ def _description_is_substantive(description: str) -> bool:
 
     return bool(re.search(r"[a-zA-Z0-9]", description))
 _STOP_HEADINGS = (
+    "preferred",
     "preferred qualifications",
     "desired qualifications",
     "nice to have",
@@ -204,6 +310,26 @@ _STOP_HEADINGS = (
     "pay transparency",
     "about us",
     "equal opportunity",
+    "working conditions",
+)
+_POST_QUALIFICATION_HEADINGS = (
+    "benefits",
+    "candidate privacy notice",
+    "compensation",
+    "equal opportunity employer",
+    "equal opportunities statement",
+    "friends of voleon",
+    "logistics",
+    "pay transparency",
+    "salary range",
+    "what success looks like",
+    "what you'll receive",
+    "what youâ€™ll receive",
+    "why join us",
+    "key employee benefits",
+    "what we can offer you",
+    "what we offer",
+    "our offer",
 )
 _ROLE_SECTION_HEADINGS = (
     "about the role",
@@ -234,6 +360,8 @@ _EXPLICIT_REQUIREMENT_MARKERS = (
     "expertise in",
 )
 _TECHNOLOGY_REQUIREMENTS = {
+    "Python": ("python",),
+    "Bash": ("bash", "shell scripting"),
     "Go": ("go", "golang"),
     "Rust": ("rust",),
     "Java": ("java",),
@@ -249,6 +377,7 @@ _TECHNOLOGY_REQUIREMENTS = {
     "Azure": ("azure",),
     "GCP": ("gcp", "google cloud"),
     "CUDA": ("cuda",),
+    "InfiniBand": ("infiniband", "rdma"),
     "machine learning": ("machine learning", "ml engineering"),
     "RTL verification": ("rtl", "systemverilog", "uvm"),
 }
@@ -256,10 +385,13 @@ _DISCIPLINE_TERMS = {
     "civil, structural, or architectural engineering": (
         "civil engineer",
         "civil engineering",
+        "civil site development",
         "structural engineer",
         "structural engineering",
+        "structural design",
         "architectural engineer",
         "architectural engineering",
+        "architectural programming",
         "building codes",
         "construction oversight",
         "facility design",
@@ -298,6 +430,7 @@ _DISCIPLINE_TERMS = {
     "software engineering": (
         "software engineer",
         "software developer",
+        "software development",
         "kernel developer",
         "kernel-level software development",
         "linux kernel components",
@@ -305,6 +438,14 @@ _DISCIPLINE_TERMS = {
         "full stack",
         "full-stack",
         "application developer",
+        "technical engineering experience with coding",
+        "professional software engineering",
+    ),
+    "data engineering": (
+        "data engineer",
+        "data engineering",
+        "distributed data processing",
+        "etl orchestration",
     ),
     "machine learning engineering": (
         "machine learning engineer",
@@ -430,6 +571,7 @@ _AVOID_ROLE_FAMILIES = {
     ),
     "sales engineering": (
         "sales engineer",
+        "solution engineer",
         "solutions engineer",
         "sales engineering",
     ),
@@ -446,6 +588,17 @@ _AVOID_ROLE_FAMILIES = {
         "full stack",
         "full-stack",
     ),
+    "software engineering": (
+        "software engineer",
+        "software developer",
+        "kernel developer",
+        "linux kernel developer",
+    ),
+    "security engineering": (
+        "security engineer",
+        "security engineering",
+        "cybersecurity engineer",
+    ),
 }
 
 
@@ -456,22 +609,30 @@ def _extract_required_clauses(description: str | None) -> list[str]:
         return []
 
     lines = _description_lines(description)
+    has_requirement_heading = any(
+        _matches_section_heading(line.lower().rstrip(":"), _REQUIREMENT_HEADINGS)
+        for line in lines
+    )
     required_section = False
+    excluded_section = False
     clauses: list[str] = []
 
     for line in lines:
         lowered = line.lower().rstrip(":")
-        if any(
-            lowered == heading or lowered.startswith(f"{heading}:")
-            for heading in _STOP_HEADINGS
+        if _matches_section_heading(lowered, _STOP_HEADINGS) or (
+            _matches_section_heading(lowered, _PREFERRED_HEADINGS)
         ):
             required_section = False
+            excluded_section = True
             continue
-        if any(
-            lowered == heading or lowered.startswith(f"{heading}:")
-            for heading in _REQUIREMENT_HEADINGS
-        ):
+        if _matches_section_heading(lowered, _REQUIREMENT_HEADINGS):
             required_section = True
+            excluded_section = False
+            continue
+
+        if _is_post_qualification_heading(lowered):
+            required_section = False
+            excluded_section = True
             continue
 
         for clause in re.split(r"[•●▪;]|(?<=[.!?])\s+", line):
@@ -479,12 +640,1381 @@ def _extract_required_clauses(description: str | None) -> list[str]:
             lowered_clause = cleaned_clause.lower()
             if not cleaned_clause:
                 continue
-            if required_section or any(
-                marker in lowered_clause for marker in _EXPLICIT_REQUIREMENT_MARKERS
+            if _looks_like_preferred_clause(cleaned_clause):
+                continue
+            if _looks_like_non_qualification_clause(cleaned_clause):
+                continue
+            should_include = required_section or (
+                not has_requirement_heading
+                and not excluded_section
+                and _looks_like_explicit_requirement_clause(lowered_clause)
+            )
+            if should_include:
+                clauses.extend(_expand_compound_requirement(cleaned_clause))
+
+    return _dedupe_preserving_order(clauses)
+
+
+def _expand_compound_requirement(requirement: str) -> list[str]:
+    """Separate several mandatory experience durations joined by ATS text."""
+
+    parts = re.split(r"\s+AND\s+", requirement)
+    experience_parts = [
+        re.sub(r"\s+OR\s+equivalent experience\??$", "", part).strip(" ,.;?")
+        for part in parts
+        if re.search(r"\b\d+\+?\s+years?\b", part, re.IGNORECASE)
+    ]
+    return experience_parts if len(experience_parts) >= 2 else [requirement]
+
+
+def _extract_preferred_clauses(description: str | None) -> list[str]:
+    """Keep preferred qualifications separate from mandatory requirements."""
+
+    if not description:
+        return []
+
+    lines = _description_lines(description)
+    preferred_section = False
+    clauses: list[str] = []
+    for line in lines:
+        lowered = line.lower().rstrip(":")
+        if _matches_section_heading(lowered, _PREFERRED_HEADINGS):
+            preferred_section = True
+            continue
+        if _matches_section_heading(
+            lowered, _REQUIREMENT_HEADINGS
+        ) or _is_post_qualification_heading(lowered):
+            preferred_section = False
+            continue
+        if not preferred_section:
+            continue
+
+        for clause in re.split(r"[â€¢â—â–ª;]|(?<=[.!?])\s+", line):
+            cleaned_clause = clean_text(clause).strip("-* ")
+            if cleaned_clause and not _looks_like_non_qualification_clause(
+                cleaned_clause
             ):
                 clauses.append(cleaned_clause)
 
     return _dedupe_preserving_order(clauses)
+
+
+def _is_post_qualification_heading(value: str) -> bool:
+    """Stop qualification parsing before outcomes, pay, benefits, or legal text."""
+
+    lowered = value.lower().rstrip(":")
+    if any(
+        lowered == heading or lowered.startswith(f"{heading}:")
+        for heading in _POST_QUALIFICATION_HEADINGS
+    ):
+        return True
+    return (
+        (lowered.startswith("what you") and "receive" in lowered)
+        or "referral program" in lowered
+        or "equal opportunity" in lowered
+        or "privacy notice" in lowered
+        or lowered.startswith("salary")
+        or lowered.startswith("compensation")
+        or lowered in {"benefits and perks", "perks and benefits", "our benefits"}
+    )
+
+
+def _matches_section_heading(value: str, headings: tuple[str, ...]) -> bool:
+    """Recognize a section's function despite harmless wording differences."""
+
+    lowered = clean_text(value).lower().rstrip(":")
+    if lowered in headings:
+        return True
+    # Candidate-profile headings often finish an employer's stock phrase with
+    # a pronoun, for example "You may be a good fit if you". Only extend short
+    # heading-like lines; never turn a full requirement bullet into a heading.
+    return bool(
+        len(lowered.split()) <= 10
+        and any(
+            lowered.startswith(f"{heading} ")
+            for heading in headings
+            if len(heading.split()) >= 4
+        )
+    )
+
+
+def _looks_like_non_qualification_clause(value: str) -> bool:
+    """Exclude pay, benefits, legal, referral, and application boilerplate."""
+
+    lowered = value.lower()
+    return (
+        "$" in value
+        or "http://" in lowered
+        or "https://" in lowered
+        or any(
+            marker in lowered
+            for marker in (
+                "equal opportunity",
+                "without regard to race",
+                "candidate privacy",
+                "stock options",
+                "flexible pto",
+                "medical, dental",
+                "home office stipend",
+                "base pay for this position",
+                "salary range",
+                "referral bonus",
+                "additional duties",
+                "duties, tasks, and responsibilities as assigned",
+                "candidate privacy",
+                "employee privacy",
+                "background check upon hire",
+                "background check",
+                "coding interviews",
+                "401(k)",
+                "parental leave",
+                "what we can offer you",
+                "key employee benefits",
+                "participate in on-call",
+                "participate in on call",
+                "on-call as required",
+                "on call as required",
+                "collaborative, supportive, and innovative environment",
+                "openai is an ai research",
+                "we push the boundaries of the capabilities of ai systems",
+                "interest in being engaged",
+                "proof of employment eligibility",
+                "employment eligibility as a condition of hire",
+                "applications for this job will be accepted",
+                "accommodations during the application process",
+                "not eligible for visa sponsorship",
+                "authorization to work in the united states",
+                "for the role",
+                "security screening requirements",
+                "cloud background check",
+                "these requirements include",
+                "required for this role",
+                "bias toward simplicity",
+                "over-engineered observability stacks",
+                "desire to be involved",
+                "interest in being involved",
+            )
+        )
+    )
+
+
+def _looks_like_preferred_clause(value: str) -> bool:
+    """Keep optional language out of mandatory résumé gaps."""
+
+    lowered = value.lower()
+    return any(
+        marker in lowered
+        for marker in (
+            "nice to have",
+            "nice-to-have",
+            "is a plus",
+            "a strong plus",
+            "(a plus)",
+            "preferred but not required",
+            "bonus if",
+            "also welcome",
+            "highly preferred",
+        )
+    )
+
+
+def _looks_like_explicit_requirement_clause(value: str) -> bool:
+    """Recognize must-have wording without matching incidental 'required' text."""
+
+    lowered = clean_text(value).lower()
+    if any(
+        marker in lowered
+        for marker in _EXPLICIT_REQUIREMENT_MARKERS
+        if marker != "required"
+    ):
+        return True
+    return bool(
+        re.search(
+            r"^(?:required\b|requirements?\s*:)|"
+            r"\b(?:is|are)\s+required\b|"
+            r"\brequired\s+(?:experience|qualification|qualifications|skill|skills)\b",
+            lowered,
+        )
+    )
+
+
+_DEGREE_DISCIPLINES = {
+    "mechanical engineering": ("mechanical engineering",),
+    "electrical engineering": ("electrical engineering",),
+    "architecture": ("architecture", "architectural"),
+    "civil engineering": ("civil engineering",),
+    "computer science": ("computer science",),
+}
+_QUALIFICATION_EVIDENCE_STOP_WORDS = {
+    "a",
+    "an",
+    "and",
+    "ability",
+    "applicable",
+    "demonstrated",
+    "experience",
+    "familiarity",
+    "for",
+    "in",
+    "including",
+    "knowledge",
+    "of",
+    "or",
+    "preferred",
+    "proficiency",
+    "required",
+    "strong",
+    "the",
+    "to",
+    "with",
+}
+
+
+def _find_unsupported_required_qualifications(
+    *,
+    requirements: list[str],
+    resume_text: str,
+) -> list[str]:
+    """Summarize the largest unsupported capabilities in mandatory requirements."""
+
+    supported_text = resume_text.lower()
+    resume_segment_tokens = [
+        set(_qualification_evidence_tokens(segment))
+        for segment in _resume_evidence_segments(supported_text)
+    ]
+    gaps: list[str] = []
+    for concept in _REQUIRED_GAP_CONCEPTS:
+        matching_requirements = [
+            requirement
+            for markers in concept["requirement_patterns"]
+            for requirement in requirements
+            if all(
+                _contains_phrase(requirement.lower(), marker)
+                for marker in markers
+            )
+        ]
+        if not matching_requirements:
+            continue
+        if concept["gap"].startswith("No bachelor's degree") and all(
+            "equivalent experience" in requirement.lower()
+            for requirement in matching_requirements
+        ):
+            # Education is not a gap when the employer explicitly accepts the
+            # candidate's experience as an alternative qualification route.
+            continue
+        resume_has_evidence = any(
+            _contains_phrase(supported_text, marker)
+            for marker in concept["resume_evidence"]
+        )
+        if not resume_has_evidence:
+            gaps.append(concept["gap"])
+
+    # Requirements represented by a larger capability gap are deliberately not
+    # repeated sentence-by-sentence. For uncategorized requirements, preserve a
+    # bounded concise summary only when the resume lacks meaningful evidence.
+    for requirement in requirements:
+        if len(gaps) >= 4:
+            break
+        if _requirement_is_covered_by_gap_concept(requirement):
+            continue
+        if _qualification_has_resume_evidence(
+            requirement,
+            resume_text=resume_text,
+            supported_text=supported_text,
+            resume_segment_tokens=resume_segment_tokens,
+        ):
+            continue
+        summary = _summarize_uncategorized_requirement(requirement)
+        if summary:
+            gaps.append(summary)
+
+    return _dedupe_preserving_order(gaps)
+
+
+def _find_supported_required_qualifications(
+    *,
+    requirements: list[str],
+    resume_text: str,
+) -> list[str]:
+    """Return mandatory qualifications supported by coherent résumé evidence."""
+
+    supported_text = resume_text.lower()
+    resume_segment_tokens = [
+        set(_qualification_evidence_tokens(segment))
+        for segment in _resume_evidence_segments(supported_text)
+    ]
+    return [
+        requirement
+        for requirement in requirements
+        if _qualification_has_resume_evidence(
+            requirement,
+            resume_text=resume_text,
+            supported_text=supported_text,
+            resume_segment_tokens=resume_segment_tokens,
+        )
+    ]
+
+
+def _summarize_supported_requirement(requirement: str) -> str | None:
+    """Turn supported requirements into short, résumé-grounded strengths."""
+
+    lowered = requirement.lower()
+    if "python" in lowered:
+        return "Python scripting and automation"
+    if re.search(r"\blinux\b", lowered):
+        return "Linux infrastructure"
+    if "communication" in lowered:
+        return "technical communication"
+    if (
+        "network design" in lowered
+        and "development" in lowered
+        and "automation" in lowered
+    ):
+        return "network infrastructure and automation"
+    if any(marker in lowered for marker in ("problem-solving", "problem solving")):
+        return "production troubleshooting"
+    if "relevant industry experience" in lowered:
+        return "relevant industry experience"
+    return None
+
+
+_REQUIRED_GAP_CONCEPTS = (
+    {
+        "gap": (
+            "No demonstrated Linux package-development and "
+            "repository-management experience"
+        ),
+        "requirement_patterns": (
+            ("packaging standards", "repository management"),
+            ("package repositories", "software distribution infrastructure"),
+        ),
+        "resume_evidence": (
+            "built deb packages",
+            "built rpm packages",
+            "linux package development",
+            "package repository management",
+            "managed package repositories",
+            "software distribution infrastructure",
+        ),
+    },
+    {
+        "gap": (
+            "No clear r\u00e9sum\u00e9 evidence of at least two years in a formal "
+            "customer-facing deployment or technical-delivery role"
+        ),
+        "requirement_patterns": (
+            ("customer-facing", "deployment"),
+            ("customer facing", "deployment"),
+            ("customer cto",),
+            ("design partner engagement",),
+        ),
+        "resume_evidence": (
+            "forward deployed engineer",
+            "customer-facing deployment",
+            "customer facing deployment",
+            "deployment engineer",
+            "technical delivery lead",
+            "embedded with strategic customers",
+        ),
+    },
+    {
+        "gap": (
+            "No demonstrated advanced network failure-model expertise across "
+            "control and data planes, failure domains, and latency or loss"
+        ),
+        "requirement_patterns": (
+            ("networking basics", "control plane", "data plane", "failure domains"),
+            ("networks fail", "control plane", "data plane"),
+        ),
+        "resume_evidence": (
+            "control plane",
+            "data plane",
+            "failure domain",
+            "network failure model",
+            "network fault model",
+        ),
+    },
+    {
+        "gap": "No demonstrated distributed-tracing or application-performance-monitoring experience",
+        "requirement_patterns": (
+            ("distributed tracing", "application performance monitoring"),
+            ("distributed tracing", "apm"),
+        ),
+        "resume_evidence": (
+            "distributed tracing",
+            "application performance monitoring",
+            "apm",
+        ),
+    },
+    {
+        "gap": "No demonstrated BGP, OSPF, EVPN, VXLAN, MLAG, or LACP network-design experience",
+        "requirement_patterns": (
+            ("high-speed ethernet", "bgp", "ospf"),
+            ("ethernet networks", "evpn", "vxlan"),
+        ),
+        "resume_evidence": ("bgp", "ospf", "evpn", "vxlan", "mlag", "lacp"),
+    },
+    {
+        "gap": "No demonstrated postmortem leadership experience",
+        "requirement_patterns": (
+            ("incident response", "postmortem"),
+            ("incident management", "postmortem"),
+        ),
+        "resume_evidence": (
+            "led postmortem",
+            "postmortem leadership",
+            "incident review leadership",
+        ),
+    },
+    {
+        "gap": "No large-scale endpoint fleet or modern MDM management experience",
+        "requirement_patterns": (
+            ("endpoint fleets", "mdm"),
+            ("device fleet", "mdm"),
+            ("modern mdm",),
+        ),
+        "resume_evidence": (
+            "endpoint fleet",
+            "device fleet",
+            "mobile device management",
+            "mdm platform",
+            "jamf",
+            "intune",
+            "workspace one",
+        ),
+    },
+    {
+        "gap": "No endpoint configuration-as-code or device GitOps experience",
+        "requirement_patterns": (
+            ("endpoint configuration", "code"),
+            ("device configuration", "gitops"),
+            ("scripted deployments", "canary"),
+        ),
+        "resume_evidence": (
+            "endpoint configuration as code",
+            "device configuration as code",
+            "endpoint gitops",
+            "mdm gitops",
+        ),
+    },
+    {
+        "gap": "No demonstrated macOS endpoint-platform depth",
+        "requirement_patterns": (
+            ("macos internals",),
+            ("macos", "windows internals"),
+            ("launchd", "configuration profiles"),
+        ),
+        "resume_evidence": (
+            "macos internals",
+            "macos administration",
+            "launchd",
+            "configuration profiles",
+            "tcc",
+            "system extensions",
+        ),
+    },
+    {
+        "gap": "No fleet-scale zero-touch provisioning, patching, or software-distribution automation",
+        "requirement_patterns": (
+            ("zero touch", "patch"),
+            ("device lifecycle automation",),
+            ("patching", "software distribution"),
+        ),
+        "resume_evidence": (
+            "zero touch enrollment",
+            "zero touch provisioning",
+            "endpoint patch automation",
+            "software distribution automation",
+            "device lifecycle automation",
+        ),
+    },
+    {
+        "gap": "No Civil, Structural, and Architectural (CSA) experience",
+        "requirement_patterns": (
+            ("civil", "structural", "architectural"),
+            ("csa", "design"),
+        ),
+        "resume_evidence": (
+            "civil engineering",
+            "structural engineering",
+            "architectural design",
+            "csa design",
+        ),
+    },
+    {
+        "gap": "No data center CSA design experience",
+        "requirement_patterns": (
+            ("data center", "csa design"),
+            ("hyperscale", "structural"),
+            ("mission-critical", "architectural"),
+        ),
+        "resume_evidence": (
+            "data center csa design",
+            "datacenter csa design",
+            "data center architectural design",
+            "mission-critical facility design",
+        ),
+    },
+    {
+        "gap": "No experience as a lead technical authority",
+        "requirement_patterns": (
+            ("lead technical authority",),
+            ("owner's engineer",),
+            ("owners engineer",),
+        ),
+        "resume_evidence": (
+            "technical authority",
+            "owner's engineer",
+            "owners engineer",
+            "approved design deliverables",
+        ),
+    },
+    {
+        "gap": (
+            "No proficiency with building-code standards such as IBC, IFC, "
+            "ASCE 7, ACI 318, AISC, or FM Global"
+        ),
+        "requirement_patterns": (
+            ("building codes",),
+            ("building codes", "safety standards"),
+            ("ibc", "ifc"),
+        ),
+        "resume_evidence": (
+            "building codes",
+            "ibc",
+            "ifc",
+            "asce 7",
+            "aci 318",
+            "aisc",
+            "fm global",
+        ),
+    },
+    {
+        "gap": "No bachelor's degree in mechanical engineering, electrical engineering, or architecture",
+        "requirement_patterns": (
+            ("bs in", "mechanical engineering"),
+            ("bachelor", "mechanical engineering"),
+        ),
+        "resume_evidence": (
+            "bs in mechanical engineering",
+            "b.s. mechanical engineering",
+            "bachelor of mechanical engineering",
+            "bs in electrical engineering",
+            "b.s. electrical engineering",
+            "bachelor of electrical engineering",
+            "bachelor of architecture",
+        ),
+    },
+    {
+        "gap": "No experience managing design changes, RFIs, and construction documentation",
+        "requirement_patterns": (("design change", "construction documentation"),),
+        "resume_evidence": ("design change", "rfi", "construction documentation"),
+    },
+    {
+        "gap": "No experience managing design execution with external design or construction firms",
+        "requirement_patterns": (
+            ("design execution", "external"),
+            ("design execution", "construction firms"),
+        ),
+        "resume_evidence": ("design management", "owner's engineering", "construction program"),
+    },
+    {
+        "gap": "No working knowledge of mechanical, electrical, and cooling systems",
+        "requirement_patterns": (("mechanical", "electrical", "cooling"),),
+        "resume_evidence": ("mechanical systems", "electrical systems", "cooling systems"),
+    },
+    {
+        "gap": "No Kubernetes experience",
+        "requirement_patterns": (("kubernetes",), ("k8s",)),
+        "resume_evidence": ("kubernetes", "k8s"),
+    },
+    {
+        "gap": "No demonstrated ownership of a production Kubernetes platform",
+        "requirement_patterns": (
+            ("kubernetes-based platforms", "production"),
+            ("kubernetes platform", "production"),
+        ),
+        "resume_evidence": (
+            "production kubernetes platform",
+            "operated kubernetes in production",
+            "production k8s platform",
+            "kubernetes platform ownership",
+        ),
+    },
+    {
+        "gap": "No demonstrated InfiniBand network design or performance-tuning experience",
+        "requirement_patterns": (
+            ("infiniband", "configuration", "performance tuning"),
+            ("infiniband networks", "designing"),
+        ),
+        "resume_evidence": (
+            "designed infiniband",
+            "infiniband network design",
+            "infiniband performance tuning",
+            "configured infiniband fabrics",
+        ),
+    },
+    {
+        "gap": "No demonstrated WAN design experience with MPLS, IPsec, GRE, or SD-WAN",
+        "requirement_patterns": (
+            ("wan technologies", "mpls", "ipsec"),
+            ("wan infrastructure", "mpls"),
+        ),
+        "resume_evidence": (
+            "mpls",
+            "ipsec",
+            "gre tunnel",
+            "sd-wan",
+            "wan design",
+        ),
+    },
+    {
+        "gap": "No experience defining service KPIs or error budgets",
+        "requirement_patterns": (("kpi",), ("error budget",)),
+        "resume_evidence": ("kpi", "key performance indicator", "error budget"),
+    },
+)
+
+
+def _requirement_is_covered_by_gap_concept(requirement: str) -> bool:
+    lowered = requirement.lower()
+    return any(
+        all(_contains_phrase(lowered, marker) for marker in markers)
+        for concept in _REQUIRED_GAP_CONCEPTS
+        for markers in concept["requirement_patterns"]
+    )
+
+
+def _summarize_uncategorized_requirement(requirement: str) -> str | None:
+    """Avoid presenting employer prose as if it were Junior's analysis."""
+
+    lowered = requirement.lower()
+    # These broad professional behaviors are reasonably evidenced by ownership,
+    # design, documentation, escalation, and cross-team work elsewhere in a resume.
+    if any(
+        marker in lowered
+        for marker in (
+            "communication with both technical and non-technical",
+            "technical and non-technical audiences",
+            "defend design decisions with incomplete information",
+            "growth mindset",
+            "passion for learning",
+            "attention to detail",
+            "high agency",
+            "operational flexibility",
+            "strategic problem-solver",
+            "strategic problem solver",
+            "security & reliability instincts",
+            "security and reliability instincts",
+            "remote-first operating excellence",
+            "excitement about collaborating",
+            "growth mindset",
+            "comfortable owning complex systems end to end",
+        )
+    ):
+        return None
+
+    years_match = re.search(r"\b(\d+\+?)\s+years?\b", lowered)
+    if years_match and any(
+        marker in lowered
+        for marker in ("software development", "software engineering", "coding")
+    ):
+        return (
+            "No clear résumé evidence of "
+            f"{years_match.group(1)} years of professional software development"
+        )
+    if "technical pre-sales" in lowered or "technical presales" in lowered:
+        return "No clear résumé evidence of technical pre-sales experience"
+    if "supply chain" in lowered and any(
+        marker in lowered for marker in ("operational function", "operations")
+    ):
+        return (
+            "No clear résumé evidence of supply-chain or logistics "
+            "operations experience"
+        )
+    # Infrastructure that supports a data pipeline is not itself data
+    # engineering. Treating the pipeline's workload as the candidate's required
+    # discipline produced a false gap for Linux infrastructure positions.
+    if (
+        "infrastructure" in lowered
+        and any(marker in lowered for marker in ("data pipeline", "analysis tool"))
+    ):
+        return None
+    if "gpu & ai stack" in lowered or "gpu and ai stack" in lowered:
+        return "No demonstrated GPU software-stack experience"
+    if "centralized logging" in lowered and any(
+        marker in lowered
+        for marker in ("elastic stack", "splunk", "cloudwatch", "elk")
+    ):
+        return "No demonstrated centralized-logging platform experience"
+    if any(
+        marker in lowered
+        for marker in ("data engineering", "data pipelines", "data platform")
+    ):
+        return "No clear résumé evidence of data-engineering experience"
+
+    # Many employers lead a requirement with a concise capability label, then
+    # explain it after a colon. The label is the useful gap summary; repeating
+    # the full employer sentence made the GUI noisy and misleading.
+    label, separator, _detail = requirement.partition(":")
+    cleaned_label = clean_text(label).strip("-* ")
+    if (
+        separator
+        and 2 <= len(cleaned_label.split()) <= 10
+        and len(cleaned_label) <= 80
+        and not _looks_like_non_qualification_clause(cleaned_label)
+    ):
+        return f"No clear résumé evidence of {cleaned_label}"
+
+    # For ordinary bullets, separate the core qualification from an employer's
+    # explanatory aside. Do not truncate at an arbitrary word count: that hid
+    # the meaning of otherwise useful gaps in the GUI.
+    cleaned = clean_text(requirement).strip("-* ")
+    cleaned = re.sub(
+        r"^(?:you (?:have|bring)|have|must have|demonstrated|proven|strong)\s+",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    for separator in (" — ", " – ", ";"):
+        core, found, _detail = cleaned.partition(separator)
+        if found and len(core.split()) >= 3:
+            cleaned = core.strip(" ,;:.-")
+            break
+
+    if len(cleaned.split()) < 3:
+        return None
+    return f"No clear résumé evidence of {cleaned[0].lower() + cleaned[1:]}"
+
+
+def _find_unsupported_preferred_qualifications(
+    *,
+    requirements: list[str],
+    resume_text: str,
+) -> list[str]:
+    """Report every unsupported optional qualification separately."""
+
+    supported_text = resume_text.lower()
+    return [
+        f"No resume evidence found for preferred qualification: {requirement}"
+        for requirement in requirements
+        if not _qualification_has_resume_evidence(
+            requirement,
+            resume_text=resume_text,
+            supported_text=supported_text,
+        )
+    ]
+
+
+def _qualification_has_resume_evidence(
+    qualification: str,
+    *,
+    resume_text: str,
+    supported_text: str,
+    resume_segment_tokens: list[set[str]] | None = None,
+) -> bool:
+    """Require meaningful evidence coverage, not one generic matching word."""
+
+    lowered = qualification.lower()
+    # A degree-or-equivalent clause is not a standalone education gap. The
+    # posting's experience requirements are evaluated separately against the
+    # résumé; treating this clause as degree-only rejected experienced people.
+    if "equivalent experience" in lowered and any(
+        marker in lowered for marker in ("bachelor", "b.s.", "bs in", "degree in")
+    ):
+        return True
+    if any(
+        marker in lowered
+        for marker in ("proficiency in english", "proficient in english", "english proficiency")
+    ) and len(re.findall(r"\b[a-z]{3,}\b", supported_text)) >= 40:
+        # A substantive English-language résumé is direct written-language evidence.
+        return True
+    if _broad_experience_duration_is_supported(lowered, supported_text):
+        return True
+    if _compound_operational_design_is_supported(lowered, supported_text):
+        return True
+    if any(marker in lowered for marker in ("bachelor", "undergraduate", "degree")) and (
+        ("equivalent" in lowered and "experience" in lowered)
+        or "comparable training" in lowered
+    ):
+        return True
+    degree_required = "equivalent experience" not in lowered and any(
+        marker in lowered for marker in ("bachelor", "b.s.", "bs in", "degree in")
+    )
+    if degree_required:
+        required_disciplines = [
+            label
+            for label, aliases in _DEGREE_DISCIPLINES.items()
+            if any(_contains_phrase(lowered, alias) for alias in aliases)
+        ]
+        if required_disciplines:
+            return _resume_shows_required_degree(resume_text, required_disciplines)
+
+    qualification_tokens = _qualification_evidence_tokens(lowered)
+    if not qualification_tokens:
+        return False
+    if _bounded_capability_evidence_supports(
+        lowered,
+        supported_text=supported_text,
+    ):
+        return True
+    # Evidence must describe one coherent piece of work. Combining unrelated
+    # words from distant résumé bullets made specialized qualifications appear
+    # supported merely because the candidate had a broad technical career.
+    required_matches = max(1, (len(qualification_tokens) * 2 + 2) // 3)
+    segment_tokens = resume_segment_tokens or [
+        set(_qualification_evidence_tokens(segment))
+        for segment in _resume_evidence_segments(supported_text)
+    ]
+    if any(
+        marker in lowered
+        for marker in ("any of the following", "such as", "including")
+    ):
+        # An explicitly alternative tool list is satisfied by one named option.
+        option_tokens = {
+            alias.lower()
+            for aliases in _TECHNOLOGY_REQUIREMENTS.values()
+            for alias in aliases
+        }
+        required_options = set(qualification_tokens) & option_tokens
+        if required_options and any(
+            required_options & evidence_tokens
+            for evidence_tokens in segment_tokens
+        ):
+            return True
+    if _alternative_capability_is_supported(
+        lowered,
+        resume_segments=_resume_evidence_segments(supported_text),
+    ):
+        return True
+    return any(
+        sum(token in evidence_tokens for token in qualification_tokens)
+        >= required_matches
+        for evidence_tokens in segment_tokens
+    )
+
+
+_BOUNDED_CAPABILITY_EVIDENCE = (
+    {
+        "requirement": ("linux",),
+        "evidence": ("linux",),
+        "standalone": True,
+    },
+    {
+        "requirement": ("python",),
+        "evidence": ("python",),
+        "standalone": True,
+    },
+    {
+        "requirement": ("bash", "shell scripting"),
+        "evidence": ("bash", "shell scripting", "shell automation"),
+        "standalone": True,
+    },
+    {
+        "requirement": ("automation", "scripting"),
+        "evidence": ("automation", "scripting", "python", "powershell", "bash"),
+        "standalone": True,
+    },
+    {
+        "requirement": ("networking", "network expertise", "network fundamentals"),
+        "evidence": ("networking", "network infrastructure", "network operations"),
+        "standalone": True,
+    },
+    {
+        "requirement": ("troubleshoot", "debugging"),
+        "evidence": (
+            "troubleshoot",
+            "troubleshooting",
+            "debug",
+            "root cause",
+            "root-cause",
+            "failure analysis",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("hardware and software", "hardware, software"),
+        "evidence": (
+            "hardware/software boundary",
+            "hardware and software",
+            "hardware-software",
+            "hardware–os–platform boundary",
+            "hardware, os, platform",
+            "hardware, firmware, linux operating system, and container",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("distributed systems", "distributed system"),
+        "evidence": ("distributed systems", "distributed compute"),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "failure modes",
+            "high-availability systems",
+            "high availability systems",
+            "reliability",
+        ),
+        "evidence": (
+            "reliability engineering",
+            "high availability",
+            "failure analysis",
+            "incident response",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "incident response",
+            "root-cause analysis",
+            "root cause analysis",
+            "corrective actions",
+        ),
+        "evidence": (
+            "incident response",
+            "root-cause analysis",
+            "root cause analysis",
+            "corrective action",
+            "failure analysis",
+            "problem management",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("containerized production", "production containers"),
+        "evidence": (
+            "production kubernetes",
+            "production containers",
+            "containerized production",
+        ),
+    },
+    {
+        "requirement": ("sli", "slos", "slo", "error budget"),
+        "evidence": ("sli", "slos", "slo", "error budget"),
+    },
+    {
+        "requirement": ("system performance", "performance optimization"),
+        "evidence": ("system performance", "performance optimization", "performance"),
+        "standalone": True,
+    },
+    {
+        "requirement": ("problem-solving", "problem solving", "analytical"),
+        "evidence": (
+            "troubleshoot",
+            "troubleshooting",
+            "root cause",
+            "root-cause",
+            "failure analysis",
+            "problem solving",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("written communication", "written communications"),
+        "evidence": (
+            "engineering documentation",
+            "operational runbooks",
+            "implementation blueprint",
+            "technical and non-technical",
+            "written communication",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "modern infrastructure tooling",
+            "infrastructure-as-code",
+            "infrastructure as code",
+        ),
+        "evidence": (
+            "infrastructure as code",
+            "terraform",
+            "ansible",
+            "ci/cd",
+            "jenkins",
+            "kubernetes",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("modern server architecture", "server architecture"),
+        "evidence": (
+            "rack-scale",
+            "bare-metal",
+            "hardware management",
+            "hardware integration",
+            "server systems",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("computer networks", "network knowledge"),
+        "evidence": (
+            "networking",
+            "network infrastructure",
+            "cluster networking",
+            "tcp/ip",
+            "vlans",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("tcp/ip network protocol", "tcp/ip"),
+        "evidence": ("tcp/ip",),
+        "standalone": True,
+    },
+    {
+        "requirement": ("configuration management platform",),
+        "evidence": ("ansible", "puppet", "chef", "cfengine"),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "infrastructure configuration management tools",
+            "automating storage deployments",
+        ),
+        "evidence": ("ansible", "terraform", "puppet", "chef", "cfengine"),
+        "standalone": True,
+    },
+    {
+        "requirement": ("hpc", "high-performance computing"),
+        "evidence": ("hpc", "high-performance computing", "slurm"),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "batch scheduling system",
+            "batch scheduler",
+            "scheduling system",
+            "slurm",
+            "kueue",
+            "armada",
+            "volcano",
+        ),
+        "evidence": (
+            "slurm",
+            "batch scheduler",
+            "batch scheduling",
+            "workload scheduler",
+            "job scheduler",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "prometheus",
+            "grafana",
+            "modern monitoring platforms",
+            "monitoring platforms",
+        ),
+        "evidence": ("prometheus", "grafana", "zabbix", "monitoring"),
+        "standalone": True,
+    },
+    {
+        "requirement": ("infiniband", "rdma", "roce"),
+        "evidence": ("infiniband", "rdma", "roce"),
+        "standalone": True,
+    },
+    {
+        "requirement": ("cross-layer", "system-level troubleshooting"),
+        "evidence": (
+            "cross-layer failures",
+            "hardware–os–platform boundary",
+            "hardware-level systems debugging",
+            "root cause analysis",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "communication & collaboration",
+            "effective communication",
+            "technical communication",
+            "excellent communication",
+            "communication skills",
+            "communicate technical concepts",
+        ),
+        "evidence": (
+            "engineering documentation",
+            "operational runbooks",
+            "technical and non-technical",
+            "escalation point",
+            "team lead",
+            "cross-functional",
+            "cross-team",
+            "stakeholder",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("lead complex technical initiatives", "lead cross-team"),
+        "evidence": (
+            "led migration",
+            "led rack-scale",
+            "team lead",
+            "escalation point",
+            "cross-team",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("written and verbal communication",),
+        "evidence": (
+            "engineering documentation",
+            "operational runbooks",
+            "technical and non-technical",
+            "escalation point",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("independently on substantial technical problems",),
+        "evidence": ("designed and built", "owned", "led", "escalation point"),
+        "standalone": True,
+    },
+    {
+        "requirement": ("mentoring", "less experienced engineers"),
+        "evidence": ("team lead", "led the", "technical lead", "escalation point"),
+        "standalone": True,
+    },
+    {
+        "requirement": ("storage systems knowledge",),
+        "evidence": (
+            "storage operations",
+            "storage clusters",
+            "storage migrations",
+            "nfs",
+            "san",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "distributed and high-performance storage",
+            "clustered and parallel file systems",
+            "distributed object storage",
+            "enterprise-grade storage systems",
+        ),
+        "evidence": (
+            "hpc storage",
+            "storage clusters",
+            "parallel file system",
+            "lustre",
+            "gpfs",
+            "spectrum scale",
+            "ceph",
+            "object storage",
+            "enterprise storage",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("ai tools", "ai-native development workflow"),
+        "evidence": ("openai", "langchain", "ai assistant", "ai infrastructure"),
+        "standalone": True,
+    },
+)
+
+_ADVANCED_NETWORK_REQUIREMENTS = (
+    "control plane",
+    "data plane",
+    "failure domains",
+    "bgp",
+    "ospf",
+    "evpn",
+    "vxlan",
+    "mlag",
+    "lacp",
+)
+
+
+def _compound_operational_design_is_supported(
+    qualification: str,
+    supported_text: str,
+) -> bool:
+    """Infer bounded design guidance only when leadership and scale coexist."""
+
+    if not (
+        "engineering design limitations" in qualification
+        and "guidance to teams" in qualification
+        and "scale their services" in qualification
+    ):
+        return False
+    leadership_evidence = (
+        "technical lead",
+        "team lead",
+        "escalation point",
+        "cross-functional",
+        "cross-team",
+        "architecture",
+        "design decision",
+    )
+    scale_evidence = (
+        "capacity planning",
+        "performance tuning",
+        "performance optimization",
+        "scalability",
+        "scaled",
+        "cost optimization",
+        "operating constraints",
+    )
+    return any(marker in supported_text for marker in leadership_evidence) and any(
+        marker in supported_text for marker in scale_evidence
+    )
+
+
+def _bounded_capability_evidence_supports(
+    qualification: str,
+    *,
+    supported_text: str,
+) -> bool:
+    """Combine explicit technical evidence without combining generic keywords."""
+
+    required_groups = [
+        group
+        for group in _BOUNDED_CAPABILITY_EVIDENCE
+        if any(_contains_phrase(qualification, marker) for marker in group["requirement"])
+    ]
+    if not required_groups:
+        return False
+    if len(required_groups) == 1 and not required_groups[0].get("standalone", False):
+        return False
+
+    if any(
+        _contains_phrase(qualification, marker)
+        for marker in _ADVANCED_NETWORK_REQUIREMENTS
+    ) and not any(
+        _contains_phrase(supported_text, marker)
+        for marker in _ADVANCED_NETWORK_REQUIREMENTS
+    ):
+        return False
+
+    return all(
+        any(_contains_phrase(supported_text, marker) for marker in group["evidence"])
+        for group in required_groups
+    )
+
+
+def _broad_experience_duration_is_supported(
+    qualification: str,
+    supported_text: str,
+) -> bool:
+    """Compare explicit years only for broad engineering or industry experience."""
+
+    required = re.search(r"\b(\d+)\+?\s+years?\b", qualification)
+    if required is None or not any(
+        marker in qualification
+        for marker in (
+            "hands-on engineering",
+            "relevant industry experience",
+            "hpc experience",
+        )
+    ):
+        return False
+    if any(
+        marker in qualification
+        for marker in (
+            "software development",
+            "software engineering",
+            "security engineering",
+            "data engineering",
+        )
+    ):
+        return False
+    resume_years = [
+        int(value)
+        for value in re.findall(r"\b(\d+)\+?\s+years?\b", supported_text)
+    ]
+    return bool(resume_years and max(resume_years) >= int(required.group(1)))
+
+
+def _alternative_capability_is_supported(
+    requirement: str,
+    *,
+    resume_segments: list[str],
+) -> bool:
+    """Accept one coherently evidenced option from a real alternative list."""
+
+    if " or " not in requirement or "or equivalent experience" in requirement:
+        return False
+    option_text = requirement.split(" with ", 1)[-1]
+    for option in re.split(r",|\bor\b", option_text):
+        cleaned = clean_text(option).strip(" .;:-")
+        cleaned = re.sub(
+            r"^(?:and|solid experience|experience|proficiency)\s+(?:with|in)?\s*",
+            "",
+            cleaned,
+        )
+        tokens = _qualification_evidence_tokens(cleaned)
+        if len(tokens) < 2:
+            continue
+        if any(
+            all(
+                token in set(_qualification_evidence_tokens(segment))
+                for token in tokens
+            )
+            for segment in resume_segments
+        ):
+            return True
+    return False
+
+
+def _resume_evidence_segments(resume_text: str) -> list[str]:
+    """Keep evidence within one résumé statement instead of the whole document."""
+
+    segments = [
+        clean_text(segment)
+        for segment in re.split(
+            r"(?:\r?\n|[•●▪]|(?<=[.!?])\s+)",
+            resume_text,
+        )
+        if clean_text(segment)
+    ]
+    return segments or [clean_text(resume_text)]
+
+
+def _qualification_evidence_tokens(value: str) -> list[str]:
+    """Return distinct evidence-bearing words with light plural normalization."""
+
+    tokens: list[str] = []
+    for raw_token in re.findall(r"[a-z0-9+#.]+", value.lower()):
+        if raw_token in _QUALIFICATION_EVIDENCE_STOP_WORDS:
+            continue
+        token = raw_token
+        if len(token) > 4 and token.endswith("ies"):
+            token = token[:-3] + "y"
+        elif len(token) > 4 and token.endswith("s") and not token.endswith("ss"):
+            token = token[:-1]
+        if token not in tokens:
+            tokens.append(token)
+    # These phrases describe the same infrastructure capability in ordinary
+    # engineering language. Expand them before comparison so Junior can infer
+    # equivalent experience without treating every broad systems word as equal.
+    if "distributed compute" in value.lower():
+        for equivalent in ("distributed", "system", "compute", "platform"):
+            if equivalent not in tokens:
+                tokens.append(equivalent)
+    return tokens
+
+
+def _resume_shows_required_degree(
+    resume_text: str,
+    required_disciplines: list[str],
+) -> bool:
+    """Require the degree credential and discipline to appear together."""
+
+    degree_marker = r"(?:bachelor(?:'s)?|b\.s\.|\bbs\b|degree)"
+    for discipline in required_disciplines:
+        for alias in _DEGREE_DISCIPLINES[discipline]:
+            escaped_alias = re.escape(alias)
+            if re.search(
+                rf"(?:{degree_marker}.{{0,100}}{escaped_alias}|"
+                rf"{escaped_alias}.{{0,100}}{degree_marker})",
+                resume_text,
+            ):
+                return True
+    return False
 
 
 def _find_critical_gaps(
@@ -516,14 +2046,39 @@ def _find_critical_gaps(
 
     for discipline, markers in _DISCIPLINE_TERMS.items():
         central_to_title = any(_contains_phrase(title, marker) for marker in markers)
-        central_to_requirements = sum(
+        required_marker_count = sum(
             1 for marker in markers if _contains_phrase(required_text, marker)
-        ) >= 2
+        )
+        central_to_requirements = required_marker_count >= (
+            1
+            if discipline
+            in {"software engineering", "data engineering", "security engineering"}
+            else 2
+        )
         if discipline in _DISCIPLINES_REQUIRING_DESCRIPTION_CONFIRMATION:
             central_to_title = central_to_title and central_to_requirements
         supported = any(_contains_phrase(supported_text, marker) for marker in markers)
         if (central_to_title or central_to_requirements) and not supported:
-            critical.append(f"central discipline requires {discipline} experience")
+            if discipline == "civil, structural, or architectural engineering":
+                critical.append(
+                    "No Civil, Structural, and Architectural (CSA) experience"
+                )
+            elif discipline == "software engineering" and (
+                software_years := re.search(
+                    r"\b(\d+\+?)\s+years?\b[^.]{0,100}"
+                    r"(?:software development|software engineering)",
+                    required_text,
+                )
+            ):
+                critical.append(
+                    "No clear résumé evidence of "
+                    f"{software_years.group(1)} years of professional "
+                    "software development"
+                )
+            else:
+                critical.append(
+                    f"central discipline requires {discipline} experience"
+                )
 
     for label, aliases in _TECHNOLOGY_REQUIREMENTS.items():
         explicitly_required = any(
@@ -569,20 +2124,22 @@ def _technology_is_individually_required(
     lowered = clause.lower()
     if not any(_contains_phrase(lowered, alias) for alias in aliases):
         return False
-
-    technologies_present = sum(
-        1
-        for technology_aliases in _TECHNOLOGY_REQUIREMENTS.values()
-        if any(
-            _contains_phrase(lowered, technology_alias)
-            for technology_alias in technology_aliases
+    if "go" in aliases and not (
+        _contains_phrase(lowered, "golang")
+        or re.search(
+            r"\b(?:go\s+(?:experience|language|programming|developer)|"
+            r"(?:proficiency|experience|programming)\s+(?:with|in)\s+go)\b",
+            lowered,
         )
-    )
+    ):
+        # The English verb in "go deep on macOS" is not the Go language.
+        return False
+
     offers_alternatives = any(
         marker in lowered
         for marker in (" one of ", " any of ", " or ", " such as ", " e.g.", " including ")
     )
-    return not (technologies_present > 1 and offers_alternatives)
+    return not offers_alternatives
 
 
 def _find_avoided_role_family(
@@ -599,8 +2156,14 @@ def _find_avoided_role_family(
         if avoided and _contains_phrase(title, avoided):
             return avoided
 
+    family_aliases = {
+        "software engineering": {"software development", "software developer"},
+        "security engineering": {"cybersecurity", "cyber security"},
+    }
     for family, title_markers in _AVOID_ROLE_FAMILIES.items():
-        family_is_configured = family in normalized_avoid
+        family_is_configured = bool(
+            normalized_avoid & ({family} | family_aliases.get(family, set()))
+        )
         if family == "manager":
             family_is_configured = bool(
                 normalized_avoid & {"manager", "management"}
@@ -623,6 +2186,12 @@ def _find_role_alignment_gap(
     if not candidate_profile.target_roles:
         return None
 
+    if _has_dominant_occupation_conflict(
+        title=title,
+        candidate_profile=candidate_profile,
+    ):
+        return "the job's central occupation does not align with this profile's target work"
+
     if _role_alignment_is_confirmed(
         title=title,
         candidate_profile=candidate_profile,
@@ -635,6 +2204,36 @@ def _find_role_alignment_gap(
         return None
 
     return "the job title and required work do not align with this profile's target work"
+
+
+def _has_dominant_occupation_conflict(
+    *,
+    title: str,
+    candidate_profile: CandidateProfile,
+) -> bool:
+    """Keep a shared work setting from disguising a different profession."""
+
+    exclusive_families = (
+        (
+            "environmental health and safety",
+            (
+                "environmental health & safety",
+                "environmental health and safety",
+                "health & safety",
+                "health and safety",
+                "ehs",
+            ),
+        ),
+    )
+    profile_text = " ".join(
+        candidate_profile.target_roles + candidate_profile.credible_adjacent
+    ).lower()
+    for _family, markers in exclusive_families:
+        if any(_contains_phrase(title, marker) for marker in markers):
+            return not any(
+                _contains_phrase(profile_text, marker) for marker in markers
+            )
+    return False
 
 
 def _role_alignment_is_confirmed(
@@ -747,6 +2346,34 @@ def _description_lines(description: str) -> list[str]:
         decoded,
     )
     decoded = re.sub(r"(?is)<[^>]+>", " ", decoded)
+    # Some APIs flatten every HTML block into one paragraph. Restore section
+    # boundaries before parsing so "Qualifications Required Qualifications:"
+    # is interpreted the same way as a normally formatted job description.
+    decoded = re.sub(
+        r"(?i)\bqualifications\s+(?=(?:required(?:/minimum)?|minimum|basic|preferred)\s+qualifications?)",
+        "Qualifications\n",
+        decoded,
+    )
+    # Only headings known to survive as inline Eightfold text belong here.
+    # Broad phrases such as "the role" or "qualifications" also occur in
+    # ordinary sentences and must not split a requirement mid-sentence.
+    inline_headings = (
+        "additional preferred qualifications",
+        "required/minimum qualifications",
+        "required minimum qualifications",
+        "required qualifications",
+        "minimum qualifications",
+        "basic qualifications",
+        "preferred qualifications",
+        "other requirements",
+        "responsibilities",
+    )
+    heading_pattern = "|".join(re.escape(heading) for heading in inline_headings)
+    decoded = re.sub(
+        rf"(?i)(?<![\w/])({heading_pattern})\s*:?[ \t]*",
+        lambda match: f"\n{match.group(1)}\n",
+        decoded,
+    )
     return [
         clean_text(line)
         for line in decoded.replace("\r", "\n").split("\n")
