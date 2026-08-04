@@ -1532,6 +1532,158 @@ def test_production_kubernetes_requirement_is_not_satisfied_by_lab_exposure() ->
     assert result.label == "Poor Fit"
 
 
+def test_kubernetes_at_scale_requires_evidence_at_the_requested_depth() -> None:
+    posting = make_posting(
+        title="Senior Platform Engineer, Network Infrastructure",
+        description=(
+            "What We Need to See\n"
+            "Deep experience with Kubernetes at scale, including cluster lifecycle, "
+            "upgrades, networking, storage, and recovery."
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        "Supported Kubernetes workloads and automated Linux cluster operations.",
+    )
+
+    assert result.gaps == [
+        "No demonstrated Kubernetes experience at the scale required by the posting"
+    ]
+    assert result.critical_gaps == result.gaps
+    assert result.label == "Poor Fit"
+
+
+def test_scale_rule_accepts_coherent_production_platform_evidence() -> None:
+    posting = make_posting(
+        title="Senior Platform Engineer, Network Infrastructure",
+        description=(
+            "What We Need to See\n"
+            "Deep experience with Kubernetes at scale, including cluster lifecycle, "
+            "upgrades, networking, storage, and recovery."
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        (
+            "Owned a production Kubernetes platform, including cluster lifecycle, "
+            "upgrades, networking, storage, and recovery."
+        ),
+    )
+
+    assert not result.gaps
+    assert not result.critical_gaps
+
+
+def test_scale_rule_applies_to_other_capabilities_without_changing_basic_rules() -> None:
+    scaled_posting = make_posting(
+        title="Infrastructure Engineer",
+        description=(
+            "Required Qualifications\n"
+            "Experience operating network infrastructure at scale."
+        ),
+    )
+    ordinary_posting = make_posting(
+        title="Infrastructure Engineer",
+        description="Required Qualifications\nExperience with Kubernetes.",
+    )
+    resume = "Supported Kubernetes workloads and network infrastructure."
+
+    scaled_result = match_resume_to_posting(scaled_posting, make_profile(), resume)
+    ordinary_result = match_resume_to_posting(ordinary_posting, make_profile(), resume)
+
+    assert scaled_result.gaps == [
+        "No demonstrated network infrastructure experience at the scale required "
+        "by the posting"
+    ]
+    assert not ordinary_result.gaps
+    assert not ordinary_result.critical_gaps
+
+
+def test_skill_duration_is_not_inferred_from_an_undated_skill_mention() -> None:
+    posting = make_posting(
+        title="Senior Platform Engineer",
+        description="Required Qualifications\n5+ years of Kubernetes experience.",
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        "Supported Kubernetes workloads and automated Linux infrastructure.",
+    )
+
+    assert result.gaps == [
+        "No clear résumé evidence of 5 years of Kubernetes experience"
+    ]
+    assert result.critical_gaps == result.gaps
+
+
+def test_explicit_skill_duration_satisfies_matching_year_requirement() -> None:
+    posting = make_posting(
+        title="Senior Platform Engineer",
+        description="Required Qualifications\n5+ years of Kubernetes experience.",
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        "Worked with Kubernetes for 6 years at Example Company.",
+    )
+
+    assert not result.gaps
+    assert not result.critical_gaps
+
+
+def test_dated_role_counts_skill_tenure_only_when_skill_is_in_that_role() -> None:
+    posting = make_posting(
+        title="Senior Platform Engineer",
+        description="Required Qualifications\n5+ years of Kubernetes experience.",
+    )
+    supported_resume = (
+        "Example Company\n"
+        "Platform Engineer | January 2018 - December 2023\n"
+        "Operated Kubernetes clusters and automated platform recovery."
+    )
+    unsupported_resume = (
+        "Example Company\n"
+        "Platform Engineer | January 2018 - December 2023\n"
+        "Operated Linux servers and automated platform recovery.\n"
+        "Skills\nKubernetes"
+    )
+
+    supported = match_resume_to_posting(posting, make_profile(), supported_resume)
+    unsupported = match_resume_to_posting(posting, make_profile(), unsupported_resume)
+
+    assert not supported.gaps
+    assert unsupported.gaps == [
+        "No clear résumé evidence of 5 years of Kubernetes experience"
+    ]
+
+
+def test_overlapping_skill_roles_do_not_double_count_duration() -> None:
+    posting = make_posting(
+        title="Senior Platform Engineer",
+        description="Required Qualifications\n5+ years of Kubernetes experience.",
+    )
+    resume = (
+        "Company One\n"
+        "Engineer | January 2020 - December 2022\n"
+        "Operated Kubernetes clusters.\n"
+        "Company Two\n"
+        "Consultant | January 2021 - December 2023\n"
+        "Supported Kubernetes workloads."
+    )
+
+    result = match_resume_to_posting(posting, make_profile(), resume)
+
+    assert result.gaps == [
+        "No clear résumé evidence of 5 years of Kubernetes experience"
+    ]
+
+
 def test_network_operations_do_not_hide_advanced_fabric_and_wan_gaps() -> None:
     posting = make_posting(
         title="Senior Network Engineer",

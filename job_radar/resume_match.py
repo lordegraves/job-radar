@@ -1,6 +1,7 @@
 """Compare a posting's actual required work with evidence in the resume."""
 
 from dataclasses import dataclass
+from datetime import date
 from html import unescape
 import re
 
@@ -98,10 +99,15 @@ def match_resume_to_posting(
         gap
         for gap in qualification_gaps
         if gap.lower().startswith("no demonstrated ownership of a production ")
+        or "at the scale required by the posting" in gap.lower()
+        or (
+            gap.lower().startswith("no clear résumé evidence of ")
+            and " years of " in gap.lower()
+        )
     ]
     if central_platform_gaps:
-        # Owning the production platform is the role's central required work,
-        # not an adjacent skill that can safely remain a review-only concern.
+        # Explicit production ownership or at-scale depth is central required
+        # work, not an adjacent skill that can safely remain review-only.
         critical_gaps = _dedupe_preserving_order(
             critical_gaps + central_platform_gaps
         )
@@ -381,6 +387,43 @@ _TECHNOLOGY_REQUIREMENTS = {
     "machine learning": ("machine learning", "ml engineering"),
     "RTL verification": ("rtl", "systemverilog", "uvm"),
 }
+_SCALE_CAPABILITY_ALIASES = {
+    **_TECHNOLOGY_REQUIREMENTS,
+    "Linux platform": ("linux platform", "linux infrastructure", "linux systems"),
+    "network infrastructure": (
+        "network infrastructure",
+        "networking",
+        "network platform",
+    ),
+    "storage platform": (
+        "storage infrastructure",
+        "storage platform",
+        "distributed storage",
+    ),
+    "cloud infrastructure": ("cloud infrastructure", "cloud platform"),
+}
+_SCALE_REQUIREMENT_MARKERS = (
+    "at scale",
+    "large-scale",
+    "large scale",
+    "production-scale",
+    "production scale",
+    "fleet-wide",
+    "fleet wide",
+)
+_SCALE_RESUME_EVIDENCE_MARKERS = (
+    "at scale",
+    "large-scale",
+    "large scale",
+    "production",
+    "owned",
+    "ownership",
+    "architected",
+    "fleet-wide",
+    "fleet wide",
+    "cluster lifecycle",
+    "platform lifecycle",
+)
 _DISCIPLINE_TERMS = {
     "civil, structural, or architectural engineering": (
         "civil engineer",
@@ -883,11 +926,21 @@ def _find_unsupported_required_qualifications(
         for segment in _resume_evidence_segments(supported_text)
     ]
     gaps: list[str] = []
+    bounded_requirement_gaps = {
+        requirement: gap
+        for requirement in requirements
+        if (
+            gap := _skill_duration_requirement_gap(requirement, resume_text)
+            or _scale_qualified_requirement_gap(requirement, resume_text)
+        )
+    }
+    gaps.extend(bounded_requirement_gaps.values())
     for concept in _REQUIRED_GAP_CONCEPTS:
         matching_requirements = [
             requirement
             for markers in concept["requirement_patterns"]
             for requirement in requirements
+            if requirement not in bounded_requirement_gaps
             if all(
                 _contains_phrase(requirement.lower(), marker)
                 for marker in markers
@@ -915,6 +968,8 @@ def _find_unsupported_required_qualifications(
     for requirement in requirements:
         if len(gaps) >= 4:
             break
+        if requirement in bounded_requirement_gaps:
+            continue
         if _requirement_is_covered_by_gap_concept(requirement):
             continue
         if _qualification_has_resume_evidence(
@@ -1416,6 +1471,18 @@ def _qualification_has_resume_evidence(
     """Require meaningful evidence coverage, not one generic matching word."""
 
     lowered = qualification.lower()
+    duration_support = _skill_duration_requirement_is_supported(
+        lowered,
+        resume_text=resume_text,
+    )
+    if duration_support is not None:
+        return duration_support
+    scale_support = _scale_qualified_requirement_is_supported(
+        lowered,
+        resume_text=resume_text,
+    )
+    if scale_support is not None:
+        return scale_support
     # A degree-or-equivalent clause is not a standalone education gap. The
     # posting's experience requirements are evaluated separately against the
     # résumé; treating this clause as degree-only rejected experienced people.
@@ -1492,6 +1559,239 @@ def _qualification_has_resume_evidence(
         >= required_matches
         for evidence_tokens in segment_tokens
     )
+
+
+def _scale_qualified_requirement_is_supported(
+    requirement: str,
+    *,
+    resume_text: str,
+) -> bool | None:
+    """Preserve explicit scale requirements without tightening ordinary skills."""
+
+    if not any(
+        _contains_phrase(requirement, marker)
+        for marker in _SCALE_REQUIREMENT_MARKERS
+    ):
+        return None
+
+    matching_aliases = [
+        aliases
+        for aliases in _SCALE_CAPABILITY_ALIASES.values()
+        if any(_contains_phrase(requirement, alias) for alias in aliases)
+    ]
+    if not matching_aliases:
+        return None
+
+    return any(
+        any(_contains_phrase(segment, alias) for alias in aliases)
+        and any(
+            _contains_phrase(segment, marker)
+            for marker in _SCALE_RESUME_EVIDENCE_MARKERS
+        )
+        for aliases in matching_aliases
+        for segment in _resume_evidence_segments(resume_text)
+    )
+
+
+def _scale_qualified_requirement_gap(
+    requirement: str,
+    resume_text: str,
+) -> str | None:
+    """Summarize an unsupported scale requirement without copying employer prose."""
+
+    support = _scale_qualified_requirement_is_supported(
+        requirement.lower(),
+        resume_text=resume_text,
+    )
+    if support is not False:
+        return None
+
+    lowered = requirement.lower()
+    label = next(
+        (
+            capability
+            for capability, aliases in _SCALE_CAPABILITY_ALIASES.items()
+            if any(_contains_phrase(lowered, alias) for alias in aliases)
+        ),
+        "technical platform",
+    )
+    return f"No demonstrated {label} experience at the scale required by the posting"
+
+
+_RESUME_DATE_TOKEN = (
+    r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+    r"jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept(?:ember)?|oct(?:ober)?|"
+    r"nov(?:ember)?|dec(?:ember)?)\.?\s+\d{4}|\d{1,2}/\d{4}|\d{4}"
+)
+_RESUME_DATE_RANGE = re.compile(
+    rf"(?P<start>{_RESUME_DATE_TOKEN})\s*"
+    rf"(?:-|\u2013|\u2014|to)\s*"
+    rf"(?P<end>{_RESUME_DATE_TOKEN}|present|current)",
+    re.IGNORECASE,
+)
+_MONTH_NUMBERS = {
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
+}
+_RESUME_EMPLOYMENT_STOP_HEADINGS = {
+    "certifications",
+    "education",
+    "projects",
+    "skills",
+    "technical skills",
+}
+
+
+def _skill_duration_requirement_is_supported(
+    requirement: str,
+    *,
+    resume_text: str,
+) -> bool | None:
+    """Compare years only when a duration is tied to a named capability."""
+
+    duration = re.search(r"\b(\d+)\+?\s+years?\b", requirement)
+    if duration is None:
+        return None
+
+    matching_capabilities = [
+        (label, aliases)
+        for label, aliases in _SCALE_CAPABILITY_ALIASES.items()
+        if any(_contains_phrase(requirement, alias) for alias in aliases)
+    ]
+    if not matching_capabilities:
+        return None
+
+    required_months = int(duration.group(1)) * 12
+    return any(
+        _resume_capability_months(resume_text, aliases) >= required_months
+        for _label, aliases in matching_capabilities
+    )
+
+
+def _skill_duration_requirement_gap(
+    requirement: str,
+    resume_text: str,
+) -> str | None:
+    """Explain a missing skill duration without claiming the skill is absent."""
+
+    support = _skill_duration_requirement_is_supported(
+        requirement.lower(),
+        resume_text=resume_text,
+    )
+    if support is not False:
+        return None
+
+    years = re.search(r"\b(\d+)\+?\s+years?\b", requirement.lower())
+    labels = [
+        label
+        for label, aliases in _SCALE_CAPABILITY_ALIASES.items()
+        if any(_contains_phrase(requirement.lower(), alias) for alias in aliases)
+    ]
+    if years is None or not labels:
+        return None
+    capability = " or ".join(labels)
+    return (
+        f"No clear résumé evidence of {years.group(1)} years of "
+        f"{capability} experience"
+    )
+
+
+def _resume_capability_months(
+    resume_text: str,
+    aliases: tuple[str, ...],
+) -> int:
+    """Return supported months from explicit claims or dated employment blocks."""
+
+    explicit_years = [
+        int(match.group(1))
+        for segment in _resume_evidence_segments(resume_text)
+        if any(_contains_phrase(segment, alias) for alias in aliases)
+        for match in re.finditer(r"\b(\d+)\+?\s+years?\b", segment)
+    ]
+    explicit_months = max(explicit_years, default=0) * 12
+
+    dated_intervals: list[tuple[int, int]] = []
+    for start, end, block in _dated_resume_blocks(resume_text):
+        if any(_contains_phrase(block, alias) for alias in aliases):
+            dated_intervals.append((start, end))
+    return max(explicit_months, _merged_interval_months(dated_intervals))
+
+
+def _dated_resume_blocks(resume_text: str) -> list[tuple[int, int, str]]:
+    """Associate résumé bullets with the dated role immediately above them."""
+
+    blocks: list[tuple[int, int, list[str]]] = []
+    current: tuple[int, int, list[str]] | None = None
+    for raw_line in resume_text.splitlines():
+        line = clean_text(raw_line)
+        if current is not None and line.lower().rstrip(":") in _RESUME_EMPLOYMENT_STOP_HEADINGS:
+            blocks.append(current)
+            current = None
+            continue
+        date_match = _RESUME_DATE_RANGE.search(line)
+        if date_match:
+            if current is not None:
+                blocks.append(current)
+            start = _resume_month_index(date_match.group("start"), is_end=False)
+            end = _resume_month_index(date_match.group("end"), is_end=True)
+            current = (start, end, [line])
+        elif current is not None:
+            current[2].append(line)
+    if current is not None:
+        blocks.append(current)
+    return [
+        (start, end, " ".join(lines).lower())
+        for start, end, lines in blocks
+        if end >= start
+    ]
+
+
+def _resume_month_index(value: str, *, is_end: bool) -> int:
+    """Convert common résumé dates into a comparable month number."""
+
+    normalized = value.lower().strip().rstrip(".")
+    if normalized in {"present", "current"}:
+        today = date.today()
+        return today.year * 12 + today.month - 1
+    slash_match = re.fullmatch(r"(\d{1,2})/(\d{4})", normalized)
+    if slash_match:
+        month, year = (int(part) for part in slash_match.groups())
+        return year * 12 + month - 1
+    year_match = re.fullmatch(r"\d{4}", normalized)
+    if year_match:
+        year = int(normalized)
+        month = 12 if is_end else 1
+        return year * 12 + month - 1
+    month_match = re.match(r"([a-z]+)\.?\s+(\d{4})", normalized)
+    if month_match is None:
+        return 0
+    month = _MONTH_NUMBERS[month_match.group(1)[:3]]
+    year = int(month_match.group(2))
+    return year * 12 + month - 1
+
+
+def _merged_interval_months(intervals: list[tuple[int, int]]) -> int:
+    """Add dated skill periods without counting overlapping jobs twice."""
+
+    if not intervals:
+        return 0
+    merged: list[list[int]] = []
+    for start, end in sorted(intervals):
+        if not merged or start > merged[-1][1] + 1:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+    return sum(end - start + 1 for start, end in merged)
 
 
 _BOUNDED_CAPABILITY_EVIDENCE = (

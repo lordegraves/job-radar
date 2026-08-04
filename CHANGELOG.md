@@ -6,6 +6,12 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Preserve explicit at-scale experience requirements during résumé comparison
+  across Junior's shared technology and infrastructure vocabulary, while leaving
+  ordinary skill requirements and broader scoring thresholds unchanged.
+- Distinguish an undated skill mention from a supported number of years by using
+  explicit duration statements or dated employment blocks, without crediting
+  unrelated tenure or double-counting overlapping roles.
 - Make Help topic, Previous, and Next links open the requested section, close
   the other Help cards, scroll the selected card into view, and preserve its
   bookmark fragment.
