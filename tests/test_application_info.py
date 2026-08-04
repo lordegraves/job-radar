@@ -81,7 +81,15 @@ def test_diagnostics_page_shows_safe_version_and_update_details(tmp_path: Path) 
     assert "never downloads or installs an update without your approval" in html
     assert "Dawn Peacock" in html
     assert "GPL-3.0-only" in html
-    assert app.test_client().get("/settings/about").status_code == 302
+    about_response = app.test_client().get("/settings/about")
+    about_html = about_response.get_data(as_text=True)
+    assert about_response.status_code == 200
+    assert "Help & About" in about_html
+    assert "What Junior does" in about_html
+    assert "Scans and recommendations" in about_html
+    assert "Privacy and safety" in about_html
+    assert __version__ in about_html
+    assert str(tmp_path.resolve()) in about_html
 
 
 def test_update_check_reports_newer_verified_stable_release() -> None:

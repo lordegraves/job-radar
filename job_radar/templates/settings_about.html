@@ -1,91 +1,199 @@
-{# Gives users safe version and storage facts for support and upgrades. #}
+{# Curated normal-user help stays readable without exposing developer-only README material. #}
 {% extends "base.html" %}
 
-{% block title %}About junior{% endblock %}
+{% block title %}Help & About - junior{% endblock %}
+
+{% block page_styles %}
+<style>
+    .help-intro { margin-bottom: 18px; }
+    .help-topic-nav {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        margin: 18px 0;
+    }
+    .help-topic-nav a {
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        padding: 12px 14px;
+        text-decoration: none;
+    }
+    .help-topic-nav a:hover,
+    .help-topic-nav a:focus-visible { border-color: var(--accent); color: var(--accent); }
+    .help-sections { display: grid; gap: 12px; }
+    .help-card {
+        background: rgba(31, 31, 35, 0.94);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        scroll-margin-top: 90px;
+    }
+    .help-card > summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 18px 20px;
+    }
+    .help-card > summary::-webkit-details-marker { display: none; }
+    .help-card > summary h2 { margin: 0; }
+    .help-card > summary p { color: var(--muted); margin: 6px 0 0; }
+    .help-card > summary::after { color: var(--accent); content: "Open"; float: right; margin-top: -36px; }
+    .help-card[open] > summary::after { content: "Close"; }
+    .help-content { border-top: 1px solid var(--border); padding: 18px 20px 20px; }
+    .help-content li { margin-bottom: 8px; }
+    .help-card-nav {
+        border-top: 1px solid var(--border);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        margin-top: 18px;
+        padding-top: 14px;
+    }
+    .help-facts { display: grid; gap: 8px; grid-template-columns: minmax(140px, 220px) 1fr; }
+    .help-facts dt { font-weight: 700; }
+    .help-facts dd { margin: 0; overflow-wrap: anywhere; }
+</style>
+{% endblock %}
 
 {% block content %}
-<p><a href="{{ url_for('settings') }}">&larr; Settings</a></p>
-<h1 class="page-title">About junior</h1>
+<h1 class="page-title">Help & About</h1>
 
-<div class="two-column">
-    <section class="page-card">
-        <h2>Application information</h2>
-        <dl>
-            <dt>Installed version</dt>
-            <dd>{{ application_info.version }}</dd>
-            <dt>Tester build</dt>
-            <dd>{{ application_info.build_label }}</dd>
-            <dt>Release channel</dt>
-            <dd>{{ application_info.release_channel }}</dd>
-            <dt>Database schema version</dt>
-            <dd>{{ application_info.database_schema_version }}</dd>
-            <dt>Profile/configuration schema version</dt>
-            <dd>{{ application_info.profile_schema_version }}</dd>
-        </dl>
-        <h3>Updates</h3>
-        <p>
-            Junior checks this installed release channel only when you ask. It
-            never downloads or installs an update without your approval.
-        </p>
-        <form method="post" action="{{ url_for('settings_about_check_updates') }}">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Check for updates</button>
-        </form>
-        {% if update_check %}
-        <div class="notice {{ 'success' if update_check.status == 'current' else 'warning' }}">
-            <p><strong>{{ update_check.message }}</strong></p>
-            {% if update_check.release_url %}
-            <p>
-                <a href="{{ update_check.release_url }}"
-                   target="_blank"
-                   rel="noopener noreferrer">View the verified release on GitHub</a>
-            </p>
-            {% endif %}
+<section class="page-card help-intro">
+    <h2>Using Junior</h2>
+    <p>
+        Choose a topic below for a plain-language guide. Each section opens in
+        place, so you can read what you need without leaving the page.
+    </p>
+</section>
+
+<nav class="help-topic-nav" aria-label="Help topics">
+    <a href="#overview">What Junior does</a>
+    <a href="#getting-started">Getting started</a>
+    <a href="#scans">Scans and recommendations</a>
+    <a href="#reviewing">Reviewing and tracking jobs</a>
+    <a href="#settings-backups">Settings and backups</a>
+    <a href="#privacy">Privacy and safety</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+    <a href="#about">About Junior</a>
+</nav>
+
+<div class="help-sections">
+    <details class="help-card" id="overview" open>
+        <summary><h2>What Junior does</h2><p>The purpose and boundaries of the application.</p></summary>
+        <div class="help-content">
+            <p>Junior scans the public career sites of companies you select, compares jobs with your profile and résumé, and organizes the results.</p>
+            <ul>
+                <li>Junior explains why a job was surfaced, the résumé strengths it found, and the largest material gaps.</li>
+                <li>Junior does not apply for jobs, contact employers, scrape LinkedIn, or bypass sign-in pages.</li>
+                <li>AI résumé tailoring is under development and unavailable. Scans and recommendations use Junior's tested local rules.</li>
+            </ul>
+            <div class="help-card-nav"><span></span><a href="#getting-started">Next: Getting started</a></div>
         </div>
-        {% endif %}
-    </section>
+    </details>
 
-    <section class="page-card">
-        <h2>Data and support</h2>
-        <p>Your Junior data is stored under:</p>
-        <code class="settings-value">{{ application_info.user_data_location }}</code>
-        <p>
-            For an unexpected problem that you cannot correct, contact
-            Clayton Graves at
-            <a href="mailto:claytonmgraves@outlook.com">claytonmgraves@outlook.com</a>.
-        </p>
-        <p class="muted">
-            Do not include passwords, access tokens, credentials, your database,
-            résumé, or profile contents in a support message.
-        </p>
-    </section>
+    <details class="help-card" id="getting-started">
+        <summary><h2>Getting started</h2><p>Set up a profile, résumé, preferences, and companies.</p></summary>
+        <div class="help-content">
+            <ol>
+                <li>Create or select a profile under <strong>Profile / Resume</strong>.</li>
+                <li>Add the résumé Junior should use and review your target roles, locations, workplace choices, compensation, schedule, travel, and work restrictions.</li>
+                <li>Open <strong>Companies</strong> and choose the employers Junior should scan for this profile.</li>
+                <li>Use each company's connection test if you want to confirm its source before a full scan.</li>
+            </ol>
+            <p>Each managed profile keeps its own preferences, résumé, reviewed jobs, applications, and history.</p>
+            <div class="help-card-nav"><a href="#overview">Previous</a><a href="#scans">Next: Scans</a></div>
+        </div>
+    </details>
+
+    <details class="help-card" id="scans">
+        <summary><h2>Scans and recommendations</h2><p>How Junior collects, evaluates, and sorts jobs.</p></summary>
+        <div class="help-content">
+            <p>Junior collects public listings, normalizes different company formats into the same job record, removes clearly unrelated or ineligible work, and evaluates plausible jobs more deeply.</p>
+            <ul>
+                <li><strong>Top Match:</strong> strong fit with practical eligibility confirmed.</li>
+                <li><strong>Potential Top Match:</strong> strong fit, but an important practical fact still needs confirmation.</li>
+                <li><strong>Needs your review:</strong> possibly useful, but the evidence is incomplete or mixed.</li>
+                <li><strong>Not actionable:</strong> unrelated, outside your stated requirements, already handled, or missing too many required qualifications.</li>
+            </ul>
+            <p>Later scans reuse unchanged job details where safe. Diagnostics reports collector problems without exposing private profile or résumé contents.</p>
+            <div class="help-card-nav"><a href="#getting-started">Previous</a><a href="#reviewing">Next: Reviewing jobs</a></div>
+        </div>
+    </details>
+
+    <details class="help-card" id="reviewing">
+        <summary><h2>Reviewing and tracking jobs</h2><p>Turn scan results into deliberate decisions.</p></summary>
+        <div class="help-content">
+            <ul>
+                <li><strong>Save for later</strong> keeps a job without claiming you applied.</li>
+                <li><strong>Pass</strong> records your decision and prevents that exact posting from returning.</li>
+                <li><strong>I applied</strong> moves the job into Active Applications.</li>
+                <li>Active Applications tracks follow-ups and outcomes; completed applications move into permanent Application History.</li>
+            </ul>
+            <p>Notes and personal decisions do not change Junior's scoring rules.</p>
+            <div class="help-card-nav"><a href="#scans">Previous</a><a href="#settings-backups">Next: Settings and backups</a></div>
+        </div>
+    </details>
+
+    <details class="help-card" id="settings-backups">
+        <summary><h2>Settings and backups</h2><p>Email, scheduling, retention, backup, and recovery.</p></summary>
+        <div class="help-content">
+            <ul>
+                <li><strong>Settings</strong> controls report retention, optional email delivery, scan scheduling, and optional external company lookup.</li>
+                <li>Administration contains backup, restore, export, and other installation-wide controls.</li>
+                <li>A Junior backup includes application-owned settings and data, but never operating-system credentials.</li>
+                <li>Updates and repairs replace application files while preserving user-owned data.</li>
+            </ul>
+            <div class="help-card-nav"><a href="#reviewing">Previous</a><a href="#privacy">Next: Privacy</a></div>
+        </div>
+    </details>
+
+    <details class="help-card" id="privacy">
+        <summary><h2>Privacy and safety</h2><p>What stays local and what may leave the computer.</p></summary>
+        <div class="help-content">
+            <ul>
+                <li>Your profile, résumé, decisions, applications, history, reports, and database remain in Junior's local user-data directory.</li>
+                <li>Company scans request public career-site information. Employers and their service providers can see ordinary network connection details.</li>
+                <li>Email sends a generated report only when you configure and request it.</li>
+                <li>Optional Bing company lookup is off by default and sends only a company name, public domain, and a generic careers search phrase.</li>
+                <li>Never send a résumé, database, password, access token, or API key with a normal support request.</li>
+            </ul>
+            <div class="help-card-nav"><a href="#settings-backups">Previous</a><a href="#troubleshooting">Next: Troubleshooting</a></div>
+        </div>
+    </details>
+
+    <details class="help-card" id="troubleshooting">
+        <summary><h2>Troubleshooting</h2><p>Where to look when something does not work.</p></summary>
+        <div class="help-content">
+            <ol>
+                <li>Open <a href="{{ url_for('settings_diagnostics') }}">Diagnostics</a> for a safe health summary and source warnings.</li>
+                <li>Use <strong>Companies</strong> to test one employer or <strong>Scan</strong> to retry selected companies.</li>
+                <li>Download only Junior's sanitized diagnostic information when support requests it.</li>
+            </ol>
+            <p>For an unexpected problem that continues, contact <a href="mailto:claytonmgraves@outlook.com">claytonmgraves@outlook.com</a>. Do not include private job-search data or credentials.</p>
+            <div class="help-card-nav"><a href="#privacy">Previous</a><a href="#about">Next: About Junior</a></div>
+        </div>
+    </details>
+
+    <details class="help-card" id="about">
+        <summary><h2>About Junior</h2><p>Version, storage, license, and credits.</p></summary>
+        <div class="help-content">
+            <dl class="help-facts">
+                <dt>Installed version</dt><dd>{{ application_info.version }}</dd>
+                <dt>Tester build</dt><dd>{{ application_info.build_label }}</dd>
+                <dt>Release channel</dt><dd>{{ application_info.release_channel }}</dd>
+                <dt>Database schema</dt><dd>{{ application_info.database_schema_version }}</dd>
+                <dt>Profile schema</dt><dd>{{ application_info.profile_schema_version }}</dd>
+                <dt>User data</dt><dd><code>{{ application_info.user_data_location }}</code></dd>
+                <dt>License</dt><dd>GNU General Public License v3.0 only (GPL-3.0-only)</dd>
+            </dl>
+            <h3>Credits</h3>
+            <p>Junior thanks everyone who improves it through real-world testing and thoughtful feedback.</p>
+            <p><strong>Beta testers:</strong> Dawn Peacock</p>
+            <div class="help-card-nav"><a href="#troubleshooting">Previous</a><a href="#main-content">Back to top</a></div>
+        </div>
+    </details>
 </div>
-
-<section class="page-card">
-    <h2>License</h2>
-    <p>
-        Junior is free software licensed under the
-        <strong>GNU General Public License v3.0 only</strong>
-        (<code>GPL-3.0-only</code>).
-    </p>
-    <p>
-        The complete terms are included with every Junior distribution as
-        <code>LICENSE</code> and are also available from the
-        <a href="https://github.com/lordegraves/junior/blob/HEAD/LICENSE"
-           target="_blank"
-           rel="noopener noreferrer">official Junior repository</a>.
-    </p>
-    <p class="muted">
-        Third-party components and reference data retain their own licenses.
-    </p>
-</section>
-
-<section class="page-card">
-    <h2>Credits</h2>
-    <p>Junior thanks the people who helped improve the application through real-world testing and thoughtful feedback.</p>
-    <h3>Beta testers</h3>
-    <ul>
-        <li>Dawn Peacock</li>
-    </ul>
-</section>
 {% endblock %}

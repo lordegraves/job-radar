@@ -6,6 +6,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Add a navigable Help & About page to RC6 Build 1.12. The
+  page presents curated normal-user guidance as collapsible cards while the
+  repository README retains developer, packaging, and operations material.
+
 - Prepare the fully audited, accuracy-validated product as `RC6 Build 1.12`,
   including canonical Junior commands, the renamed GitHub release location,
   disabled under-development AI controls, and expanded large-data GUI checks.

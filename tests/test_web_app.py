@@ -1331,6 +1331,8 @@ def test_review_needed_compact_view_is_bounded_and_keeps_controls(
     assert "Jobs on other pages are never selected automatically." in first_html
     assert "Review details and individual actions" in first_html
     assert "I applied" in first_html
+    assert ".job-links .button-link" in first_html
+    assert "min-width: 0" in first_html
     assert "Save for later" in first_html
     assert "Pass" in first_html
     assert 'href="#review-page-top">Back to top</a>' in first_html
@@ -6045,6 +6047,10 @@ candidate:
             '<a class="active-nav" href="/settings/diagnostics" '
             'aria-current="page">Diagnostics</a>'
         ),
+        "/settings/about": (
+            '<a class="active-nav" href="/settings/about" '
+            'aria-current="page">Help</a>'
+        ),
         "/settings": (
             '<a class="active-nav" href="/settings" '
             'aria-current="page">Settings</a>'
@@ -6089,6 +6095,7 @@ def test_shared_page_shell_supports_keyboard_and_scaled_views(
     assert 'class="skip-link" href="#main-content"' in html
     assert '<main id="main-content" class="page" tabindex="-1">' in html
     assert ":focus-visible" in html
+    assert "box-sizing: border-box" in html
     assert "@media (max-width: 800px)" in html
     assert "@media (forced-colors: active)" in html
 

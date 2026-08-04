@@ -140,10 +140,17 @@ def register_settings_routes(
         return render_template("shutdown.html")
 
     @app.get("/settings/about")
-    def settings_about():
-        """Keep old bookmarks working after About moved onto Settings."""
+    def settings_about() -> str:
+        """Present normal-user help separately from technical diagnostics."""
 
-        return redirect(url_for("settings_diagnostics"))
+        runtime_paths = get_runtime_paths()
+        return render_template(
+            "settings_about.html",
+            application_info=build_application_info(
+                database_path=runtime_paths.database_path,
+                user_data_location=runtime_paths.user_data_directory,
+            ),
+        )
 
     @app.get("/settings/job-platforms")
     def settings_job_platforms() -> str:
