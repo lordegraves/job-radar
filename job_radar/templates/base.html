@@ -193,6 +193,34 @@
             margin-top: 0;
         }
 
+        .workspace-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0 0 18px;
+        }
+
+        .workspace-tabs a {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            color: var(--muted);
+            padding: 7px 12px;
+            text-decoration: none;
+        }
+
+        .workspace-tabs a:hover,
+        .workspace-tabs a:focus-visible {
+            background: var(--surface-hover);
+            border-color: var(--link);
+            color: var(--text);
+        }
+
+        .workspace-tabs a[aria-current="page"] {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #ffffff;
+        }
+
         .admin-return {
             margin: 0 0 18px;
         }
@@ -715,14 +743,12 @@
             <div class="header-actions">
                 <nav class="site-nav" aria-label="Primary navigation">
                 <a class="{% if request.endpoint == 'index' %}active-nav{% endif %}" href="{{ url_for('index') }}"{% if request.endpoint == 'index' %} aria-current="page"{% endif %}>Home</a>
-                <a class="{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application'] %}active-nav{% endif %}" href="{{ url_for('tracker') }}"{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application'] %} aria-current="page"{% endif %}>Active Applications</a>
-                <a class="{% if request.endpoint in ['history', 'edit_history_record'] %}active-nav{% endif %}" href="{{ url_for('history') }}"{% if request.endpoint in ['history', 'edit_history_record'] %} aria-current="page"{% endif %}>Application History</a>
                 <a class="{% if request.endpoint in ['profile', 'new_profile_page', 'edit_profile_page', 'profile_fit_board_page', 'role_discovery_page', 'edit_legacy_profile_page', 'preferences', 'upload_resume', 'upload_managed_resume'] %}active-nav{% endif %}" href="{{ url_for('profile') }}"{% if request.endpoint in ['profile', 'new_profile_page', 'edit_profile_page', 'profile_fit_board_page', 'role_discovery_page', 'edit_legacy_profile_page', 'preferences', 'upload_resume', 'upload_managed_resume'] %} aria-current="page"{% endif %}>Profile / Resume</a>
-                <a class="{% if request.endpoint in ['review_jobs', 'report_section_view', 'save_report_job_decision', 'save_bulk_report_job_decisions', 'job_decisions'] %}active-nav{% endif %}" href="{{ url_for('review_jobs') }}"{% if request.endpoint in ['review_jobs', 'report_section_view', 'save_report_job_decision', 'save_bulk_report_job_decisions', 'job_decisions'] %} aria-current="page"{% endif %}>Review Jobs</a>
-                <a class="{% if request.endpoint in ['reports', 'report_view', 'report_file'] %}active-nav{% endif %}" href="{{ url_for('reports') }}"{% if request.endpoint in ['reports', 'report_view', 'report_file'] %} aria-current="page"{% endif %}>Reports</a>
                 <a class="{% if request.endpoint in ['companies', 'company_detail', 'add_company_page'] %}active-nav{% endif %}" href="{{ url_for('companies') }}"{% if request.endpoint in ['companies', 'company_detail', 'add_company_page'] %} aria-current="page"{% endif %}>Companies</a>
                 <a class="{% if request.endpoint in ['scan', 'run_scan'] %}active-nav{% endif %}" href="{{ url_for('scan') }}"{% if request.endpoint in ['scan', 'run_scan'] %} aria-current="page"{% endif %}>Scan</a>
-                <a class="{% if request.endpoint in ['settings_diagnostics', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'] %}active-nav{% endif %}" href="{{ url_for('settings_diagnostics') }}"{% if request.endpoint in ['settings_diagnostics', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'] %} aria-current="page"{% endif %}>Diagnostics</a>
+                <a class="{% if request.endpoint in ['review_jobs', 'report_section_view', 'save_report_job_decision', 'save_bulk_report_job_decisions', 'job_decisions'] %}active-nav{% endif %}" href="{{ url_for('review_jobs') }}"{% if request.endpoint in ['review_jobs', 'report_section_view', 'save_report_job_decision', 'save_bulk_report_job_decisions', 'job_decisions'] %} aria-current="page"{% endif %}>Review Jobs</a>
+                <a class="{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application', 'history', 'edit_history_record'] %}active-nav{% endif %}" href="{{ url_for('tracker') }}"{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application', 'history', 'edit_history_record'] %} aria-current="page"{% endif %}>Applications</a>
+                <a class="{% if request.endpoint in ['reports', 'report_view', 'report_file'] %}active-nav{% endif %}" href="{{ url_for('reports') }}"{% if request.endpoint in ['reports', 'report_view', 'report_file'] %} aria-current="page"{% endif %}>Reports &amp; Audit</a>
                 <a class="{% if request.endpoint == 'settings_about' %}active-nav{% endif %}" href="{{ url_for('settings_about') }}"{% if request.endpoint == 'settings_about' %} aria-current="page"{% endif %}>Help</a>
                 <a class="{% if request.endpoint and (request.endpoint == 'settings' or (request.endpoint.startswith('settings_') and request.endpoint not in ['settings_about', 'settings_diagnostics', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'])) %}active-nav{% endif %}" href="{{ url_for('settings') }}"{% if request.endpoint and (request.endpoint == 'settings' or (request.endpoint.startswith('settings_') and request.endpoint not in ['settings_about', 'settings_diagnostics', 'settings_scan_diagnostics', 'settings_diagnostic_log', 'settings_job_platforms'])) %} aria-current="page"{% endif %}>Settings</a>
                 {% if admin_mode_active %}

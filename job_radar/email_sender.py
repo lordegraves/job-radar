@@ -130,7 +130,7 @@ def send_email_report(
             sent=False,
             message=(
                 "Email could not be sent. Review Email Settings or open "
-                "Diagnostics for safe troubleshooting details."
+                "System Health for safe troubleshooting details."
             ),
         )
 

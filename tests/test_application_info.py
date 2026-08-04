@@ -86,8 +86,10 @@ def test_diagnostics_page_shows_safe_version_and_update_details(tmp_path: Path) 
     assert about_response.status_code == 200
     assert "Help & About" in about_html
     assert "What Junior does" in about_html
-    assert "Scans and recommendations" in about_html
-    assert "Privacy and safety" in about_html
+    assert "Scans &amp; results" in about_html
+    assert "Privacy &amp; safety" in about_html
+    assert "grid-template-columns: repeat(8, minmax(0, 1fr))" in about_html
+    assert "white-space: nowrap" in about_html
     assert __version__ in about_html
     assert str(tmp_path.resolve()) in about_html
 

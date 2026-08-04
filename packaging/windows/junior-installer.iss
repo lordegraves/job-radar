@@ -27,9 +27,11 @@ UninstallDisplayIcon={app}\{#AppExeName}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-; Junior's external update handoff waits for the desktop process to exit.
-; Restart Manager must not force-close pywebview/.NET processes during setup.
-CloseApplications=no
+; A manually launched installer asks Windows to close Junior cleanly before
+; replacing locked files. Never force-close it: an active scan may still be
+; finishing protected database and report writes. The built-in updater already
+; performs its own bounded shutdown and passes /NOCLOSEAPPLICATIONS.
+CloseApplications=yes
 RestartApplications=no
 ChangesEnvironment=no
 

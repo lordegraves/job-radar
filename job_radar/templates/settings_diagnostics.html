@@ -1,7 +1,7 @@
 {# Shows safe service health without exposing raw errors or private user data. #}
 {% extends "base.html" %}
 
-{% block title %}Diagnostics - junior{% endblock %}
+{% block title %}System Health - junior{% endblock %}
 
 {% block page_styles %}
 <style>
@@ -117,7 +117,12 @@
 {% endblock %}
 
 {% block content %}
-<h1 class="page-title">Diagnostics</h1>
+<h1 class="page-title">System Health</h1>
+
+<nav class="workspace-tabs" aria-label="System Health navigation">
+    <a href="{{ url_for('settings_about') }}">Help</a>
+    <a href="{{ url_for('settings') }}">Settings</a>
+</nav>
 
 <div class="page-card">
     <h2>Junior health and troubleshooting</h2>
@@ -127,7 +132,7 @@
     </p>
     <p>
         Company-specific connection tests belong on Companies. Targeted scans
-        belong on Scan. Diagnostics summarizes their health and links to the
+        belong on Scan. System Health summarizes their health and links to the
         appropriate workspace.
     </p>
     <p class="muted">

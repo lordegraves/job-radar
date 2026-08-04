@@ -1,0 +1,5 @@
+{# Active work and archived outcomes are two views of one application lifecycle. #}
+<nav class="workspace-tabs" aria-label="Applications views">
+    <a href="{{ url_for('tracker') }}"{% if request.endpoint in ['tracker', 'add_tracker_application', 'edit_tracker_application'] %} aria-current="page"{% endif %}>Active applications</a>
+    <a href="{{ url_for('history') }}"{% if request.endpoint in ['history', 'edit_history_record'] %} aria-current="page"{% endif %}>Application history</a>
+</nav>

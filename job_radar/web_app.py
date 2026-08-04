@@ -93,7 +93,7 @@ def create_app(
                 "status": "error",
                 "message": (
                     "Junior restarted, but the update result could not be read. "
-                    "Check the installed build in Diagnostics."
+                    "Check the installed build in System Health."
                 ),
             }
         update_result_path.unlink(missing_ok=True)

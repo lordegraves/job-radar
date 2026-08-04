@@ -1,7 +1,7 @@
 {# Displays only a bounded, allowlisted Junior diagnostic log. #}
 {% extends "base.html" %}
 
-{% block title %}{{ log_view.title }} - Diagnostics - junior{% endblock %}
+{% block title %}{{ log_view.title }} - System Health - junior{% endblock %}
 
 {% block page_styles %}
 <style>
@@ -17,7 +17,7 @@
 {% endblock %}
 
 {% block content %}
-<p><a href="{{ url_for('settings_diagnostics') }}">&larr; Diagnostics</a></p>
+<p><a href="{{ url_for('settings_diagnostics') }}">&larr; System Health</a></p>
 <h1 class="page-title">{{ log_view.title }}</h1>
 
 <div class="page-card">

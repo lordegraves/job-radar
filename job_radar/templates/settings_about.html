@@ -9,7 +9,7 @@
     .help-topic-nav {
         display: grid;
         gap: 10px;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        grid-template-columns: repeat(8, minmax(0, 1fr));
         margin: 18px 0;
     }
     .help-topic-nav a {
@@ -17,8 +17,10 @@
         border: 1px solid var(--border);
         border-radius: 10px;
         color: var(--text);
-        padding: 12px 14px;
+        min-width: 0;
+        padding: 12px 10px;
         text-decoration: none;
+        white-space: nowrap;
     }
     .help-topic-nav a:hover,
     .help-topic-nav a:focus-visible { border-color: var(--accent); color: var(--accent); }
@@ -55,6 +57,12 @@
     .help-facts { display: grid; gap: 8px; grid-template-columns: minmax(140px, 220px) 1fr; }
     .help-facts dt { font-weight: 700; }
     .help-facts dd { margin: 0; overflow-wrap: anywhere; }
+    @media (max-width: 1180px) {
+        .help-topic-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    @media (max-width: 680px) {
+        .help-topic-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
 </style>
 {% endblock %}
 
@@ -72,10 +80,10 @@
 <nav class="help-topic-nav" aria-label="Help topics">
     <a href="#overview">What Junior does</a>
     <a href="#getting-started">Getting started</a>
-    <a href="#scans">Scans and recommendations</a>
-    <a href="#reviewing">Reviewing and tracking jobs</a>
-    <a href="#settings-backups">Settings and backups</a>
-    <a href="#privacy">Privacy and safety</a>
+    <a href="#scans">Scans &amp; results</a>
+    <a href="#reviewing">Review &amp; track</a>
+    <a href="#settings-backups">Settings &amp; backups</a>
+    <a href="#privacy">Privacy &amp; safety</a>
     <a href="#troubleshooting">Troubleshooting</a>
     <a href="#about">About Junior</a>
 </nav>
@@ -118,7 +126,7 @@
                 <li><strong>Needs your review:</strong> possibly useful, but the evidence is incomplete or mixed.</li>
                 <li><strong>Not actionable:</strong> unrelated, outside your stated requirements, already handled, or missing too many required qualifications.</li>
             </ul>
-            <p>Later scans reuse unchanged job details where safe. Diagnostics reports collector problems without exposing private profile or résumé contents.</p>
+            <p>Later scans reuse unchanged job details where safe. System Health reports collector problems without exposing private profile or résumé contents.</p>
             <div class="help-card-nav"><a href="#getting-started">Previous</a><a href="#reviewing">Next: Reviewing jobs</a></div>
         </div>
     </details>
@@ -168,7 +176,7 @@
         <summary><h2>Troubleshooting</h2><p>Where to look when something does not work.</p></summary>
         <div class="help-content">
             <ol>
-                <li>Open <a href="{{ url_for('settings_diagnostics') }}">Diagnostics</a> for a safe health summary and source warnings.</li>
+                <li>Open <a href="{{ url_for('settings_diagnostics') }}">System Health</a> for a safe health summary and source warnings.</li>
                 <li>Use <strong>Companies</strong> to test one employer or <strong>Scan</strong> to retry selected companies.</li>
                 <li>Download only Junior's sanitized diagnostic information when support requests it.</li>
             </ol>

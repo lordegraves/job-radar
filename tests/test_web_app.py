@@ -511,7 +511,6 @@ def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert 'href="/history"' in html
-    assert "Application History" in html
     assert "Active Applications dashboard" in html
     assert "Tracked applications" not in html
     assert "Applications needing action" in html
@@ -2705,7 +2704,7 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Diagnostics" in html
+    assert "System Health" in html
     assert "Runtime paths" in html
     assert "Active settings file" in html
     assert str(settings_file) in html
@@ -2836,7 +2835,7 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Diagnostics" in html
+    assert "System Health" in html
     assert "Application configuration" in html
     assert "Latest scan" in html
     assert "Company sources" in html
@@ -3638,7 +3637,7 @@ def test_index_page_links_to_reports(tmp_path: Path) -> None:
     assert 'href="/review-jobs"' in html
     assert ">Review Jobs</a>" in html
     assert 'href="/reports"' in html
-    assert ">Reports</a>" in html
+    assert ">Reports &amp; Audit</a>" in html
 
 
 def test_reports_page_lists_only_current_scan_outputs(
@@ -5968,20 +5967,42 @@ candidate:
         assert response.status_code == 200
         assert 'href="/"' in normalized_html
         assert ">Home</a>" in normalized_html
-        assert 'href="/tracker"' in normalized_html
-        assert ">Active Applications</a>" in normalized_html
-        assert 'href="/history"' in normalized_html
-        assert ">Application History</a>" in normalized_html
         assert 'href="/profile"' in normalized_html
         assert ">Profile / Resume</a>" in normalized_html
         assert ">Search Preferences</a>" not in normalized_html
         assert 'href="/review-jobs"' in normalized_html
         assert ">Review Jobs</a>" in normalized_html
+        assert 'href="/tracker"' in normalized_html
+        assert ">Applications</a>" in normalized_html
         assert 'href="/reports"' in normalized_html
-        assert ">Reports</a>" in normalized_html
+        assert ">Reports &amp; Audit</a>" in normalized_html
         assert 'href="/scan"' in normalized_html
         assert ">Scan</a>" in normalized_html
         assert "active-nav" in normalized_html
+
+        navigation_labels = (
+            ">Home</a>",
+            ">Profile / Resume</a>",
+            ">Companies</a>",
+            ">Scan</a>",
+            ">Review Jobs</a>",
+            ">Applications</a>",
+            ">Reports &amp; Audit</a>",
+            ">Help</a>",
+            ">Settings</a>",
+        )
+        navigation_positions = [
+            normalized_html.index(label) for label in navigation_labels
+        ]
+        assert navigation_positions == sorted(navigation_positions)
+
+    tracker_html = " ".join(client.get("/tracker").get_data(as_text=True).split())
+    history_html = " ".join(client.get("/history").get_data(as_text=True).split())
+    assert 'aria-label="Applications views"' in tracker_html
+    assert 'href="/tracker" aria-current="page">Active applications</a>' in tracker_html
+    assert 'href="/history">Application history</a>' in tracker_html
+    assert 'href="/tracker">Active applications</a>' in history_html
+    assert 'href="/history" aria-current="page">Application history</a>' in history_html
 
 
 def test_navigation_marks_current_page_active(tmp_path: Path) -> None:
@@ -6021,11 +6042,11 @@ candidate:
         "/": '<a class="active-nav" href="/" aria-current="page">Home</a>',
         "/tracker": (
             '<a class="active-nav" href="/tracker" '
-            'aria-current="page">Active Applications</a>'
+            'aria-current="page">Applications</a>'
         ),
         "/history": (
-            '<a class="active-nav" href="/history" '
-            'aria-current="page">Application History</a>'
+            '<a class="active-nav" href="/tracker" '
+            'aria-current="page">Applications</a>'
         ),
         "/profile": (
             '<a class="active-nav" href="/profile" '
@@ -6037,15 +6058,11 @@ candidate:
         ),
         "/reports": (
             '<a class="active-nav" href="/reports" '
-            'aria-current="page">Reports</a>'
+            'aria-current="page">Reports &amp; Audit</a>'
         ),
         "/scan": (
             '<a class="active-nav" href="/scan" '
             'aria-current="page">Scan</a>'
-        ),
-        "/settings/diagnostics": (
-            '<a class="active-nav" href="/settings/diagnostics" '
-            'aria-current="page">Diagnostics</a>'
         ),
         "/settings/about": (
             '<a class="active-nav" href="/settings/about" '
@@ -6063,6 +6080,15 @@ candidate:
 
         assert response.status_code == 200
         assert expected_link in normalized_html
+
+    health_html = " ".join(
+        client.get("/settings/diagnostics").get_data(as_text=True).split()
+    )
+    assert '<h1 class="page-title">System Health</h1>' in health_html
+    assert '>Diagnostics</a>' not in health_html
+    assert 'aria-label="System Health navigation"' in health_html
+    assert 'href="/settings/about">Help</a>' in health_html
+    assert 'href="/settings">Settings</a>' in health_html
 
     for legacy_route, section in (
         ("/settings/email", "email"),

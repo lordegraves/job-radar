@@ -6,6 +6,17 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Reorder the normal-user navigation around Junior's actual workflow, combine
+  Active Applications and Application History beneath one Applications
+  destination, identify read-only exports as Reports & Audit, and keep System
+  Health reachable from Help and Settings instead of treating troubleshooting
+  as an everyday primary task.
+- Let a manually launched Windows repair or update ask Windows to close a
+  running Junior cleanly before replacing locked application files. Setup never
+  force-closes Junior, preserving the existing protection for scans and durable
+  database/report writes.
+- Keep all Help topics on one desktop row with shorter labels and responsive
+  four- and two-column layouts for narrower windows.
 - Add a navigable Help & About page to RC6 Build 1.12. The
   page presents curated normal-user guidance as collapsible cards while the
   repository README retains developer, packaging, and operations material.

@@ -29,8 +29,10 @@ def test_inno_installer_is_per_user_and_preserves_user_data() -> None:
     assert "function IsAutomaticUpdate(): Boolean;" in script_text
     assert "function ShouldOfferInteractiveLaunch(): Boolean;" in script_text
     assert "'/AUTOLAUNCH'" in script_text
-    assert "CloseApplications=no" in script_text
+    assert "CloseApplications=yes" in script_text
     assert "RestartApplications=no" in script_text
+    assert "CloseApplications=force" not in script_text
+    assert "active scan may still be" in script_text
     assert "[InstallDelete]" in script_text
     assert 'Type: filesandordirs; Name: "{app}\\_internal"' in script_text
 
@@ -65,6 +67,18 @@ def test_installer_build_script_requires_verified_bundle_first() -> None:
     assert 'Join-Path $installRoot "LICENSE"' in validation_text
     assert "PreviousInstallerPath" in validation_text
     assert "Assert-PackagedApplicationStarts" in validation_text
+
+
+def test_installer_close_validation_uses_an_isolated_identity() -> None:
+    validation_text = (
+        PROJECT_ROOT / "scripts" / "validate_windows_installer_close.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert "[guid]::NewGuid()" in validation_text
+    assert "Junior-Close-Test" in validation_text
+    assert '"/CLOSEAPPLICATIONS"' in validation_text
+    assert "Setup did not close the isolated running Junior process" in validation_text
+    assert "preservation-marker.txt" in validation_text
 
 
 def test_installer_receives_license_from_complete_windows_bundle() -> None:
