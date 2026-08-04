@@ -6,6 +6,8 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Rename the Home attention shortcut from **Open tracker** to **Open
+  Applications** so it matches the consolidated Applications workspace.
 - Add a prominent Help, Settings, and System Health navigation strip to all
   three pages so troubleshooting is easy to find without returning it to the
   everyday primary task bar.

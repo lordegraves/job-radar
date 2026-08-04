@@ -519,6 +519,8 @@ def test_index_page_links_to_history_archive(tmp_path: Path) -> None:
     assert "Application history" in html
     assert "Latest scan" in html
     assert "Needs attention" in html
+    assert "Open Applications" in html
+    assert "Open tracker" not in html
     assert "Support Junior" in html
     assert "Donations never change" in html
     assert (
