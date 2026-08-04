@@ -6,6 +6,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Make Help topic, Previous, and Next links open the requested section, close
+  the other Help cards, scroll the selected card into view, and preserve its
+  bookmark fragment.
 - Rename the Home attention shortcut from **Open tracker** to **Open
   Applications** so it matches the consolidated Applications workspace.
 - Add a prominent Help, Settings, and System Health navigation strip to all

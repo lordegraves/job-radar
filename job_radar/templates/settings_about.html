@@ -24,6 +24,10 @@
     }
     .help-topic-nav a:hover,
     .help-topic-nav a:focus-visible { border-color: var(--accent); color: var(--accent); }
+    .help-topic-nav a[aria-current="true"] {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
     .help-sections { display: grid; gap: 12px; }
     .help-card {
         background: rgba(31, 31, 35, 0.94);
@@ -206,4 +210,67 @@
         </div>
     </details>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (() => {
+        const cards = Array.from(document.querySelectorAll(".help-card"));
+        const topicLinks = Array.from(document.querySelectorAll(".help-topic-nav a"));
+        let changingSection = false;
+
+        function showHelpSection(sectionId, { scroll = true, updateHash = true } = {}) {
+            const target = document.getElementById(sectionId);
+            if (!target || !target.classList.contains("help-card")) {
+                return false;
+            }
+
+            changingSection = true;
+            cards.forEach((card) => {
+                card.open = card === target;
+            });
+            changingSection = false;
+
+            topicLinks.forEach((link) => {
+                if (link.getAttribute("href") === `#${sectionId}`) {
+                    link.setAttribute("aria-current", "true");
+                } else {
+                    link.removeAttribute("aria-current");
+                }
+            });
+
+            if (updateHash) {
+                window.history.replaceState(null, "", `#${sectionId}`);
+            }
+            if (scroll) {
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+            return true;
+        }
+
+        document.addEventListener("click", (event) => {
+            const link = event.target.closest('a[href^="#"]');
+            if (!link) {
+                return;
+            }
+            const sectionId = link.getAttribute("href").slice(1);
+            if (showHelpSection(sectionId)) {
+                event.preventDefault();
+            }
+        });
+
+        cards.forEach((card) => {
+            card.addEventListener("toggle", () => {
+                if (!changingSection && card.open) {
+                    showHelpSection(card.id, { scroll: false });
+                }
+            });
+        });
+
+        const initialSection = window.location.hash.slice(1);
+        if (!showHelpSection(initialSection, { scroll: false, updateHash: false })) {
+            showHelpSection("overview", { scroll: false, updateHash: false });
+        }
+    })();
+</script>
 {% endblock %}

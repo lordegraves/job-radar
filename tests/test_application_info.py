@@ -93,6 +93,11 @@ def test_diagnostics_page_shows_safe_version_and_update_details(tmp_path: Path) 
     assert 'aria-label="Help, settings, and system health"' in about_html
     assert 'href="/settings/about" aria-current="page">Help</a>' in about_html
     assert 'href="/settings/diagnostics">System Health</a>' in about_html
+    assert "function showHelpSection" in about_html
+    assert 'document.querySelectorAll(".help-card")' in about_html
+    assert "card.open = card === target" in about_html
+    assert 'event.target.closest(\'a[href^="#"]\')' in about_html
+    assert 'showHelpSection("overview"' in about_html
     assert __version__ in about_html
     assert str(tmp_path.resolve()) in about_html
 
