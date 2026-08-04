@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Record a 100 percent observed agreement rate in the latest 50-job
+  risk-weighted, non-LLM validation: all nine surfaced jobs, the 15
+  highest-scoring omissions, 25 random omissions, and the Ford India-remote
+  regression case agreed with the expected outcome. The underlying installed
+  scan evaluated 19,863 postings with no incomplete plausible postings or
+  collector errors, and the automated suite passed 1,304 tests. This is a
+  measured validation sample, not a claim that every collected job was
+  manually reviewed.
 - Brand the Windows setup wizard with Junior's logo and distinguish a new
   installation from an update or same-build repair in the wizard title,
   instructions, action button, and completion message.

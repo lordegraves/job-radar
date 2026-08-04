@@ -165,6 +165,40 @@ source limitation from every collector. These are release gates, not aspirationa
 metrics; a failed gate blocks the release until the defect is understood and
 repaired or the expected result is deliberately re-reviewed.
 
+#### Current observed accuracy result
+
+The latest non-LLM validation reached **100 percent agreement in a 50-job
+risk-weighted review**. In plain language, every decision Junior made for the
+50 jobs that were manually checked agreed with the expected decision. This is
+an observed validation rate, not a claim that every job on the internet—or
+even every job in that scan—was reviewed by a person. The Version 1.0 release
+gate remains at least 95 percent agreement on a fresh sample so later changes
+must continue to prove that they have not reintroduced an old problem.
+
+The result came from installed RC6 Build 1.11 scan run 80 on August 4, 2026.
+Junior evaluated 19,863 postings in 5 minutes and 52 seconds. The scan produced
+six Potential Top Matches, three Needs Review jobs, no incomplete plausible
+postings, and no collector errors. The 50-job review covered:
+
+- all nine jobs Junior displayed, checking the recommendation, location and
+  remote rules, major résumé gaps, and stated eligibility concerns;
+- the 15 highest-scoring omitted jobs, because these are the hidden jobs most
+  likely to expose a false rejection;
+- 25 randomly selected omitted jobs, to check ordinary decisions across a
+  wider mix of employers and occupations; and
+- the Ford India-remote regression job as a named test case, confirming that
+  `India; Remote` remains India-restricted after normalization and is omitted
+  for a United States profile.
+
+A reviewed decision counted as correct only when the final bucket was
+defensible from the posting, profile, résumé, and tracked-job history, and an
+omission had a credible audit reason. The review also checked that plausible
+jobs were not hidden merely because their descriptions were unavailable.
+Separately, the complete automated test suite passed **1,304 tests**, source
+and test linting passed, and whitespace validation passed. These automated
+checks protect known rules and collector behavior; the 50-job human-style
+review measures whether those rules produced sensible real-world results.
+
 Temporary employer-source failures do not turn incomplete cache entries into
 verified descriptions. Junior retries non-Eightfold sources once; Eightfold
 retains its source-specific retry budget. If refresh still fails, Junior runs
