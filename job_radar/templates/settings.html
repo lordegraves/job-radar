@@ -143,12 +143,14 @@
 {% block content %}
 <h1 class="page-title">Settings</h1>
 
+{% include "_support_nav.html" %}
+
 <div class="page-card">
     <p>Configure Junior's reports, email, scan schedule, and optional external company lookup.</p>
     <p>
         Each section below is collapsed until you need it.
-        Health checks, version information, runtime paths, and logs remain in
-        <a href="{{ url_for('settings_diagnostics') }}">System Health</a>.
+        Health checks, version information, runtime paths, and logs are under
+        System Health above.
         Installation-wide controls remain in
         <a href="{{ url_for('administration_unlock') }}">Unlock Administration</a>.
     </p>

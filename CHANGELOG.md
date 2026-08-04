@@ -6,6 +6,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Add a prominent Help, Settings, and System Health navigation strip to all
+  three pages so troubleshooting is easy to find without returning it to the
+  everyday primary task bar.
 - Reorder the normal-user navigation around Junior's actual workflow, combine
   Active Applications and Application History beneath one Applications
   destination, identify read-only exports as Reports & Audit, and keep System

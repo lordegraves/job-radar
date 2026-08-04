@@ -119,10 +119,7 @@
 {% block content %}
 <h1 class="page-title">System Health</h1>
 
-<nav class="workspace-tabs" aria-label="System Health navigation">
-    <a href="{{ url_for('settings_about') }}">Help</a>
-    <a href="{{ url_for('settings') }}">Settings</a>
-</nav>
+{% include "_support_nav.html" %}
 
 <div class="page-card">
     <h2>Junior health and troubleshooting</h2>

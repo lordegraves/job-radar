@@ -2723,6 +2723,9 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "reports/target-email-preview.txt" in html
     assert "Report history" in settings_html
     assert "Latest scan only" in settings_html
+    assert 'aria-label="Help, settings, and system health"' in settings_html
+    assert 'href="/settings/diagnostics">System Health</a>' in settings_html
+    assert 'href="/settings" aria-current="page">Settings</a>' in settings_html
     assert "The latest filenames remain stable." in settings_html
     assert "Save retention settings" in settings_html
     assert "report_retention_days" not in settings_html
@@ -6086,9 +6089,13 @@ candidate:
     )
     assert '<h1 class="page-title">System Health</h1>' in health_html
     assert '>Diagnostics</a>' not in health_html
-    assert 'aria-label="System Health navigation"' in health_html
+    assert 'aria-label="Help, settings, and system health"' in health_html
     assert 'href="/settings/about">Help</a>' in health_html
     assert 'href="/settings">Settings</a>' in health_html
+    assert (
+        'href="/settings/diagnostics" aria-current="page">System Health</a>'
+        in health_html
+    )
 
     for legacy_route, section in (
         ("/settings/email", "email"),
