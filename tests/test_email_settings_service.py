@@ -118,10 +118,17 @@ def test_email_setup_page_saves_through_service(tmp_path: Path, monkeypatch) -> 
     normalized_page = " ".join(page.get_data(as_text=True).split())
     assert 'id="email-settings"' in normalized_page
     assert 'id="email-settings" open' in normalized_page
+    assert normalized_page.count("data-preserve-settings-scroll") >= 3
+    assert (
+        "sessionStorage.setItem(settingsScrollKey, String(window.scrollY))"
+        in page.get_data(as_text=True)
+    )
     assert "Gmail" in page.get_data(as_text=True)
     assert "Outlook" in page.get_data(as_text=True)
     assert "Custom SMTP" in page.get_data(as_text=True)
-    assert "Test Connection" in page.get_data(as_text=True)
+    assert "Test connection" in page.get_data(as_text=True)
+    assert "Send test email" in page.get_data(as_text=True)
+    assert "View email activity" in page.get_data(as_text=True)
     assert "Email settings saved." in saved.get_data(as_text=True)
     assert "fictional-credential" not in settings_path.read_text(encoding="utf-8")
 
@@ -317,3 +324,40 @@ def test_email_setup_sends_latest_report_with_saved_settings(
     assert captured["report_path"] == reports_path / "target-scan.html"
     assert "Scan summary sent" in html
     assert "attached the full HTML report" in html
+
+
+def test_email_setup_sends_safe_diagnostic_test_and_records_activity(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+    _write_settings(settings_path)
+    captured = {}
+
+    def fake_send(email_settings):
+        captured["email_settings"] = email_settings
+        return type("Result", (), {"sent": True, "message": "Email sent"})()
+
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.send_email_diagnostic_test",
+        fake_send,
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    response = client.post(
+        "/settings/email/send-test",
+        follow_redirects=True,
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert captured["email_settings"].enabled is False
+    assert "Diagnostic email sent" in html
+    assert "Junior sent the diagnostic test email." in html
+    email_log = tmp_path / "logs" / "junior-email.log"
+    assert email_log.is_file()
+    content = email_log.read_text(encoding="utf-8")
+    assert "email_diagnostic_message" in content
+    assert "successful" in content
+    assert "@" not in content

@@ -3,6 +3,7 @@
 import os
 import smtplib
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from email.message import EmailMessage
 from email.utils import formataddr
 from collections.abc import Mapping
@@ -130,7 +131,7 @@ def send_email_report(
             sent=False,
             message=(
                 "Email could not be sent. Review Email Settings or open "
-                "System Health for safe troubleshooting details."
+                "Diagnostics for safe troubleshooting details."
             ),
         )
 
@@ -161,7 +162,7 @@ def send_generated_scan_report(
 
     try:
         preview_text = preview.read_text(encoding="utf-8")
-        report_html = report.read_text(encoding="utf-8")
+        report.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return EmailSendResult(
             sent=False,
@@ -185,8 +186,42 @@ def send_generated_scan_report(
         email_settings=email_settings,
         subject=subject_line.removeprefix("Subject: ").strip(),
         body=body.lstrip(),
-        html_body=report_html,
+        # The full report remains attached. Using it as the message body made
+        # email clients render report cards as large, distracting blocks.
+        html_body=None,
         attachment_path=report,
+    )
+
+
+def send_email_diagnostic_test(
+    email_settings: Mapping[str, Any],
+) -> EmailSendResult:
+    """Send a privacy-safe message proving the configured path works."""
+
+    provider = str(email_settings.get("provider") or "Custom SMTP")
+    tls_mode = str(email_settings.get("smtp_tls_mode") or "not specified")
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    body = "\n".join(
+        (
+            "Junior email test completed successfully.",
+            "",
+            f"Generated at: {generated_at}",
+            f"Provider: {provider}",
+            f"Connection security: {tls_mode}",
+            "Configuration: loaded",
+            "Secure connection: established",
+            "Authentication: accepted",
+            "Message handoff: accepted by the outgoing mail server",
+            "",
+            "For privacy, this test does not include email addresses, "
+            "credentials, profile data, resume contents, or raw server "
+            "responses.",
+        )
+    )
+    return send_email_report(
+        email_settings=email_settings,
+        subject="Junior email diagnostic test",
+        body=body,
     )
 
 

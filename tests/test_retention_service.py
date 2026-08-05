@@ -215,3 +215,39 @@ def test_log_retention_prunes_only_recognized_dated_logs(
     assert (logs / "junior-20260721T120000000000Z.log").is_file()
     assert (logs / "startup-errors.log").is_file()
     assert (logs / "personal.log").is_file()
+
+
+def test_log_retention_keeps_each_troubleshooting_purpose_separately(
+    tmp_path: Path,
+) -> None:
+    reports = tmp_path / "reports"
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    names = (
+        "junior-database-20260804T120000Z.log",
+        "junior-database-20260805T120000Z.log",
+        "junior-user-actions-20260804T120000Z.log",
+        "junior-user-actions-20260805T120000Z.log",
+        "junior-scan-run-41-20260804T120000Z.log",
+        "junior-scan-run-42-20260805T120000Z.log",
+        "junior-evaluation-run-41-20260804T120000Z.log",
+        "junior-evaluation-run-42-20260805T120000Z.log",
+    )
+    for name in names:
+        (logs / name).write_text(name, encoding="utf-8")
+
+    run_retention(
+        reports,
+        logs,
+        report_policy=policy("latest_only"),
+        log_policy=policy("latest_only"),
+    )
+
+    assert not (logs / names[0]).exists()
+    assert (logs / names[1]).is_file()
+    assert not (logs / names[2]).exists()
+    assert (logs / names[3]).is_file()
+    assert not (logs / names[4]).exists()
+    assert (logs / names[5]).is_file()
+    assert not (logs / names[6]).exists()
+    assert (logs / names[7]).is_file()

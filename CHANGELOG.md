@@ -6,6 +6,33 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Add purpose-specific, timestamped troubleshooting logs for scan execution,
+  per-job evaluation decisions, database writes and slow operations, user
+  actions, and safe application errors. Diagnostics explains what each log is
+  for and displays its descriptive filename. Correlation IDs and scan-run IDs
+  let support trace related events without recording résumé text, full job
+  descriptions, submitted form values, SQL values, credentials, or raw
+  exception messages. Existing log-retention choices apply independently to
+  each troubleshooting purpose.
+- Add a Profile Configuration Report under Profile / Resume, with a
+  Diagnostics shortcut, an inspectable preview, and a user-directed HTML
+  download. Junior never emails or uploads the report, and its explicit safe
+  field list excludes identity, résumé content, work history, applications,
+  notes, local paths and identifiers, private source URLs, credentials, and
+  raw errors.
+- Rename the combined workspace to **Settings & Diagnostics**, remove the
+  redundant Help submenu entry, and use **Diagnostics** consistently for
+  health checks, runtime information, and logs.
+- Keep the Diagnostics log picker anchored at the log viewer, add a dedicated
+  privacy-safe email activity log, expose connection and delivery tests beside
+  email status, and add a diagnostic test message that contains no addresses,
+  credentials, profile data, or raw server responses.
+- Send the readable scan summary as the email body and retain the full HTML
+  report as an attachment instead of rendering the report's large cards inside
+  the message body.
+- Keep the selected-company scan receipt independent from ordinary full scans,
+  label when it was completed, explain what updates it, and refresh its figures
+  immediately when a new selected-company scan finishes.
 - Preserve explicit at-scale experience requirements during résumé comparison
   across Junior's shared technology and infrastructure vocabulary, while leaving
   ordinary skill requirements and broader scoring thresholds unchanged.
@@ -17,13 +44,12 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   bookmark fragment.
 - Rename the Home attention shortcut from **Open tracker** to **Open
   Applications** so it matches the consolidated Applications workspace.
-- Add a prominent Help, Settings, and System Health navigation strip to all
-  three pages so troubleshooting is easy to find without returning it to the
-  everyday primary task bar.
+- Add a prominent Settings and Diagnostics navigation strip to those related
+  pages while keeping Help as its own primary destination.
 - Reorder the normal-user navigation around Junior's actual workflow, combine
   Active Applications and Application History beneath one Applications
-  destination, identify read-only exports as Reports & Audit, and keep System
-  Health reachable from Help and Settings instead of treating troubleshooting
+  destination, identify read-only exports as Reports & Audit, and keep
+  Diagnostics reachable from Help and Settings instead of treating troubleshooting
   as an everyday primary task.
 - Let a manually launched Windows repair or update ask Windows to close a
   running Junior cleanly before replacing locked application files. Setup never
@@ -31,11 +57,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   database/report writes.
 - Keep all Help topics on one desktop row with shorter labels and responsive
   four- and two-column layouts for narrower windows.
-- Add a navigable Help & About page to RC6 Build 1.12. The
+- Add a navigable Help & About page to RC6 Build 1.13. The
   page presents curated normal-user guidance as collapsible cards while the
   repository README retains developer, packaging, and operations material.
 
-- Prepare the fully audited, accuracy-validated product as `RC6 Build 1.12`,
+- Prepare the fully audited, accuracy-validated product as `RC6 Build 1.13`,
   including canonical Junior commands, the renamed GitHub release location,
   disabled under-development AI controls, and expanded large-data GUI checks.
 

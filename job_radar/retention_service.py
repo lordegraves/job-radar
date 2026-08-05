@@ -18,7 +18,9 @@ _ARCHIVE_NAME_PATTERN = re.compile(
     r"^scan-(?P<timestamp>\d{8}T\d{12})Z(?:-(?P<counter>\d{2}))?$"
 )
 _OWNED_LOG_PATTERN = re.compile(
-    r"^(?:junior|startup-errors)-\d{8}T\d{12}Z\.log$"
+    r"^(?:(?:junior|startup-errors)-\d{8}T\d{12}Z|"
+    r"junior-(?:database|errors|user-actions)-\d{8}T\d{6}Z|"
+    r"junior-(?:scan|evaluation)-run-\d+-\d{8}T\d{6}Z)\.log$"
 )
 
 
@@ -148,21 +150,36 @@ def _prune_report_archives(reports_directory: Path, *, keep: int) -> None:
 def _prune_owned_logs(logs_directory: Path, *, keep: int) -> None:
     if not logs_directory.is_dir():
         return
-    owned_logs = sorted(
-        (
-            path
-            for path in logs_directory.iterdir()
-            if path.is_file() and _OWNED_LOG_PATTERN.fullmatch(path.name)
-        ),
-        key=lambda path: path.name,
-    )
-    for path in owned_logs[: max(0, len(owned_logs) - keep)]:
-        try:
-            path.unlink()
-        except OSError:
-            # Antivirus and report viewers can briefly lock old Windows logs.
-            # Preserve the completed scan and retry cleanup on a later run.
+    owned_logs: dict[str, list[Path]] = {}
+    for path in logs_directory.iterdir():
+        if not path.is_file() or not _OWNED_LOG_PATTERN.fullmatch(path.name):
             continue
+        owned_logs.setdefault(_owned_log_family(path.name), []).append(path)
+    for family_logs in owned_logs.values():
+        family_logs.sort(key=lambda path: path.name)
+        for path in family_logs[: max(0, len(family_logs) - keep)]:
+            try:
+                path.unlink()
+            except OSError:
+                # Antivirus and report viewers can briefly lock old Windows logs.
+                # Preserve the completed scan and retry cleanup on a later run.
+                continue
+
+
+def _owned_log_family(name: str) -> str:
+    """Retain history independently for each troubleshooting purpose."""
+
+    for family in (
+        "database",
+        "errors",
+        "user-actions",
+        "scan-run",
+        "evaluation-run",
+        "startup-errors",
+    ):
+        if name.startswith(f"junior-{family}-") or name.startswith(f"{family}-"):
+            return family
+    return "legacy-junior"
 
 
 def _owned_archive_directories(reports_directory: Path) -> list[Path]:

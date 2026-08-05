@@ -19,7 +19,13 @@ from job_radar.job_decision_service import (
     list_job_decisions,
     save_job_decision,
 )
-from job_radar.profile_models import ManagedProfile
+from job_radar.operational_event_log import operational_log_name
+from job_radar.profile_models import (
+    FitSignal,
+    LocationPreference,
+    ManagedProfile,
+    ProfilePreferences,
+)
 from job_radar.profile_storage import (
     create_profile,
     get_active_profile,
@@ -42,6 +48,40 @@ from job_radar.tracker.tracker_storage import (
 )
 from job_radar.web_app import create_app
 from job_radar.web_routes.scan import _build_scan_status_payload
+
+
+def test_web_activity_and_errors_write_safe_correlated_logs(tmp_path: Path) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    app = create_app(settings_path=str(settings_file))
+    app.config["TESTING"] = False
+
+    @app.get("/synthetic-safe-error")
+    def synthetic_safe_error():
+        raise RuntimeError("private error message")
+
+    client = app.test_client()
+    response = client.post(
+        "/settings/llm",
+        data={"api_key": "private-form-value"},
+    )
+    assert response.status_code == 302
+    assert client.get("/synthetic-safe-error").status_code == 500
+
+    action_text = (
+        tmp_path / operational_log_name("user_actions")
+    ).read_text(encoding="utf-8")
+    error_text = (
+        tmp_path / operational_log_name("errors")
+    ).read_text(encoding="utf-8")
+    assert '"endpoint": "settings_llm_save"' in action_text
+    assert '"status_code": 302' in action_text
+    assert '"error_type": "RuntimeError"' in error_text
+    assert '"request_id":' in action_text
+    assert '"request_id":' in error_text
+    assert "private-form-value" not in action_text
+    assert "private error message" not in error_text
 
 
 def mark_existing_installation(database_file: Path) -> None:
@@ -2488,7 +2528,7 @@ def test_index_page_links_to_settings(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert 'href="/settings"' in html
-    assert ">Settings</a>" in html
+    assert ">Settings &amp; Diagnostics</a>" in html
 
 
 def test_index_page_links_to_companies(tmp_path: Path) -> None:
@@ -2706,7 +2746,7 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "System Health" in html
+    assert "Diagnostics" in html
     assert "Runtime paths" in html
     assert "Active settings file" in html
     assert str(settings_file) in html
@@ -2725,8 +2765,8 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
     assert "reports/target-email-preview.txt" in html
     assert "Report history" in settings_html
     assert "Latest scan only" in settings_html
-    assert 'aria-label="Help, settings, and system health"' in settings_html
-    assert 'href="/settings/diagnostics">System Health</a>' in settings_html
+    assert 'aria-label="Settings and diagnostics"' in settings_html
+    assert 'href="/settings/diagnostics">Diagnostics</a>' in settings_html
     assert 'href="/settings" aria-current="page">Settings</a>' in settings_html
     assert "The latest filenames remain stable." in settings_html
     assert "Save retention settings" in settings_html
@@ -2840,7 +2880,8 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "System Health" in html
+    assert "Diagnostics" in html
+    assert 'action="/settings/diagnostics#developer-logs"' in html
     assert "Application configuration" in html
     assert "Latest scan" in html
     assert "Company sources" in html
@@ -3176,7 +3217,8 @@ def test_scan_page_restores_active_scan_progress(
     assert 'id="latest-output-summary"' in html
     assert "formatDuration(status.elapsed_seconds)" in html
     assert "Previous completed full scan." in html
-    assert "Previous selected-company scan completed." in html
+    assert "Most recent selected-company scan completed." in html
+    assert "This receipt changes only when you run Scan selected companies." in html
     assert "Previous completed scan problems" in html
     assert "await new Promise(window.requestAnimationFrame);" in html
 
@@ -3217,9 +3259,11 @@ def test_scan_status_endpoint_returns_durable_progress(
     assert response.status_code == 200
     elapsed_seconds = payload.pop("elapsed_seconds")
     elapsed_label = payload.pop("elapsed_label")
+    finished_label = payload.pop("finished_label")
     assert isinstance(elapsed_seconds, int)
     assert elapsed_seconds >= 0
     assert isinstance(elapsed_label, str)
+    assert finished_label is None
     assert payload == {
         "scan_run_id": scan_run_id,
         "status": "running",
@@ -3421,8 +3465,13 @@ def test_scan_page_keeps_full_and_selected_scan_receipts_separate(
     assert '<span id="latest-companies">74</span>' in html
     assert '<span id="latest-jobs">19000</span>' in html
     assert "Most recent selected-company scan completed." in html
+    assert "This receipt changes only when you run Scan selected companies." in html
+    assert 'id="selected-finished"' in html
     assert "3m 00s" in html
-    assert "2 company sources; 1200 jobs collected." in html
+    assert '<span id="selected-companies">2</span>' in html
+    assert '<span id="selected-jobs">1200</span>' in html
+    assert "status.trigger_source === \"manual:selected\"" in html
+    assert "selectedOutput.hidden = false" in html
 
 
 def test_scan_run_calls_handle_scan_and_redirects(
@@ -5439,6 +5488,144 @@ candidate:
     assert "Large-scale Linux and HPC operations." in html
 
 
+def test_profile_configuration_report_is_previewable_downloadable_and_private(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    upsert_employer_source(
+        database_file,
+        EmployerSource(
+            employer_id="example_company",
+            name="Example Company",
+            source_type="greenhouse",
+            source_config={
+                "source_slug": "private-source-slug",
+                "careers_url": "https://private.example.invalid/jobs",
+            },
+            notes="private employer note",
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_1234abcd",
+        display_name="Private Person Name",
+        preferences=ProfilePreferences(
+            target_roles=("Infrastructure Specialist",),
+            seniority_levels=("Senior",),
+            core_strengths=("Linux operations",),
+            credible_adjacent=("Kubernetes operations",),
+            learning_or_gap=("Kubernetes platform ownership",),
+            exclusions=("Commission sales",),
+            work_arrangements=("Remote", "Hybrid"),
+            employment_types=("Full-time",),
+            schedule_preference="Day shift",
+            location_selections=(
+                LocationPreference(
+                    value="city:example",
+                    label="Example City, Colorado",
+                    radius_miles=50,
+                    latitude=40.0,
+                    longitude=-105.0,
+                ),
+            ),
+            compensation_floor_usd=120000,
+            compensation_target_usd=150000,
+            travel_tolerance="Up to 20%",
+            on_call_preference="Willing to participate",
+            clearance_preference=(
+                "Exclude jobs requiring an existing active clearance"
+            ),
+        ),
+        company_ids=("example_company",),
+        fit_signals=(
+            FitSignal(term="Linux operations", category="strong"),
+        ),
+        scoring_config={
+            "positive_keywords": {"linux": 10},
+            "negative_keywords": {"sales": -20},
+            "location_preferences": {
+                "allowed": ["remote"],
+                "conditional": {},
+                "skipped": {},
+            },
+            "top_matches": {
+                "min_score": 120,
+                "excluded_title_keywords": ["sales"],
+                "strong_signals": ["title:linux"],
+            },
+            "review_needed": {
+                "min_score": 100,
+                "excluded_location_statuses": ["skipped"],
+                "strong_signals": ["body:linux"],
+            },
+        },
+    )
+    create_profile(database_file, profile)
+    set_active_profile(database_file, profile.profile_id)
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    profile_html = client.get("/profile").get_data(as_text=True)
+    diagnostics_html = client.get("/settings/diagnostics").get_data(as_text=True)
+    preview = client.get("/profile/configuration-report")
+    download = client.get("/profile/configuration-report/download")
+    preview_html = preview.get_data(as_text=True)
+    download_html = download.get_data(as_text=True)
+
+    assert "Preview report" in profile_html
+    assert "Open Profile Configuration Report" in diagnostics_html
+    assert preview.status_code == 200
+    assert download.status_code == 200
+    assert download.headers["Content-Disposition"] == (
+        'attachment; filename="junior-profile-configuration-report.html"'
+    )
+    for expected in (
+        "Infrastructure Specialist",
+        "Example City, Colorado (50-mile radius)",
+        "Linux operations",
+        "Kubernetes platform ownership",
+        "Example Company",
+        "Greenhouse",
+        "Top Match threshold",
+        "$120,000",
+        "Excluded for privacy",
+        "Junior does not email or upload this report",
+    ):
+        assert expected in preview_html
+    for expected in (
+        "Infrastructure Specialist",
+        "Example Company",
+        "Excluded for privacy",
+    ):
+        assert expected in download_html
+    for prohibited in (
+        "Private Person Name",
+        "private-source-slug",
+        "private.example.invalid",
+        "private employer note",
+        profile.profile_id,
+        str(database_file),
+    ):
+        assert prohibited not in preview_html
+        assert prohibited not in download_html
+
+
+def test_profile_configuration_report_requires_an_active_profile(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    mark_existing_installation(database_file)
+    client = create_app(settings_path=str(settings_file)).test_client()
+
+    response = client.get("/profile/configuration-report")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/profile?")
+
+
 def test_search_preferences_page_can_create_a_managed_profile(
     tmp_path: Path,
 ) -> None:
@@ -5524,7 +5711,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.12" in html
+    assert "RC6 Build 1.13" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html
@@ -5994,7 +6181,7 @@ candidate:
             ">Applications</a>",
             ">Reports &amp; Audit</a>",
             ">Help</a>",
-            ">Settings</a>",
+            ">Settings &amp; Diagnostics</a>",
         )
         navigation_positions = [
             normalized_html.index(label) for label in navigation_labels
@@ -6075,7 +6262,7 @@ candidate:
         ),
         "/settings": (
             '<a class="active-nav" href="/settings" '
-            'aria-current="page">Settings</a>'
+                'aria-current="page">Settings &amp; Diagnostics</a>'
         ),
     }
 
@@ -6089,13 +6276,12 @@ candidate:
     health_html = " ".join(
         client.get("/settings/diagnostics").get_data(as_text=True).split()
     )
-    assert '<h1 class="page-title">System Health</h1>' in health_html
-    assert '>Diagnostics</a>' not in health_html
-    assert 'aria-label="Help, settings, and system health"' in health_html
-    assert 'href="/settings/about">Help</a>' in health_html
+    assert '<h1 class="page-title">Settings &amp; Diagnostics</h1>' in health_html
+    assert 'aria-label="Settings and diagnostics"' in health_html
+    assert health_html.count('href="/settings/about">Help</a>') == 1
     assert 'href="/settings">Settings</a>' in health_html
     assert (
-        'href="/settings/diagnostics" aria-current="page">System Health</a>'
+        'href="/settings/diagnostics" aria-current="page">Diagnostics</a>'
         in health_html
     )
 

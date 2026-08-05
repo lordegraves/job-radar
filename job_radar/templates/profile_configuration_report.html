@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Profile Configuration Report - junior{% endblock %}
+{% block page_styles %}
+<style>
+    .configuration-report-list div { border-top: 1px solid var(--border); display: grid; gap: 16px; grid-template-columns: minmax(190px, 280px) 1fr; padding: 11px 0; }
+    .configuration-report-list div:first-child { border-top: 0; }
+    .configuration-report-list dt { font-weight: 700; }
+    .configuration-report-list dd { margin: 0; overflow-wrap: anywhere; }
+    .privacy-card { border-left: 5px solid #55d6a3; }
+    @media (max-width: 640px) { .configuration-report-list div { grid-template-columns: 1fr; gap: 4px; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-card">
+    <p><a href="{{ url_for('profile') }}">&larr; Profile / Resume</a></p>
+    <h1 class="page-title">Profile Configuration Report</h1>
+    <p>This report shows the settings Junior currently uses for the active profile. Review it before sharing it with support.</p>
+    <p class="muted">Junior does not email or upload this report. Downloading saves a copy through your browser so you decide whether and how to share it.</p>
+    <div class="actions"><a class="button-link" href="{{ url_for('profile_configuration_report_download') }}">Download report</a></div>
+</div>
+{% include "_profile_configuration_report_content.html" %}
+{% endblock %}

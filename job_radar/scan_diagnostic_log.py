@@ -3,6 +3,7 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Lock
 from time import monotonic
 
 from job_radar import __build__, __version__
@@ -51,6 +52,8 @@ _SAFE_FIELDS = {
     "jobs_llm_reused",
     "llm_failures",
 }
+_RUN_LOGS: dict[int, str] = {}
+_RUN_LOG_LOCK = Lock()
 
 
 def start_scan_diagnostics(
@@ -63,6 +66,11 @@ def start_scan_diagnostics(
     """Start a fresh last-scan log and return its monotonic start time."""
 
     started = monotonic()
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    with _RUN_LOG_LOCK:
+        _RUN_LOGS[scan_run_id] = (
+            f"junior-scan-run-{scan_run_id}-{stamp}.log"
+        )
     _write_event(
         logs_path,
         event="scan_started",
@@ -122,6 +130,15 @@ def _write_event(
         mode = "w" if replace_last_scan else "a"
         with last_scan_path.open(mode, encoding="utf-8", newline="\n") as stream:
             stream.write(line)
+        scan_run_id = fields.get("scan_run_id")
+        if isinstance(scan_run_id, int):
+            with _RUN_LOG_LOCK:
+                run_name = _RUN_LOGS.get(scan_run_id)
+            if run_name:
+                with (directory / run_name).open(
+                    "a", encoding="utf-8", newline="\n"
+                ) as stream:
+                    stream.write(line)
     except OSError:
         # Diagnostics must never make a scan fail.
         return False

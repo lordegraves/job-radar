@@ -117,7 +117,9 @@ def test_settings_stays_available_and_locked_navigation_stays_normal(
     html = settings_response.get_data(as_text=True)
 
     assert settings_response.status_code == 200
-    assert "<h1 class=\"page-title\">Settings</h1>" in html
+    assert (
+        "<h1 class=\"page-title\">Settings &amp; Diagnostics</h1>" in html
+    )
     assert "Unlock Administration" in html
     assert ">Administration</a>" not in html
     assert "Administration mode" not in html

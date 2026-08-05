@@ -141,7 +141,7 @@
 {% endblock %}
 
 {% block content %}
-<h1 class="page-title">Settings</h1>
+<h1 class="page-title">Settings &amp; Diagnostics</h1>
 
 {% include "_support_nav.html" %}
 
@@ -150,7 +150,7 @@
     <p>
         Each section below is collapsed until you need it.
         Health checks, version information, runtime paths, and logs are under
-        System Health above.
+        <a href="{{ url_for('settings_diagnostics') }}">Diagnostics</a> above.
         Installation-wide controls remain in
         <a href="{{ url_for('administration_unlock') }}">Unlock Administration</a>.
     </p>
@@ -242,6 +242,14 @@
                     </div>
                     {% endif %}
                     <p><strong>Credential storage:</strong> {{ email_form.credential_status }}</p>
+                    <div class="inline-actions">
+                        <button class="button-secondary" type="submit" form="email-settings-form" formaction="{{ url_for('settings_email_test') }}">Test connection</button>
+                        <form method="post" action="{{ url_for('settings_email_send_test') }}" data-preserve-settings-scroll>
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit">Send test email</button>
+                        </form>
+                        <a href="{{ url_for('settings_diagnostics', _anchor='developer-logs') }}">View email activity</a>
+                    </div>
                 </section>
                 <section class="settings-panel">
                     <h3>Send the latest scan report</h3>
@@ -256,14 +264,14 @@
                         <div><span>Result</span><strong>{{ delivery_test.reason }}</strong></div>
                     </div>
                     {% endif %}
-                    <form method="post" action="{{ url_for('settings_email_send_latest') }}">
+                    <form method="post" action="{{ url_for('settings_email_send_latest') }}" data-preserve-settings-scroll>
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                         <button type="submit">Send latest scan summary</button>
                     </form>
                 </section>
             </div>
 
-            <form class="settings-panel" method="post" action="{{ url_for('settings_email_save') }}" style="margin-top: 18px;">
+            <form id="email-settings-form" class="settings-panel" method="post" action="{{ url_for('settings_email_save') }}" style="margin-top: 18px;" data-preserve-settings-scroll>
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <label>
                     <input type="checkbox" name="enabled" value="yes" {% if email_form.enabled %}checked{% endif %}>
@@ -317,7 +325,6 @@
                 <p class="muted">The password is stored by your operating system, not in Junior's settings or database.</p>
                 <div class="inline-actions">
                     <button type="submit">Save email settings</button>
-                    <button class="button-secondary" type="submit" formaction="{{ url_for('settings_email_test') }}">Test Connection</button>
                 </div>
             </form>
         </div>
@@ -500,5 +507,21 @@
     provider.addEventListener("change", () => {
         customSettings.open = provider.value === "custom";
     });
+
+    const settingsScrollKey = "junior-settings-scroll-position";
+    document.querySelectorAll("[data-preserve-settings-scroll]").forEach((form) => {
+        form.addEventListener("submit", () => {
+            sessionStorage.setItem(settingsScrollKey, String(window.scrollY));
+        });
+    });
+    const savedSettingsScroll = sessionStorage.getItem(settingsScrollKey);
+    if (savedSettingsScroll !== null) {
+        sessionStorage.removeItem(settingsScrollKey);
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                window.scrollTo({ top: Number(savedSettingsScroll), behavior: "auto" });
+            });
+        });
+    }
 </script>
 {% endblock %}

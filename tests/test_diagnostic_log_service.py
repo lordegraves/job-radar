@@ -18,6 +18,7 @@ from job_radar.diagnostic_log_service import (
     read_diagnostic_log,
 )
 from job_radar.diagnostic_service import DiagnosticsView, HealthCard
+from job_radar.email_event_log import record_email_event
 
 
 def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
@@ -34,6 +35,13 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
         '{"event":"update_installer_finished","status":"success",'
         '"detail":"Installer exit code 0."}',
         encoding="utf-8",
+    )
+    record_email_event(
+        tmp_path,
+        event="email_connection_test",
+        outcome="successful",
+        provider="gmail",
+        reason_code="connected",
     )
     (tmp_path / "junior-company-discovery.log.previous").write_text(
         '{"event":"company_discovery","outcome":"not_found"}',
@@ -65,6 +73,7 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
         "junior-company-discovery.log",
         "junior-company-discovery.log.previous",
         "junior-update.log",
+        "junior-email.log",
         "startup-errors.log",
         "junior-20260723T120000000000Z.log",
     }
@@ -78,6 +87,7 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
         "Previous company discovery activity"
     )
     assert titles["junior-update.log"] == "Update activity"
+    assert titles["junior-email.log"] == "Email activity"
     assert all(log.description for log in logs)
 
     content = (tmp_path / "junior-company-discovery.log").read_text(
@@ -86,6 +96,27 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
     assert "careers.example.test" in content
     assert "talentbrew" in content
     assert "unsafe_url" not in content
+
+    email_content = (tmp_path / "junior-email.log").read_text(
+        encoding="utf-8"
+    )
+    assert "email_connection_test" in email_content
+    assert "gmail" in email_content
+    assert "password" not in email_content
+    assert "@" not in email_content
+
+    record_email_event(
+        tmp_path,
+        event="email_connection_test",
+        outcome="failed",
+        provider="private@example.test",
+        reason_code="invalid_provider",
+    )
+    email_content = (tmp_path / "junior-email.log").read_text(
+        encoding="utf-8"
+    )
+    assert "private@example.test" not in email_content
+    assert "not_configured" in email_content
 
 
 def test_rejects_arbitrary_and_nested_log_paths(tmp_path: Path) -> None:
@@ -242,3 +273,24 @@ def test_decision_log_records_developer_metadata(tmp_path: Path) -> None:
     assert payload["application_build"]
     assert payload["subsystem"] == "job_decision"
     assert payload["severity"] == "info"
+
+
+def test_timestamped_troubleshooting_logs_have_clear_titles(
+    tmp_path: Path,
+) -> None:
+    names = {
+        "junior-database-20260805T120000Z.log": "Database operations",
+        "junior-errors-20260805T120000Z.log": "Application errors",
+        "junior-user-actions-20260805T120000Z.log": "User activity",
+        "junior-scan-run-42-20260805T120000Z.log": "Scan execution trace",
+        "junior-evaluation-run-42-20260805T120000Z.log": "Job evaluation trace",
+    }
+    for name in names:
+        (tmp_path / name).write_text(
+            '{"timestamp":"2026-08-05T12:00:00+00:00","event":"test"}\n',
+            encoding="utf-8",
+        )
+
+    logs = list_diagnostic_logs(tmp_path)
+
+    assert {item.name: item.title for item in logs} == names

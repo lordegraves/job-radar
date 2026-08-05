@@ -67,6 +67,10 @@ def test_last_scan_log_is_replaced_and_private_fields_are_dropped(
     assert '"scan_run_id": 8' in replacement
     assert '"scan_run_id": 7' in history
     assert '"scan_run_id": 8' in history
+    run_logs = sorted(tmp_path.glob("junior-scan-run-*.log"))
+    assert len(run_logs) == 2
+    assert '"scan_run_id": 7' in run_logs[0].read_text(encoding="utf-8")
+    assert '"scan_run_id": 8' in run_logs[1].read_text(encoding="utf-8")
 
 
 def test_company_evaluation_counts_are_allowed_but_private_data_is_not(

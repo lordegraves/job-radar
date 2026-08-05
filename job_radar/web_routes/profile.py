@@ -1,6 +1,6 @@
 """Serve the candidate profile page and safe resume-replacement workflow."""
 
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
 
 from job_radar.config import ConfigError
 from job_radar.company_workspace_service import build_company_workspace
@@ -33,6 +33,9 @@ from job_radar.preference_reference import (
 from job_radar.profile_service import (
     build_candidate_profile_view,
     save_uploaded_resume,
+)
+from job_radar.profile_configuration_report import (
+    build_profile_configuration_report,
 )
 from job_radar.scoring_preferences import (
     build_effective_scoring_preferences_view,
@@ -160,6 +163,45 @@ def register_profile_routes(
             upload_result=request.args.get("upload_result", "").strip(),
             upload_error=request.args.get("upload_error", "").strip(),
         )
+
+    @app.get("/profile/configuration-report")
+    def profile_configuration_report_page():
+        report = build_profile_configuration_report(
+            database_path,
+            scoring_path,
+        )
+        if report is None:
+            return _profile_redirect(
+                "error",
+                "Create or select a profile before generating its configuration report.",
+            )
+        return render_template(
+            "profile_configuration_report.html",
+            report=report,
+        )
+
+    @app.get("/profile/configuration-report/download")
+    def profile_configuration_report_download():
+        report = build_profile_configuration_report(
+            database_path,
+            scoring_path,
+        )
+        if report is None:
+            return _profile_redirect(
+                "error",
+                "Create or select a profile before generating its configuration report.",
+            )
+        response = make_response(
+            render_template(
+                "profile_configuration_report_download.html",
+                report=report,
+            )
+        )
+        response.headers["Content-Type"] = "text/html; charset=utf-8"
+        response.headers["Content-Disposition"] = (
+            'attachment; filename="junior-profile-configuration-report.html"'
+        )
+        return response
 
     @app.get("/profile/new")
     def new_profile_page() -> str:

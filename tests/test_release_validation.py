@@ -12,7 +12,7 @@ def test_release_gate_runs_full_validation_and_installer_lifecycle() -> None:
     ).read_text(encoding="utf-8")
 
     assert r".venv\Scripts\python.exe" in script
-    assert "-m pytest -q tests" in script
+    assert "-m pytest -q --basetemp $pytestBaseTemp tests" in script
     assert "-m ruff check ." in script
     assert "git diff --check" in script
     assert "scripts\\build_windows_installer.ps1" in script

@@ -260,6 +260,7 @@
         <a href="#resume">Résumé</a>
         <a href="#job-fit">Job fit</a>
         {% if active_managed_profile %}<a href="#role-discovery">Role discovery</a>{% endif %}
+        {% if active_managed_profile %}<a href="#configuration-report">Configuration report</a>{% endif %}
         {% if profile_management.profiles %}<a href="#manage-profiles">Manage profiles</a>{% endif %}
     </nav>
     {% endif %}
@@ -532,6 +533,15 @@
 
 {% if has_profile %}
 <div id="technical-details" class="section">
+    {% if active_managed_profile %}
+    <section class="page-card" id="configuration-report">
+        <h2>Profile Configuration Report</h2>
+        <p>Preview and download a privacy-safe record of the preferences, skills, job titles, companies, and scoring settings Junior currently uses.</p>
+        <p class="muted">The report excludes your résumé, identity, applications, personal notes, file paths, and credentials. Junior never emails or uploads it.</p>
+        <div class="actions"><a class="button-link" href="{{ url_for('profile_configuration_report_page') }}">Preview report</a></div>
+    </section>
+    {% endif %}
+
     <details class="profile-collapsible">
         <summary>
             <h2>Advanced technical details</h2>

@@ -79,7 +79,9 @@ from job_radar.evaluation_audit import (
     EVALUATION_AUDIT_NAME,
     TARGETED_EVALUATION_AUDIT_NAME,
     write_evaluation_audit,
+    write_evaluation_trace_log,
 )
+from job_radar.operational_event_log import record_operational_event
 from job_radar.retention_service import (
     apply_retention_after_report_write,
     archive_before_report_write,
@@ -1445,6 +1447,13 @@ def _handle_scan_unlocked(
             scan_kind=scan_kind,
             scan_run_id=scan_run_id,
         )
+        write_evaluation_trace_log(
+            logs_path,
+            all_scored_postings,
+            scan_run_id=scan_run_id,
+            decided_job_ids=decided_job_ids,
+            generated_at=generated_at,
+        )
         record_scan_diagnostic(
             logs_path,
             event="scan_report_generation_completed",
@@ -1597,7 +1606,7 @@ def _handle_scan_unlocked(
 
         if email_send_result is not None:
             print(f"Email send result: {email_send_result.message}")
-    except Exception:
+    except Exception as error:
         finished_at = datetime.now(UTC).isoformat()
         diagnostic = classify_scan_failure(current_stage)
         record_scan_error(
@@ -1629,6 +1638,21 @@ def _handle_scan_unlocked(
             email_status=email_status,
             failure_category=diagnostic.category,
             elapsed_seconds=elapsed_seconds(diagnostic_started),
+        )
+        record_operational_event(
+            logs_path,
+            kind="errors",
+            subsystem="scan",
+            event="scan_failed",
+            severity="error",
+            fields={
+                "scan_run_id": scan_run_id,
+                "stage": current_stage,
+                "error_type": type(error).__name__,
+                "failure_category": diagnostic.category,
+                "companies_scanned": companies_scanned,
+                "jobs_found": total_jobs,
+            },
         )
         raise
 

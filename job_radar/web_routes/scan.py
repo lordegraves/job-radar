@@ -1,6 +1,7 @@
 """Serve manual scan controls and progress updates for the web interface."""
 
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -281,6 +282,7 @@ def _build_scan_status_from_row(
             "failure_summary": None,
             "elapsed_seconds": None,
             "elapsed_label": None,
+            "finished_label": None,
             "current_company_name": None,
             "current_company_number": None,
             "current_source_type": None,
@@ -360,6 +362,7 @@ def _build_scan_status_from_row(
         "trigger_source": scan_run["trigger_source"],
         "elapsed_seconds": elapsed_seconds,
         "elapsed_label": _format_elapsed_duration(elapsed_seconds),
+        "finished_label": _format_finished_time(scan_run["finished_at"]),
         "current_company_name": scan_run["current_company_name"],
         "current_company_number": scan_run["current_company_number"],
         "current_source_type": scan_run["current_source_type"],
@@ -390,6 +393,20 @@ def _format_elapsed_duration(total_seconds: int | None) -> str | None:
     if minutes:
         return f"{minutes}m {remaining_seconds:02d}s"
     return f"{remaining_seconds}s"
+
+
+def _format_finished_time(value: object) -> str | None:
+    """Show when a historical scan receipt was completed in local time."""
+
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+    return parsed.astimezone().strftime("%b %d, %Y at %I:%M %p").replace(
+        " 0", " "
+    )
 
 
 def _build_starting_scan_payload() -> dict[str, object]:

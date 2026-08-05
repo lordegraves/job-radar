@@ -4,6 +4,7 @@ from pathlib import Path
 
 from job_radar.email_sender import (
     get_email_readiness,
+    send_email_diagnostic_test,
     send_email_report,
     send_generated_scan_report,
 )
@@ -118,7 +119,7 @@ def test_send_generated_scan_report_requires_complete_outputs(
     )
 
 
-def test_send_generated_scan_report_uses_preview_and_html_report(
+def test_send_generated_scan_report_uses_plain_summary_and_attaches_report(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -149,8 +150,34 @@ def test_send_generated_scan_report_uses_preview_and_html_report(
     assert result.sent is True
     assert captured["subject"] == "Latest Junior report"
     assert captured["body"] == "Plain-language summary\n"
-    assert captured["html_body"] == "<html>Full report</html>"
+    assert captured["html_body"] is None
     assert captured["attachment_path"] == report_path
+
+
+def test_send_email_diagnostic_test_contains_safe_delivery_steps(
+    monkeypatch,
+) -> None:
+    captured = {}
+
+    def fake_send_email_report(**kwargs):
+        captured.update(kwargs)
+        return type("Result", (), {"sent": True, "message": "Email sent"})()
+
+    monkeypatch.setattr(
+        "job_radar.email_sender.send_email_report",
+        fake_send_email_report,
+    )
+
+    result = send_email_diagnostic_test(
+        {"provider": "gmail", "smtp_tls_mode": "starttls"}
+    )
+
+    assert result.sent is True
+    assert captured["subject"] == "Junior email diagnostic test"
+    assert "Authentication: accepted" in captured["body"]
+    assert "Message handoff: accepted" in captured["body"]
+    assert "credentials" in captured["body"]
+    assert "html_body" not in captured
 
 
 def test_send_email_report_refuses_when_password_env_missing(monkeypatch) -> None:

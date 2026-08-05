@@ -40,7 +40,12 @@ from job_radar.diagnostic_log_service import (
     read_diagnostic_log,
 )
 from job_radar.diagnostic_service import build_diagnostics_view
-from job_radar.email_sender import get_email_readiness, send_generated_scan_report
+from job_radar.email_sender import (
+    get_email_readiness,
+    send_email_diagnostic_test,
+    send_generated_scan_report,
+)
+from job_radar.email_event_log import record_email_event
 from job_radar.email_settings_service import (
     EmailSettingsError,
     load_email_settings_form,
@@ -495,6 +500,8 @@ def register_settings_routes(
 
     @app.post("/settings/email/test")
     def settings_email_test():
+        runtime_paths = get_runtime_paths()
+        provider = request.form.get("provider", "")
         try:
             result = test_email_connection(
                 settings_path,
@@ -507,8 +514,20 @@ def register_settings_routes(
             )
         except EmailSettingsError as error:
             result = str(error)
+        connection_status = _email_connection_status(provider, result)
+        record_email_event(
+            runtime_paths.logs_path,
+            event="email_connection_test",
+            outcome=(
+                "successful"
+                if connection_status["tone"] == "success"
+                else "failed"
+            ),
+            provider=provider,
+            reason_code=connection_status["status"].lower().replace(" ", "_"),
+        )
         session["email_connection_test"] = _email_connection_status(
-            request.form.get("provider", ""),
+            provider,
             result,
         )
         return _settings_section_redirect("email")
@@ -521,9 +540,37 @@ def register_settings_routes(
             preview_path=runtime_paths.resolve(DEFAULT_EMAIL_PREVIEW_PATH),
             report_path=runtime_paths.resolve(DEFAULT_REPORT_PATH),
         )
+        email_settings = load_settings(settings_path).email
+        record_email_event(
+            runtime_paths.logs_path,
+            event="email_report_delivery_test",
+            outcome="successful" if result.sent else "failed",
+            provider=str(email_settings.get("provider") or ""),
+            reason_code="sent" if result.sent else "not_sent",
+        )
         session["email_delivery_test"] = _email_delivery_status(
             sent=result.sent,
             message=result.message,
+        )
+        return _settings_section_redirect("email")
+
+    @app.post("/settings/email/send-test")
+    def settings_email_send_test():
+        runtime_paths = get_runtime_paths()
+        email_settings = load_settings(settings_path).email
+        result = send_email_diagnostic_test(email_settings)
+        record_email_event(
+            runtime_paths.logs_path,
+            event="email_diagnostic_message",
+            outcome="successful" if result.sent else "failed",
+            provider=str(email_settings.get("provider") or ""),
+            reason_code="sent" if result.sent else "not_sent",
+        )
+        session["email_delivery_test"] = _email_delivery_status(
+            sent=result.sent,
+            message=result.message,
+            sent_status="Diagnostic email sent",
+            sent_reason="Junior sent the diagnostic test email.",
         )
         return _settings_section_redirect("email")
 
@@ -622,15 +669,19 @@ def _email_connection_status(provider: str, result: str) -> dict[str, str]:
     }
 
 
-def _email_delivery_status(*, sent: bool, message: str) -> dict[str, str]:
+def _email_delivery_status(
+    *,
+    sent: bool,
+    message: str,
+    sent_status: str = "Scan summary sent",
+    sent_reason: str = (
+        "Junior sent the latest summary and attached the full HTML report."
+    ),
+) -> dict[str, str]:
     tested_time = datetime.now().astimezone().strftime("%I:%M %p").lstrip("0")
     return {
-        "status": "Scan summary sent" if sent else "Scan summary not sent",
-        "reason": (
-            "Junior sent the latest summary and attached the full HTML report."
-            if sent
-            else message
-        ),
+        "status": sent_status if sent else "Email not sent",
+        "reason": sent_reason if sent else message,
         "tone": "success" if sent else "error",
         "tested_at": f"Today at {tested_time}",
     }

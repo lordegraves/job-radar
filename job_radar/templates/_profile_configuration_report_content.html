@@ -1,0 +1,61 @@
+<section class="page-card">
+    <h2>Report information</h2>
+    <dl class="configuration-report-list">
+        <div><dt>Generated</dt><dd>{{ report.generated_at }}</dd></div>
+        <div><dt>Junior version</dt><dd>{{ report.version }} — {{ report.build_label }}</dd></div>
+        <div><dt>Report schema</dt><dd>{{ report.report_schema_version }}</dd></div>
+        <div><dt>Profile schema</dt><dd>{{ report.profile_schema_version }}</dd></div>
+    </dl>
+</section>
+
+{% for section_title, rows in report.sections %}
+<section class="page-card">
+    <h2>{{ section_title }}</h2>
+    <dl class="configuration-report-list">
+        {% for label, value in rows %}
+        <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+        {% endfor %}
+    </dl>
+</section>
+{% endfor %}
+
+<section class="page-card">
+    <h2>Companies</h2>
+    {% if report.companies %}
+    <table>
+        <caption class="visually-hidden">Companies included in the active profile</caption>
+        <thead><tr><th>Company</th><th>Collector</th><th>Status</th></tr></thead>
+        <tbody>
+            {% for company, collector, status in report.companies %}
+            <tr><td>{{ company }}</td><td>{{ collector }}</td><td>{{ status }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}<p>None configured</p>{% endif %}
+</section>
+
+<section class="page-card">
+    <h2>Job-fit signals</h2>
+    {% if report.fit_signals %}
+    <dl class="configuration-report-list">
+        {% for term, category in report.fit_signals %}
+        <div><dt>{{ term }}</dt><dd>{{ category }}</dd></div>
+        {% endfor %}
+    </dl>
+    {% else %}<p>None configured</p>{% endif %}
+</section>
+
+<section class="page-card">
+    <h2>Scoring and recommendation settings</h2>
+    <dl class="configuration-report-list">
+        {% for label, value in report.scoring %}
+        <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+        {% endfor %}
+    </dl>
+</section>
+
+<section class="page-card privacy-card">
+    <h2>Excluded for privacy</h2>
+    <p>Junior deliberately leaves the following information out of this report:</p>
+    <ul>{% for item in report.excluded_fields %}<li>{{ item }}</li>{% endfor %}</ul>
+</section>

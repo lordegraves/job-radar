@@ -17,7 +17,10 @@ MAX_LOG_VIEW_BYTES = 200_000
 _OWNED_LOG_PATTERN = re.compile(
     r"^(?:junior-actions\.log|junior-company-discovery\.log|"
     r"junior-company-discovery\.log\.previous|"
-    r"junior-diagnostics\.log|junior-last-scan\.log|junior-update\.log|"
+    r"junior-diagnostics\.log|junior-email\.log|junior-last-scan\.log|"
+    r"junior-update\.log|"
+    r"junior-(?:database|errors|user-actions)-\d{8}T\d{6}Z\.log|"
+    r"junior-(?:scan|evaluation)-run-\d+-\d{8}T\d{6}Z\.log|"
     r"startup-errors\.log|(?:junior|startup-errors)-"
     r"\d{8}T\d{12}Z\.log)$"
 )
@@ -217,6 +220,16 @@ def _resolve_owned_log(logs_path: str | Path, log_name: str) -> Path:
 
 
 def _log_title(log_name: str) -> str:
+    if log_name.startswith("junior-database-"):
+        return "Database operations"
+    if log_name.startswith("junior-errors-"):
+        return "Application errors"
+    if log_name.startswith("junior-user-actions-"):
+        return "User activity"
+    if log_name.startswith("junior-scan-run-"):
+        return "Scan execution trace"
+    if log_name.startswith("junior-evaluation-run-"):
+        return "Job evaluation trace"
     return {
         "junior-actions.log": "User action history",
         "junior-last-scan.log": "Latest scan activity",
@@ -225,6 +238,7 @@ def _log_title(log_name: str) -> str:
             "Previous company discovery activity"
         ),
         "junior-diagnostics.log": "Operational diagnostics",
+        "junior-email.log": "Email activity",
         "junior-update.log": "Update activity",
     }.get(
         log_name,
@@ -237,6 +251,31 @@ def _log_title(log_name: str) -> str:
 
 
 def _log_description(log_name: str) -> str:
+    if log_name.startswith("junior-database-"):
+        return (
+            "Database connections and transaction outcomes, including the "
+            "calling operation, duration, changed-row count, and safe failure type."
+        )
+    if log_name.startswith("junior-errors-"):
+        return (
+            "Unexpected application and scan failures with safe correlation, "
+            "subsystem, stage, and error-type fields."
+        )
+    if log_name.startswith("junior-user-actions-"):
+        return (
+            "State-changing GUI actions, their endpoint, request correlation "
+            "value, and result. Form values and personal content are excluded."
+        )
+    if log_name.startswith("junior-scan-run-"):
+        return (
+            "One scan's collection, retry, timing, evaluation, storage, report, "
+            "and completion stages, linked by scan-run ID."
+        )
+    if log_name.startswith("junior-evaluation-run-"):
+        return (
+            "One scan's per-job normalization, eligibility, requirement, gap, "
+            "reason-code, and final-outcome trace. Résumé and description text are excluded."
+        )
     descriptions = {
         "junior-actions.log": (
             "Safe records of Save, Pass, Apply, and other deliberate job "
@@ -256,6 +295,11 @@ def _log_description(log_name: str) -> str:
         "junior-diagnostics.log": (
             "Bounded operational history across recent scans. It contains "
             "safe status fields rather than raw exceptions."
+        ),
+        "junior-email.log": (
+            "Safe connection-test and report-delivery outcomes. Email "
+            "addresses, credentials, message contents, and raw errors are "
+            "excluded."
         ),
         "junior-update.log": (
             "Safe update handoff, installer, and restart stages. Paths, "

@@ -90,9 +90,9 @@ def test_diagnostics_page_shows_safe_version_and_update_details(tmp_path: Path) 
     assert "Privacy &amp; safety" in about_html
     assert "grid-template-columns: repeat(8, minmax(0, 1fr))" in about_html
     assert "white-space: nowrap" in about_html
-    assert 'aria-label="Help, settings, and system health"' in about_html
+    assert 'aria-label="Settings and diagnostics"' in about_html
     assert 'href="/settings/about" aria-current="page">Help</a>' in about_html
-    assert 'href="/settings/diagnostics">System Health</a>' in about_html
+    assert 'href="/settings/diagnostics">Diagnostics</a>' in about_html
     assert "function showHelpSection" in about_html
     assert 'document.querySelectorAll(".help-card")' in about_html
     assert "card.open = card === target" in about_html

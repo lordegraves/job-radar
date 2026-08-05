@@ -1,7 +1,7 @@
 {# Shows safe service health without exposing raw errors or private user data. #}
 {% extends "base.html" %}
 
-{% block title %}System Health - junior{% endblock %}
+{% block title %}Diagnostics - junior{% endblock %}
 
 {% block page_styles %}
 <style>
@@ -117,7 +117,7 @@
 {% endblock %}
 
 {% block content %}
-<h1 class="page-title">System Health</h1>
+<h1 class="page-title">Settings &amp; Diagnostics</h1>
 
 {% include "_support_nav.html" %}
 
@@ -129,7 +129,7 @@
     </p>
     <p>
         Company-specific connection tests belong on Companies. Targeted scans
-        belong on Scan. System Health summarizes their health and links to the
+        belong on Scan. Diagnostics summarizes their health and links to the
         appropriate workspace.
     </p>
     <p class="muted">
@@ -268,26 +268,44 @@
     {% endfor %}
 </div>
 
+<div class="page-card">
+    <h2>Profile troubleshooting</h2>
+    <p>Need help reproducing profile behavior? Preview and download a privacy-safe Profile Configuration Report.</p>
+    <p class="muted">The report excludes résumé content, identity, applications, notes, local paths, and credentials. Junior does not send it anywhere.</p>
+    <a class="button-link" href="{{ url_for('profile_configuration_report_page') }}">Open Profile Configuration Report</a>
+</div>
+
 <div class="page-card" id="developer-logs">
     <h2>Developer logs</h2>
     {% if diagnostic_logs %}
     <p>
-        These structured text logs are intended for troubleshooting by a
-        developer. Each line includes its timestamp, severity, subsystem,
-        event, and every retained safe detail.
+        These purpose-specific logs let support follow scans, individual job
+        evaluations, database transactions, user actions, and failures across
+        related correlation IDs. Each line includes its timestamp, severity,
+        subsystem, event, and every retained safe detail.
     </p>
     <p class="muted">
         Logs exclude job descriptions, profile and résumé contents,
         credentials, tokens, environment contents, request headers, and raw
         exception text.
     </p>
+    <div class="diagnostic-log-guide">
+        <h3>What each log helps diagnose</h3>
+        <ul>
+            <li><strong>Scan execution trace:</strong> where scan time was spent and which stage or source failed.</li>
+            <li><strong>Job evaluation trace:</strong> the normalized facts, rule results, material gaps, reason codes, and final bucket for each job.</li>
+            <li><strong>Database operations:</strong> writes, slow operations, rollbacks, and the Junior function that requested them.</li>
+            <li><strong>User activity:</strong> which screen action completed and its result, without recording submitted form values.</li>
+            <li><strong>Application errors:</strong> the safe error type, affected subsystem, and correlation ID needed to follow the failure across logs.</li>
+        </ul>
+    </div>
     <div class="developer-log-toolbar">
-        <form class="developer-log-picker" method="get" action="{{ url_for('settings_diagnostics') }}">
+        <form class="developer-log-picker" method="get" action="{{ url_for('settings_diagnostics', _anchor='developer-logs') }}">
             <label for="developer-log-select">Log to inspect</label>
             <select id="developer-log-select" name="log" onchange="this.form.submit()">
                 {% for log in diagnostic_logs %}
                 <option value="{{ log.name }}" {% if log.name == selected_log_name %}selected{% endif %}>
-                    {{ log.title }} — {{ log.modified_at }} — {{ log.size_bytes }} bytes
+                    {{ log.title }} — {{ log.name }} — {{ log.modified_at }} — {{ log.size_bytes }} bytes
                 </option>
                 {% endfor %}
             </select>

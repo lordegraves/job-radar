@@ -6,7 +6,10 @@ from datetime import UTC, datetime
 import os
 from pathlib import Path
 import tempfile
+import json
+from urllib.parse import urlsplit, urlunsplit
 
+from job_radar import __build__, __version__
 from job_radar.report_view_model import (
     is_potential_top_match_report_posting,
     is_review_needed_report_posting,
@@ -174,6 +177,106 @@ def write_evaluation_audit(
         outcome_counts=dict(sorted(outcome_counts.items())),
         reason_counts=dict(sorted(reason_counts.items())),
     )
+
+
+def write_evaluation_trace_log(
+    logs_path: str | Path,
+    scored_postings: list[ScoredPosting] | tuple[ScoredPosting, ...],
+    *,
+    scan_run_id: int,
+    decided_job_ids: set[str] | None = None,
+    generated_at: str | None = None,
+) -> Path | None:
+    """Write a structured per-job decision trace without private documents."""
+
+    generated = generated_at or datetime.now(UTC).isoformat()
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    destination = (
+        Path(logs_path)
+        / f"junior-evaluation-run-{scan_run_id}-{stamp}.log"
+    )
+    decided_ids = decided_job_ids or set()
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with destination.open("w", encoding="utf-8", newline="\n") as stream:
+            for scored in scored_postings:
+                outcome = _outcome_for(scored, decided_ids)
+                match = scored.resume_match
+                eligibility = scored.eligibility
+                payload = {
+                "timestamp": generated,
+                "schema_version": 1,
+                "application_version": __version__,
+                "application_build": __build__,
+                "subsystem": "evaluation",
+                "severity": "info",
+                "event": "job_evaluation_completed",
+                "scan_run_id": scan_run_id,
+                "job_id": scored.posting.job_radar_id,
+                "company": scored.posting.company_name,
+                "title": scored.posting.title,
+                "source_type": scored.posting.source_type,
+                "public_posting": _sanitized_public_url(
+                    scored.posting.source_url
+                ),
+                "normalization_state": scored.posting.normalization_state,
+                "normalization_issues": list(
+                    scored.posting.normalization_issues
+                ),
+                "detail_retrieval_state": (
+                    scored.posting.detail_retrieval_state
+                ),
+                "location_status": scored.location_status,
+                "workplace": scored.posting.remote_status,
+                "location": scored.posting.location,
+                "score": scored.score,
+                "eligibility_status": (
+                    eligibility.status if eligibility else "not_evaluated"
+                ),
+                "eligibility_reason_codes": (
+                    [reason.code for reason in eligibility.reasons]
+                    if eligibility
+                    else []
+                ),
+                "resume_match": match.label if match else "not_evaluated",
+                "requirements_reviewed": len(
+                    match.requirements_reviewed or []
+                ) if match else 0,
+                "requirements_supported": len(
+                    match.supported_requirements or []
+                ) if match else 0,
+                "material_gaps": _bounded_diagnostic_labels(
+                    match.gaps if match else []
+                ),
+                "critical_gaps": _bounded_diagnostic_labels(
+                    (match.critical_gaps or []) if match else []
+                ),
+                "reason_codes": list(_reason_codes_for(scored, outcome)),
+                "final_outcome": outcome,
+                }
+                stream.write(json.dumps(payload, sort_keys=True) + "\n")
+    except OSError:
+        # A troubleshooting aid must never turn a completed evaluation into a
+        # failed scan when a log directory is temporarily unavailable.
+        return None
+    return destination
+
+
+def _bounded_diagnostic_labels(values: list[str] | tuple[str, ...]) -> list[str]:
+    """Keep concise derived explanations, never entire qualification sections."""
+
+    return [" ".join(value.split())[:240] for value in values[:8] if value.strip()]
+
+
+def _sanitized_public_url(value: str | None) -> str | None:
+    """Keep a public job path while removing query strings and fragments."""
+
+    if not value:
+        return None
+    parsed = urlsplit(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
 
 
 def _outcome_for(scored: ScoredPosting, decided_job_ids: set[str]) -> str:
