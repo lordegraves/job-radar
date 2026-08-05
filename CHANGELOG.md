@@ -6,6 +6,19 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Prepare `RC6 Build 1.14` for field testing with safe profile and global
+  company-catalog transfer, append-only duplicate handling, inactive profile
+  imports, résumé exclusion, and Junior-styled file selectors.
+- Make Companies and source health a collapsible card. Its closed state shows
+  a green all-working summary or yellow review guidance, while expansion keeps
+  the existing tests, progress, individual health details, and profile actions.
+- Add separate profile and company-catalog transfer workflows. Profile / Resume
+  exports a profile chosen by its visible name and imports it as a new inactive
+  profile with a new internal identity. Résumé files and text, applications,
+  history, saved decisions, notes, scan data, reports, logs, credentials, and
+  local paths are never transferred. Companies exports only the global public
+  collector catalog; import appends missing definitions, skips duplicates, and
+  cannot overwrite existing companies or alter any profile's company list.
 - Add purpose-specific, timestamped troubleshooting logs for scan execution,
   per-job evaluation decisions, database writes and slow operations, user
   actions, and safe application errors. Diagnostics explains what each log is

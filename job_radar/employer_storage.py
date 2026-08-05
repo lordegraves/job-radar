@@ -58,6 +58,42 @@ def upsert_employer_source(
     return employer
 
 
+def append_employer_sources(
+    database_path: str | Path,
+    employers: list[EmployerSource],
+) -> int:
+    """Add new catalog records in one transaction without replacing any ID."""
+
+    db_path = initialize_database(database_path)
+    inserted = 0
+    with connect_database(db_path) as connection:
+        for employer in employers:
+            cursor = connection.execute(
+                """
+                INSERT INTO employer_sources (
+                    employer_id,
+                    name,
+                    source_type,
+                    enabled,
+                    source_config_json,
+                    notes,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, NULL, CURRENT_TIMESTAMP)
+                ON CONFLICT(employer_id) DO NOTHING
+                """,
+                (
+                    employer.employer_id,
+                    employer.name.strip(),
+                    employer.source_type,
+                    int(employer.enabled),
+                    _dump_source_config(employer.source_config),
+                ),
+            )
+            inserted += cursor.rowcount
+    return inserted
+
+
 def get_employer_source(
     database_path: str | Path,
     employer_id: str,

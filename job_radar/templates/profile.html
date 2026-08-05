@@ -264,6 +264,14 @@
         {% if profile_management.profiles %}<a href="#manage-profiles">Manage profiles</a>{% endif %}
     </nav>
     {% endif %}
+    {% if profile_result == "imported" %}
+    <div class="success">
+        <strong>Profile imported.</strong> It was added as an inactive profile with no résumé.
+        {% if import_company_count %}{{ import_company_count }} available company selection(s) were retained.{% endif %}
+        {% if import_missing_count and import_missing_count != "0" %} {{ import_missing_count }} unavailable company selection(s) were skipped.{% endif %}
+        Choose it under Manage profiles when you are ready to make it active.
+    </div>
+    {% endif %}
     {% if not has_profile %}
     {% if not profile_management.profiles %}
     <h2>Create your first profile</h2>
@@ -318,7 +326,7 @@
     <div class="success">
         <strong>Job-fit preferences saved.</strong> junior will use your updated choices during future scans.
     </div>
-    {% elif profile_result and profile_result != "error" %}
+    {% elif profile_result and profile_result not in ("error", "imported") %}
     <div class="success">
         <strong>Profile saved.</strong> The managed-profile change is ready for future scans.
     </div>
@@ -411,6 +419,51 @@
     </dl>
     {% endif %}
     {% endif %}
+</div>
+
+<div id="profile-transfer" class="section">
+    <h2>Import or export a profile</h2>
+    <p>
+        Move job-search settings between Junior installations without moving
+        résumé files or résumé text. Imported profiles are added separately and
+        do not become active automatically.
+    </p>
+    <div class="two-column-grid">
+        <div class="settings-panel">
+            <h3>Export profile</h3>
+            {% if profile_management.profiles %}
+            <form method="post" action="{{ url_for('export_profile_configuration') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <label for="profile-export-selection">Profile to export</label>
+                <select id="profile-export-selection" name="profile_id" required>
+                    {% for managed in profile_management.profiles %}
+                    <option value="{{ managed.profile_id }}">{{ managed.display_name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">Download profile</button>
+            </form>
+            {% else %}
+            <p class="muted">Create a profile before exporting one.</p>
+            {% endif %}
+        </div>
+        <div class="settings-panel">
+            <h3>Import profile</h3>
+            {% if profile_limit_reached %}
+            <p class="muted">You have reached the five-profile limit. Delete a profile before importing another one.</p>
+            {% else %}
+            <form method="post" action="{{ url_for('import_profile_configuration') }}" enctype="multipart/form-data">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <label for="profile-import-file">Junior profile file</label>
+                <input id="profile-import-file" name="profile_file" type="file" accept="application/json,.json" required>
+                <button type="submit">Import as new profile</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    <p class="muted">
+        Excluded by design: résumé files and text, applications, history, saved
+        jobs, review notes, scan results, reports, logs, credentials, and local paths.
+    </p>
 </div>
 
 {% if profile_management.profiles %}

@@ -90,6 +90,41 @@ def create_profile(
     return profile
 
 
+def create_imported_profile(
+    database_path: str | Path,
+    profile: ManagedProfile,
+    *,
+    company_enabled: dict[str, bool],
+) -> ManagedProfile:
+    """Create an inactive imported profile and its company states atomically."""
+
+    if set(company_enabled) != set(profile.company_ids):
+        raise ProfileStorageError(
+            "Imported company states must match the profile's companies."
+        )
+
+    db_path = initialize_database(database_path)
+    try:
+        with connect_database(db_path) as connection:
+            _insert_profile(connection, profile)
+            connection.executemany(
+                """
+                UPDATE profile_company_associations
+                SET enabled = ?
+                WHERE profile_id = ? AND company_id = ?
+                """,
+                [
+                    (int(company_enabled[company_id]), profile.profile_id, company_id)
+                    for company_id in sorted(profile.company_ids)
+                ],
+            )
+    except sqlite3.IntegrityError as error:
+        raise ProfileAlreadyExistsError(
+            f"profile already exists: {profile.profile_id}"
+        ) from error
+    return profile
+
+
 def create_and_select_profile(
     database_path: str | Path,
     profile: ManagedProfile,

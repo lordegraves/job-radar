@@ -388,6 +388,26 @@
             padding: 8px;
         }
 
+        input[type="file"] {
+            padding: 0;
+        }
+
+        input[type="file"]::file-selector-button {
+            background: var(--surface-muted);
+            border: 0;
+            border-right: 1px solid var(--border-strong);
+            color: var(--text);
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+            margin-right: 10px;
+            padding: 8px 12px;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background: var(--surface-hover);
+        }
+
         select {
             appearance: none;
             background-color: var(--input-bg);

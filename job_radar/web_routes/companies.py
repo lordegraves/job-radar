@@ -7,10 +7,15 @@ from flask import (
     abort,
     flash,
     jsonify,
+    make_response,
     redirect,
     render_template,
     request,
     url_for,
+)
+from job_radar.company_transfer_service import (
+    export_company_catalog,
+    import_company_catalog,
 )
 
 from job_radar.company_assignment_service import (
@@ -21,7 +26,7 @@ from job_radar.company_assignment_service import (
 from job_radar.company_catalog_query_service import build_company_catalog_view
 from job_radar.company_workspace_service import build_company_workspace
 from job_radar.company_discovery_log import record_company_discovery_event
-from job_radar.config import load_settings
+from job_radar.config import ConfigError, load_settings
 from job_radar.domain_errors import (
     EmployerNotFoundError,
     InvalidCompanyStateError,
@@ -109,6 +114,35 @@ def register_company_routes(
             workspace=workspace,
             profile_required=True,
         )
+
+    @app.get("/companies/export")
+    def export_companies():
+        filename, content = export_company_catalog(get_database_path())
+        response = make_response(content)
+        response.headers["Content-Type"] = "application/json; charset=utf-8"
+        response.headers["Content-Disposition"] = (
+            f'attachment; filename="{filename}"'
+        )
+        return response
+
+    @app.post("/companies/import")
+    def import_companies():
+        uploaded = request.files.get("company_file")
+        if uploaded is None or not uploaded.filename:
+            flash("Choose a Junior company catalog file to import.", "error")
+            return redirect(url_for("companies"))
+        try:
+            result = import_company_catalog(get_database_path(), uploaded.read())
+        except (ConfigError, ValueError) as error:
+            flash(str(error), "error")
+            return redirect(url_for("companies"))
+        flash(
+            f"Added {result.added} companies to the global catalog. "
+            f"Skipped {result.skipped_duplicates} duplicates. "
+            "No profile company list was changed.",
+            "success",
+        )
+        return redirect(url_for("companies"))
 
     @app.post("/companies/test-sources")
     def test_company_sources():

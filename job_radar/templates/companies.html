@@ -80,6 +80,39 @@
         scroll-margin-top: 96px;
     }
 
+    .company-health-section {
+        padding: 0;
+        scroll-margin-top: 96px;
+    }
+
+    .company-health-section > summary {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        padding: 20px 22px;
+    }
+
+    .company-health-section > summary h2 {
+        margin: 0 0 6px;
+    }
+
+    .company-health-section[open] > summary {
+        border-bottom: 1px solid var(--border);
+    }
+
+    .company-health-overall {
+        display: block;
+    }
+
+    .company-health-content {
+        padding: 0 22px 22px;
+    }
+
+    .company-health-section:not([open]) .company-health-toggle-open,
+    .company-health-section[open] .company-health-toggle-closed {
+        display: none;
+    }
+
     .status-enabled {
         color: #8fdc8f;
         font-weight: 650;
@@ -246,8 +279,30 @@
 </section>
 {% endif %}
 
-<section class="page-card" id="company-sources">
-    <h2>Companies and source health</h2>
+<details class="page-card company-health-section" id="company-sources"{% if source_test_status.running %} open{% endif %}>
+    <summary>
+        <div>
+            <h2>Companies and source health</h2>
+            {% set source_issue_count = source_health_counts.attention + source_health_counts.untested %}
+            <span
+                id="company-health-overall"
+                class="company-health-overall {% if workspace.companies and source_issue_count == 0 %}status-enabled{% else %}status-disabled{% endif %}"
+            >
+                {% if not workspace.companies %}
+                Needs attention. Add a company to this profile, then expand this card to review source health.
+                {% elif source_issue_count %}
+                Needs attention: {{ source_issue_count }} source{% if source_issue_count != 1 %}s{% endif %} need review. Expand this card to see what Junior found.
+                {% else %}
+                Healthy: all {{ source_health_counts.working }} company source{% if source_health_counts.working != 1 %}s are{% else %} is{% endif %} working.
+                {% endif %}
+            </span>
+        </div>
+        <span aria-hidden="true">
+            <span class="company-health-toggle-closed">Expand</span>
+            <span class="company-health-toggle-open">Collapse</span>
+        </span>
+    </summary>
+    <div class="company-health-content">
     <p>
         Manage the companies in this profile and confirm that Junior can read
         their public recruiting sources.
@@ -387,7 +442,8 @@
         <p class="muted">junior will not scan employers from another profile.</p>
     </div>
     {% endif %}
-</section>
+    </div>
+</details>
 {% else %}
 <h1 class="page-title">Companies</h1>
 
@@ -544,12 +600,40 @@
 </section>
 {% endif %}
 {% endif %}
+
+<section class="page-card" aria-labelledby="company-transfer-heading">
+    <h2 id="company-transfer-heading">Import or export company catalog</h2>
+    <p>
+        Move public collector definitions between Junior installations. Import
+        adds missing companies to the shared catalog and never replaces an
+        existing company or changes any profile's company list.
+    </p>
+    <div class="two-column-grid">
+        <div class="settings-panel">
+            <h3>Export companies</h3>
+            <p class="muted">Downloads the global company catalog without profile assignments, notes, jobs, health history, or diagnostics.</p>
+            <a class="button-link" href="{{ url_for('export_companies') }}">Download company catalog</a>
+        </div>
+        <div class="settings-panel">
+            <h3>Import companies</h3>
+            <form method="post" action="{{ url_for('import_companies') }}" enctype="multipart/form-data">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <label for="company-import-file">Junior company catalog file</label>
+                <input id="company-import-file" name="company_file" type="file" accept="application/json,.json" required>
+                <button type="submit">Append missing companies</button>
+            </form>
+        </div>
+    </div>
+    <p class="muted">Credentials, private operational metadata, profile assignments, and user activity are excluded by design.</p>
+</section>
 {% endblock %}
 
 {% block scripts %}
 {% if workspace is defined and workspace.active_profile %}
 <script>
 (() => {
+    const healthSection = document.getElementById("company-sources");
+    const healthOverall = document.getElementById("company-health-overall");
     const form = document.getElementById("company-source-test-form");
     const container = document.getElementById("source-test-progress");
     const status = document.getElementById("source-test-status");
@@ -559,6 +643,16 @@
     const results = document.getElementById("source-test-results");
     const selectAll = document.getElementById("select-all-sources");
     const testButtons = Array.from(form?.querySelectorAll("button[type='submit']") || []);
+
+    function openHealthSection() {
+        if (healthSection) healthSection.open = true;
+    }
+
+    document.querySelectorAll('a[href="#company-sources"]').forEach((link) => {
+        link.addEventListener("click", openHealthSection);
+    });
+    if (window.location.hash === "#company-sources") openHealthSection();
+
     if (!form || !container || !status || !percent || !meter || !step || !results) return;
 
     const rows = new Map(
@@ -566,6 +660,19 @@
             .map((row) => [row.dataset.employerId, row])
     );
     let polling = false;
+
+    function updateOverallHealth() {
+        if (!healthOverall) return;
+        const working = Array.from(rows.values()).filter((row) =>
+            row.classList.contains("company-health-success")
+        ).length;
+        const attention = rows.size - working;
+        healthOverall.classList.toggle("status-enabled", attention === 0);
+        healthOverall.classList.toggle("status-disabled", attention !== 0);
+        healthOverall.textContent = attention
+            ? `Needs attention: ${attention} source${attention === 1 ? "" : "s"} need review. Expand this card to see what Junior found.`
+            : `Healthy: all ${working} company source${working === 1 ? " is" : "s are"} working.`;
+    }
 
     selectAll?.addEventListener("change", () => {
         document.querySelectorAll(".source-select").forEach((checkbox) => {
@@ -607,6 +714,7 @@
             message.append(name, document.createTextNode(item.message));
             results.append(message);
         });
+        updateOverallHealth();
     }
 
     async function poll() {

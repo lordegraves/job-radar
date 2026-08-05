@@ -9,7 +9,7 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.13`
+- Current field-test build: `RC6 Build 1.14`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
@@ -50,6 +50,11 @@ junior currently provides:
 - an on-demand Profile Configuration Report that users can preview and download
   before choosing whether to share a privacy-safe record of their active job
   preferences, skills, companies, and scoring settings for support
+- profile configuration export/import that creates a separate inactive profile
+  on the receiving installation and deliberately excludes every résumé file and
+  résumé text, plus company-catalog export/import that only appends missing
+  public collector definitions without overwriting the receiving catalog or
+  changing any profile's company list
 - tracker workflow states, follow-up dates, quick actions, bulk terminal updates,
   direct links back to available job postings, archive/restore workflows, and
   guarded deletion
@@ -364,7 +369,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in RC6 Build 1.13. Diagnostics still
+capabilities and are not implemented in RC6 Build 1.14. Diagnostics still
 requires the user to download and attach a sanitized log manually. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -534,7 +539,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.13.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.14.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
@@ -694,9 +699,35 @@ local paths and identifiers, private source URLs, credentials, and raw errors.
 Diagnostics links to the same preview for troubleshooting, while the report
 itself remains owned by Profile / Resume.
 
+Profile / Resume also provides a separate configuration transfer workflow. The
+export control lists saved profiles by display name and downloads the selected
+profile's job preferences, structured occupations and locations, fit-board
+choices, scoring/report settings, and company selections. It never includes a
+résumé record, résumé file, résumé text, application or job-decision history,
+notes, scan results, reports, logs, credentials, local paths, or the source
+installation's internal profile ID. Import validates a bounded versioned JSON
+file, assigns a new internal profile ID, resolves only companies already present
+in the receiving global catalog, and creates a separate profile that is not
+active. The user must explicitly select it, upload a résumé normally, and then
+start a scan. Import never overwrites an existing profile; a duplicate display
+name receives a clear Imported suffix. The normal five-profile limit still
+applies.
+
 The active managed profile also has a Related Roles workspace. Junior can suggest adjacent titles from packaged O*NET occupation descriptions when the profile's résumé contains supporting work evidence, or from job descriptions previously observed during that profile's own scans. Similar wording alone is not enough. Suggestions tied to an observed employer retain that company context because one title can describe different disciplines at different companies. Every suggestion shows a plain-language explanation and the matched evidence terms. The user must choose **Relevant**, **Not relevant**, or **Different discipline**; only Relevant mappings join the existing target-role boundaries used by company recommendations. No internal score is shown, no suggestion is approved automatically, and the feature does not alter the established job-scoring formula. Junior stores the suggestion, short displayed evidence terms, and feedback in the profile-owned database; it does not store another raw copy of the résumé.
 
 Each profile owns its own company search list. The Companies workspace shows only the active profile's employers and labels each one Scanning or Paused according to that profile's assignment. Existing upgrades complete their pending one-time YAML company import during application startup, before Profile, Companies, or Recommendations can show an empty profile-owned workspace. A user can add a company using its ordinary name or public careers URL. Junior first checks exact catalog names, aliases, normalized careers URLs, and known source identifiers. Exact existing matches require the user to choose the employer. For a confidently recognizable public career site, Junior shows the detected provider and company identity and requires explicit confirmation before creating or assigning anything. Confirmation rechecks the submitted address on the server and runs a bounded real collector test; Junior saves the source only when that test returns a credible public job. Branded pages are inspected for supported recruiting-platform links and metadata before the generic public-page fallback is attempted. If a landing page is blocked or separate from the employer's real job site, Junior may make a bounded public lookup using only the submitted company name and public domain. Candidate URLs and failed probes remain in memory for that request and are discarded; only the verified working source and its current health are stored. The Add Company page shows an animated checking state during this work. Individual public requests remain bounded, and unfamiliar-source discovery stops after two minutes. A timeout saves no employer or profile assignment and gives the user a safe retry message. Ambiguous names require the user to choose an exact match, while unsuccessful setup attempts can be retried or safely removed. The company detail page shows the safe source status, recruiting platform, last check, and returned-job count, and allows a normal user to rerun the non-destructive source test without exposing collector settings or raw failures. It can also keep optional shared Website, Careers, LinkedIn, and Glassdoor shortcuts. Junior opens those public links in the normal browser; it does not log in to, query, monitor, or scrape those services, and changing a shortcut does not change the validated job collector. The new profile assignment starts as Scanning. Employers that are already assigned, unavailable, or missing required setup cannot be added. A user can pause, resume, or remove an assigned company without changing the shared employer definition or another profile's choice. **Remove from this profile** requires typing `REMOVE`, stops future scans only for the active profile, and preserves collected jobs, applications, history, reports, and other historical records. Global employer deletion remains guarded in Administration. The Profile / Resume summary shows the same company count and links to the workspace. When no managed profile is active, the Companies page directs the user to create or select one and does not display legacy YAML configuration. Released CLI/server YAML scan compatibility remains available.
+
+The Companies page can download a versioned JSON copy of the global public
+collector catalog and import one from another Junior installation. The transfer
+contains only the stable company identity, display name, supported collector
+type, availability state, and public structured collector fields. Company
+notes, profile assignments, scanning selections, health history, collected
+jobs, diagnostics, credentials, and private operational metadata are excluded.
+Import validates the complete file before writing, appends only missing company
+IDs/names, and uses insert-only storage so a receiving definition cannot be
+replaced. It does not add companies to or remove companies from any profile.
+For a full tester handoff, import the company catalog first and then import the
+profile so its matching company selections can be retained.
 
 Junior does not present its local Employer Catalog as a comprehensive recommendation system. Users choose the employers they want to monitor. The Companies workflow is designed to make that addition easy: enter an ordinary company name or public careers-page URL, review Junior's detected match or supported career platform, confirm it, and begin scanning. Junior does not invent employer names, silently add companies, broadly crawl the public web, or claim to know the full market for a profession or region. Its source-discovery fallback is limited to locating and validating the public job site for the employer the user explicitly submitted. Existing recommendation metadata and Administration services remain available for compatibility and technical maintenance, but they are not part of the normal-user company workflow.
 
@@ -740,8 +771,10 @@ profile settings, résumé contents, submitted form values, secrets, environment
 contents, request headers, SQL values, or raw exception text.
 
 Companies is the normal working area for both profile membership and company
-source health. Each row shows whether the company is scanning, which collector
-it uses, the latest scan result, and the latest bounded connection-test result.
+source health. The source-health card starts collapsed and reports all working
+sources in green or identifies sources needing review in yellow. Expanding it
+shows whether each company is scanning, which collector it uses, the latest
+scan result, and the latest bounded connection-test result.
 Users can pause or resume a company, test one or more sources without importing
 jobs, and remove a company from only the active profile without deleting its
 history. Connection-test progress and individual results refresh on that same

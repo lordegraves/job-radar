@@ -107,6 +107,10 @@ def test_companies_page_shows_only_active_profile_employers(
     assert "Local legal employer." not in html
     assert "Add company" in html
     assert "Companies and source health" in html
+    assert '<details class="page-card company-health-section" id="company-sources">' in html
+    assert '<details class="page-card company-health-section" id="company-sources" open>' not in html
+    assert "Needs attention: 2 sources need review." in html
+    assert "Expand this card to see what Junior found." in html
     assert "Test all untested sources" in html
     assert "Test selected sources" in html
     assert 'class="button-secondary source-test-one"' not in html
@@ -117,6 +121,43 @@ def test_companies_page_shows_only_active_profile_employers(
     assert "testButtons.forEach((button) => { button.disabled = true; });" in html
     assert ">Remove</button>" in html
     assert "<summary>More</summary>" not in html
+
+
+def test_companies_page_collapsed_source_health_summary_turns_green(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="healthy_company",
+            name="Healthy Company",
+            source_type="greenhouse",
+            source_config={"source_slug": "healthy-company"},
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+        company_ids=("healthy_company",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    monkeypatch.setattr(
+        "job_radar.employer_connection_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+
+    client.post("/companies/healthy_company/test-source")
+    html = client.get("/companies").get_data(as_text=True)
+
+    assert "Healthy: all 1 company source is working." in html
+    assert 'class="company-health-overall status-enabled"' in html
 
 
 def test_company_source_test_normal_form_submission_returns_to_companies(

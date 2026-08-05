@@ -37,6 +37,11 @@ from job_radar.profile_service import (
 from job_radar.profile_configuration_report import (
     build_profile_configuration_report,
 )
+from job_radar.profile_transfer_service import (
+    export_profile,
+    import_profile,
+)
+from job_radar.profile_storage import get_profile
 from job_radar.scoring_preferences import (
     build_effective_scoring_preferences_view,
 )
@@ -162,6 +167,43 @@ def register_profile_routes(
             profile_error=request.args.get("profile_error", "").strip(),
             upload_result=request.args.get("upload_result", "").strip(),
             upload_error=request.args.get("upload_error", "").strip(),
+            import_company_count=request.args.get("import_company_count", "").strip(),
+            import_missing_count=request.args.get("import_missing_count", "").strip(),
+        )
+
+    @app.post("/profile/export")
+    def export_profile_configuration():
+        profile_id = request.form.get("profile_id", "").strip()
+        selected = get_profile(database_path, profile_id)
+        if selected is None or selected.archived:
+            return _profile_redirect(
+                "error",
+                "Choose an available saved profile to export.",
+            )
+        filename, content = export_profile(database_path, profile_id)
+        response = make_response(content)
+        response.headers["Content-Type"] = "application/json; charset=utf-8"
+        response.headers["Content-Disposition"] = (
+            f'attachment; filename="{filename}"'
+        )
+        return response
+
+    @app.post("/profile/import")
+    def import_profile_configuration():
+        uploaded = request.files.get("profile_file")
+        if uploaded is None or not uploaded.filename:
+            return _profile_redirect("error", "Choose a Junior profile file to import.")
+        try:
+            result = import_profile(database_path, uploaded.read())
+        except (ConfigError, ProfileStorageError, ValueError) as error:
+            return _profile_redirect("error", str(error))
+        return redirect(
+            url_for(
+                "profile",
+                profile_result="imported",
+                import_company_count=result.imported_company_count,
+                import_missing_count=len(result.unavailable_companies),
+            )
         )
 
     @app.get("/profile/configuration-report")
