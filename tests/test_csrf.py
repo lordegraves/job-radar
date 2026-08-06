@@ -78,7 +78,7 @@ def test_valid_token_allows_mutation_and_json_failure_is_safe(
     )
 
     assert valid_response.status_code == 302
-    assert valid_response.headers["Location"] == "/administration"
+    assert valid_response.headers["Location"] == "/settings?section=administration"
     assert json_failure.status_code == 400
     assert json_failure.get_json() == {
         "status": "error",

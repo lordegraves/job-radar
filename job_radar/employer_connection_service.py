@@ -8,6 +8,7 @@ from pathlib import Path
 import requests
 
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.icims import AUTHORITATIVE_EMPTY_CONFIG_KEY
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.database import connect_database
 from job_radar.diagnostic_service import classify_collector_failure
@@ -107,7 +108,14 @@ def test_employer_connection(
             )
         else:
             count = len(jobs)
-            health = _collection_health(count, context="Connection")
+            health = _collection_health(
+                count,
+                context="Connection",
+                confirmed_empty=bool(
+                    source_config.get(AUTHORITATIVE_EMPTY_CONFIG_KEY)
+                )
+                or employer.source_type == "greenhouse",
+            )
 
     _store_health(database_path, employer_id, health)
     return get_employer_connection_health(database_path, employer_id)
@@ -153,6 +161,7 @@ def record_scan_connection_result(
     job_count: int | None = None,
     failure_category: str | None = None,
     failure_message: str | None = None,
+    confirmed_empty: bool = False,
 ) -> None:
     """Make a real scan the newest source-health evidence.
 
@@ -169,7 +178,11 @@ def record_scan_connection_result(
         )
     else:
         count = int(job_count or 0)
-        health = _collection_health(count, context="Scan")
+        health = _collection_health(
+            count,
+            context="Scan",
+            confirmed_empty=confirmed_empty,
+        )
     _store_health(database_path, employer_id, health)
 
 
@@ -186,9 +199,24 @@ def _error_health(category: str, message: str) -> EmployerConnectionHealth:
     )
 
 
-def _collection_health(count: int, *, context: str) -> EmployerConnectionHealth:
+def _collection_health(
+    count: int,
+    *,
+    context: str,
+    confirmed_empty: bool = False,
+) -> EmployerConnectionHealth:
     """Treat an empty result as ambiguous source health, not proof of success."""
 
+    if count == 0 and confirmed_empty:
+        return EmployerConnectionHealth(
+            state=SUCCESS,
+            category="connected_no_openings",
+            message=(
+                f"{context} succeeded. The employer currently has no public "
+                "job openings."
+            ),
+            job_count=0,
+        )
     if count == 0:
         return EmployerConnectionHealth(
             state=ERROR,

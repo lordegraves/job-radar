@@ -69,7 +69,10 @@ def test_admin_routes_require_unlock_and_render_catalog(tmp_path: Path) -> None:
     assert "/administration/unlock" in locked.headers["Location"]
     assert unlocked.status_code == 200
     unlocked_html = unlocked.get_data(as_text=True)
-    assert 'href="/administration">&larr; Back to Administration</a>' in unlocked_html
+    assert (
+        'href="/settings?section=administration">&larr; Back to Settings &amp; Diagnostics</a>'
+        in unlocked_html
+    )
     assert "Employer Catalog" in unlocked_html
     assert "Add employer" in unlocked_html
 
@@ -366,8 +369,8 @@ def test_admin_connection_test_shows_safe_result(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "source may have changed" in html
-    assert "Source connection</dt><dd>Needs attention" in html
+    assert "currently has no public job openings" in html
+    assert "Source connection</dt><dd>Connected" in html
 
 
 def test_admin_edit_exposes_confirmed_platform_migration(tmp_path: Path) -> None:

@@ -61,3 +61,28 @@ def test_source_test_runner_reports_completion_and_failures() -> None:
             },
         ),
     }
+
+
+def test_source_test_runner_records_safe_unexpected_failure() -> None:
+    recorded: list[tuple[str, str]] = []
+
+    def fail_test(_employer_id: str) -> _Health:
+        raise RuntimeError("private response details must not be displayed")
+
+    runner = SourceTestRunner(
+        fail_test,
+        record_unexpected_failure=lambda employer_id, error_type: recorded.append(
+            (employer_id, error_type)
+        ),
+    )
+    assert runner.start(["broken"], labels={"broken": "Broken Company"}) is True
+    for _ in range(100):
+        if not runner.status()["running"]:
+            break
+        time.sleep(0.001)
+
+    result = runner.status()["results"][0]
+    assert recorded == [("broken", "RuntimeError")]
+    assert result["state"] == "failed"
+    assert "no source-health conclusion was reached" in str(result["message"])
+    assert "private response details" not in str(result["message"])

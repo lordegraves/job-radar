@@ -193,6 +193,22 @@ def test_collect_icims_jobs_marks_explicit_empty_board_as_authoritative(
     assert config[AUTHORITATIVE_EMPTY_CONFIG_KEY] is True
 
 
+def test_collect_icims_jobs_recognizes_no_job_openings_wording(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    html = """
+    <html><body>
+      <h1>Job Listings</h1>
+      <p>There are currently no job openings. Please check back later.</p>
+    </body></html>
+    """
+    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: FakeResponse(html))
+    config = _company_config()
+
+    assert collect_icims_jobs(config) == []
+    assert config[AUTHORITATIVE_EMPTY_CONFIG_KEY] is True
+
+
 def test_collect_icims_jobs_follows_next_page(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

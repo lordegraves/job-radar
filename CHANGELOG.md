@@ -6,6 +6,34 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Made company-source status use the newest available evidence, so a source
+  edit remains untested until verified and a successful later test clears stale
+  red scan state while preserving the earlier warning in its audit trail.
+- Treat valid empty Greenhouse and iCIMS job boards as connected with no public
+  openings, and keep source-health totals, filters, and live test results in
+  agreement.
+
+- Treat an iCIMS board that explicitly reports no current job openings as a
+  healthy connected source with zero openings. This prevents employers such as
+  DDN from appearing under Needs attention when their public board is working
+  normally but temporarily empty.
+
+- Integrated the session-scoped Administration workspace into Settings &
+  Diagnostics. Unlocking now reveals consistent collapsible administrative
+  sections on the same page. Normal navigation while Administration mode is
+  active asks the user to exit that mode before continuing, preventing elevated
+  access from being carried casually through the rest of the application.
+- Added a forward-only database migration for the employer source-change test
+  flag. Existing installations that had already completed the earlier source
+  health migration now receive the field safely, preventing source-test write
+  failures and Employer Catalog page crashes after an upgrade.
+
+- Corrected company-source batch testing so a running scan cannot make several
+  unrelated employers appear broken through database contention. Unexpected
+  worker failures now produce a clear inconclusive result and a privacy-safe
+  diagnostic event. Company health can be filtered to healthy, needs-attention,
+  or untested sources, and the table checkbox selects only the visible rows.
+
 - Added a guarded recruiting-platform migration workflow to the Employer
   Catalog. An administrator can move an existing employer to a different
   supported collector while preserving its stable identity, profile

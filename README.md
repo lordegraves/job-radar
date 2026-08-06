@@ -9,12 +9,12 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.16`
+- Current field-test build: `RC6 Build 1.17`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-RC6 Build 1.16 is a field-test build. It carries the
+RC6 Build 1.17 is a field-test build. It carries the
 active profile's Strong fit capabilities into résumé comparison, while still
 requiring matching evidence in the résumé and posting. Broad shared words or
 tools do not make different professions equivalent, and Junior keeps sparse
@@ -30,6 +30,16 @@ continues accepting navigation and progress requests while scoring runs in the
 background. In an isolated copy of an 11,140-job profile, this reduced scoring
 from roughly 7 minutes 22 seconds to 1 minute 23 seconds without changing the
 ten jobs surfaced for review.
+Company health can be filtered to Healthy, Needs attention, or Not tested.
+The table's selection checkbox applies only to visible rows, so a user can hide
+working sources, select the remaining visible sources, and test that group.
+Changing a source returns it to Not tested until verification succeeds. A newer
+successful connection test clears an older scan warning from the current health
+display without removing that historical warning from the scan audit. Valid
+empty Greenhouse and iCIMS boards are reported as connected with no openings.
+Junior does not start a source-test batch while a scan is running, and an
+unexpected background-test failure is identified as a Junior test problem
+rather than being mislabeled as a failed employer source.
 
 Each company detail page groups profile status, recruiting platform, connection
 health, last check, returned-job count, and the public request URL into one Job
@@ -407,7 +417,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support email handoff, MSIX, and signing items above remain planned
-RC6 capabilities and are not implemented in RC6 Build 1.16. Users choose the
+RC6 capabilities and are not implemented in RC6 Build 1.17. Users choose the
 profile and download the troubleshooting ZIP themselves. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -577,7 +587,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.16.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.17.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
@@ -776,11 +786,11 @@ a separate review group and never become Top Matches automatically.
 
 ## Settings and Administration boundary
 
-Settings remains the normal-user home for safe personal and product preferences. Report retention, email delivery, scan scheduling, and optional external company lookup appear as expandable sections on one page. Every section starts collapsed; expanding it reveals the actual controls without opening a separate setup page. Saving or testing returns to the same expanded section, and older Settings bookmarks redirect to the matching section. Installed-version details, runtime paths, health checks, and logs remain in Diagnostics. A manual update check reads Junior's official GitHub release information and reports the result without downloading anything. When a newer supported Windows desktop build is available, the user may separately approve downloading its official installer, verifying its SHA-256 checksum, closing Junior, installing the update, and reopening the app. Browser, server, and development modes do not install updates. Email setup stores credentials through the operating system rather than ordinary settings or SQLite. The global Company Discovery setting can optionally allow a Bing lookup only after Junior's direct company-source checks fail. It defaults to Off, is not required for normal scans or direct source detection, and explains the exact public company information sent and the provider-visible network information before the user enables it. Scan schedule setup stores an enabled state, local start time, selected weekdays, and email-delivery choice; it shows the calculated next run and safe status from the most recent scheduled scan. On Windows, the same page manages Junior's single `\Junior Scheduled Scan` Task Scheduler entry with normal user permissions and no stored Windows password. Junior's window may be closed and the computer may be locked, but the Windows user must remain signed in and the computer must be awake and powered on at the scheduled time. On Linux, it atomically manages only the marked `junior-scan.service` and `junior-scan.timer` files in the current user's systemd directory and refuses to overwrite similarly named files it does not own. Both platforms start the same `job-radar-scheduled` entry point and shared scan service. The Linux user timer can also run under a dedicated server service account with that account's explicit Junior data root; full logged-out service installation guidance remains part of the later Linux operations milestone. Administration is a separate, session-scoped safety boundary for installation-wide and technical controls. Unlocking Administration requires typing `ADMIN`; this is an explicit confirmation, not a password or protection from someone who already controls the local computer. Administration unlock state is limited to the current browser session and Junior process, and restarting Junior invalidates it. The Flask session signing key is generated locally under the user-owned database runtime directory. It is never committed or stored in YAML or SQLite; deleting it invalidates existing browser sessions.
+Settings remains the normal-user home for safe personal and product preferences. Report retention, email delivery, scan scheduling, and optional external company lookup appear as expandable sections on one page. Every section starts collapsed; expanding it reveals the actual controls without opening a separate setup page. Saving or testing returns to the same expanded section, and older Settings bookmarks redirect to the matching section. Installed-version details, runtime paths, health checks, and logs remain in Diagnostics. A manual update check reads Junior's official GitHub release information and reports the result without downloading anything. When a newer supported Windows desktop build is available, the user may separately approve downloading its official installer, verifying its SHA-256 checksum, closing Junior, installing the update, and reopening the app. Browser, server, and development modes do not install updates. Email setup stores credentials through the operating system rather than ordinary settings or SQLite. The global Company Discovery setting can optionally allow a Bing lookup only after Junior's direct company-source checks fail. It defaults to Off, is not required for normal scans or direct source detection, and explains the exact public company information sent and the provider-visible network information before the user enables it. Scan schedule setup stores an enabled state, local start time, selected weekdays, and email-delivery choice; it shows the calculated next run and safe status from the most recent scheduled scan. On Windows, the same page manages Junior's single `\Junior Scheduled Scan` Task Scheduler entry with normal user permissions and no stored Windows password. Junior's window may be closed and the computer may be locked, but the Windows user must remain signed in and the computer must be awake and powered on at the scheduled time. On Linux, it atomically manages only the marked `junior-scan.service` and `junior-scan.timer` files in the current user's systemd directory and refuses to overwrite similarly named files it does not own. Both platforms start the same `job-radar-scheduled` entry point and shared scan service. The Linux user timer can also run under a dedicated server service account with that account's explicit Junior data root; full logged-out service installation guidance remains part of the later Linux operations milestone. Administration remains a separate, session-scoped safety boundary, but its controls appear as additional collapsible sections inside Settings & Diagnostics rather than opening a separate Administration dashboard. Unlocking requires typing `ADMIN` on the Settings page; this is an explicit confirmation, not a password or protection from someone who already controls the local computer. If the user selects a normal application destination while Administration mode is active, Junior asks whether to exit, closes the elevated session after confirmation, and then continues to that destination. Administration unlock state is limited to the current browser session and Junior process, and restarting Junior invalidates it. The Flask session signing key is generated locally under the user-owned database runtime directory. It is never committed or stored in YAML or SQLite; deleting it invalidates existing browser sessions.
 
 The Scan page keeps full-scan and selected-company receipts separate. A full scan updates the full-scan receipt only. A selected-company scan updates its own receipt immediately when it completes; that card shows when it ran and explicitly explains that another selected-company scan is what replaces it.
 
-Every unlocked Administration subpage includes an explicit **Back to Administration** link. Junior also uses consistent page spacing and themed scrollbars across the browser and desktop interfaces. Developer-oriented scan commands and resolved paths remain available on the Scan page under a collapsed technical-details section so they do not interrupt the normal scan workflow.
+Every unlocked Administration subpage includes an explicit **Back to Settings & Diagnostics** link. Junior also uses consistent page spacing and themed scrollbars across the browser and desktop interfaces. Developer-oriented scan commands and resolved paths remain available on the Scan page under a collapsed technical-details section so they do not interrupt the normal scan workflow.
 
 | Classification | Controls |
 |---|---|
@@ -813,6 +823,9 @@ source health. The source-health card starts collapsed and reports all working
 sources in green or identifies sources needing review in yellow. Expanding it
 shows whether each company is scanning, which collector it uses, the latest
 scan result, and the latest bounded connection-test result.
+When a supported recruiting platform explicitly confirms that its board has no
+current openings, Junior reports the source as connected with zero openings
+rather than treating the empty board as a source failure.
 Users can pause or resume a company, test one or more sources without importing
 jobs, and remove a company from only the active profile without deleting its
 history. Connection-test progress and individual results refresh on that same

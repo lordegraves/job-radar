@@ -109,8 +109,7 @@ def test_companies_page_shows_global_catalog_with_profile_scan_state(
     assert "Companies and source health" in html
     assert '<details class="page-card company-health-section" id="company-sources">' in html
     assert '<details class="page-card company-health-section" id="company-sources" open>' not in html
-    assert "Needs attention: 3 sources need review." in html
-    assert "Expand this card to see what Junior found." in html
+    assert "Verification needed: 3 sources have not been tested." in html
     assert "Test all untested sources" in html
     assert "Test selected sources" in html
     assert 'class="test-selection-column"' in html
@@ -126,6 +125,18 @@ def test_companies_page_shows_global_catalog_with_profile_scan_state(
     assert "testButtons.forEach((button) => { button.disabled = true; });" in html
     assert ">Remove</button>" not in html
     assert "Find a company" in html
+    assert '<option value="healthy">Healthy</option>' in html
+    assert (
+        '<option value="attention">Not healthy (attention or untested)</option>'
+        in html
+    )
+    assert '<option value="untested">Not tested</option>' in html
+    assert 'aria-label="Select all visible company sources"' in html
+    assert 'data-health-state="not_tested"' in html
+    assert 'row.dataset.healthState === "error"' in html
+    assert 'row.dataset.healthState === "not_tested"' in html
+    assert "if (checkbox && !row.hidden)" in html
+    assert "if (checkbox) checkbox.checked = false;" in html
     assert "Run selected tests" in html
     assert "<summary>More</summary>" not in html
 
@@ -248,6 +259,40 @@ def test_company_source_test_background_request_returns_status_json(
 
     assert response.status_code == 202
     assert response.get_json() == {"status": "starting", "total": 1}
+
+
+def test_company_source_test_waits_for_running_scan(tmp_path: Path) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+        company_ids=("assigned_law",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="assigned_law",
+            name="Assigned Law Firm",
+            source_type="html",
+            source_config={"source_url": "https://law.invalid/jobs"},
+        ),
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    app.extensions["junior_scan_runner"]._running = True
+    client = app.test_client()
+
+    response = client.post(
+        "/companies/test-sources",
+        data={"employer_id": "assigned_law", "test_scope": "selected"},
+        headers={"X-Junior-Background-Test": "1"},
+    )
+
+    assert response.status_code == 409
+    assert "Wait for the current scan to finish" in response.get_json()["message"]
 
 
 def test_company_detail_allows_global_catalog_employer_not_scanned_by_profile(

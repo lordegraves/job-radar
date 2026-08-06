@@ -89,8 +89,10 @@ def register_administration_routes(
 
     @app.get("/administration")
     @administration_required
-    def administration() -> str:
-        return render_template("administration/index.html")
+    def administration():
+        """Keep the Administration workspace inside Settings & Diagnostics."""
+
+        return redirect(url_for("settings", section="administration"))
 
     @app.get("/administration/recovery")
     @administration_required
@@ -650,7 +652,9 @@ def register_administration_routes(
     def administration_unlock() -> str:
         next_path = safe_local_path(request.args.get("next"))
         if is_admin_unlocked():
-            return redirect(next_path or url_for("administration"))
+            return redirect(
+                next_path or url_for("settings", section="administration")
+            )
 
         return render_template(
             "administration/unlock.html",
@@ -662,6 +666,12 @@ def register_administration_routes(
     def administration_unlock_submit():
         next_path = safe_local_path(request.form.get("next"))
         if request.form.get("confirmation", "").strip() != "ADMIN":
+            if next_path and next_path.startswith("/settings"):
+                flash(
+                    "Administration remains locked. Type ADMIN exactly to continue.",
+                    "error",
+                )
+                return redirect(next_path)
             return redirect(
                 url_for(
                     "administration_unlock",
@@ -671,9 +681,13 @@ def register_administration_routes(
             )
 
         unlock_admin_session()
-        return redirect(next_path or url_for("administration"))
+        return redirect(
+            next_path or url_for("settings", section="administration")
+        )
 
     @app.post("/administration/lock")
     def administration_lock():
         lock_admin_session()
-        return redirect(safe_local_path(request.form.get("next")) or url_for("index"))
+        return redirect(
+            safe_local_path(request.form.get("next")) or url_for("settings")
+        )

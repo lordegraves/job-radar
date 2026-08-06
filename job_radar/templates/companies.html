@@ -284,11 +284,11 @@
         <span class="muted">Not scanning</span>
     </div>
     <a class="company-summary-card" href="#company-sources">
-        <strong>{{ source_health_counts.attention }}</strong>
+        <strong id="company-source-attention-count">{{ source_health_counts.attention }}</strong>
         <span>Company Source Health</span>
-        <span class="source-cell-detail">
+        <span class="source-cell-detail" id="company-source-counts">
             {{ source_health_counts.working }} working ·
-            {{ source_health_counts.untested }} not tested
+            <span id="company-source-untested-count">{{ source_health_counts.untested }}</span> not tested
         </span>
     </a>
 </section>
@@ -333,15 +333,16 @@
     <summary>
         <div>
             <h2>Companies and source health</h2>
-            {% set source_issue_count = source_health_counts.attention + source_health_counts.untested %}
             <span
                 id="company-health-overall"
-                class="company-health-overall {% if workspace.companies and source_issue_count == 0 %}status-enabled{% else %}status-disabled{% endif %}"
+                class="company-health-overall {% if workspace.companies and source_health_counts.attention == 0 and source_health_counts.untested == 0 %}status-enabled{% else %}status-disabled{% endif %}"
             >
                 {% if not workspace.companies %}
                 Needs attention. Add a company to this profile, then expand this card to review source health.
-                {% elif source_issue_count %}
-                Needs attention: {{ source_issue_count }} source{% if source_issue_count != 1 %}s{% endif %} need review. Expand this card to see what Junior found.
+                {% elif source_health_counts.attention %}
+                Needs attention: {{ source_health_counts.attention }} source{% if source_health_counts.attention != 1 %}s{% endif %} need review. Expand this card to see what Junior found.
+                {% elif source_health_counts.untested %}
+                Verification needed: {{ source_health_counts.untested }} source{% if source_health_counts.untested != 1 %}s have{% else %} has{% endif %} not been tested.
                 {% else %}
                 Healthy: all {{ source_health_counts.working }} company source{% if source_health_counts.working != 1 %}s are{% else %} is{% endif %} working.
                 {% endif %}
@@ -371,9 +372,11 @@
             Show
             <select id="company-filter-state">
                 <option value="all">All companies</option>
+                <option value="healthy">Healthy</option>
+                <option value="attention">Not healthy (attention or untested)</option>
+                <option value="untested">Not tested</option>
                 <option value="scanning">Scanning</option>
                 <option value="not-scanning">Not scanning</option>
-                <option value="attention">Needs attention</option>
             </select>
         </label>
         <span class="muted" id="company-filter-result" aria-live="polite"></span>
@@ -430,7 +433,7 @@
         <caption class="visually-hidden">Companies, profile status, and source health</caption>
         <thead>
             <tr>
-                <th class="test-selection-column"><input id="select-all-sources" type="checkbox" aria-label="Select all company sources"></th>
+                <th class="test-selection-column"><input id="select-all-sources" type="checkbox" aria-label="Select all visible company sources"></th>
                 <th>Company and platform</th>
                 <th>Profile status</th>
                 <th>Connection health</th>
@@ -445,6 +448,7 @@
                 data-company-name="{{ company.name|lower }}"
                 data-profile-state="{{ 'scanning' if company.scanning else 'not-scanning' }}"
                 data-needs-attention="{{ 'false' if health and health.state == 'success' else 'true' }}"
+                data-health-state="{{ health.state if health else 'not_tested' }}"
             >
                 <td class="test-selection-column">
                     <input
@@ -774,10 +778,17 @@
             const nameMatches = !query || row.dataset.companyName.includes(query);
             const stateMatches = state === "all"
                 || row.dataset.profileState === state
-                || (state === "attention" && row.dataset.needsAttention === "true");
+                || (state === "healthy" && row.dataset.healthState === "success")
+                || (state === "attention" && row.dataset.needsAttention === "true")
+                || (state === "untested" && row.dataset.healthState === "not_tested");
             row.hidden = !(nameMatches && stateMatches);
+            if (row.hidden) {
+                const checkbox = row.querySelector(".source-select");
+                if (checkbox) checkbox.checked = false;
+            }
             if (!row.hidden) shown += 1;
         });
+        if (selectAll) selectAll.checked = false;
         if (filterResult) filterResult.textContent = `${shown} compan${shown === 1 ? "y" : "ies"} shown`;
     }
 
@@ -803,20 +814,28 @@
 
     function updateOverallHealth() {
         if (!healthOverall) return;
-        const working = Array.from(rows.values()).filter((row) =>
-            row.classList.contains("company-health-success")
-        ).length;
-        const attention = rows.size - working;
-        healthOverall.classList.toggle("status-enabled", attention === 0);
-        healthOverall.classList.toggle("status-disabled", attention !== 0);
+        const allRows = Array.from(rows.values());
+        const working = allRows.filter((row) => row.dataset.healthState === "success").length;
+        const attention = allRows.filter((row) => row.dataset.healthState === "error").length;
+        const untested = allRows.filter((row) => row.dataset.healthState === "not_tested").length;
+        const healthy = attention === 0 && untested === 0;
+        healthOverall.classList.toggle("status-enabled", healthy);
+        healthOverall.classList.toggle("status-disabled", !healthy);
         healthOverall.textContent = attention
             ? `Needs attention: ${attention} source${attention === 1 ? "" : "s"} need review. Expand this card to see what Junior found.`
+            : untested
+                ? `Verification needed: ${untested} source${untested === 1 ? " has" : "s have"} not been tested.`
             : `Healthy: all ${working} company source${working === 1 ? " is" : "s are"} working.`;
+        const attentionCount = document.getElementById("company-source-attention-count");
+        const sourceCounts = document.getElementById("company-source-counts");
+        if (attentionCount) attentionCount.textContent = attention;
+        if (sourceCounts) sourceCounts.textContent = `${working} working · ${untested} not tested`;
     }
 
     selectAll?.addEventListener("change", () => {
-        document.querySelectorAll(".source-select").forEach((checkbox) => {
-            checkbox.checked = selectAll.checked;
+        rows.forEach((row) => {
+            const checkbox = row.querySelector(".source-select");
+            if (checkbox && !row.hidden) checkbox.checked = selectAll.checked;
         });
     });
 
@@ -834,6 +853,8 @@
                 ? "company-health-success"
                 : "company-health-error"
         );
+        row.dataset.healthState = result.state === "success" ? "success" : "error";
+        row.dataset.needsAttention = result.state === "success" ? "false" : "true";
         row.querySelector("[data-source-state]").textContent =
             result.state === "success" ? "Connected" : "Needs attention";
         row.querySelector("[data-source-message]").textContent = result.message;
@@ -855,6 +876,7 @@
             results.append(message);
         });
         updateOverallHealth();
+        applyCompanyFilter();
     }
 
     async function poll() {

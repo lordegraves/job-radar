@@ -25,6 +25,7 @@ def _is_authoritative_empty_result(html: str) -> bool:
     return (
         "no jobs were found that match your search criteria" in normalized
         or "there are currently no open positions" in normalized
+        or "there are currently no job openings" in normalized
     )
 
 

@@ -369,6 +369,11 @@ def _schema_migrations() -> tuple:
             "migrate obsolete Mistral Lever source to Ashby",
             _migrate_mistral_to_ashby,
         ),
+        (
+            34,
+            "add employer source-change verification state",
+            _migrate_employer_source_change_verification,
+        ),
     )
 
 
@@ -866,6 +871,24 @@ def _migrate_employer_source_health(connection: sqlite3.Connection) -> None:
                 f"ALTER TABLE employer_sources ADD COLUMN "
                 f"{column_name} {definition}"
             )
+
+
+def _migrate_employer_source_change_verification(
+    connection: sqlite3.Connection,
+) -> None:
+    """Add the source-change flag to databases that already ran migration 22."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute(
+            "PRAGMA table_info(employer_sources)"
+        ).fetchall()
+    }
+    if "source_change_pending_test" not in existing_columns:
+        connection.execute(
+            "ALTER TABLE employer_sources ADD COLUMN "
+            "source_change_pending_test INTEGER NOT NULL DEFAULT 0"
+        )
 
 
 def _migrate_first_run_validation(connection: sqlite3.Connection) -> None:

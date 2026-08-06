@@ -673,6 +673,22 @@
             padding: 0;
         }
 
+        #admin-exit-dialog {
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            color: var(--text);
+            max-width: 480px;
+            padding: 24px;
+        }
+
+        #admin-exit-dialog::backdrop {
+            background: rgba(0, 0, 0, 0.72);
+        }
+
+        #admin-exit-dialog h2 { margin-top: 0; }
+
         @media (max-width: 1280px) {
             .app-header {
                 padding-left: 18px;
@@ -771,9 +787,6 @@
                 <a class="{% if request.endpoint in ['reports', 'report_view', 'report_file'] %}active-nav{% endif %}" href="{{ url_for('reports') }}"{% if request.endpoint in ['reports', 'report_view', 'report_file'] %} aria-current="page"{% endif %}>Reports &amp; Audit</a>
                 <a class="{% if request.endpoint == 'settings_about' %}active-nav{% endif %}" href="{{ url_for('settings_about') }}"{% if request.endpoint == 'settings_about' %} aria-current="page"{% endif %}>Help</a>
                 <a class="{% if request.endpoint and (request.endpoint == 'settings' or (request.endpoint.startswith('settings_') and request.endpoint != 'settings_about')) %}active-nav{% endif %}" href="{{ url_for('settings') }}"{% if request.endpoint and (request.endpoint == 'settings' or (request.endpoint.startswith('settings_') and request.endpoint != 'settings_about')) %} aria-current="page"{% endif %}>Settings &amp; Diagnostics</a>
-                {% if admin_mode_active %}
-                <a class="{% if request.endpoint and request.endpoint.startswith('administration') %}active-nav{% endif %}" href="{{ url_for('administration') }}"{% if request.endpoint and request.endpoint.startswith('administration') %} aria-current="page"{% endif %}>Administration</a>
-                {% endif %}
                 </nav>
                 <div class="scan-activity">
                     <button id="scan-activity-toggle" class="scan-activity-toggle" type="button" aria-expanded="false" aria-controls="scan-activity-panel" hidden>
@@ -798,7 +811,7 @@
             <span>Administration mode</span>
             <form method="post" action="{{ url_for('administration_lock') }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="next" value="{{ url_for('index') }}">
+                <input type="hidden" name="next" value="{{ url_for('settings') }}">
                 <button type="submit">Exit</button>
             </form>
         </div>
@@ -821,9 +834,9 @@
             </form>
         </div>
 {% endif %}
-{% if admin_mode_active and request.endpoint and request.endpoint.startswith('administration') and request.endpoint != 'administration' %}
+{% if admin_mode_active and request.endpoint and request.endpoint.startswith('administration') and request.endpoint not in ['administration', 'administration_unlock', 'administration_unlock_submit', 'administration_lock'] %}
         <nav class="admin-return" aria-label="Administration navigation">
-            <a href="{{ url_for('administration') }}">&larr; Back to Administration</a>
+            <a href="{{ url_for('settings', section='administration') }}">&larr; Back to Settings &amp; Diagnostics</a>
         </nav>
 {% endif %}
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -836,6 +849,21 @@
 {% endwith %}
 {% block content %}{% endblock %}
     </main>
+
+{% if admin_mode_active %}
+    <dialog id="admin-exit-dialog" aria-labelledby="admin-exit-title">
+        <form method="post" action="{{ url_for('administration_lock') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input id="admin-exit-next" type="hidden" name="next" value="{{ url_for('settings') }}">
+            <h2 id="admin-exit-title">Do you want to exit admin mode?</h2>
+            <p>Junior closes Administration mode before opening another part of the app.</p>
+            <div class="actions">
+                <button type="submit">Exit</button>
+                <button class="button-secondary" type="button" id="admin-exit-stay">Stay here</button>
+            </div>
+        </form>
+    </dialog>
+{% endif %}
 
     <script>
         if ("scrollRestoration" in history) {
@@ -858,6 +886,29 @@
                 button.textContent = button.dataset.submitPendingLabel;
             });
         });
+
+{% if admin_mode_active %}
+        (() => {
+            const dialog = document.getElementById("admin-exit-dialog");
+            const nextField = document.getElementById("admin-exit-next");
+            const stayButton = document.getElementById("admin-exit-stay");
+            const allowedPrefixes = ["/settings", "/administration"];
+
+            document.querySelectorAll("a[href]").forEach((link) => {
+                link.addEventListener("click", (event) => {
+                    const target = new URL(link.href, window.location.href);
+                    if (target.origin !== window.location.origin) return;
+                    const remainsInAdminWorkspace = target.origin === window.location.origin
+                        && allowedPrefixes.some((prefix) => target.pathname.startsWith(prefix));
+                    if (remainsInAdminWorkspace) return;
+                    event.preventDefault();
+                    nextField.value = `${target.pathname}${target.search}${target.hash}`;
+                    dialog.showModal();
+                });
+            });
+            stayButton.addEventListener("click", () => dialog.close());
+        })();
+{% endif %}
 
         function confirmDestructiveAction(message) {
             const confirmation = window.prompt(`${message}\n\nType DELETE to confirm.`);

@@ -102,7 +102,7 @@ def test_profile_activity_migration_assigns_legacy_rows_to_active_profile(
     assert tracker_row == (profile.profile_id, "Preserve tracker data")
     assert history_row == (profile.profile_id, "Preserve history data")
     assert foreign_key_errors == []
-    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v33-*.bak"))) == 1
+    assert len(list((tmp_path / "backups").glob("*.pre-migration-v11-v34-*.bak"))) == 1
 
 
 def test_clearance_migration_preserves_legacy_exclusion_behavior(
@@ -258,7 +258,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
     backup_directory = tmp_path / "backups"
     backup_paths = list(
         backup_directory.glob(
-                    "job_radar.sqlite3.pre-migration-v1-v33-*.bak"
+                    "job_radar.sqlite3.pre-migration-v1-v34-*.bak"
         )
     )
 
@@ -284,7 +284,7 @@ def test_initialize_database_backs_up_existing_database_before_migration(
 
     backup_paths_after_second_initialization = list(
         backup_directory.glob(
-                "job_radar.sqlite3.pre-migration-v1-v33-*.bak"
+                "job_radar.sqlite3.pre-migration-v1-v34-*.bak"
         )
     )
 
@@ -373,6 +373,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
             (31,),
             (32,),
             (33,),
+            (34,),
     ]
     with connect_database(database_path) as connection:
         profile_columns = {
@@ -400,7 +401,7 @@ def test_initialize_database_upgrades_v010_database_without_data_loss(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-                "synthetic-v0.1.0.sqlite3.pre-migration-v1-v33-*.bak"
+                "synthetic-v0.1.0.sqlite3.pre-migration-v1-v34-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -443,7 +444,7 @@ def test_initialize_database_rolls_back_failed_migration(
         "_schema_migrations",
         lambda: (
             *existing_migrations,
-            (34, "synthetic failing migration", fail_after_temporary_change),
+            (35, "synthetic failing migration", fail_after_temporary_change),
         ),
     )
 
@@ -460,7 +461,7 @@ def test_initialize_database_rolls_back_failed_migration(
             """
         ).fetchone()
         migration_version = connection.execute(
-                    "SELECT version FROM schema_migrations WHERE version = 34"
+                    "SELECT version FROM schema_migrations WHERE version = 35"
         ).fetchone()
         foreign_key_errors = connection.execute(
             "PRAGMA foreign_key_check"
@@ -472,7 +473,7 @@ def test_initialize_database_rolls_back_failed_migration(
 
     backup_paths = list(
         (tmp_path / "backups").glob(
-                "synthetic-current.sqlite3.pre-migration-v34-v34-*.bak"
+                "synthetic-current.sqlite3.pre-migration-v35-v35-*.bak"
         )
     )
     assert len(backup_paths) == 1
@@ -516,6 +517,7 @@ def test_initialize_database_rolls_back_failed_migration(
                 (31,),
                 (32,),
                 (33,),
+                (34,),
             ]
 
 
@@ -597,6 +599,43 @@ def test_mistral_obsolete_lever_source_migrates_to_verified_ashby(
     )
     assert audit == ("source_migration", "schema_migration")
 
+
+def test_existing_database_receives_source_change_verification_column(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Upgrade a database that completed migration 22 before the flag existed."""
+
+    database_path = tmp_path / "synthetic-v33.sqlite3"
+    all_migrations = storage._schema_migrations()
+    monkeypatch.setattr(
+        storage,
+        "_schema_migrations",
+        lambda: tuple(item for item in all_migrations if item[0] <= 33),
+    )
+    initialize_database(database_path)
+    with connect_database(database_path) as connection:
+        connection.execute(
+            "ALTER TABLE employer_sources DROP COLUMN source_change_pending_test"
+        )
+
+    monkeypatch.setattr(storage, "_schema_migrations", lambda: all_migrations)
+    initialize_database(database_path)
+
+    with connect_database(database_path) as connection:
+        columns = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(employer_sources)"
+            ).fetchall()
+        }
+        version = connection.execute(
+            "SELECT version FROM schema_migrations WHERE version = 34"
+        ).fetchone()
+
+    assert "source_change_pending_test" in columns
+    assert version == (34,)
+
 def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
     database_path = tmp_path / "job_radar.sqlite3"
 
@@ -649,6 +688,7 @@ def test_initialize_database_can_run_more_than_once(tmp_path: Path) -> None:
             (31, "add detailed scan progress"),
             (32, "add llm advisory cache"),
             (33, "migrate obsolete Mistral Lever source to Ashby"),
+            (34, "add employer source-change verification state"),
         ]
 
 

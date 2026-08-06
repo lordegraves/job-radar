@@ -748,6 +748,8 @@ def _load_records(database_path: str | Path) -> list[EmployerAdminRecord]:
                 assigned_profile_count=int(row["assigned_count"]),
                 source_change_pending_test=bool(
                     row["source_change_pending_test"]
+                    if "source_change_pending_test" in row.keys()
+                    else False
                 ),
             )
         )

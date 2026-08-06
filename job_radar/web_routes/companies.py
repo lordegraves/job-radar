@@ -55,6 +55,10 @@ from job_radar.employer_review_service import (
 )
 from job_radar.source_health_service import build_source_health_items
 from job_radar.source_test_runner import SourceTestRunner
+from job_radar.operational_event_log import (
+    inferred_logs_path,
+    record_operational_event,
+)
 
 
 def register_company_routes(
@@ -64,11 +68,30 @@ def register_company_routes(
     settings_path: str,
 ) -> None:
     """Register profile-aware company management and safe source testing."""
+    database_path = get_database_path()
+
+    def record_source_test_failure(employer_id: str, error_type: str) -> None:
+        """Record enough safe context to diagnose a failed background test."""
+
+        record_operational_event(
+            inferred_logs_path(database_path),
+            kind="errors",
+            subsystem="company_source_test",
+            event="background_test_failed",
+            severity="error",
+            fields={
+                "employer_id": employer_id,
+                "error_type": error_type,
+                "stage": "connection_test_worker",
+            },
+        )
+
     source_test_runner = SourceTestRunner(
         lambda employer_id: test_employer_connection(
-            get_database_path(),
+            database_path,
             employer_id,
-        )
+        ),
+        record_unexpected_failure=record_source_test_failure,
     )
 
     @app.get("/companies")
@@ -149,6 +172,17 @@ def register_company_routes(
         background_request = (
             request.headers.get("X-Junior-Background-Test") == "1"
         )
+        scan_runner = app.extensions.get("junior_scan_runner")
+        if scan_runner is not None and scan_runner.is_running:
+            message = (
+                "Wait for the current scan to finish before testing company "
+                "sources. This keeps the scan and source tests from competing "
+                "for Junior's database."
+            )
+            if not background_request:
+                flash(message, "warning")
+                return redirect(url_for("companies"))
+            return jsonify({"status": "busy", "message": message}), 409
         workspace = build_company_workspace(get_database_path())
         if workspace.active_profile is None:
             if not background_request:

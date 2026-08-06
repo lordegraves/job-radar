@@ -62,10 +62,12 @@ def test_administration_unlock_lock_and_session_isolation(
     unlocked_settings = client.get("/settings").get_data(as_text=True)
 
     assert unlocked_response.status_code == 200
-    assert "<h1 class=\"page-title\">Administration</h1>" in (
+    assert "<h1 class=\"page-title\">Settings &amp; Diagnostics</h1>" in (
         unlocked_response.get_data(as_text=True)
     )
-    assert ">Administration</a>" in unlocked_settings
+    assert "Manage shared employer sources" in unlocked_settings
+    assert "Manage employers" in unlocked_settings
+    assert 'id="admin-exit-dialog"' in unlocked_settings
     assert "Administration mode" in unlocked_settings
     assert "Exit" in unlocked_settings
 
@@ -104,7 +106,7 @@ def test_administration_redirects_accept_only_safe_local_paths(
             "next": "https://example.invalid/steal",
         },
     )
-    assert unsafe_response.headers["Location"] == "/administration"
+    assert unsafe_response.headers["Location"] == "/settings?section=administration"
 
 
 def test_settings_stays_available_and_locked_navigation_stays_normal(
@@ -121,7 +123,7 @@ def test_settings_stays_available_and_locked_navigation_stays_normal(
         "<h1 class=\"page-title\">Settings &amp; Diagnostics</h1>" in html
     )
     assert "Unlock Administration" in html
-    assert ">Administration</a>" not in html
+    assert "Manage employers" not in html
     assert "Administration mode" not in html
 
 
@@ -164,7 +166,10 @@ def test_administration_backup_export_and_restore_workflow(
     page = client.get("/administration/recovery")
     page_html = page.get_data(as_text=True)
     assert page.status_code == 200
-    assert 'href="/administration">&larr; Back to Administration</a>' in page_html
+    assert (
+        'href="/settings?section=administration">&larr; Back to Settings &amp; Diagnostics</a>'
+        in page_html
+    )
     assert "Create and download a backup" in page_html
     assert "Type RESTORE to confirm" in page_html
 

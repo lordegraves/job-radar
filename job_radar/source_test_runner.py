@@ -8,8 +8,14 @@ from typing import Any
 class SourceTestRunner:
     """Run one bounded sequential source-test batch while the GUI stays usable."""
 
-    def __init__(self, test_source: Callable[[str], Any]) -> None:
+    def __init__(
+        self,
+        test_source: Callable[[str], Any],
+        *,
+        record_unexpected_failure: Callable[[str, str], None] | None = None,
+    ) -> None:
         self._test_source = test_source
+        self._record_unexpected_failure = record_unexpected_failure
         self._lock = threading.Lock()
         self._running = False
         self._completed = 0
@@ -85,9 +91,20 @@ class SourceTestRunner:
                 )
                 job_count = getattr(result, "job_count", None)
                 tested_at = getattr(result, "tested_at", None)
-            except Exception:
-                # The connection service owns safe persisted diagnostics.
+            except Exception as error:
+                # Never expose exception text: it can contain a private URL or
+                # response. The exception class and employer ID are sufficient
+                # to distinguish a Junior worker/database problem from a
+                # recruiting source that genuinely rejected the request.
                 failed = True
+                error_type = type(error).__name__
+                if self._record_unexpected_failure is not None:
+                    self._record_unexpected_failure(employer_id, error_type)
+                message = (
+                    "Junior's source test stopped unexpectedly, so no source-"
+                    "health conclusion was reached. Open Diagnostics and "
+                    "download the error log if this continues."
+                )
             with self._lock:
                 self._completed += 1
                 self._failed += int(failed)

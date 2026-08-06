@@ -17,10 +17,11 @@ from job_radar.models import JobPosting
 
 
 def _create_test_employer(database_path: Path, **source_config: str) -> str:
+    source_type = source_config.pop("source_type", "greenhouse")
     record = create_employer(
         database_path,
         name="Example Kitchens",
-        source_type="greenhouse",
+        source_type=source_type,
         source_config=source_config,
         notes="Fictional test employer.",
     )
@@ -119,6 +120,8 @@ def test_empty_connection_result_requires_source_review(
     database_path = tmp_path / "junior.sqlite3"
     employer_id = _create_test_employer(
         database_path,
+        source_type="html",
+        source_url="https://example.invalid/jobs",
         source_slug="retired-board",
     )
     monkeypatch.setattr(
@@ -134,6 +137,58 @@ def test_empty_connection_result_requires_source_review(
     assert "source may have changed" in (result.message or "")
     assert result.last_success_at is None
     assert result.last_error_at is not None
+
+
+def test_confirmed_empty_connection_is_healthy(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    employer_id = _create_test_employer(
+        database_path,
+        source_slug="empty-board",
+    )
+
+    def collect(config):
+        config["_icims_authoritative_empty_result"] = True
+        return []
+
+    monkeypatch.setattr(
+        "job_radar.employer_connection_service.collect_jobs_for_company",
+        collect,
+    )
+
+    result = run_employer_connection_test(database_path, employer_id)
+
+    assert result.state == "success"
+    assert result.category == "connected_no_openings"
+    assert result.job_count == 0
+    assert result.message == (
+        "Connection succeeded. The employer currently has no public job openings."
+    )
+    assert result.last_success_at is not None
+    assert result.last_error_at is None
+
+
+def test_greenhouse_empty_connection_is_authoritatively_healthy(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    employer_id = _create_test_employer(
+        database_path,
+        source_slug="empty-greenhouse-board",
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_connection_service.collect_jobs_for_company",
+        lambda _config: [],
+    )
+
+    result = run_employer_connection_test(database_path, employer_id)
+
+    assert result.state == "success"
+    assert result.category == "connected_no_openings"
+    assert result.job_count == 0
 
 
 def test_empty_scan_result_replaces_stale_success_with_source_review(
@@ -153,6 +208,29 @@ def test_empty_scan_result_replaces_stale_success_with_source_review(
     assert result.category == "empty_source"
     assert result.job_count == 0
     assert "source may have changed" in (result.message or "")
+
+
+def test_confirmed_empty_scan_remains_healthy(tmp_path: Path) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    employer_id = _create_test_employer(
+        database_path,
+        source_slug="empty-board",
+    )
+
+    record_scan_connection_result(
+        database_path,
+        employer_id,
+        job_count=0,
+        confirmed_empty=True,
+    )
+    result = get_employer_connection_health(database_path, employer_id)
+
+    assert result.state == "success"
+    assert result.category == "connected_no_openings"
+    assert result.job_count == 0
+    assert result.message == (
+        "Scan succeeded. The employer currently has no public job openings."
+    )
 
 
 def test_successful_scan_replaces_an_older_connection_failure(

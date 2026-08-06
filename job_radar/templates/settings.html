@@ -151,12 +151,66 @@
         Each section below is collapsed until you need it.
         Health checks, version information, runtime paths, and logs are under
         <a href="{{ url_for('settings_diagnostics') }}">Diagnostics</a> above.
-        Installation-wide controls remain in
-        <a href="{{ url_for('administration_unlock') }}">Unlock Administration</a>.
+        Installation-wide controls are available in the Administration sections below.
     </p>
 </div>
 
 <div class="settings-sections">
+    {% if not admin_mode_active %}
+    <details
+        class="settings-section"
+        id="administration-settings"
+        {% if open_section == "administration" %}open{% endif %}
+    >
+        <summary>
+            <h2>Administration</h2>
+            <p class="settings-summary">Locked</p>
+        </summary>
+        <div class="settings-content">
+            <p>
+                Administration contains installation-wide controls that can affect
+                every profile, employer source, scan, backup, and recovery option.
+            </p>
+            <p class="muted">
+                This confirmation prevents accidental entry. It is not a password.
+            </p>
+            <form method="post" action="{{ url_for('administration_unlock_submit') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ url_for('settings', section='administration') }}">
+                <label for="settings-admin-confirmation">Type ADMIN to continue</label>
+                <input id="settings-admin-confirmation" name="confirmation" type="text" autocomplete="off">
+                <div class="inline-actions">
+                    <button type="submit">Unlock Administration</button>
+                </div>
+            </form>
+        </div>
+    </details>
+    {% else %}
+    {% for section_id, title, summary, description, endpoint, action in [
+        ('administration-employers', 'Employer catalog', 'Manage shared employer sources', 'Correct employer identity, availability, validation, and technical source configuration.', 'administration_employers', 'Manage employers'),
+        ('administration-collectors', 'Collector catalog', 'Review supported recruiting platforms', 'Review the ATS and careers-site collectors included with Junior.', 'settings_job_platforms', 'View collectors'),
+        ('administration-reviews', 'Employer review queue', 'Review submitted companies', 'Review company submissions that need technical configuration.', 'administration_employer_reviews', 'Review submissions'),
+        ('administration-recommendations', 'Recommendation administration', 'Inspect recommendation data', 'Inspect employer metadata and recommendation diagnostics.', 'administration_recommendations', 'Inspect recommendations'),
+        ('administration-recovery', 'Diagnostics and recovery', 'Back up or recover installation data', 'Create backups, export safe data, or restore a Junior backup.', 'administration_recovery', 'Back up or recover data')
+    ] %}
+    <details
+        class="settings-section"
+        id="{{ section_id }}"
+        {% if open_section == "administration" and loop.first %}open{% endif %}
+    >
+        <summary>
+            <h2>{{ title }}</h2>
+            <p class="settings-summary">{{ summary }}</p>
+        </summary>
+        <div class="settings-content">
+            <p>{{ description }}</p>
+            <div class="inline-actions">
+                <a class="button-link" href="{{ url_for(endpoint) }}">{{ action }}</a>
+            </div>
+        </div>
+    </details>
+    {% endfor %}
+    {% endif %}
     <details
         class="settings-section"
         id="retention-settings"

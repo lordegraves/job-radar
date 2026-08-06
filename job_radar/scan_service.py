@@ -27,6 +27,7 @@ from job_radar.collectors.incremental_cache import (
     record_collection_warning,
     report_progress,
 )
+from job_radar.collectors.icims import AUTHORITATIVE_EMPTY_CONFIG_KEY
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.compensation import (
     evaluate_compensation,
@@ -1057,6 +1058,12 @@ def _handle_scan_unlocked(
                     database_path,
                     company_key,
                     job_count=len(postings),
+                    confirmed_empty=bool(
+                        collection_config.get(
+                            AUTHORITATIVE_EMPTY_CONFIG_KEY
+                        )
+                    )
+                    or source_type == "greenhouse",
                 )
                 collection_warnings = collection_config.get(WARNINGS_CONFIG_KEY, [])
                 warning_types = collection_config.get(WARNING_TYPES_CONFIG_KEY, {})

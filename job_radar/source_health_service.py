@@ -1,6 +1,7 @@
 """Build safe, read-only company-source and latest-scan diagnostic details."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from job_radar.database import connect_database
@@ -50,16 +51,16 @@ def build_source_health_items(
 
     db_path = initialize_database(database_path)
     latest = fetch_latest_scan_run(db_path)
-    warning_by_company: dict[str, tuple[str, str]] = {}
+    warning_by_company: dict[str, tuple[str, str, str]] = {}
     latest_profile_companies: set[str] = set()
 
     if latest is not None:
         with connect_database(db_path) as connection:
             warning_by_company = {
-                str(row[0]): (str(row[1]), str(row[2]))
+                str(row[0]): (str(row[1]), str(row[2]), str(row[3]))
                 for row in connection.execute(
                     """
-                    SELECT company_key, error_type, error_message
+                    SELECT company_key, error_type, error_message, created_at
                     FROM scan_errors
                     WHERE scan_run_id = ?
                       AND company_key IS NOT NULL
@@ -85,8 +86,17 @@ def build_source_health_items(
     for employer in list_employer_sources(db_path):
         health = get_employer_connection_health(db_path, employer.employer_id)
         warning = warning_by_company.get(employer.employer_id)
+        newer_connection_result = bool(
+            warning
+            and health.tested_at
+            and _timestamp_at_least(health.tested_at, warning[2])
+        )
         if warning:
-            scan_state = "Warning"
+            scan_state = (
+                "Warning before latest source test"
+                if newer_connection_result
+                else "Warning"
+            )
             scan_message = warning[1]
             tone = "error"
         elif employer.employer_id in latest_profile_companies:
@@ -97,9 +107,9 @@ def build_source_health_items(
             scan_state = "Not in latest scan"
             scan_message = "This source was not part of the latest profile scan."
             tone = "neutral"
-        if warning is None and health.state == "success":
+        if (warning is None or newer_connection_result) and health.state == "success":
             tone = "success"
-        elif warning is None and health.state == "error":
+        elif (warning is None or newer_connection_result) and health.state == "error":
             tone = (
                 "warning"
                 if health.category in {"configuration", "authentication"}
@@ -125,6 +135,15 @@ def build_source_health_items(
             )
         )
     return tuple(items)
+
+
+def _timestamp_at_least(candidate: str, reference: str) -> bool:
+    """Compare SQLite UTC timestamps without depending on local time settings."""
+
+    try:
+        return datetime.fromisoformat(candidate) >= datetime.fromisoformat(reference)
+    except ValueError:
+        return candidate >= reference
 
 
 def build_latest_scan_warnings(
