@@ -3,11 +3,16 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import parse_qsl, urlparse
 
 from job_radar.company_catalog_query_service import (
     AVAILABLE,
     evaluate_employer_availability,
 )
+from job_radar.collectors.ashby import build_ashby_jobs_url
+from job_radar.collectors.greenhouse import build_greenhouse_jobs_url
+from job_radar.collectors.lever import build_lever_jobs_url
+from job_radar.collectors.rippling import build_rippling_jobs_url
 from job_radar.employer_connection_service import (
     EmployerConnectionHealth,
     get_employer_connection_health,
@@ -31,6 +36,7 @@ class CompanyWorkspaceItem:
     assigned: bool
     source_type: str
     connection_health: EmployerConnectionHealth
+    scan_source_url: str | None = None
     website_url: str | None = None
     careers_url: str | None = None
     linkedin_url: str | None = None
@@ -121,6 +127,10 @@ def build_company_workspace(
                     db_path,
                     employer.employer_id,
                 ),
+                scan_source_url=_scan_source_url(
+                    employer.source_type,
+                    employer.source_config,
+                ),
                 website_url=_optional_url(
                     employer.source_config.get("website_url")
                 ),
@@ -157,3 +167,38 @@ def _optional_url(value: object) -> str | None:
         return None
     normalized = value.strip()
     return normalized if normalized.startswith(("http://", "https://")) else None
+
+
+def _scan_source_url(
+    source_type: str,
+    source_config: dict[str, object],
+) -> str | None:
+    """Return the public request URL without exposing credential-like values."""
+
+    configured_url = source_config.get("source_url")
+    source_slug = str(source_config.get("source_slug") or "").strip()
+    if configured_url:
+        candidate = str(configured_url).strip()
+    elif source_slug and source_type == "ashby":
+        candidate = build_ashby_jobs_url(source_slug)
+    elif source_slug and source_type == "greenhouse":
+        candidate = build_greenhouse_jobs_url(source_slug)
+    elif source_slug and source_type == "lever":
+        candidate = build_lever_jobs_url(source_slug)
+    elif source_slug and source_type == "rippling":
+        candidate = build_rippling_jobs_url(source_slug)
+    else:
+        return None
+
+    parsed = urlparse(candidate)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    if parsed.username or parsed.password:
+        return None
+    sensitive_terms = ("token", "secret", "password", "credential", "auth")
+    if any(
+        any(term in key.casefold() for term in sensitive_terms)
+        for key, _value in parse_qsl(parsed.query, keep_blank_values=True)
+    ):
+        return None
+    return candidate

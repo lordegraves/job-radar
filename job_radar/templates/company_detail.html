@@ -5,13 +5,43 @@
 
 {% block page_styles %}
 <style>
+    .source-workspace { margin-top: 18px; }
+    .source-summary {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin: 18px 0;
+    }
+    .source-summary dt { color: var(--muted); font-weight: 650; }
+    .source-summary dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+    .source-address { word-break: break-word; }
+    .source-result {
+        border-top: 1px solid var(--border);
+        margin-top: 18px;
+        padding-top: 18px;
+    }
+    .source-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+    }
+    .source-actions form { margin: 0; }
+    .maintenance-section { margin-top: 16px; }
+    .maintenance-section > summary {
+        font-size: 1.15rem;
+        font-weight: 700;
+        padding: 4px 0;
+    }
+
+    /* The CLI/server compatibility view below still uses the legacy summary. */
     .company-detail-grid {
         display: grid;
         gap: 12px;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         margin: 18px 0;
     }
-
     .company-detail-card {
         background: rgba(31, 31, 35, 0.94);
         border: 1px solid var(--border);
@@ -19,7 +49,6 @@
         box-shadow: var(--shadow);
         padding: 14px 16px;
     }
-
     .company-detail-card strong {
         color: var(--link);
         display: block;
@@ -72,6 +101,7 @@
     }
 
     @media (max-width: 760px) {
+        .source-summary,
         .company-links-grid {
             grid-template-columns: 1fr;
         }
@@ -86,76 +116,77 @@
 
 <h1 class="page-title">{{ company.name }}</h1>
 
-<section class="company-detail-grid" aria-label="Company summary">
-    <div class="company-detail-card">
-        {% if company.scanning %}
-        <strong class="status-enabled">Scanning</strong>
-        {% else %}
-        <strong class="status-disabled">Paused</strong>
-        {% endif %}
-        <span class="muted">Status</span>
-    </div>
+<section class="page-card source-workspace" aria-labelledby="job-source-heading">
+    <h2 id="job-source-heading">Job source</h2>
+    <dl class="source-summary">
+        <div>
+            <dt>Profile status</dt>
+            <dd class="{{ 'status-enabled' if company.scanning else 'status-disabled' }}">
+                {{ 'Scanning' if company.scanning else 'Not scanning' }} for {{ active_profile.display_name }}
+            </dd>
+        </div>
+        <div>
+            <dt>Recruiting platform</dt>
+            <dd>{{ company.source_label }}</dd>
+        </div>
+        <div>
+            <dt>Connection health</dt>
+            <dd class="{% if company.connection_health.state == 'success' %}status-enabled{% elif company.connection_health.state == 'error' %}status-disabled{% endif %}">
+                {{ company.connection_health.state_label }}
+            </dd>
+        </div>
+        <div>
+            <dt>Last checked</dt>
+            <dd>{{ company.last_checked_label }}</dd>
+        </div>
+        <div>
+            <dt>Jobs returned</dt>
+            <dd>{{ company.connection_health.job_count if company.connection_health.job_count is not none else 'Not available' }}</dd>
+        </div>
+        <div>
+            <dt>Source Junior scans</dt>
+            <dd class="source-address">
+                {% if company.scan_source_url %}
+                <a href="{{ company.scan_source_url }}" target="_blank" rel="noopener noreferrer">{{ company.scan_source_url }}</a>
+                {% else %}
+                <span class="muted">The public request address is not available for this source type.</span>
+                {% endif %}
+            </dd>
+        </div>
+    </dl>
 
-    <div class="company-detail-card">
-        <strong>{{ active_profile.display_name }}</strong>
-        <span class="muted">Included in profile</span>
+    {% if company.connection_health.message %}
+    <div class="source-result">
+        <strong>Latest result</strong>
+        <p>{{ company.connection_health.message }}</p>
     </div>
+    {% endif %}
 
-    <div class="company-detail-card">
-        <strong class="{% if company.connection_health.state == 'success' %}status-enabled{% elif company.connection_health.state == 'error' %}status-disabled{% endif %}">
-            {{ company.connection_health.state_label }}
-        </strong>
-        <span class="muted">Job source status</span>
-    </div>
-
-    <div class="company-detail-card">
-        <strong>{{ company.source_label }}</strong>
-        <span class="muted">Recruiting platform</span>
-    </div>
-
-    <div class="company-detail-card">
-        <strong>{{ company.last_checked_label }}</strong>
-        <span class="muted">Last checked</span>
-    </div>
-
-    <div class="company-detail-card">
-        <strong>
-            {% if company.connection_health.job_count is not none %}
-            {{ company.connection_health.job_count }}
+    <div class="source-actions">
+        <form method="post" action="{{ url_for('test_company_source', company_key=company.company_key) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" data-submit-pending-label="Testing job source...">Test job source</button>
+        </form>
+        <form method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            {% if company.scanning %}
+            <input type="hidden" name="state" value="not_scanning">
+            <button class="button-secondary" type="submit">Stop scanning for {{ active_profile.display_name }}</button>
             {% else %}
-            Not available
+            <input type="hidden" name="state" value="scanning">
+            <button type="submit">Scan for {{ active_profile.display_name }}</button>
             {% endif %}
-        </strong>
-        <span class="muted">Jobs found during last check</span>
+        </form>
+        {% if admin_mode_active %}
+        <a class="button-link button-secondary" href="{{ url_for('administration_employer_edit', employer_id=company.company_key) }}">Edit job source</a>
+        {% else %}
+        <a href="{{ url_for('administration_unlock', next=url_for('administration_employer_edit', employer_id=company.company_key)) }}">Unlock Administration to edit the job source</a>
+        {% endif %}
     </div>
 </section>
 
-<div class="actions">
-    <form method="post" action="{{ url_for('test_company_source', company_key=company.company_key) }}">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" data-submit-pending-label="Testing job source...">Test job source</button>
-    </form>
-    <form method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        {% if company.scanning %}
-        <input type="hidden" name="state" value="not_scanning">
-        <button class="button-secondary" type="submit">Stop scanning for {{ active_profile.display_name }}</button>
-        {% else %}
-        <input type="hidden" name="state" value="scanning">
-        <button type="submit">Scan for {{ active_profile.display_name }}</button>
-        {% endif %}
-    </form>
-</div>
-
-{% if company.connection_health.message %}
-<div class="page-card">
-    <h2>Latest source check</h2>
-    <p>{{ company.connection_health.message }}</p>
-</div>
-{% endif %}
-
-<section class="page-card">
-    <h2>Company links</h2>
+<details class="page-card maintenance-section">
+    <summary>Reference links</summary>
     <p class="muted">
         Keep useful public pages together for quick reference. Junior opens
         these links in your browser; it does not sign in to, monitor, or scrape
@@ -200,24 +231,7 @@
         </div>
         <button type="submit">Save company links</button>
     </form>
-</section>
-
-<section class="page-card">
-    <h2>Correct the company name</h2>
-    <p class="muted">
-        Use this only to fix spelling or wording. The corrected name is shared
-        by every profile on this Junior installation. The working job source
-        and existing history will not change.
-    </p>
-    <form method="post" action="{{ url_for('correct_company_name', company_key=company.company_key) }}">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        <label for="company-name">
-            <span>Company name</span>
-            <input id="company-name" name="company_name" value="{{ company.name }}" required>
-        </label>
-        <button type="submit">Save corrected name</button>
-    </form>
-</section>
+</details>
 {% else %}
 <p><a href="{{ url_for('companies') }}">&larr; Back to Companies</a></p>
 

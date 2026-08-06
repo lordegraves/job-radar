@@ -31,6 +31,13 @@ background. In an isolated copy of an 11,140-job profile, this reduced scoring
 from roughly 7 minutes 22 seconds to 1 minute 23 seconds without changing the
 ten jobs surfaced for review.
 
+Each company detail page groups profile status, recruiting platform, connection
+health, last check, returned-job count, and the public request URL into one Job
+source workspace. Source-test results appear once. Public reference links stay
+collapsed until needed, and an unlocked administrator can move directly from a
+company to its global source editor to correct, validate, and retest the
+collector without changing profile assignments or collected history.
+
 The current development build is a functional local application with up to five independent managed profiles. Python wheel, source-package, reproducible Windows executable, unsigned per-user Windows installer, Linux archive, container, and Kubernetes baselines are implemented and validated. A genuinely empty installation now opens a guided first-run path through profile creation, résumé upload, profile-owned work exclusions, company selection, and a final review. The setup checkpoint is stored safely in SQLite, so closing junior during setup returns the user to the last completed step instead of starting over. The review shows the profile, résumé, preferences, locations, companies, user-data location, and scan behavior. Finish setup remains unavailable until Junior verifies minimum usable profile rules and confirms at least one selected company collector can connect. This validation imports, scores, recommends, reports, and emails no jobs, and it explains corrections in plain language. Publicly signed release downloads, remaining editable configuration, and broader release-candidate work are still in progress.
 
 See [CHANGELOG.md](CHANGELOG.md) for released and unreleased changes.

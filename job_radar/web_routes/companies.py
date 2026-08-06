@@ -242,17 +242,15 @@ def register_company_routes(
         ):
             abort(404)
         try:
-            health = test_employer_connection(
+            test_employer_connection(
                 get_database_path(),
                 company_key,
             )
         except EmployerConnectionError as error:
             flash(str(error), "error")
-        else:
-            flash(
-                health.message or "The job-source test finished.",
-                "success" if health.state == "success" else "error",
-            )
+        # The redirected company page renders the saved result in its source
+        # workspace. Repeating it in a flash banner makes one test look like
+        # two separate problems.
         return redirect(url_for("company_detail", company_key=company_key))
 
     @app.post("/companies/<company_key>/scanning")

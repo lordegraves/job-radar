@@ -306,7 +306,7 @@ def test_company_detail_allows_global_catalog_employer_not_scanned_by_profile(
         as_text=True
     )
     assert "Source detail" not in assigned_response.get_data(as_text=True)
-    assert "https://contractor.invalid/jobs" not in assigned_response.get_data(
+    assert "https://contractor.invalid/jobs" in assigned_response.get_data(
         as_text=True
     )
     assert unassigned_response.status_code == 200
@@ -936,12 +936,62 @@ def test_company_detail_shows_and_refreshes_safe_source_health(
 
     assert "Not tested" in initial_html
     assert "Workday" in initial_html
+    assert "Source Junior scans" in initial_html
+    assert "https://example.invalid/api/jobs" in initial_html
     assert "Test job source" in initial_html
     assert 'data-submit-pending-label="Testing job source..."' in initial_html
     assert "Connection succeeded and returned 12 jobs." in tested_html
     assert "Connected" in tested_html
-    assert "Jobs found during last check" in tested_html
-    assert 'class="flash-dismiss"' in tested_html
+    assert "Jobs returned" in tested_html
+    assert tested_html.count("Connection succeeded and returned 12 jobs.") == 1
+    assert 'class="flash-dismiss"' not in tested_html
+    assert "Unlock Administration to edit the job source" in initial_html
+
+    client.post(
+        "/administration/unlock",
+        data={
+            "confirmation": "ADMIN",
+            "next": "/companies/example_company",
+        },
+    )
+    admin_html = client.get("/companies/example_company").get_data(as_text=True)
+
+    assert "Edit job source" in admin_html
+    assert (
+        'href="/administration/employers/example_company/edit"' in admin_html
+    )
+
+
+def test_company_detail_withholds_credential_bearing_source_url(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="private_source",
+            name="Private Source",
+            source_type="html",
+            source_config={
+                "source_url": "https://example.invalid/jobs?access_token=hidden",
+            },
+        ),
+    )
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+        company_ids=("private_source",),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+
+    html = app.test_client().get("/companies/private_source").get_data(as_text=True)
+
+    assert "access_token" not in html
+    assert "public request address is not available" in html
 
 
 def test_profile_can_correct_company_name_without_changing_source(

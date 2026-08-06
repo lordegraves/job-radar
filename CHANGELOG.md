@@ -6,6 +6,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Consolidated each company detail page into one Job source workspace with the
+  public request URL, profile state, platform, connection health, last test,
+  returned-job count, and aligned actions. Source-test outcomes no longer
+  appear twice, reference links are collapsed, and unlocked administrators can
+  open the existing global source editor directly to correct, validate, and
+  retest a collector without changing profile assignments or job history.
+
 - Reorganized Review Jobs into one consistent workspace. Summary cards for Top
   Matches, Potential Matches, Needs Review, New This Scan, and Saved & Passed
   keep every queue one click away while the selected queue's controls and
