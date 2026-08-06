@@ -84,17 +84,42 @@ def managed_profile_to_candidate_profile(
             ),
         )
 
+    # The job-fit board is the current GUI for declaring strong capabilities.
+    # Pass those terms to the shared resume matcher as candidate evidence too.
+    # The matcher still requires each term to appear in both the resume and the
+    # posting, so a preference alone can never manufacture experience.
+    strong_fit_terms = [
+        signal.term
+        for signal in profile.fit_signals
+        if signal.category == "strong"
+    ]
+
     return CandidateProfile(
         name=profile.display_name,
         compensation_floor_usd=profile.preferences.compensation_floor_usd,
         preferred_base_usd=profile.preferences.compensation_target_usd,
         resume=resume,
-        core_strengths=list(profile.preferences.core_strengths),
+        core_strengths=_dedupe_terms(
+            [*profile.preferences.core_strengths, *strong_fit_terms]
+        ),
         credible_adjacent=list(profile.preferences.credible_adjacent),
         learning_or_gap=list(profile.preferences.learning_or_gap),
         avoid=list(profile.preferences.exclusions),
         target_roles=list(profile.preferences.target_roles),
     )
+
+
+def _dedupe_terms(values: list[str]) -> list[str]:
+    """Keep the user's wording while removing case-insensitive duplicates."""
+
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        key = value.strip().casefold()
+        if key and key not in seen:
+            seen.add(key)
+            result.append(value)
+    return result
 
 
 def _load_and_normalize_resume(

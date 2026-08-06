@@ -4,12 +4,16 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from job_radar.company_catalog_query_service import (
+    AVAILABLE,
+    evaluate_employer_availability,
+)
 from job_radar.employer_connection_service import (
     EmployerConnectionHealth,
     get_employer_connection_health,
 )
 from job_radar.employer_storage import (
-    get_employer_source,
+    list_employer_sources,
     list_profile_employer_assignments,
 )
 from job_radar.profile_models import ManagedProfile
@@ -24,6 +28,7 @@ class CompanyWorkspaceItem:
     company_key: str
     name: str
     scanning: bool
+    assigned: bool
     source_type: str
     connection_health: EmployerConnectionHealth
     website_url: str | None = None
@@ -90,19 +95,27 @@ def build_company_workspace(
         db_path,
         active_profile.profile_id,
     )
+    assignments_by_id = {
+        assignment.employer_id: assignment for assignment in assignments
+    }
 
-    for assignment in assignments:
-        employer = get_employer_source(db_path, assignment.employer_id)
-
-        # A damaged or partially migrated association must not break the page.
-        if employer is None:
+    for employer in list_employer_sources(db_path):
+        assignment = assignments_by_id.get(employer.employer_id)
+        # The workspace is the global usable catalog. Disabled or incomplete
+        # administrator entries stay out of the normal profile picker unless
+        # the profile already owns them and needs to see why they cannot scan.
+        if (
+            assignment is None
+            and evaluate_employer_availability(employer).state != AVAILABLE
+        ):
             continue
 
         companies.append(
             CompanyWorkspaceItem(
                 company_key=employer.employer_id,
                 name=employer.name,
-                scanning=assignment.enabled,
+                scanning=bool(assignment and assignment.enabled),
+                assigned=assignment is not None,
                 source_type=employer.source_type,
                 connection_health=get_employer_connection_health(
                     db_path,

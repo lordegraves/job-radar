@@ -129,6 +129,7 @@ def test_collect_oracle_hcm_jobs_paginates(monkeypatch):
         "findReqs;siteNumber=CX,limit=2,offset=0",
         "findReqs;siteNumber=CX,limit=2,offset=2",
     ]
+    assert all(job.detail_retrieval_state == "summary_only" for job in jobs)
 
 
 def test_collect_oracle_hcm_jobs_deduplicates(monkeypatch):

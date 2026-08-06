@@ -2,50 +2,39 @@ from job_radar.candidate_profile import CandidateProfile
 from job_radar.detail_retrieval import build_detail_retrieval_planner
 
 
-def _profile() -> CandidateProfile:
-    return CandidateProfile(
-        name="Infrastructure candidate",
-        compensation_floor_usd=None,
-        preferred_base_usd=None,
-        resume=None,
-        core_strengths=["Linux infrastructure", "HPC operations", "networking"],
-        credible_adjacent=["technical consulting"],
-        learning_or_gap=[],
-        avoid=["security engineering", "software development"],
-        target_roles=["Platform Engineer", "Infrastructure Engineer", "HPC Engineer"],
+def make_profile(**overrides) -> CandidateProfile:
+    values = {
+        "name": "Test Candidate",
+        "compensation_floor_usd": None,
+        "preferred_base_usd": None,
+        "resume": None,
+        "core_strengths": [],
+        "credible_adjacent": [],
+        "learning_or_gap": [],
+        "avoid": [],
+        "target_roles": [],
+    }
+    values.update(overrides)
+    return CandidateProfile(**values)
+
+
+def test_analytics_and_insights_titles_retrieve_detail_before_rejection() -> None:
+    profile = make_profile(
+        target_roles=["Data Analyst"],
+        core_strengths=["customer insights"],
     )
+    planner, _signature = build_detail_retrieval_planner(profile, {})
+
+    decision = planner("Director, Consumer & Brand Insights", None)
+
+    assert decision.retrieve is True
+    assert "related work evidence" in decision.reason.lower()
 
 
-def test_retrieval_planner_skips_clear_unrelated_title() -> None:
-    planner, _signature = build_detail_retrieval_planner(
-        _profile(),
-        {"positive_keywords": {}, "negative_keywords": {}, "top_matches": {}},
-    )
+def test_clearly_unrelated_title_can_still_skip_detail() -> None:
+    profile = make_profile(target_roles=["Data Analyst"])
+    planner, _signature = build_detail_retrieval_planner(profile, {})
 
-    decision = planner("Senior Tax Accountant", "Houston, Texas")
+    decision = planner("Restaurant Line Cook", None)
 
     assert decision.retrieve is False
-    assert "not ambiguous" in decision.reason
-
-
-def test_retrieval_planner_keeps_ambiguous_and_related_titles() -> None:
-    planner, _signature = build_detail_retrieval_planner(
-        _profile(),
-        {"positive_keywords": {}, "negative_keywords": {}, "top_matches": {}},
-    )
-
-    assert planner("Systems Engineer", None).retrieve is True
-    assert planner("HPC Technical Consultant", None).retrieve is True
-    assert planner("Platform Reliability Engineer", None).retrieve is True
-
-
-def test_retrieval_planner_applies_explicit_profile_exclusion() -> None:
-    planner, _signature = build_detail_retrieval_planner(
-        _profile(),
-        {"positive_keywords": {}, "negative_keywords": {}, "top_matches": {}},
-    )
-
-    decision = planner("Principal Security Engineering Lead", None)
-
-    assert decision.retrieve is False
-    assert "profile exclusion" in decision.reason

@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import job_radar.company_workspace_service as workspace_service
 from job_radar.company_workspace_service import build_company_workspace
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_storage import (
@@ -92,17 +91,15 @@ def test_workspace_uses_assignment_state_and_sorts_companies(
 
     assert [(item.name, item.scanning) for item in workspace.companies] == [
         ("Alpha Bakery", False),
+        ("Unassigned Market", False),
         ("Zeta Cafe", True),
     ]
-    assert workspace.total_companies == 2
+    assert workspace.total_companies == 3
     assert workspace.scanning_companies == 1
-    assert workspace.paused_companies == 1
+    assert workspace.paused_companies == 2
 
 
-def test_workspace_skips_missing_employer_record(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
+def test_workspace_skips_unusable_unassigned_employer(tmp_path: Path) -> None:
     database_path = tmp_path / "junior.sqlite3"
     profile = ManagedProfile(
         profile_id="profile_aaaaaaaa",
@@ -120,13 +117,17 @@ def test_workspace_skips_missing_employer_record(
             source_config={"source_url": "https://example.invalid/jobs"},
         ),
     )
-    monkeypatch.setattr(
-        workspace_service,
-        "get_employer_source",
-        lambda *_args: None,
+    upsert_employer_source(
+        database_path,
+        EmployerSource(
+            employer_id="unusable_company",
+            name="Unusable Company",
+            source_type="html",
+            source_config={},
+        ),
     )
 
     workspace = build_company_workspace(database_path)
 
-    assert workspace.companies == ()
-    assert workspace.total_companies == 0
+    assert [item.name for item in workspace.companies] == ["Example Company"]
+    assert workspace.total_companies == 1

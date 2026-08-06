@@ -38,7 +38,7 @@ from job_radar.diagnostic_service import (
     classify_collector_failure,
     classify_scan_failure,
 )
-from job_radar.eligibility import evaluate_practical_eligibility
+from job_radar.eligibility import EligibilityResult, evaluate_practical_eligibility
 from job_radar.employer_resolution import resolve_scan_companies
 from job_radar.employer_connection_service import record_scan_connection_result
 from job_radar.email_summary import (
@@ -119,10 +119,40 @@ from job_radar.storage import (
 )
 from job_radar.tracker.tracker_models import ApplicationRecord
 from job_radar.tracker.tracker_service import get_application_workflow_state
-from job_radar.tracker.tracker_storage import get_application, list_applications
+from job_radar.tracker.tracker_storage import list_applications
 
 
 _GENERAL_COLLECTION_WORKERS = 2
+_LOCATION_OUTLIER_REASON_CODES = {
+    "specific_location_outside_selected_areas",
+    "location_outside_selected_areas",
+    "remote_region_outside_selected_areas",
+}
+
+
+def _should_compare_resume(
+    *,
+    normalization_state: str | None,
+    eligibility: EligibilityResult | None,
+    include_location_outliers: bool,
+    score: int,
+    review_floor: int,
+) -> bool:
+    """Avoid deep matching when a hard practical rule already decides the job."""
+
+    if normalization_state == "incomplete":
+        return False
+    if eligibility is None or eligibility.status != "not_eligible":
+        return True
+    return bool(
+        include_location_outliers
+        and eligibility.reasons
+        and score >= review_floor
+        and all(
+            reason.code in _LOCATION_OUTLIER_REASON_CODES
+            for reason in eligibility.reasons
+        )
+    )
 _WORKDAY_COLLECTION_WORKERS = 2
 _EIGHTFOLD_COLLECTION_WORKERS = 1
 _COLLECTOR_STARTED_AT_CONFIG_KEY = "_collector_started_at"
@@ -375,33 +405,17 @@ def _build_tracker_workflow_summary(
 
 def _get_application_for_posting(
     *,
-    database_path: str,
-    tracked_applications: list[ApplicationRecord],
+    applications_by_job_id: dict[str, ApplicationRecord],
+    applications_by_source_url: dict[str, ApplicationRecord],
     posting,
-    profile_id: str | None = None,
 ) -> ApplicationRecord | None:
-    application = get_application(
-        database_path,
-        posting.job_radar_id,
-        profile_id=profile_id,
-    )
-
+    application = applications_by_job_id.get(posting.job_radar_id)
     if application is not None:
         return application
 
     if not posting.source_url:
         return None
-
-    posting_source_url = posting.source_url.strip()
-
-    for tracked_application in tracked_applications:
-        if tracked_application.source_url is None:
-            continue
-
-        if tracked_application.source_url.strip() == posting_source_url:
-            return tracked_application
-
-    return None
+    return applications_by_source_url.get(posting.source_url.strip())
 
 
 def _is_storage_relevant_posting(scored_posting: ScoredPosting) -> bool:
@@ -1128,6 +1142,15 @@ def _handle_scan_unlocked(
             database_path,
             profile_id=profile_id,
         )
+        applications_by_job_id = {
+            application.job_radar_id: application
+            for application in tracked_applications
+        }
+        applications_by_source_url = {
+            application.source_url.strip(): application
+            for application in tracked_applications
+            if application.source_url and application.source_url.strip()
+        }
 
         scored_postings = []
 
@@ -1157,16 +1180,15 @@ def _handle_scan_unlocked(
                 preferences=job_preferences,
                 compensation=compensation,
             )
-            skip_resume_comparison = bool(
-                posting.normalization_state == "incomplete"
-                or (
-                    eligibility is not None
-                    and eligibility.status == "not_eligible"
-                    and not bool(
-                        job_preferences
-                        and job_preferences.include_strong_location_outliers
-                    )
-                )
+            skip_resume_comparison = not _should_compare_resume(
+                normalization_state=posting.normalization_state,
+                eligibility=eligibility,
+                include_location_outliers=bool(
+                    job_preferences
+                    and job_preferences.include_strong_location_outliers
+                ),
+                score=score,
+                review_floor=int(scoring_config["review_needed"]["min_score"]),
             )
             resume_match = (
                 None
@@ -1213,10 +1235,9 @@ def _handle_scan_unlocked(
                 history_matches
             )
             application = _get_application_for_posting(
-                database_path=database_path,
-                tracked_applications=tracked_applications,
+                applications_by_job_id=applications_by_job_id,
+                applications_by_source_url=applications_by_source_url,
                 posting=posting,
-                profile_id=profile_id,
             )
 
             (

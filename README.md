@@ -9,10 +9,27 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.14`
+- Current field-test build: `RC6 Build 1.15`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
+
+RC6 Build 1.15 is a controlled cross-profile accuracy build. It carries the
+active profile's Strong fit capabilities into résumé comparison, while still
+requiring matching evidence in the résumé and posting. Broad shared words or
+tools do not make different professions equivalent, and Junior keeps sparse
+postings at review level unless their title specifically matches configured
+target work.
+
+The Companies page now shows the complete shared catalog. Each row has a
+sliding scan toggle for the active profile; turning it off keeps the company
+visible so it can be turned back on later. A separate checkbox at the left of
+each row selects sources for connection testing. During scans, hard eligibility
+failures are discarded before résumé comparison, and the packaged local server
+continues accepting navigation and progress requests while scoring runs in the
+background. In an isolated copy of an 11,140-job profile, this reduced scoring
+from roughly 7 minutes 22 seconds to 1 minute 23 seconds without changing the
+ten jobs surfaced for review.
 
 The current development build is a functional local application with up to five independent managed profiles. Python wheel, source-package, reproducible Windows executable, unsigned per-user Windows installer, Linux archive, container, and Kubernetes baselines are implemented and validated. A genuinely empty installation now opens a guided first-run path through profile creation, résumé upload, profile-owned work exclusions, company selection, and a final review. The setup checkpoint is stored safely in SQLite, so closing junior during setup returns the user to the last completed step instead of starting over. The review shows the profile, résumé, preferences, locations, companies, user-data location, and scan behavior. Finish setup remains unavailable until Junior verifies minimum usable profile rules and confirms at least one selected company collector can connect. This validation imports, scores, recommends, reports, and emails no jobs, and it explains corrections in plain language. Publicly signed release downloads, remaining editable configuration, and broader release-candidate work are still in progress.
 
@@ -38,12 +55,18 @@ are verified. See [the authoritative roadmap](docs/ROADMAP.md) and
 junior currently provides:
 
 - configured-company scanning across multiple ATS and career-site formats
+- bounded multi-page TalentBrew collection so large career sites such as Ford
+  do not stop after the first results page
+- marker-based pagination for older generic HTML definitions backed by
+  TalentBrew or SAP SuccessFactors, plus a 2,000-listing Workday ceiling
 - Profile-owned active applications and application history stored safely in SQLite
 - profile-owned scoring, occupation-neutral recommendation policy, compensation checks, and resume/profile matching
 - structured scan snapshots and HTML reports
 - plain-text and HTML email previews with guarded SMTP delivery
 - a local Flask GUI with a task-ordered Home, Profile / Resume, Companies,
   Scan, Review Jobs, Applications, Reports & Audit, Help, and Settings flow
+- installed version, release-channel, schema, license, and manual verified
+  update controls together at the top of Help & About
 - GUI-managed profile creation, editing, selection, guarded deletion, and app-owned resume storage
 - profile-owned related-role discovery with evidence explanations and explicit user approval
 - unified Profile / Resume workflow for profile creation, résumé management, profile-owned role, location, workplace, schedule, compensation, and travel selections, and occupation-neutral scoring ownership for newly created managed profiles
@@ -344,12 +367,14 @@ Junior's local-first or user-controlled behavior:
   server, and development modes provide the verified release link instead of
   self-updating. Profiles, résumés, companies, applications, and history remain
   in the separate user-data directory.
-- Diagnostics will gain a **Contact support** action. Junior will prepare a
-  sanitized diagnostic bundle, open the user's default email application with
-  safe version and operating-system context pre-filled, and tell the user which
-  file to attach. Junior will not attach or send anything automatically, and
-  the workflow will warn against sending résumés, databases, credentials,
-  tokens, profile contents, or other private information.
+- Diagnostics provides a selected-profile **Download troubleshooting package**
+  action. Junior creates a bounded ZIP containing the importable profile
+  configuration, public company catalog, matching latest scan artifacts when
+  available, health summary, and allowlisted sanitized logs. It excludes every
+  résumé, the SQLite database, credentials, applications, history, personal
+  notes, backups, raw scan archives, and arbitrary files. Junior never sends
+  the package. A later Contact support action may open the user's email client,
+  but it will not attach or send anything automatically.
 - Junior will add and validate an MSIX package for Microsoft Store
   distribution. The Store version is intended to remain free to users and use
   Microsoft-managed package signing and updates. The existing open-source
@@ -368,9 +393,9 @@ scheduled scans, upgrades, rollback and recovery, and uninstall behavior.
 Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
-The Contact support, MSIX, and signing items above remain planned RC6
-capabilities and are not implemented in RC6 Build 1.14. Diagnostics still
-requires the user to download and attach a sanitized log manually. Interactive
+The Contact support email handoff, MSIX, and signing items above remain planned
+RC6 capabilities and are not implemented in RC6 Build 1.15. Users choose the
+profile and download the troubleshooting ZIP themselves. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
 families, safe outcomes, counts, and timestamps.
@@ -539,7 +564,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.14.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.15.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

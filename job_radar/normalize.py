@@ -127,7 +127,11 @@ def normalize_job_posting(posting: JobPosting) -> JobPosting:
         issues.append(workplace_issue)
 
     skipped = posting.detail_retrieval_state == "skipped_unrelated"
-    if not skipped and (description is None or len(description) < 200):
+    if not skipped and (
+        description is None
+        or len(description) < 200
+        or posting.detail_retrieval_state == "summary_only"
+    ):
         issues.append("incomplete_description")
 
     blocking_issues = {"missing_title", "missing_source_url", "incomplete_description"}

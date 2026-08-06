@@ -64,23 +64,18 @@ def test_application_info_reads_current_schema_without_user_content(
     assert info.user_data_location == str(tmp_path.resolve())
 
 
-def test_diagnostics_page_shows_safe_version_and_update_details(tmp_path: Path) -> None:
+def test_about_page_shows_safe_version_and_update_details(tmp_path: Path) -> None:
     settings_path = tmp_path / "config" / "settings.yaml"
     database_path = tmp_path / "data" / "junior.sqlite3"
     _write_settings(settings_path, database_path)
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
 
-    response = app.test_client().get("/settings/diagnostics")
-    html = response.get_data(as_text=True)
+    diagnostics_response = app.test_client().get("/settings/diagnostics")
+    diagnostics_html = diagnostics_response.get_data(as_text=True)
 
-    assert response.status_code == 200
-    assert "About Junior and updates" in html
-    assert __version__ in html
-    assert "Database / profile schema" in html
-    assert "Check for updates" in html
-    assert "never downloads or installs an update without your approval" in html
-    assert "Dawn Peacock" in html
-    assert "GPL-3.0-only" in html
+    assert diagnostics_response.status_code == 200
+    assert "About Junior and updates" not in diagnostics_html
+    assert "Check for updates" not in diagnostics_html
     about_response = app.test_client().get("/settings/about")
     about_html = about_response.get_data(as_text=True)
     assert about_response.status_code == 200
@@ -98,6 +93,12 @@ def test_diagnostics_page_shows_safe_version_and_update_details(tmp_path: Path) 
     assert "card.open = card === target" in about_html
     assert 'event.target.closest(\'a[href^="#"]\')' in about_html
     assert 'showHelpSection("overview"' in about_html
+    assert 'id="about-junior"' in about_html
+    assert "Check for updates" in about_html
+    assert "never downloads or installs an" in about_html
+    assert "update without your approval" in about_html
+    assert "Dawn Peacock" in about_html
+    assert "GPL-3.0-only" in about_html
     assert __version__ in about_html
     assert str(tmp_path.resolve()) in about_html
 
@@ -213,8 +214,9 @@ def test_about_update_check_is_manual_and_displays_safe_result(
 
     assert "Junior 0.3.0 is available" not in before_check
     assert response.status_code == 200
+    assert response.request.path == "/settings/about"
     assert "Junior 0.3.0 is available" in after_check
-    assert "Junior 0.3.0 is available" in after_check
+    assert 'id="about-junior"' in after_check
 
 
 class _DownloadResponse:

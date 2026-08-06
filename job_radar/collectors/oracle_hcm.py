@@ -152,6 +152,17 @@ def _build_posting(
     )
 
     description = _build_description(requisition)
+    detail_retrieval_state = (
+        None
+        if any(
+            _clean_text(requisition.get(field))
+            for field in (
+                "ExternalResponsibilitiesStr",
+                "ExternalQualificationsStr",
+            )
+        )
+        else "summary_only"
+    )
 
     posting = JobPosting(
         company_key=company_key,
@@ -166,6 +177,7 @@ def _build_posting(
         salary_text=None,
         canonical_key=None,
         content_hash=None,
+        detail_retrieval_state=detail_retrieval_state,
     )
 
     return JobPosting(
@@ -189,6 +201,7 @@ def _build_posting(
             posting.location,
             posting.description,
         ),
+        detail_retrieval_state=posting.detail_retrieval_state,
     )
 
 

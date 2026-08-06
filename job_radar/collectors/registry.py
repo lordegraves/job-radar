@@ -7,7 +7,8 @@ from typing import Any
 
 from job_radar.collectors.ashby import collect_ashby_jobs
 from job_radar.collectors.greenhouse import CollectorError, collect_greenhouse_jobs
-from job_radar.collectors.html import collect_html_jobs
+from job_radar.collectors.adaptive_html import collect_adaptive_html_jobs
+from job_radar.collectors.talentbrew import collect_talentbrew_jobs
 from job_radar.collectors.icims import (
     AUTHORITATIVE_EMPTY_CONFIG_KEY,
     collect_icims_jobs,
@@ -72,10 +73,10 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
         postings = collect_jibe_jobs(company_config)
 
     elif source_type == "html":
-        postings = collect_html_jobs(company_config)
+        postings = collect_adaptive_html_jobs(company_config)
 
     elif source_type == "talentbrew":
-        postings = collect_html_jobs(company_config)
+        postings = collect_talentbrew_jobs(company_config)
     
     elif source_type == "jobsyn":
         postings = collect_jobsyn_jobs(company_config)

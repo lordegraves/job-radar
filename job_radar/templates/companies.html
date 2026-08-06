@@ -156,11 +156,10 @@
     }
 
     .company-health-table { table-layout: fixed; }
-    .company-health-table th:first-child { width: 42px; }
-    .company-health-table th:nth-child(2) { width: 25%; }
-    .company-health-table th:nth-child(3),
-    .company-health-table th:nth-child(4) { width: 24%; }
-    .company-health-table th:nth-child(5) { width: 17%; }
+    .company-health-table .test-selection-column { width: 42px; }
+    .company-health-table th:nth-child(2) { width: 28%; }
+    .company-health-table th:nth-child(3) { width: 23%; }
+    .company-health-table th:nth-child(4) { width: 34%; }
     .company-health-table th,
     .company-health-table td {
         overflow-wrap: normal;
@@ -179,8 +178,58 @@
         gap: 8px;
     }
     .company-test-controls { margin: 14px 0; }
-    .company-remove-form {
-        margin: 0;
+    .profile-scan-toggle {
+        align-items: center;
+        cursor: pointer;
+        display: inline-flex;
+        gap: 9px;
+        margin: 0 0 6px;
+    }
+    .profile-scan-toggle input {
+        height: 1px;
+        opacity: 0;
+        position: absolute;
+        width: 1px;
+    }
+    .profile-scan-switch {
+        background: #555b66;
+        border: 1px solid #7b8492;
+        border-radius: 999px;
+        display: inline-block;
+        flex: 0 0 auto;
+        height: 24px;
+        position: relative;
+        transition: background 120ms ease, border-color 120ms ease;
+        width: 44px;
+    }
+    .profile-scan-switch::after {
+        background: #ffffff;
+        border-radius: 50%;
+        content: "";
+        height: 18px;
+        left: 2px;
+        position: absolute;
+        top: 2px;
+        transition: transform 120ms ease;
+        width: 18px;
+    }
+    .profile-scan-toggle input:checked + .profile-scan-switch {
+        background: #168bd2;
+        border-color: #5bc8ff;
+    }
+    .profile-scan-toggle input:checked + .profile-scan-switch::after {
+        transform: translateX(20px);
+    }
+    .profile-scan-toggle input:focus-visible + .profile-scan-switch {
+        outline: 3px solid rgba(91, 200, 255, 0.45);
+        outline-offset: 2px;
+    }
+    .profile-scan-toggle input:disabled + .profile-scan-switch {
+        cursor: wait;
+        opacity: 0.65;
+    }
+    #selected-test-controls[hidden] {
+        display: none;
     }
 
 </style>
@@ -207,12 +256,13 @@
 
 <div class="page-card">
     <p>
-        These are the companies included in
+        Choose which companies Junior scans for
         <strong>{{ workspace.active_profile.display_name }}'s</strong>
         current job search.
     </p>
     <p class="muted">
-        junior scans companies marked Scanning and skips companies marked Paused.
+        The catalog remains available here. Turning a company off does not delete
+        its jobs, applications, or history, and it can be turned back on at any time.
     </p>
 </div>
 
@@ -223,7 +273,7 @@
 <section class="company-summary-grid" aria-label="Company workspace summary">
     <div class="company-summary-card">
         <strong>{{ workspace.total_companies }}</strong>
-        <span class="muted">Companies</span>
+        <span class="muted">Available companies</span>
     </div>
     <div class="company-summary-card">
         <strong>{{ workspace.scanning_companies }}</strong>
@@ -231,7 +281,7 @@
     </div>
     <div class="company-summary-card">
         <strong>{{ workspace.paused_companies }}</strong>
-        <span class="muted">Paused</span>
+        <span class="muted">Not scanning</span>
     </div>
     <a class="company-summary-card" href="#company-sources">
         <strong>{{ source_health_counts.attention }}</strong>
@@ -312,6 +362,22 @@
         Actual selected-company scans belong on the Scan page.
         <a href="{{ url_for('settings_job_platforms') }}">View the collector catalog</a>.
     </p>
+    <div class="company-filter-form" aria-label="Filter companies">
+        <label>
+            Find a company
+            <input id="company-filter-text" type="search" placeholder="Type a company name">
+        </label>
+        <label>
+            Show
+            <select id="company-filter-state">
+                <option value="all">All companies</option>
+                <option value="scanning">Scanning</option>
+                <option value="not-scanning">Not scanning</option>
+                <option value="attention">Needs attention</option>
+            </select>
+        </label>
+        <span class="muted" id="company-filter-result" aria-live="polite"></span>
+    </div>
     {% if workspace.companies %}
     <div
         id="source-test-progress"
@@ -351,27 +417,36 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <div class="company-test-controls">
             <button type="submit" name="test_scope" value="untested">Test all untested sources</button>
-            <button class="button-secondary" type="submit" name="test_scope" value="selected">Test selected sources</button>
+            <button class="button-secondary" id="choose-selected-sources" type="button">Test selected sources</button>
+            <span id="selected-test-controls" hidden>
+                <button type="submit" name="test_scope" value="selected">Run selected tests</button>
+                <button class="button-secondary" id="cancel-source-selection" type="button">Cancel</button>
+            </span>
         </div>
     </form>
 
     <div class="table-wrap">
-    <table class="company-health-table">
+    <table class="company-health-table" id="company-health-table">
         <caption class="visually-hidden">Companies, profile status, and source health</caption>
         <thead>
             <tr>
-                <th><input id="select-all-sources" type="checkbox" aria-label="Select all company sources"></th>
+                <th class="test-selection-column"><input id="select-all-sources" type="checkbox" aria-label="Select all company sources"></th>
                 <th>Company and platform</th>
                 <th>Profile status</th>
                 <th>Connection health</th>
-                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for company in workspace.companies %}
             {% set health = source_health.get(company.company_key) %}
-            <tr class="company-health-{{ health.tone if health else 'neutral' }}" data-employer-id="{{ company.company_key }}">
-                <td>
+            <tr
+                class="company-health-{{ health.tone if health else 'neutral' }}"
+                data-employer-id="{{ company.company_key }}"
+                data-company-name="{{ company.name|lower }}"
+                data-profile-state="{{ 'scanning' if company.scanning else 'not-scanning' }}"
+                data-needs-attention="{{ 'false' if health and health.state == 'success' else 'true' }}"
+            >
+                <td class="test-selection-column">
                     <input
                         class="source-select"
                         type="checkbox"
@@ -386,11 +461,22 @@
                     <span class="source-cell-detail">{{ company.source_label }}</span>
                 </td>
                 <td>
-                    {% if company.scanning %}
-                    <span class="workspace-status status-scanning">Scanning</span>
-                    {% else %}
-                    <span class="workspace-status status-paused">Paused</span>
-                    {% endif %}
+                    <form class="company-action-form" method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="state" value="{{ 'not_scanning' if company.scanning else 'scanning' }}">
+                        <label class="profile-scan-toggle">
+                            <input
+                                class="profile-scan-checkbox"
+                                type="checkbox"
+                                {% if company.scanning %}checked{% endif %}
+                                aria-label="Scan {{ company.name }} for this profile"
+                            >
+                            <span class="profile-scan-switch" aria-hidden="true"></span>
+                            <span class="workspace-status {{ 'status-scanning' if company.scanning else 'status-paused' }}">
+                                {{ 'Scan for this profile' if company.scanning else 'Not scanning' }}
+                            </span>
+                        </label>
+                    </form>
                     {% if health %}
                     <span class="source-cell-detail">Latest scan: {{ health.latest_scan_state }}</span>
                     {% endif %}
@@ -406,30 +492,6 @@
                         &middot; {{ health.job_count }} jobs returned
                         {% endif %}
                     </span>
-                </td>
-                <td class="company-inline-actions">
-                    <form class="company-action-form" method="post" action="{{ url_for('set_company_scanning', company_key=company.company_key) }}">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                        {% if company.scanning %}
-                        <input type="hidden" name="state" value="paused">
-                        <button class="button-secondary" type="submit">Pause</button>
-                        {% else %}
-                        <input type="hidden" name="state" value="scanning">
-                        <button type="submit">Resume</button>
-                        {% endif %}
-                    </form>
-                    <form class="company-remove-form" method="post" action="{{ url_for('remove_profile_company', company_key=company.company_key) }}">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                        <button
-                            class="button-secondary"
-                            type="submit"
-                            name="confirmation"
-                            value="REMOVE"
-                            data-company-name="{{ company.name }}"
-                            data-profile-name="{{ workspace.active_profile.display_name }}"
-                            onclick="return confirmCompanyRemoval(this.dataset.companyName, this.dataset.profileName)"
-                        >Remove</button>
-                    </form>
                 </td>
             </tr>
             {% endfor %}
@@ -642,7 +704,85 @@
     const step = document.getElementById("source-test-step");
     const results = document.getElementById("source-test-results");
     const selectAll = document.getElementById("select-all-sources");
+    const companyTable = document.getElementById("company-health-table");
+    const chooseSelected = document.getElementById("choose-selected-sources");
+    const selectedControls = document.getElementById("selected-test-controls");
+    const cancelSelection = document.getElementById("cancel-source-selection");
+    const filterText = document.getElementById("company-filter-text");
+    const filterState = document.getElementById("company-filter-state");
+    const filterResult = document.getElementById("company-filter-result");
     const testButtons = Array.from(form?.querySelectorAll("button[type='submit']") || []);
+
+    document.querySelectorAll(".profile-scan-checkbox").forEach((checkbox) => {
+        checkbox.addEventListener("change", async () => {
+            const companyForm = checkbox.form;
+            const stateInput = companyForm?.querySelector("input[name='state']");
+            const label = companyForm?.querySelector(".workspace-status");
+            if (!companyForm || !stateInput || !label) return;
+            checkbox.disabled = true;
+            stateInput.value = checkbox.checked ? "scanning" : "not_scanning";
+            try {
+                const response = await fetch(companyForm.action, {
+                    method: "POST",
+                    body: new FormData(companyForm),
+                    headers: {"X-Requested-With": "XMLHttpRequest"},
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || "company state was not saved");
+                }
+                label.textContent = checkbox.checked
+                    ? "Scan for this profile"
+                    : "Not scanning";
+                label.classList.toggle("status-scanning", checkbox.checked);
+                label.classList.toggle("status-paused", !checkbox.checked);
+                checkbox.closest("tr").dataset.profileState = checkbox.checked
+                    ? "scanning"
+                    : "not-scanning";
+                applyCompanyFilter();
+            } catch (error) {
+                checkbox.checked = !checkbox.checked;
+                window.alert(
+                    error.message || "Junior could not save that company choice. Try again, or open Diagnostics if the problem continues."
+                );
+            } finally {
+                checkbox.disabled = false;
+            }
+        });
+    });
+
+    function setSelectionMode(enabled) {
+        companyTable?.classList.toggle("selection-mode", enabled);
+        if (selectedControls) selectedControls.hidden = !enabled;
+        if (chooseSelected) chooseSelected.hidden = enabled;
+        if (!enabled) {
+            if (selectAll) selectAll.checked = false;
+            document.querySelectorAll(".source-select").forEach((checkbox) => {
+                checkbox.checked = false;
+            });
+        }
+    }
+
+    chooseSelected?.addEventListener("click", () => setSelectionMode(true));
+    cancelSelection?.addEventListener("click", () => setSelectionMode(false));
+
+    function applyCompanyFilter() {
+        const query = (filterText?.value || "").trim().toLowerCase();
+        const state = filterState?.value || "all";
+        let shown = 0;
+        rows.forEach((row) => {
+            const nameMatches = !query || row.dataset.companyName.includes(query);
+            const stateMatches = state === "all"
+                || row.dataset.profileState === state
+                || (state === "attention" && row.dataset.needsAttention === "true");
+            row.hidden = !(nameMatches && stateMatches);
+            if (!row.hidden) shown += 1;
+        });
+        if (filterResult) filterResult.textContent = `${shown} compan${shown === 1 ? "y" : "ies"} shown`;
+    }
+
+    filterText?.addEventListener("input", applyCompanyFilter);
+    filterState?.addEventListener("change", applyCompanyFilter);
 
     function openHealthSection() {
         if (healthSection) healthSection.open = true;
@@ -741,7 +881,7 @@
                 polling = false;
                 testButtons.forEach((button) => { button.disabled = false; });
                 testButtons[0].textContent = "Test all untested sources";
-                testButtons[1].textContent = "Test selected sources";
+                if (testButtons[1]) testButtons[1].textContent = "Run selected tests";
                 if (current.total) {
                     status.textContent =
                         `Testing finished: ${current.completed} checked, ` +
@@ -773,7 +913,7 @@
             step.textContent = payload.message || "Junior could not start the test.";
             testButtons.forEach((button) => { button.disabled = false; });
             testButtons[0].textContent = "Test all untested sources";
-            testButtons[1].textContent = "Test selected sources";
+            if (testButtons[1]) testButtons[1].textContent = "Run selected tests";
             return;
         }
         if (!polling) poll();

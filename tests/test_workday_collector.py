@@ -790,6 +790,66 @@ def test_collect_workday_jobs_ignores_false_zero_total_on_later_pages(
     assert len(postings) == 3
 
 
+def test_collect_workday_jobs_exceeds_the_previous_1000_job_ceiling(
+    monkeypatch,
+) -> None:
+    company_config = {
+        "company_key": "large_company",
+        "name": "Large Company",
+        "source_type": "workday",
+        "source_url": (
+            "https://large.wd1.myworkdayjobs.com/"
+            "wday/cxs/large/External/jobs"
+        ),
+        "source_base_url": "https://large.wd1.myworkdayjobs.com/External",
+    }
+    total = 1_064
+    captured_offsets: list[int] = []
+
+    class FakeResponse:
+        def __init__(self, offset: int, limit: int) -> None:
+            self._offset = offset
+            self._limit = limit
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            remaining = max(0, total - self._offset)
+            count = min(self._limit, remaining)
+            return {
+                "total": total if self._offset == 0 else 0,
+                "jobPostings": [
+                    {
+                        "title": f"Engineer {job_number}",
+                        "externalPath": f"/job/Remote/Engineer_R{job_number}",
+                        "locationsText": "Remote",
+                        "bulletFields": [f"R{job_number}"],
+                        "description": "Required infrastructure experience.",
+                    }
+                    for job_number in range(
+                        self._offset + 1,
+                        self._offset + count + 1,
+                    )
+                ],
+            }
+
+    def fake_post(url, json, headers, timeout):
+        del url, headers, timeout
+        captured_offsets.append(json["offset"])
+        return FakeResponse(json["offset"], json["limit"])
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.post",
+        fake_post,
+    )
+
+    postings = collect_workday_jobs(company_config)
+
+    assert len(postings) == total
+    assert captured_offsets[-1] == 1_060
+
+
 def test_collect_workday_jobs_stops_when_endpoint_repeats_a_page(
     monkeypatch,
 ) -> None:

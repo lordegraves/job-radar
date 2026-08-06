@@ -178,6 +178,25 @@ def test_parse_html_jobs_returns_job_postings() -> None:
     assert postings[0].content_hash is not None
 
 
+def test_parse_html_jobs_recognizes_talentbrew_data_job_id_links() -> None:
+    html = """
+    <html><body>
+      <a href="/job/denver/platform-engineer/694/98252076128"
+         data-job-id="98252076128">Platform Engineer</a>
+    </body></html>
+    """
+
+    postings = _parse_html_jobs(
+        company_config=_company_config(),
+        html=html,
+        source_url="https://jobs.example.com/search-jobs",
+    )
+
+    assert len(postings) == 1
+    assert postings[0].source_job_id == "98252076128"
+    assert postings[0].title == "Platform Engineer"
+
+
 def test_parse_html_jobs_dedupes_desktop_and_mobile_links() -> None:
     html = """
     <html>

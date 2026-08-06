@@ -143,8 +143,8 @@ def test_name_and_url_normalization_is_safe_and_stable() -> None:
         ),
         (
             "https://www.lockheedmartin.com/en-us/careers/index.html",
-            "html",
-            "www.lockheedmartinjobs.com",
+            "talentbrew",
+            "talentbrew:www.lockheedmartinjobs.com",
             True,
         ),
         (

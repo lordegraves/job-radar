@@ -3,6 +3,7 @@
 import json
 import os
 import threading
+import zipfile
 from datetime import date, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
@@ -2927,6 +2928,48 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     assert rejected_download.status_code == 302
 
 
+def test_diagnostics_downloads_selected_profile_troubleshooting_package(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    first = ManagedProfile(
+        profile_id="profile_1111aaaa",
+        display_name="First profile",
+    )
+    second = ManagedProfile(
+        profile_id="profile_2222bbbb",
+        display_name="Second profile",
+    )
+    create_profile(database_file, first)
+    create_profile(database_file, second)
+    app = create_app(settings_path=str(settings_file))
+    client = app.test_client()
+
+    page = client.get("/settings/diagnostics")
+    html = page.get_data(as_text=True)
+    response = client.post(
+        "/settings/diagnostics/download",
+        data={"profile_id": second.profile_id},
+    )
+
+    assert 'name="profile_id"' in html
+    assert "First profile" in html
+    assert "Second profile" in html
+    assert "Download troubleshooting package" in html
+    assert response.status_code == 200
+    assert response.mimetype == "application/zip"
+    assert "junior-troubleshooting-" in response.headers["Content-Disposition"]
+    with zipfile.ZipFile(BytesIO(response.data)) as archive:
+        manifest = json.loads(archive.read("manifest.json"))
+        profile_payload = json.loads(
+            archive.read("configuration/junior-profile-configuration.json")
+        )
+    assert manifest["selected_profile"] == "Second profile"
+    assert profile_payload["profile"]["display_name"] == "Second profile"
+
+
 def test_update_result_remains_visible_until_dismissed(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
@@ -5574,7 +5617,8 @@ def test_profile_configuration_report_is_previewable_downloadable_and_private(
     download_html = download.get_data(as_text=True)
 
     assert "Preview report" in profile_html
-    assert "Open Profile Configuration Report" in diagnostics_html
+    assert "Download troubleshooting package" in diagnostics_html
+    assert "Preview active profile report" in diagnostics_html
     assert preview.status_code == 200
     assert download.status_code == 200
     assert download.headers["Content-Disposition"] == (
@@ -5711,7 +5755,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.14" in html
+    assert "RC6 Build 1.15" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

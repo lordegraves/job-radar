@@ -57,6 +57,7 @@ from job_radar.retention_settings_service import (
     load_retention_settings_form,
     save_retention_settings,
 )
+from job_radar.profile_storage import list_profiles
 from job_radar.runtime_paths import (
     DEFAULT_COMPANY_CONFIG_PATH,
     DEFAULT_EMAIL_PREVIEW_PATH,
@@ -79,6 +80,10 @@ from job_radar.scheduler_integration import (
 )
 from job_radar.source_health_service import build_latest_scan_warnings
 from job_radar.storage import fetch_latest_scan_run
+from job_radar.support_bundle_service import (
+    SupportBundleError,
+    build_support_bundle,
+)
 from job_radar.update_check_service import check_for_update
 from job_radar.update_install_service import (
     UpdateInstallError,
@@ -155,6 +160,10 @@ def register_settings_routes(
                 database_path=runtime_paths.database_path,
                 user_data_location=runtime_paths.user_data_directory,
             ),
+            update_check=session.pop("update_check", None),
+            update_install_available=bool(
+                current_app.config.get("JOB_RADAR_DESKTOP_UPDATE_AVAILABLE")
+            ),
         )
 
     @app.get("/settings/job-platforms")
@@ -220,7 +229,7 @@ def register_settings_routes(
             release_label=RELEASE_LABEL,
             release_tag=RELEASE_TAG,
         ).as_session_value()
-        return redirect(url_for("settings_diagnostics"))
+        return redirect(url_for("settings_about", _anchor="about-junior"))
 
     @app.post("/settings/install-update")
     def settings_install_update():
@@ -240,7 +249,7 @@ def register_settings_routes(
                 "desktop app only.",
                 "error",
             )
-            return redirect(url_for("settings_diagnostics"))
+            return redirect(url_for("settings_about", _anchor="about-junior"))
 
         update = check_for_update(
             __version__,
@@ -272,7 +281,7 @@ def register_settings_routes(
             )
         except UpdateInstallError as error:
             flash(str(error), "error")
-            return redirect(url_for("settings_diagnostics"))
+            return redirect(url_for("settings_about", _anchor="about-junior"))
 
         # Give the response time to reach the native window before closing it.
         def close_for_update() -> None:
@@ -324,10 +333,6 @@ def register_settings_routes(
             diagnostics=diagnostics,
             settings_view=_build_settings_view(settings_path),
             application_info=application_info,
-            update_check=session.pop("update_check", None),
-            update_install_available=bool(
-                current_app.config.get("JOB_RADAR_DESKTOP_UPDATE_AVAILABLE")
-            ),
             diagnostic_logs=diagnostic_logs,
             selected_log=selected_log,
             selected_log_name=selected_log_name,
@@ -335,6 +340,7 @@ def register_settings_routes(
                 application_info,
                 diagnostics,
             ),
+            support_profiles=list_profiles(runtime_paths.database_path),
         )
 
     @app.get("/settings/diagnostics/logs/<log_name>")
@@ -365,6 +371,36 @@ def register_settings_routes(
             as_attachment=True,
             download_name=download_name,
             mimetype="text/plain",
+        )
+
+    @app.post("/settings/diagnostics/download")
+    def settings_diagnostics_download():
+        """Download one bounded package for user-directed troubleshooting."""
+
+        runtime_paths = get_runtime_paths()
+        diagnostics = build_diagnostics_view(
+            runtime_paths.database_path,
+            settings_path,
+        )
+        application_info = build_application_info(
+            database_path=runtime_paths.database_path,
+            user_data_location=runtime_paths.user_data_directory,
+        )
+        try:
+            bundle = build_support_bundle(
+                runtime_paths,
+                application_info,
+                diagnostics,
+                request.form.get("profile_id", "").strip(),
+            )
+        except SupportBundleError as error:
+            flash(str(error), "error")
+            return redirect(url_for("settings_diagnostics"))
+        return send_file(
+            io.BytesIO(bundle.content),
+            as_attachment=True,
+            download_name=bundle.filename,
+            mimetype="application/zip",
         )
 
     @app.post("/settings/diagnostics/open-data")

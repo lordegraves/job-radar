@@ -137,13 +137,13 @@ def test_scanning_state_rejects_other_profile_and_unassigned_company(
             scanning=False,
         )
 
-    with pytest.raises(EmployerNotAssignedError):
-        set_company_scanning_state(
-            database_path,
-            active_profile.profile_id,
-            "other_market",
-            scanning=False,
-        )
+    result = set_company_scanning_state(
+        database_path,
+        active_profile.profile_id,
+        "other_market",
+        scanning=False,
+    )
+    assert result.scanning is False
 
     assert is_profile_employer_enabled(
         database_path, other_profile.profile_id, "other_market"

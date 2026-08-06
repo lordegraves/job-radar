@@ -425,8 +425,8 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
         )
     if host in {"lockheedmartin.com", "www.lockheedmartin.com"}:
         return DetectedEmployerSource(
-            source_type="html",
-            source_identifier="www.lockheedmartinjobs.com",
+            source_type="talentbrew",
+            source_identifier="talentbrew:www.lockheedmartinjobs.com",
             source_config={
                 # The corporate landing page blocks automated access, while
                 # this official public search page exposes the real job list.

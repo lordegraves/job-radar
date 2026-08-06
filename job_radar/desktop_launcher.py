@@ -446,7 +446,10 @@ def launch_desktop() -> None:
         app.config["JOB_RADAR_DESKTOP_UPDATE_AVAILABLE"] = bool(
             os.name == "nt" and getattr(sys, "frozen", False)
         )
-        server = make_server(args.host, args.port, app)
+        # Scoring is intentionally performed by a background worker. The local
+        # server must also accept concurrent requests so a slow status read can
+        # never prevent navigation or another progress request.
+        server = make_server(args.host, args.port, app, threaded=True)
 
         try:
             if args.browser or args.no_browser:

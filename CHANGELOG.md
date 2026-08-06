@@ -6,6 +6,56 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Distinguished the Companies page controls: persistent left-hand checkboxes
+  select sources for testing, while sliding switches control whether the active
+  profile scans each company.
+
+- Reworked Companies into a persistent global catalog with a per-profile scan
+  toggle. Turning a company off no longer hides or removes it, and source-test
+  selection appears only while the user is choosing sources to test.
+- Removed thousands of unnecessary résumé comparisons for jobs already blocked
+  by citizenship, clearance, work authorization, or unrelated eligibility
+  rules. A copied 11,140-job cross-profile scan reduced scoring from about 442
+  seconds to about 83 seconds while preserving the same 10 surfaced jobs.
+- Made the packaged local server accept navigation and progress requests while
+  its background scan worker is scoring, and made company scan toggles save
+  without navigating away from the current page position.
+- Improved required-qualification interpretation for legal sponsorship notices,
+  optional “preferred” and “a plus” clauses, generic ATS impact/complexity
+  sections, dated marketing experience, budgets, teamwork, and communication
+  across organizational levels. Oracle summary-only listings now request their
+  full detail before evaluation, and plausible “analyst” and “insights” titles
+  receive description review instead of being rejected from the title alone.
+- Added bounded TalentBrew result pagination with duplicate and repeated-page
+  protection. Ford and other large TalentBrew sites no longer stop after the
+  first 15 listings; collected jobs still use the existing normalization and
+  evaluation rules.
+- Older generic HTML definitions now recognize TalentBrew and SAP
+  SuccessFactors markers and follow their platform-specific result pages.
+  Workday collection now allows up to 2,000 listings rather than silently
+  stopping at 1,000 for large employers such as HPE.
+
+- Moved installed-version details and manual verified update controls from
+  Diagnostics to the top of Help & About, keeping troubleshooting pages
+  focused on operational health and support evidence.
+
+- Add a one-click, selected-profile troubleshooting package to Diagnostics.
+  The bounded ZIP combines importable profile configuration, the public
+  company catalog, matching latest scan artifacts, health information, and
+  allowlisted sanitized logs. It is never sent automatically and deliberately
+  excludes résumés, SQLite data, credentials, application activity, personal
+  notes, backups, raw scan archives, and arbitrary local files.
+- Prepare `RC6 Build 1.15` for controlled cross-profile accuracy testing. A
+  required qualification that wraps a concrete named capability in ordinary
+  hiring language can now use direct résumé evidence for that capability,
+  and an explicit experience-year range can use dated employment evidence for
+  its named alternative capabilities. Managed-profile Strong fit entries now
+  reach the shared résumé matcher without becoming evidence by themselves.
+  Role alignment no longer treats a shared broad word or familiar tools as
+  proof that two different professions are equivalent, and sparse postings
+  remain review-level unless a specific configured target title is present.
+  Existing eligibility, location, compensation, and omission boundaries remain
+  unchanged.
 - Prepare `RC6 Build 1.14` for field testing with safe profile and global
   company-catalog transfer, append-only duplicate handling, inactive profile
   imports, résumé exclusion, and Junior-styled file selectors.

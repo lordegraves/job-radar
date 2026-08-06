@@ -201,12 +201,13 @@ def test_main_bootstraps_starts_native_junior(
     monkeypatch.setattr(
         desktop_launcher,
         "make_server",
-        lambda host, port, app: (
+        lambda host, port, app, **kwargs: (
             calls.update(
                 {
                     "host": host,
                     "port": port,
                     "app": app,
+                    "threaded": kwargs.get("threaded"),
                 }
             ),
             fake_server,
@@ -240,6 +241,7 @@ def test_main_bootstraps_starts_native_junior(
         "host": "127.0.0.1",
         "port": 5000,
         "app": fake_app,
+        "threaded": True,
         "server": fake_server,
         "url": "http://127.0.0.1:5000/",
         "window_state_path": tmp_path
@@ -272,7 +274,11 @@ def test_main_guarantees_process_exit_after_verified_update(
         "create_app",
         lambda **_kwargs: fake_app,
     )
-    monkeypatch.setattr(desktop_launcher, "make_server", lambda *_args: object())
+    monkeypatch.setattr(
+        desktop_launcher,
+        "make_server",
+        lambda *_args, **_kwargs: object(),
+    )
 
     def request_update_exit(*_args, **_kwargs) -> None:
         fake_app.config["JOB_RADAR_DESKTOP_UPDATE_EXIT_EVENT"].set()
@@ -331,7 +337,7 @@ def test_main_no_browser_starts_without_opening_browser(
     monkeypatch.setattr(
         desktop_launcher,
         "make_server",
-        lambda *_args: fake_server,
+        lambda *_args, **_kwargs: fake_server,
     )
     monkeypatch.setattr(
         desktop_launcher,
@@ -458,7 +464,7 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
     )
 
     title, url, options = calls["window"]
-    assert title == "Junior — RC6 Build 1.14"
+    assert title == "Junior — RC6 Build 1.15"
     assert url == "http://127.0.0.1:5000/"
     assert options["resizable"] is True
     assert options["min_size"] == (960, 640)

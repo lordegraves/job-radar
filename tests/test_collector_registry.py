@@ -131,6 +131,21 @@ def test_collect_jobs_for_company_routes_ukg(monkeypatch) -> None:
     assert result[0].normalization_state == "complete"
 
 
+def test_collect_jobs_for_company_routes_talentbrew(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "job_radar.collectors.registry.collect_talentbrew_jobs",
+        lambda config: [],
+    )
+    config = {
+        "company_key": "ford",
+        "name": "Ford",
+        "source_type": "talentbrew",
+        "source_url": "https://www.careers.ford.com/search-jobs",
+    }
+
+    assert collect_jobs_for_company(config) == []
+
+
 def test_collect_jobs_for_company_warns_when_description_is_incomplete(
     monkeypatch,
 ) -> None:

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from job_radar.profile_context import load_active_candidate_context
 from job_radar.profile_models import (
+    FitSignal,
     ManagedProfile,
     ProfilePreferences,
     build_managed_resume,
@@ -70,6 +71,42 @@ def test_load_active_candidate_context_uses_selected_managed_profile(
     assert normalized_path.read_text(encoding="utf-8") == (
         "# Managed Example\nPlatform operations\n"
     )
+
+
+def test_managed_strong_fit_signals_reach_resume_matching_without_duplicates(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "data" / "job_radar.sqlite3"
+    profile = ManagedProfile(
+        profile_id="profile_8f7e6d5c",
+        display_name="Imported Analyst",
+        preferences=ProfilePreferences(
+            target_roles=("Business Analyst",),
+            core_strengths=("SQL",),
+        ),
+        resume=build_managed_resume(".txt"),
+        fit_signals=(
+            FitSignal(term="Power BI", category="strong"),
+            FitSignal(term="sql", category="strong"),
+            FitSignal(term="Data modeling", category="review"),
+        ),
+    )
+    resume_directory = tmp_path / "resumes" / profile.profile_id
+    resume_directory.mkdir(parents=True)
+    (resume_directory / "resume.txt").write_text(
+        "Business analyst using SQL and Power BI.", encoding="utf-8"
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+
+    context = load_active_candidate_context(
+        database_path,
+        None,
+        base_directory=tmp_path,
+    )
+
+    assert context.candidate_profile is not None
+    assert context.candidate_profile.core_strengths == ["SQL", "Power BI"]
 
 
 def test_load_active_candidate_context_preserves_yaml_fallback(

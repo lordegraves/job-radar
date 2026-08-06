@@ -27,7 +27,7 @@ logs_path: {path.parent / "logs"}
     )
 
 
-def test_companies_page_shows_only_active_profile_employers(
+def test_companies_page_shows_global_catalog_with_profile_scan_state(
     tmp_path: Path,
 ) -> None:
     settings_path = tmp_path / "settings.yaml"
@@ -98,9 +98,9 @@ def test_companies_page_shows_only_active_profile_employers(
     assert "Paralegal Profile" in html
     assert "Assigned Law Firm" in html
     assert "Disabled Insurance" in html
-    assert "Unassigned Bakery" not in html
+    assert "Unassigned Bakery" in html
     assert "Scanning" in html
-    assert "Paused" in html
+    assert "Not scanning" in html
     assert "Legacy config file:" not in html
     assert "Source type" not in html
     assert "https://law.invalid/jobs" not in html
@@ -109,17 +109,24 @@ def test_companies_page_shows_only_active_profile_employers(
     assert "Companies and source health" in html
     assert '<details class="page-card company-health-section" id="company-sources">' in html
     assert '<details class="page-card company-health-section" id="company-sources" open>' not in html
-    assert "Needs attention: 2 sources need review." in html
+    assert "Needs attention: 3 sources need review." in html
     assert "Expand this card to see what Junior found." in html
     assert "Test all untested sources" in html
     assert "Test selected sources" in html
+    assert 'class="test-selection-column"' in html
+    assert 'class="source-select"' in html
+    assert 'class="profile-scan-switch" aria-hidden="true"' in html
+    assert ".company-health-table .test-selection-column { width: 42px; }" in html
+    assert ".company-health-table.selection-mode .test-selection-column" not in html
     assert 'class="button-secondary source-test-one"' not in html
     assert "Scan selected companies" not in html
     assert 'id="source-test-meter"' in html
     assert 'X-Junior-Background-Test": "1"' in html
     assert 'submittedButton.textContent = "Starting tests..."' in html
     assert "testButtons.forEach((button) => { button.disabled = true; });" in html
-    assert ">Remove</button>" in html
+    assert ">Remove</button>" not in html
+    assert "Find a company" in html
+    assert "Run selected tests" in html
     assert "<summary>More</summary>" not in html
 
 
@@ -243,7 +250,7 @@ def test_company_source_test_background_request_returns_status_json(
     assert response.get_json() == {"status": "starting", "total": 1}
 
 
-def test_company_detail_rejects_employer_not_assigned_to_active_profile(
+def test_company_detail_allows_global_catalog_employer_not_scanned_by_profile(
     tmp_path: Path,
 ) -> None:
     settings_path = tmp_path / "settings.yaml"
@@ -302,7 +309,7 @@ def test_company_detail_rejects_employer_not_assigned_to_active_profile(
     assert "https://contractor.invalid/jobs" not in assigned_response.get_data(
         as_text=True
     )
-    assert unassigned_response.status_code == 404
+    assert unassigned_response.status_code == 200
 
 
 def test_companies_page_shows_empty_profile_guidance(
@@ -359,7 +366,7 @@ def test_companies_page_can_pause_and_resume_active_profile_company(
     client = app.test_client()
 
     initial_html = client.get("/companies").get_data(as_text=True)
-    assert "Pause" in initial_html
+    assert "Scan for this profile" in initial_html
     assert "1</strong>" in initial_html
 
     paused_response = client.post(
@@ -370,14 +377,14 @@ def test_companies_page_can_pause_and_resume_active_profile_company(
     paused_html = paused_response.get_data(as_text=True)
 
     assert paused_response.status_code == 200
-    assert "Example Cafe is now paused for Culinary Profile&#39;s profile." in (
+    assert "Example Cafe is now not scanned for Culinary Profile&#39;s profile." in (
         paused_html
     )
     assert 'class="flash-dismiss"' in paused_html
-    assert "Example Cafe is now paused" not in client.get(
+    assert "Example Cafe is now not scanned" not in client.get(
         "/companies"
     ).get_data(as_text=True)
-    assert "Resume" in paused_html
+    assert "Not scanning" in paused_html
     assert is_profile_employer_enabled(
         database_path, profile.profile_id, "example_cafe"
     ) is False
@@ -389,12 +396,29 @@ def test_companies_page_can_pause_and_resume_active_profile_company(
     )
 
     assert resumed_response.status_code == 200
-    assert "Example Cafe is now scanning" in resumed_response.get_data(
+    assert "Example Cafe is now included in scans" in resumed_response.get_data(
         as_text=True
     )
     assert is_profile_employer_enabled(
         database_path, profile.profile_id, "example_cafe"
     ) is True
+
+    background_response = client.post(
+        "/companies/example_cafe/scanning",
+        data={"state": "not_scanning"},
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    )
+
+    assert background_response.status_code == 200
+    assert background_response.get_json() == {
+        "company": "Example Cafe",
+        "scanning": False,
+        "state_label": "not scanned",
+        "status": "saved",
+    }
+    assert is_profile_employer_enabled(
+        database_path, profile.profile_id, "example_cafe"
+    ) is False
 
 
 def test_company_scanning_route_rejects_invalid_state_and_legacy_mode(
@@ -427,7 +451,7 @@ def test_company_scanning_route_rejects_invalid_state_and_legacy_mode(
         data={"state": "unexpected"},
         follow_redirects=True,
     )
-    assert "Choose Pause or Resume" in invalid_response.get_data(as_text=True)
+    assert "Choose whether this profile should scan" in invalid_response.get_data(as_text=True)
     assert is_profile_employer_enabled(
         database_path, profile.profile_id, "example_cafe"
     ) is True
@@ -480,7 +504,7 @@ def test_companies_page_removes_only_confirmed_active_profile_assignment(
         data={},
         follow_redirects=True,
     )
-    assert "Type REMOVE to confirm" in missing_confirmation.get_data(as_text=True)
+    assert "Confirm the company change" in missing_confirmation.get_data(as_text=True)
     assert get_profile(
         database_path, active_profile.profile_id
     ).company_ids == ("example_cafe",)
@@ -493,15 +517,16 @@ def test_companies_page_removes_only_confirmed_active_profile_assignment(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Example Cafe was removed from Culinary Profile&#39;s company list" in html
-    assert "Existing jobs and application history were kept." in html
-    assert "No companies have been added to this search yet." in html
+    assert "Example Cafe is no longer scanned for Culinary Profile" in html
+    assert "Existing history was kept." in html
+    assert "Example Cafe" in html
+    assert "Not scanning" in html
     assert get_profile(database_path, active_profile.profile_id).company_ids == ()
     assert get_profile(database_path, other_profile.profile_id).company_ids == (
         "example_cafe",
     )
     assert get_employer_source(database_path, "example_cafe") is not None
-    assert client.get("/companies/example_cafe").status_code == 404
+    assert client.get("/companies/example_cafe").status_code == 200
 
 
 def test_add_company_page_searches_safe_catalog_and_adds_available_employer(

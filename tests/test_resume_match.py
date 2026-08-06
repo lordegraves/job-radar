@@ -283,7 +283,13 @@ def test_match_resume_reads_required_and_ignores_preferred_headings() -> None:
 
     result = match_resume_to_posting(
         posting,
-        make_profile(),
+        replace(
+            make_profile(),
+            core_strengths=["Power BI"],
+            credible_adjacent=[],
+            learning_or_gap=[],
+            target_roles=["Power BI Analyst", "Business Intelligence Analyst"],
+        ),
         "HPC operations and datacenter infrastructure.",
     )
 
@@ -517,6 +523,172 @@ def test_generic_systems_word_does_not_align_unrelated_spacecraft_role() -> None
         "the job title and required work do not align with this profile's target work"
         in result.gaps
     )
+
+
+def test_many_shared_capabilities_do_not_rescue_a_different_profession() -> None:
+    posting = make_posting(
+        title="Enterprise Data Platform Sales Representative",
+        description=(
+            "Sell enterprise data platforms using analytics, SQL, Power BI, "
+            "data modeling, and business intelligence concepts."
+        ),
+    )
+    profile = replace(
+        make_profile(),
+        target_roles=["Business Analyst", "Data Analyst"],
+        core_strengths=[
+            "Analytics",
+            "SQL",
+            "Power BI",
+            "Data modeling",
+            "Business Intelligence",
+        ],
+    )
+    resume_text = (
+        "Business analyst using analytics, SQL, Power BI, data modeling, "
+        "and business intelligence."
+    )
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label == "Poor Fit"
+    assert (
+        "the job title and required work do not align with this profile's target work"
+        in result.gaps
+    )
+
+
+def test_bi_coordinator_target_does_not_align_unrelated_coordinator_work() -> None:
+    posting = make_posting(
+        title="Snow School Hiring and Payroll Coordinator",
+        description="Coordinate hiring, payroll, schedules, and school operations.",
+    )
+    profile = replace(
+        make_profile(),
+        target_roles=["Business Intelligence Coordinator"],
+        core_strengths=["IT", "Process improvement"],
+    )
+    resume_text = "IT operations and process improvement."
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label == "Poor Fit"
+
+
+def test_shared_tools_do_not_rescue_software_product_manager_title() -> None:
+    posting = make_posting(
+        title="Software Product Manager",
+        description=(
+            "Lead product direction using data management, IT, process improvement, "
+            "and system design."
+        ),
+    )
+    profile = replace(
+        make_profile(),
+        target_roles=["Business Analyst", "Data Analyst"],
+        core_strengths=[
+            "Data management",
+            "IT",
+            "Process improvement",
+            "System design",
+        ],
+    )
+    resume_text = "Data management, IT, process improvement, and system design."
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label == "Poor Fit"
+
+
+def test_shared_analytics_subject_does_not_make_product_management_same_role() -> None:
+    posting = make_posting(
+        title="Director Product Management - Analytics",
+        description="Lead analytics product management and data strategy.",
+    )
+    profile = replace(
+        make_profile(),
+        target_roles=["Data Analyst", "Business Intelligence Analyst"],
+        core_strengths=["Analytics", "Data management", "Business Intelligence"],
+    )
+    resume_text = "Data analyst using analytics and business intelligence."
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label == "Poor Fit"
+
+
+def test_shared_capabilities_without_extracted_requirements_stay_review_level() -> None:
+    posting = make_posting(
+        title="Senior Data Analyst",
+        description="Build Power BI dashboards using SQL and business intelligence.",
+    )
+    profile = replace(
+        make_profile(),
+        target_roles=["Analyst"],
+        core_strengths=["Power BI", "SQL", "Business Intelligence"],
+    )
+    resume_text = "Data analyst building Power BI dashboards with SQL and BI."
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label == "Medium"
+    assert result.requirements_reviewed == []
+
+
+def test_production_engineer_target_does_not_align_manufacturing_maintenance() -> None:
+    posting = make_posting(
+        title="Production Maintenance Tech II",
+        description="Maintain production machinery and manufacturing equipment.",
+    )
+    profile = replace(
+        make_profile(),
+        target_roles=["Production Engineer"],
+        core_strengths=["Systems", "Hardware", "Reliability", "Automation"],
+    )
+    resume_text = "Systems, hardware, reliability, and automation experience."
+
+    result = match_resume_to_posting(posting, profile, resume_text)
+
+    assert result.label == "Poor Fit"
+
+
+def test_exact_production_engineer_target_still_aligns() -> None:
+    posting = make_posting(
+        title="Senior Production Engineer",
+        description="Operate reliable production infrastructure and automation.",
+    )
+    profile = replace(
+        make_profile(),
+        target_roles=["Production Engineer"],
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        profile,
+        "Production infrastructure reliability and automation experience.",
+    )
+
+    assert result.label != "Poor Fit"
+
+
+def test_observability_engineer_aligns_with_reliability_profile() -> None:
+    posting = make_posting(
+        title="Operational Data & Observability Engineer",
+        description=(
+            "Required Qualifications\n"
+            "- Linux infrastructure operations\n"
+            "- Incident response and reliability engineering"
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        "Linux infrastructure, incident response, and reliability engineering.",
+    )
+
+    assert result.label != "Poor Fit"
+    assert not any("target work" in gap for gap in result.gaps)
 
 
 def test_datacenter_context_does_not_rescue_environmental_safety_profession() -> None:
@@ -1637,6 +1809,100 @@ def test_explicit_skill_duration_satisfies_matching_year_requirement() -> None:
     assert not result.critical_gaps
 
 
+def test_named_business_tool_is_supported_without_hiring_language_filler() -> None:
+    posting = make_posting(
+        title="Power BI Analyst",
+        description=(
+            "Required Qualifications\n"
+            "Hands-on experience in Power BI (mandatory)."
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        replace(
+            make_profile(),
+            core_strengths=["Power BI"],
+            credible_adjacent=[],
+            learning_or_gap=[],
+            target_roles=["Power BI Analyst", "Business Intelligence Analyst"],
+        ),
+        (
+            "Technical Skills\nMicrosoft Power BI | SQL\n"
+            "Built executive dashboards using Microsoft Power BI."
+        ),
+    )
+
+    assert result.supported_requirements == [
+        "Hands-on experience in Power BI (mandatory)."
+    ]
+    assert not result.gaps
+    assert not result.critical_gaps
+
+
+def test_dated_analyst_roles_support_analytics_duration_requirement() -> None:
+    posting = make_posting(
+        title="Business Intelligence Analyst",
+        description=(
+            "Required Qualifications\n"
+            "5-8 years of experience in Business Intelligence / Analytics role."
+        ),
+    )
+    resume = (
+        "Example Company\n"
+        "Business Analyst | January 2018 - December 2021\n"
+        "Built reporting systems and analyzed business performance.\n"
+        "Another Company\n"
+        "Analytics Manager | January 2022 - Present\n"
+        "Led analytics strategy and business intelligence reporting."
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        replace(
+            make_profile(),
+            core_strengths=["Business Intelligence", "Analytics"],
+            credible_adjacent=[],
+            learning_or_gap=[],
+            target_roles=["Business Intelligence Analyst", "Analytics Manager"],
+        ),
+        resume,
+    )
+
+    assert result.supported_requirements == [
+        "5-8 years of experience in Business Intelligence / Analytics role."
+    ]
+    assert not result.gaps
+    assert not result.critical_gaps
+
+
+def test_undated_analytics_skill_does_not_prove_duration() -> None:
+    posting = make_posting(
+        title="Business Intelligence Analyst",
+        description=(
+            "Required Qualifications\n"
+            "5-8 years of experience in Business Intelligence / Analytics role."
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        replace(
+            make_profile(),
+            core_strengths=["Business Intelligence", "Analytics"],
+            credible_adjacent=[],
+            learning_or_gap=[],
+            target_roles=["Business Intelligence Analyst", "Analytics Manager"],
+        ),
+        "Skills\nBusiness Intelligence | Analytics | Power BI",
+    )
+
+    assert result.gaps == [
+        "No clear résumé evidence of 5 years of business intelligence experience"
+    ]
+    assert result.critical_gaps == result.gaps
+
+
 def test_dated_role_counts_skill_tenure_only_when_skill_is_in_that_role() -> None:
     posting = make_posting(
         title="Senior Platform Engineer",
@@ -1977,6 +2243,89 @@ def test_nvidia_functional_headings_keep_required_and_preferred_work_separate() 
     )
     assert all("nixos" not in gap.lower() for gap in result.gaps)
     assert all("kernel" not in gap.lower() for gap in result.gaps)
+
+
+def test_legal_eligibility_and_optional_plus_language_are_not_resume_gaps() -> None:
+    posting = make_posting(
+        title="Partner Marketing Strategist",
+        description=(
+            "Required Qualifications\n"
+            "This position is not eligible for Intel immigration sponsorship.\n"
+            "Minimum Age\n"
+            "Experience building marketing campaigns and measuring ROI.\n"
+            "Sales or channel experience a plus.\n"
+            "MBA preferred.\n"
+            "Impact/Scope:\n"
+            "Recommend marketing programs that drive awareness.\n"
+        ),
+    )
+    resume = "Built marketing campaigns and measured return on investment and ROI."
+
+    result = match_resume_to_posting(posting, make_profile(), resume)
+
+    reviewed = " ".join(result.requirements_reviewed or []).lower()
+    assert "immigration sponsorship" not in reviewed
+    assert "minimum age" not in reviewed
+    assert "channel experience" not in reviewed
+    assert "mba" not in reviewed
+    assert "drive awareness" not in reviewed
+
+
+def test_business_analytics_resume_supports_scale_and_marketing_experience() -> None:
+    posting = make_posting(
+        title="Services Marketing Professional",
+        description=(
+            "Required Qualifications\n"
+            "3+ years of marketing experience.\n"
+            "Experience working with large, complex datasets.\n"
+            "Strong knowledge of marketing principles, practices, tactics, and tools.\n"
+            "Analytical and critical thinking skills.\n"
+        ),
+    )
+    resume = (
+        "Marketing Science Manager, 2021-2024. Built marketing attribution, "
+        "campaign ROI, and customer retention analysis.\n"
+        "Brand Specialist Analyst, 2018-2021. Analyzed $16B in sales across "
+        "300,000 SKUs and delivered market strategy, forecasting, and BI.\n"
+        "Business and Marketing Analyst, 2014-2018. Recommended marketing and "
+        "operational improvements using performance analysis."
+    )
+
+    profile = replace(
+        make_profile(),
+        target_roles=["Marketing Analyst", "Business Analyst"],
+        core_strengths=["marketing analytics", "customer insights"],
+        credible_adjacent=["market strategy"],
+    )
+    result = match_resume_to_posting(posting, profile, resume)
+
+    assert result.gaps == []
+
+
+def test_project_budget_and_interpersonal_requirements_use_combined_resume_evidence() -> None:
+    posting = make_posting(
+        title="Business Analyst",
+        description=(
+            "Required Qualifications\n"
+            "Project and budget management skills.\n"
+            "Good interpersonal skills.\n"
+            "Ability to work as part of a team.\n"
+            "Ability to interface with multiple levels of the organization.\n"
+        ),
+    )
+    resume = (
+        "Program Management | Cross-Functional Team Collaboration. "
+        "Presented recommendations to executive leadership.\n"
+        "Partnered with finance on budgeting and forecasting to support "
+        "data-driven resource allocation."
+    )
+
+    result = match_resume_to_posting(posting, make_profile(), resume)
+
+    assert all("budget management" not in gap.lower() for gap in result.gaps)
+    assert all("interpersonal skills" not in gap.lower() for gap in result.gaps)
+    assert all("part of a team" not in gap.lower() for gap in result.gaps)
+    assert all("multiple levels" not in gap.lower() for gap in result.gaps)
 
 
 def test_supported_network_requirements_never_produce_strong_with_no_strengths() -> None:

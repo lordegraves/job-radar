@@ -99,8 +99,24 @@ def set_company_scanning_state(
         None,
     )
     if assignment is None:
-        raise EmployerNotAssignedError(
-            "This company does not belong to the active profile."
+        if not scanning:
+            return CompanyScanningStateResult(
+                profile_id=active_profile.profile_id,
+                profile_name=active_profile.display_name,
+                employer_id=employer.employer_id,
+                employer_name=employer.name,
+                scanning=False,
+            )
+        availability = evaluate_employer_availability(employer)
+        if availability.state == UNAVAILABLE:
+            raise EmployerUnavailableError(availability.explanation)
+        if availability.state == NEEDS_SETUP:
+            raise EmployerConfigurationError(availability.explanation)
+        assign_employer_to_profile(db_path, profile_id, employer_id)
+        assignment = next(
+            item
+            for item in list_profile_employer_assignments(db_path, profile_id)
+            if item.employer_id == employer_id
         )
 
     if assignment.enabled != scanning:

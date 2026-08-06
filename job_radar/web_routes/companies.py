@@ -257,8 +257,19 @@ def register_company_routes(
 
     @app.post("/companies/<company_key>/scanning")
     def set_company_scanning(company_key: str):
+        background_request = (
+            request.headers.get("X-Requested-With", "").casefold()
+            == "xmlhttprequest"
+        )
         workspace = build_company_workspace(get_database_path())
         if workspace.active_profile is None:
+            if background_request:
+                return jsonify(
+                    {
+                        "status": "error",
+                        "message": "Select a managed profile before changing a company.",
+                    }
+                ), 409
             flash(
                 "Select a managed profile before changing a company.",
                 "error",
@@ -267,9 +278,9 @@ def register_company_routes(
 
         requested_state = request.form.get("state", "").strip().casefold()
         try:
-            if requested_state not in {"scanning", "paused"}:
+            if requested_state not in {"scanning", "not_scanning", "paused"}:
                 raise InvalidCompanyStateError(
-                    "Choose Pause or Resume and try again."
+                    "Choose whether this profile should scan the company."
                 )
 
             result = set_company_scanning_state(
@@ -279,10 +290,21 @@ def register_company_routes(
                 scanning=requested_state == "scanning",
             )
         except JuniorDomainError as error:
+            if background_request:
+                return jsonify({"status": "error", "message": str(error)}), 400
             flash(str(error), "error")
             return redirect(url_for("companies"))
 
-        state_label = "scanning" if result.scanning else "paused"
+        state_label = "included in scans" if result.scanning else "not scanned"
+        if background_request:
+            return jsonify(
+                {
+                    "status": "saved",
+                    "company": result.employer_name,
+                    "scanning": result.scanning,
+                    "state_label": state_label,
+                }
+            )
         flash(
             f"{result.employer_name} is now {state_label} for "
             f"{result.profile_name}'s profile.",
@@ -292,21 +314,17 @@ def register_company_routes(
 
     @app.post("/companies/<company_key>/remove")
     def remove_profile_company(company_key: str):
+        """Retain the legacy endpoint for old forms and bookmarked workflows."""
+
         workspace = build_company_workspace(get_database_path())
         if workspace.active_profile is None:
-            flash(
-                "Select a managed profile before removing a company.",
-                "error",
-            )
+            flash("Select a managed profile before changing a company.", "error")
             return redirect(url_for("companies"))
-
         try:
             if request.form.get("confirmation", "").strip() != "REMOVE":
                 raise InvalidCompanyStateError(
-                    "Type REMOVE to confirm removing this company from the "
-                    "active profile."
+                    "Confirm the company change and try again."
                 )
-
             result = remove_company_from_profile(
                 get_database_path(),
                 workspace.active_profile.profile_id,
@@ -315,11 +333,9 @@ def register_company_routes(
         except JuniorDomainError as error:
             flash(str(error), "error")
             return redirect(url_for("companies"))
-
         flash(
-            f"{result.employer_name} was removed from "
-            f"{result.profile_name}'s company list. Existing jobs and "
-            "application history were kept.",
+            f"{result.employer_name} is no longer scanned for "
+            f"{result.profile_name}. Existing history was kept.",
             "success",
         )
         return redirect(url_for("companies"))

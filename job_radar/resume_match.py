@@ -133,6 +133,10 @@ def match_resume_to_posting(
         title=clean_text(posting.title).lower(),
         candidate_profile=candidate_profile,
     )
+    specific_role_alignment_confirmed = _title_has_specific_target_role(
+        title=clean_text(posting.title).lower(),
+        candidate_profile=candidate_profile,
+    )
 
     return ResumeMatchResult(
         label=_classify_resume_match(
@@ -140,6 +144,7 @@ def match_resume_to_posting(
             gaps=gaps,
             critical_gaps=critical_gaps,
             role_alignment_confirmed=role_alignment_confirmed,
+            specific_role_alignment_confirmed=specific_role_alignment_confirmed,
             supported_requirement_count=len(supported_requirements),
             requirement_count=len(requirements),
         ),
@@ -208,6 +213,7 @@ def _classify_resume_match(
     gaps: list[str],
     critical_gaps: list[str] | None = None,
     role_alignment_confirmed: bool = True,
+    specific_role_alignment_confirmed: bool = False,
     supported_requirement_count: int = 0,
     requirement_count: int = 0,
 ) -> str:
@@ -221,6 +227,15 @@ def _classify_resume_match(
         and supported_requirement_count >= 2
         and supported_requirement_count * 2 >= requirement_count
     )
+
+    if requirement_count == 0 and not specific_role_alignment_confirmed:
+        # Shared tools and subject matter can make a posting worth reviewing,
+        # but they cannot prove a strong fit when Junior extracted no mandatory
+        # qualifications to compare with the resume.
+        return "Medium" if evidence_count >= 1 else "Weak"
+
+    if requirement_count == 1 and supported_requirement_count == 0:
+        return "Medium" if evidence_count >= 1 else "Weak"
 
     if requirement_count >= 2 and supported_requirement_count < 2:
         # A broad résumé can contribute several adjacent strengths, but one
@@ -336,6 +351,9 @@ _POST_QUALIFICATION_HEADINGS = (
     "what we can offer you",
     "what we offer",
     "our offer",
+    "impact/scope",
+    "impact and scope",
+    "complexity",
 )
 _ROLE_SECTION_HEADINGS = (
     "about the role",
@@ -401,6 +419,12 @@ _SCALE_CAPABILITY_ALIASES = {
         "distributed storage",
     ),
     "cloud infrastructure": ("cloud infrastructure", "cloud platform"),
+    "marketing": (
+        "marketing",
+        "marketing science",
+        "marketing analytics",
+        "market strategy",
+    ),
 }
 _SCALE_REQUIREMENT_MARKERS = (
     "at scale",
@@ -547,6 +571,7 @@ _GENERIC_ROLE_WORDS = {
     "architect",
     "associate",
     "consultant",
+    "coordinator",
     "director",
     "engineer",
     "engineering",
@@ -561,6 +586,22 @@ _GENERIC_ROLE_WORDS = {
     "systems",
     "technology",
 }
+_BROAD_ROLE_CONTEXT_WORDS = {
+    "business",
+    "data",
+    "analytics",
+    "digital",
+    "enterprise",
+    "information",
+    "intelligence",
+    "network",
+    "platform",
+    "product",
+    "production",
+    "software",
+    "technical",
+}
+_OCCUPATION_NEUTRAL_TITLE_WORDS = {"technical"}
 _ROLE_FAMILIES = {
     "infrastructure operations": (
         "infrastructure",
@@ -575,8 +616,10 @@ _ROLE_FAMILIES = {
         "systems administrator",
         "system administrator",
         "network engineer",
+        "observability engineer",
         "storage engineer",
         "cloud engineer",
+        "cloud platform",
     ),
     "hardware and platform validation": (
         "hardware validation",
@@ -785,8 +828,16 @@ def _looks_like_non_qualification_clause(value: str) -> bool:
     """Exclude pay, benefits, legal, referral, and application boilerplate."""
 
     lowered = value.lower()
+    sponsorship_notice = bool(
+        re.search(
+            r"\b(?:not eligible for|does not provide|will not provide)\b"
+            r"[^.]{0,60}\b(?:visa|immigration) sponsorship\b",
+            lowered,
+        )
+    )
     return (
-        "$" in value
+        sponsorship_notice
+        or "$" in value
         or "http://" in lowered
         or "https://" in lowered
         or any(
@@ -826,7 +877,11 @@ def _looks_like_non_qualification_clause(value: str) -> bool:
                 "applications for this job will be accepted",
                 "accommodations during the application process",
                 "not eligible for visa sponsorship",
+                "not eligible for immigration sponsorship",
+                "immigration sponsorship is not available",
+                "will not provide immigration sponsorship",
                 "authorization to work in the united states",
+                "minimum age",
                 "for the role",
                 "security screening requirements",
                 "cloud background check",
@@ -845,12 +900,17 @@ def _looks_like_preferred_clause(value: str) -> bool:
     """Keep optional language out of mandatory résumé gaps."""
 
     lowered = value.lower()
-    return any(
+    return bool(re.search(r"\bpreferred\b", lowered)) or bool(
+        re.search(r"\ba plus\b", lowered)
+    ) or any(
         marker in lowered
         for marker in (
             "nice to have",
             "nice-to-have",
             "is a plus",
+            "are a plus",
+            "would be a plus",
+            "is preferred",
             "a strong plus",
             "(a plus)",
             "preferred but not required",
@@ -910,6 +970,15 @@ _QUALIFICATION_EVIDENCE_STOP_WORDS = {
     "the",
     "to",
     "with",
+}
+
+_CAPABILITY_QUALIFIER_WORDS = {
+    "direct",
+    "hands",
+    "mandatory",
+    "practical",
+    "proven",
+    "role",
 }
 
 
@@ -1525,6 +1594,11 @@ def _qualification_has_resume_evidence(
         supported_text=supported_text,
     ):
         return True
+    if _direct_named_capability_is_supported(
+        lowered,
+        supported_text=supported_text,
+    ):
+        return True
     # Evidence must describe one coherent piece of work. Combining unrelated
     # words from distant résumé bullets made specialized qualifications appear
     # supported merely because the candidate had a broad technical career.
@@ -1559,6 +1633,45 @@ def _qualification_has_resume_evidence(
         >= required_matches
         for evidence_tokens in segment_tokens
     )
+
+
+def _direct_named_capability_is_supported(
+    requirement: str,
+    *,
+    supported_text: str,
+) -> bool:
+    """Recognize a concrete named capability without requiring hiring-language filler.
+
+    Employers commonly wrap a concise skill in wording such as "hands-on
+    experience in Power BI (mandatory)." The résumé must contain the named
+    capability itself, but it does not need to repeat words such as "hands-on"
+    or "mandatory."
+    """
+
+    match = re.search(
+        r"(?:experience|proficiency|knowledge|expertise)\s+"
+        r"(?:with|in|of)\s+(.+)$",
+        requirement,
+    )
+    if match is None:
+        return False
+
+    capability = re.sub(r"\([^)]*\)", " ", match.group(1))
+    capability = re.split(
+        r"[.;]|\b(?:and the ability to|while|who|that)\b",
+        capability,
+        maxsplit=1,
+    )[0]
+    tokens = [
+        token
+        for token in _qualification_evidence_tokens(capability)
+        if token not in _CAPABILITY_QUALIFIER_WORDS
+    ]
+    if not tokens or len(tokens) > 5:
+        return False
+
+    phrase = " ".join(tokens)
+    return len(tokens) >= 2 and _contains_phrase(supported_text, phrase)
 
 
 def _scale_qualified_requirement_is_supported(
@@ -1659,7 +1772,14 @@ def _skill_duration_requirement_is_supported(
 ) -> bool | None:
     """Compare years only when a duration is tied to a named capability."""
 
-    duration = re.search(r"\b(\d+)\+?\s+years?\b", requirement)
+    ranged_duration = re.search(
+        r"\b(\d+)\s*[-\u2013\u2014]\s*\d+\s+years?\b",
+        requirement,
+    )
+    duration = ranged_duration or re.search(
+        r"\b(\d+)\+?\s+years?\b",
+        requirement,
+    )
     if duration is None:
         return None
 
@@ -1668,6 +1788,14 @@ def _skill_duration_requirement_is_supported(
         for label, aliases in _SCALE_CAPABILITY_ALIASES.items()
         if any(_contains_phrase(requirement, alias) for alias in aliases)
     ]
+    if (
+        not matching_capabilities
+        and ranged_duration is not None
+        and "years of experience" in requirement
+    ):
+        inferred_aliases = _duration_capability_aliases(requirement)
+        if inferred_aliases:
+            matching_capabilities = [("named capability", inferred_aliases)]
     if not matching_capabilities:
         return None
 
@@ -1691,12 +1819,27 @@ def _skill_duration_requirement_gap(
     if support is not False:
         return None
 
-    years = re.search(r"\b(\d+)\+?\s+years?\b", requirement.lower())
+    ranged_years = re.search(
+        r"\b(\d+)\s*[-\u2013\u2014]\s*\d+\s+years?\b",
+        requirement.lower(),
+    )
+    years = ranged_years or re.search(
+        r"\b(\d+)\+?\s+years?\b",
+        requirement.lower(),
+    )
     labels = [
         label
         for label, aliases in _SCALE_CAPABILITY_ALIASES.items()
         if any(_contains_phrase(requirement.lower(), alias) for alias in aliases)
     ]
+    if (
+        not labels
+        and ranged_years is not None
+        and "years of experience" in requirement.lower()
+    ):
+        inferred_aliases = _duration_capability_aliases(requirement.lower())
+        if inferred_aliases:
+            labels = [inferred_aliases[0]]
     if years is None or not labels:
         return None
     capability = " or ".join(labels)
@@ -1704,6 +1847,47 @@ def _skill_duration_requirement_gap(
         f"No clear résumé evidence of {years.group(1)} years of "
         f"{capability} experience"
     )
+
+
+def _duration_capability_aliases(requirement: str) -> tuple[str, ...]:
+    """Extract bounded capability alternatives from an ordinary duration clause."""
+
+    match = re.search(
+        r"\byears?\b[^.;]{0,50}?\b(?:in|with|of)\s+([^.;]+)",
+        requirement,
+    )
+    if match is None:
+        return ()
+
+    capability_text = re.split(
+        r"\b(?:including|who|that|while|and the ability to)\b",
+        match.group(1),
+        maxsplit=1,
+    )[0]
+    aliases: list[str] = []
+    for option in re.split(r"\s*(?:/|\bor\b)\s*", capability_text):
+        tokens = [
+            token
+            for token in _qualification_evidence_tokens(option)
+            if token not in _CAPABILITY_QUALIFIER_WORDS
+        ]
+        if 1 <= len(tokens) <= 4:
+            alias = " ".join(tokens)
+            if alias not in aliases:
+                aliases.append(alias)
+
+    # These are grammatical forms of the same occupation family, not different
+    # capabilities. This lets a dated Analyst role support an Analytics-duration
+    # requirement without making an unrelated data role equivalent.
+    expanded = list(aliases)
+    if any(
+        alias in {"analytic", "analytics", "analysis", "analyst"}
+        for alias in aliases
+    ):
+        for alias in ("analytic", "analytics", "analysis", "analyst"):
+            if alias not in expanded:
+                expanded.append(alias)
+    return tuple(expanded)
 
 
 def _resume_capability_months(
@@ -1795,6 +1979,90 @@ def _merged_interval_months(intervals: list[tuple[int, int]]) -> int:
 
 
 _BOUNDED_CAPABILITY_EVIDENCE = (
+    {
+        "requirement": ("project management", "project"),
+        "evidence": (
+            "project management",
+            "program management",
+            "managed projects",
+            "led projects",
+        ),
+    },
+    {
+        "requirement": ("budget management", "budget"),
+        "evidence": (
+            "budgeting",
+            "budget management",
+            "financial planning",
+            "resource allocation",
+        ),
+    },
+    {
+        "requirement": ("interpersonal skills",),
+        "evidence": (
+            "cross-functional collaboration",
+            "stakeholder communication",
+            "stakeholder management",
+            "team collaboration",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "work as part of a team",
+            "teamwork",
+            "team collaboration",
+        ),
+        "evidence": (
+            "cross-functional collaboration",
+            "team collaboration",
+            "led teams",
+            "leading teams",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "multiple levels of the organization",
+            "technical and non-technical audiences",
+            "executive stakeholders",
+        ),
+        "evidence": (
+            "executive leadership",
+            "senior management team",
+            "stakeholder communication",
+            "cross-functional collaboration",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": ("large, complex datasets", "large complex datasets"),
+        "evidence": (
+            "large dataset",
+            "complex dataset",
+            "data sources",
+            "skus",
+            "million",
+            "billion",
+        ),
+        "standalone": True,
+    },
+    {
+        "requirement": (
+            "marketing principles",
+            "marketing practices",
+            "marketing tactics",
+        ),
+        "evidence": (
+            "marketing analytics",
+            "marketing attribution",
+            "campaign roi",
+            "market strategy",
+            "marketing strategy",
+            "marketing campaign",
+        ),
+        "standalone": True,
+    },
     {
         "requirement": ("linux",),
         "evidence": ("linux",),
@@ -1899,7 +2167,13 @@ _BOUNDED_CAPABILITY_EVIDENCE = (
         "standalone": True,
     },
     {
-        "requirement": ("problem-solving", "problem solving", "analytical"),
+        "requirement": (
+            "problem-solving",
+            "problem solving",
+            "analytical",
+            "analytic",
+            "critical thinking",
+        ),
         "evidence": (
             "troubleshoot",
             "troubleshooting",
@@ -1907,6 +2181,11 @@ _BOUNDED_CAPABILITY_EVIDENCE = (
             "root-cause",
             "failure analysis",
             "problem solving",
+            "analysis",
+            "analytical",
+            "recommended",
+            "recommendations",
+            "strategic insights",
         ),
         "standalone": True,
     },
@@ -2498,9 +2777,15 @@ def _find_role_alignment_gap(
     ):
         return None
 
-    # Strong responsibility evidence can keep an unfamiliar title reviewable,
-    # but classification caps it below Top Match until title alignment is clear.
-    if len(evidence) >= 4:
+    # A genuinely generic title can be clarified by several matching duties.
+    # A concrete different profession (sales, construction, finance, and so on)
+    # cannot be converted into a target role merely because it uses familiar tools.
+    title_words = _meaningful_role_words(title)
+    if (
+        len(evidence) >= 4
+        and title_words
+        and title_words <= _OCCUPATION_NEUTRAL_TITLE_WORDS
+    ):
         return None
 
     return "the job title and required work do not align with this profile's target work"
@@ -2546,6 +2831,12 @@ def _role_alignment_is_confirmed(
     if not candidate_profile.target_roles:
         return True
 
+    if _title_has_specific_target_role(
+        title=title,
+        candidate_profile=candidate_profile,
+    ):
+        return True
+
     # A skill can appear in work from an entirely different profession. Only
     # desired and explicitly adjacent roles may establish title alignment;
     # strengths still contribute responsibility evidence separately.
@@ -2555,7 +2846,8 @@ def _role_alignment_is_confirmed(
     for value in profile_values:
         profile_words.update(_meaningful_role_words(clean_text(value).lower()))
 
-    if title_words & profile_words:
+    shared_words = title_words & profile_words
+    if shared_words - _BROAD_ROLE_CONTEXT_WORDS:
         return True
 
     title_families = _role_families(title)
@@ -2563,6 +2855,23 @@ def _role_alignment_is_confirmed(
     for value in profile_values:
         profile_families.update(_role_families(clean_text(value).lower()))
     return bool(title_families & profile_families)
+
+
+def _title_has_specific_target_role(
+    *,
+    title: str,
+    candidate_profile: CandidateProfile,
+) -> bool:
+    """Require more than a generic one-word occupation for title certainty."""
+
+    for target_role in candidate_profile.target_roles:
+        normalized_role = clean_text(target_role).lower()
+        if (
+            len(re.findall(r"[a-z0-9+#]+", normalized_role)) >= 2
+            and _contains_phrase(title, normalized_role)
+        ):
+            return True
+    return False
 
 
 def _role_families(value: str) -> set[str]:

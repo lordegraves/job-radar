@@ -88,6 +88,7 @@ class HTMLJobLinkParser(HTMLParser):
 
         has_supported_class = not classes.isdisjoint(supported_link_classes)
         has_supported_id = element_id.startswith("link_job_title_")
+        has_job_identifier = bool(attrs_dict.get("data-job-id"))
 
         supported_path_parts = {
             "/job/",
@@ -101,6 +102,7 @@ class HTMLJobLinkParser(HTMLParser):
         if (
             not has_supported_class
             and not has_supported_id
+            and not has_job_identifier
             and not has_supported_pattern
         ):
             return
@@ -389,8 +391,21 @@ def _plain_text(value: object) -> str | None:
     return collapsed or None
 
 
-def collect_html_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
-    source_url = str(company_config["source_url"])
+def collect_html_jobs_page(
+    company_config: dict[str, Any],
+    source_url: str,
+) -> list[JobPosting]:
+    """Fetch and parse one public HTML results page."""
+
+    _html, postings = collect_html_jobs_document(company_config, source_url)
+    return postings
+
+
+def collect_html_jobs_document(
+    company_config: dict[str, Any],
+    source_url: str,
+) -> tuple[str, list[JobPosting]]:
+    """Fetch one page and retain its public platform markers for routing."""
 
     response = get_response(
         source_url,
@@ -401,8 +416,17 @@ def collect_html_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
         include_response_body=True,
     )
 
-    return _parse_html_jobs(
+    return response.text, _parse_html_jobs(
         company_config=company_config,
         html=response.text,
         source_url=source_url,
+    )
+
+
+def collect_html_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
+    """Collect one results page for a generic public HTML source."""
+
+    return collect_html_jobs_page(
+        company_config,
+        str(company_config["source_url"]),
     )

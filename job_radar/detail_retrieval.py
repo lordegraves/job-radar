@@ -21,9 +21,10 @@ class DetailRetrievalDecision:
 DetailRetrievalPlanner = Callable[[str, str | None], DetailRetrievalDecision]
 
 _AMBIGUOUS_ROLE_WORDS = {
-    "administrator", "architect", "consultant", "developer", "engineer",
-    "infrastructure", "operations", "platform", "reliability", "support",
-    "system", "systems", "technical", "technology",
+    "administrator", "analyst", "analytics", "architect", "consultant",
+    "developer", "engineer", "infrastructure", "insights", "operations",
+    "platform", "reliability", "support", "system", "systems", "technical",
+    "technology",
 }
 _GENERIC_WORDS = {
     "associate", "chief", "global", "intern", "junior", "lead", "manager",
@@ -52,7 +53,7 @@ def build_detail_retrieval_planner(
     positive_tokens = _meaningful_tokens(positive_phrases)
     signature = sha256(
         json.dumps(
-            {"positive": positive_phrases, "excluded": exclusion_phrases, "version": 1},
+            {"positive": positive_phrases, "excluded": exclusion_phrases, "version": 2},
             sort_keys=True,
         ).encode("utf-8")
     ).hexdigest()
