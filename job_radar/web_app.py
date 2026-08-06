@@ -383,6 +383,8 @@ def _write_startup_diagnostic_log(
     error: Exception,
     *,
     settings_path: str | Path | None,
+    failure_stage: str = "application_startup",
+    safe_details: dict[str, str] | None = None,
 ) -> Path | None:
     log_path = _resolve_startup_log_path(settings_path)
     stack_frames = traceback.extract_tb(error.__traceback__)
@@ -395,7 +397,10 @@ def _write_startup_diagnostic_log(
             log_file.write(
                 f"[{timestamp}] junior startup failure\n"
                 f"Version: {__version__}\n"
+                f"Build: {__build__}\n"
                 f"Settings file: {_resolve_startup_settings_path(settings_path)}\n"
+                f"Failure stage: {failure_stage}\n"
+                f"Failure category: {_startup_failure_category(error, stack_frames)}\n"
                 f"Error type: {type(error).__name__}\n"
                 "Stack frames:\n"
             )
@@ -409,6 +414,11 @@ def _write_startup_diagnostic_log(
             else:
                 log_file.write("- unavailable\n")
 
+            if safe_details:
+                log_file.write("Safe runtime details:\n")
+                for name, value in sorted(safe_details.items()):
+                    log_file.write(f"- {name}: {value}\n")
+
             log_file.write(
                 "Exception messages and local variables are intentionally "
                 "omitted to reduce the risk of logging credentials.\n"
@@ -418,6 +428,22 @@ def _write_startup_diagnostic_log(
         return None
 
     return log_path
+
+
+def _startup_failure_category(
+    error: Exception,
+    stack_frames: list[traceback.FrameSummary],
+) -> str:
+    """Classify startup failures without copying raw exception messages."""
+
+    frame_names = " ".join(frame.filename.casefold() for frame in stack_frames)
+    if "clr_loader" in frame_names or "pythonnet" in frame_names:
+        return "windows_desktop_runtime_bridge"
+    if "webview" in frame_names:
+        return "desktop_window_backend"
+    if isinstance(error, ConfigError):
+        return "configuration"
+    return "unexpected_application_failure"
 
 
 def _format_configuration_startup_error(

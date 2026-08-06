@@ -173,12 +173,42 @@ def test_unexpected_startup_failure_writes_diagnostic_log(
     log_text = diagnostic_log_path.read_text(encoding="utf-8")
 
     assert "junior startup failure" in log_text
+    assert "Build: RC6 Build 1.17" in log_text
+    assert "Failure stage: application_startup" in log_text
+    assert "Failure category: unexpected_application_failure" in log_text
     assert "Error type: RuntimeError" in log_text
     assert "Stack frames:" in log_text
     assert "test_unexpected_startup_failure_writes_diagnostic_log" in log_text
     assert "diagnostic test failure" not in log_text
     assert "local variables are intentionally omitted" in log_text
     assert str(settings_path.resolve()) in log_text
+
+
+def test_startup_log_records_safe_desktop_runtime_details(
+    tmp_path: Path,
+) -> None:
+    settings_path = tmp_path / "config" / "settings.yaml"
+
+    try:
+        raise RuntimeError("private runtime detail")
+    except RuntimeError as error:
+        diagnostic_log_path = web_app._write_startup_diagnostic_log(
+            error,
+            settings_path=settings_path,
+            failure_stage="native_window_initialization",
+            safe_details={
+                "python_runtime_file": "present; 445952 bytes; sha256=abc123",
+                "processor_architecture": "AMD64",
+            },
+        )
+
+    assert diagnostic_log_path is not None
+    log_text = diagnostic_log_path.read_text(encoding="utf-8")
+    assert "Failure stage: native_window_initialization" in log_text
+    assert "Safe runtime details:" in log_text
+    assert "processor_architecture: AMD64" in log_text
+    assert "python_runtime_file: present; 445952 bytes; sha256=abc123" in log_text
+    assert "private runtime detail" not in log_text
 
 
 def test_main_reports_server_startup_failure_and_support_contact(

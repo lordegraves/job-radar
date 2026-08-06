@@ -144,6 +144,7 @@ application.
 | Orphaned Junior processes after closing the window | In Progress | Shutdown and update-handoff investigation | Unknown | Maybe | Reproduce clean close, close during work, and update shutdown; record the owning process and lifecycle boundary. |
 | Download behavior | Yes; reverify after 1.0 | Browser/webview download limitation in the affected workflow | Yes | Yes | Compare packaged 1.x downloads with native file-save behavior on every supported desktop platform. |
 | Update handoff and restart | In Progress | Shutdown and installer handoff investigation | Unknown | Maybe | Verify the application fully exits before installation and restarts exactly once without an orphaned process. |
+| Windows desktop runtime bridge startup | In Progress | Packaged Python.NET could not resolve its loader entry point on one field-test machine; the exact machine-specific cause remains under investigation | Yes | Maybe | Verify native startup and automatic browser recovery on the affected machine; compare the new safe runtime hashes with the release manifest. |
 
 The table is a living evidence register for the post-1.0 review. New
 wrapper-adjacent defects must be added rather than summarized away. “No; this

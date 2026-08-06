@@ -7,9 +7,11 @@ It reuses an existing Junior instance and presents safe startup errors.
 
 import argparse
 import ctypes
+import hashlib
 import html
 import json
 import os
+import platform
 import sys
 import threading
 import time
@@ -213,6 +215,7 @@ def run_native_window(
     url: str,
     shutdown_event: threading.Event,
     window_state_path: Path | None = None,
+    settings_path: Path | None = None,
     webview_module: Any = webview,
 ) -> None:
     """Run the shared Flask UI inside one normal native application window."""
@@ -265,7 +268,34 @@ def run_native_window(
             daemon=True,
         )
         close_monitor.start()
-        webview_module.start(**_webview_start_options())
+        try:
+            webview_module.start(**_webview_start_options())
+        except Exception as error:
+            # A failed native shell must not make the local application
+            # unusable. The shared server is already ready, so retain it and
+            # move the user to the same interface in their normal browser.
+            diagnostic_log_path = _write_startup_diagnostic_log(
+                error,
+                settings_path=settings_path,
+                failure_stage="native_window_initialization",
+                safe_details=_desktop_runtime_diagnostic_details(),
+            )
+            log_guidance = (
+                f" Diagnostic details were saved to {diagnostic_log_path}."
+                if diagnostic_log_path is not None
+                else ""
+            )
+            show_desktop_notice(
+                "Junior's desktop window could not start, so Junior will "
+                "open in your normal web browser instead. Your data and "
+                f"settings are unaffected.{log_guidance}"
+            )
+            webbrowser.open(url)
+            while server_thread.is_alive():
+                if shutdown_event.wait(timeout=0.1):
+                    server.shutdown()
+                    break
+            server_thread.join()
     finally:
         shutdown_event.set()
         server.shutdown()
@@ -465,6 +495,7 @@ def launch_desktop() -> None:
                     url=url,
                     shutdown_event=shutdown_event,
                     window_state_path=window_state_path,
+                    settings_path=settings_path,
                 )
         finally:
             # GUI scans use a non-daemon worker. Keep the instance lock until
@@ -543,6 +574,49 @@ def _webview_start_options() -> dict[str, object]:
         # applications receive Junior's icon from their application bundle.
         options["icon"] = str(_desktop_icon_path())
     return options
+
+
+def _desktop_runtime_diagnostic_details() -> dict[str, str]:
+    """Describe only public runtime facts needed to diagnose packaged startup."""
+
+    details = {
+        "frozen_package": str(bool(getattr(sys, "frozen", False))).lower(),
+        "operating_system": platform.system() or "unknown",
+        "operating_system_release": platform.release() or "unknown",
+        "operating_system_version": platform.version() or "unknown",
+        "processor_architecture": platform.machine() or "unknown",
+        "python_architecture": str(ctypes.sizeof(ctypes.c_void_p) * 8) + "-bit",
+    }
+    runtime_root = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+    required_files = {
+        "python_runtime": runtime_root / "pythonnet" / "runtime" / "Python.Runtime.dll",
+        "clr_loader_x64": runtime_root
+        / "clr_loader"
+        / "ffi"
+        / "dlls"
+        / "amd64"
+        / "ClrLoader.dll",
+        "webview2_core": runtime_root
+        / "webview"
+        / "lib"
+        / "Microsoft.Web.WebView2.Core.dll",
+        "webview2_winforms": runtime_root
+        / "webview"
+        / "lib"
+        / "Microsoft.Web.WebView2.WinForms.dll",
+    }
+    for label, path in required_files.items():
+        try:
+            if not path.is_file():
+                details[f"{label}_file"] = "missing"
+                continue
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            details[f"{label}_file"] = (
+                f"present; {path.stat().st_size} bytes; sha256={digest}"
+            )
+        except OSError:
+            details[f"{label}_file"] = "could not be inspected"
+    return details
 
 
 def show_desktop_notice(message: str) -> None:

@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Rebuilt RC6 Build 1.17 with a Windows desktop-shell recovery path. If the
+  packaged Python.NET/WinForms backend cannot initialize, Junior now records
+  privacy-safe runtime evidence and opens its already-running local interface
+  in the default browser instead of becoming unusable. Startup logs now include
+  the exact Junior build, failure stage and category, operating-system and
+  architecture facts, and safe integrity details for required packaged runtime
+  files without exposing raw errors, credentials, profile data, or rÃ©sumÃ©s.
+
 - Made company-source status use the newest available evidence, so a source
   edit remains untested until verified and a successful later test clears stale
   red scan state while preserving the earlier warning in its audit trail.

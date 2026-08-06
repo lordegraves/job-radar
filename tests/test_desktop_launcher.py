@@ -216,12 +216,13 @@ def test_main_bootstraps_starts_native_junior(
     monkeypatch.setattr(
         desktop_launcher,
         "run_native_window",
-        lambda server, *, url, shutdown_event, window_state_path: calls.update(
+        lambda server, *, url, shutdown_event, window_state_path, settings_path: calls.update(
             {
                 "server": server,
                 "url": url,
                 "shutdown_event": shutdown_event,
                 "window_state_path": window_state_path,
+                "native_settings_path": settings_path,
             }
         ),
     )
@@ -247,6 +248,7 @@ def test_main_bootstraps_starts_native_junior(
         "window_state_path": tmp_path
         / "runtime"
         / desktop_launcher.WINDOW_STATE_NAME,
+        "native_settings_path": settings_path,
         "scan_waited": True,
     }
 
@@ -611,6 +613,126 @@ def test_native_window_restores_and_saves_geometry(
         "x": 160,
         "y": 100,
     }
+
+
+def test_native_window_failure_opens_browser_and_keeps_server_available(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shutdown_event = threading.Event()
+    server_stopped = threading.Event()
+    settings_path = tmp_path / "config" / "settings.yaml"
+    diagnostic_path = tmp_path / "logs" / "startup-errors.log"
+    calls: dict[str, object] = {}
+
+    class FakeServer:
+        def serve_forever(self) -> None:
+            server_stopped.wait(timeout=2)
+
+        def shutdown(self) -> None:
+            server_stopped.set()
+
+    class FakeEvent:
+        def __iadd__(self, _handler: object) -> "FakeEvent":
+            return self
+
+    class FakeWindow:
+        events = SimpleNamespace(closing=FakeEvent())
+
+        def destroy(self) -> None:
+            pass
+
+    class FailingWebview:
+        settings: dict[str, object] = {}
+
+        @staticmethod
+        def create_window(*_args: object, **_kwargs: object) -> FakeWindow:
+            return FakeWindow()
+
+        @staticmethod
+        def start(**_kwargs: object) -> None:
+            shutdown_event.set()
+            raise RuntimeError("private Python.NET failure")
+
+    monkeypatch.setattr(desktop_launcher, "wait_until_ready", lambda _url: None)
+    monkeypatch.setattr(
+        desktop_launcher,
+        "_write_startup_diagnostic_log",
+        lambda error, **kwargs: calls.update(
+            {"error": error, "diagnostic_kwargs": kwargs}
+        )
+        or diagnostic_path,
+    )
+    monkeypatch.setattr(
+        desktop_launcher,
+        "_desktop_runtime_diagnostic_details",
+        lambda: {"python_runtime_file": "present"},
+    )
+    monkeypatch.setattr(
+        desktop_launcher,
+        "show_desktop_notice",
+        lambda message: calls.update({"notice": message}),
+    )
+    monkeypatch.setattr(
+        desktop_launcher.webbrowser,
+        "open",
+        lambda url: calls.update({"browser_url": url}) or True,
+    )
+
+    desktop_launcher.run_native_window(
+        FakeServer(),
+        url="http://127.0.0.1:5000/",
+        shutdown_event=shutdown_event,
+        settings_path=settings_path,
+        webview_module=FailingWebview,
+    )
+
+    assert isinstance(calls["error"], RuntimeError)
+    diagnostic_kwargs = calls["diagnostic_kwargs"]
+    assert isinstance(diagnostic_kwargs, dict)
+    assert diagnostic_kwargs["settings_path"] == settings_path
+    assert diagnostic_kwargs["failure_stage"] == "native_window_initialization"
+    assert diagnostic_kwargs["safe_details"] == {
+        "python_runtime_file": "present"
+    }
+    assert calls["browser_url"] == "http://127.0.0.1:5000/"
+    assert "normal web browser" in str(calls["notice"])
+    assert str(diagnostic_path) in str(calls["notice"])
+    assert server_stopped.is_set()
+
+
+def test_desktop_runtime_diagnostics_report_required_package_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_paths = [
+        tmp_path / "pythonnet" / "runtime" / "Python.Runtime.dll",
+        tmp_path
+        / "clr_loader"
+        / "ffi"
+        / "dlls"
+        / "amd64"
+        / "ClrLoader.dll",
+        tmp_path / "webview" / "lib" / "Microsoft.Web.WebView2.Core.dll",
+        tmp_path
+        / "webview"
+        / "lib"
+        / "Microsoft.Web.WebView2.WinForms.dll",
+    ]
+    for path in required_paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"safe packaged runtime")
+
+    monkeypatch.setattr(desktop_launcher.sys, "_MEIPASS", str(tmp_path), raising=False)
+
+    details = desktop_launcher._desktop_runtime_diagnostic_details()
+
+    assert details["frozen_package"] in {"true", "false"}
+    assert details["python_architecture"] in {"32-bit", "64-bit"}
+    assert details["python_runtime_file"].startswith("present; 21 bytes; sha256=")
+    assert details["clr_loader_x64_file"].startswith("present; 21 bytes; sha256=")
+    assert details["webview2_core_file"].startswith("present; 21 bytes; sha256=")
+    assert details["webview2_winforms_file"].startswith("present; 21 bytes; sha256=")
 
 
 def test_windows_native_window_sets_junior_taskbar_identity(

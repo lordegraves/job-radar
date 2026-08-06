@@ -716,6 +716,15 @@ Closing the desktop window requests a clean local-server shutdown. If a GUI scan
 
 The desktop launcher now uses pywebview to place the same local Flask interface inside a normal native window. It does not create a second UI. A first launch opens at the reviewed 1440 by 900 pixel size, with a 960 by 640 minimum. When the user closes the native window, Junior stores only its size and screen position in the user-owned runtime directory and restores that geometry on the next launch. Missing or invalid state returns safely to the reviewed default. Windows, Linux, and macOS must share the same pages, controls, layouts, validation, typography, and workflows; only genuinely native window chrome, dialogs, notifications, and keyboard conventions may differ. Use `junior-desktop --browser` when deliberate browser-based local use is preferred, or `--no-browser` for an externally managed local server. The released `job-radar-desktop` name remains a compatibility alias. PySide6/QWebEngineView remains the documented fallback if cross-platform testing proves system webview rendering cannot satisfy that shared-interface requirement.
 
+If Windows cannot initialize the native pywebview/Python.NET shell, Junior now
+keeps its already-running local service available and opens the same interface
+in the user's default browser. It records the build, failure stage, safe runtime
+category, Windows and processor details, and the presence, size, and SHA-256
+hash of required packaged desktop files. It does not record raw exception
+messages, environment contents, credentials, profile data, or rÃ©sumÃ© content.
+This recovery path preserves normal access to Diagnostics instead of making a
+desktop-shell problem prevent Junior from running.
+
 The shared page shell supports keyboard users with a visible-on-focus skip link, strong focus indicators on interactive controls, and a programmatically identified current navigation page. It also provides a mobile/zoom viewport, narrow-window wrapping, forced-color control borders, and screen-reader captions for application data tables. Profile occupation and location suggestions expose their expanded state and work with Enter, Escape, arrow keys, Tab, or a pointer. Automated checks require every visible form control to have a programmatic label and protect WCAG AA contrast for shared text, links, statuses, and actions.
 
 ## Configuration and private data
