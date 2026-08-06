@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Reorganized Review Jobs into one consistent workspace. Summary cards for Top
+  Matches, Potential Matches, Needs Review, New This Scan, and Saved & Passed
+  keep every queue one click away while the selected queue's controls and
+  collapsed company groups appear below. New This Scan is identified as a
+  cross-category shortcut, redundant dashboard/report links were removed, and
+  scan files remain under Scan and Reports & Audit instead of being repeated
+  in the review inbox.
+
 - Distinguished the Companies page controls: persistent left-hand checkboxes
   select sources for testing, while sliding switches control whether the active
   profile scans each company.

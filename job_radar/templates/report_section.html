@@ -21,14 +21,6 @@
         max-width: 860px;
     }
 
-    .section-actions {
-        align-items: center;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 16px;
-    }
-
     .job-card-grid {
         display: grid;
         gap: 18px;
@@ -127,14 +119,6 @@
         padding: 4px 10px;
     }
 
-    .eligibility-summary {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 16px;
-    }
-
-    .eligibility-summary span,
     .eligibility-badge {
         background: var(--surface-muted);
         border: 1px solid var(--border);
@@ -469,6 +453,10 @@
 {% endblock %}
 
 {% block content %}
+{% if review_navigation %}
+{% include "_review_header.html" %}
+<div class="review-workspace">
+{% endif %}
 {% if llm_summary.llm_jobs_reviewed or llm_summary.llm_reviews_reused or llm_summary.llm_failures %}
 <section class="panel">
     <h2>OpenAI advisory activity</h2>
@@ -480,26 +468,8 @@
 </section>
 {% endif %}
 <section id="review-page-top" class="section-hero">
-    <h1>{{ section_title }}</h1>
+    {% if review_navigation %}<h2>{{ section_title }}</h2>{% else %}<h1>{{ section_title }}</h1>{% endif %}
     <p>{{ section_description }}</p>
-
-    <div class="section-actions">
-        <a href="{{ url_for('index') }}">Back to dashboard</a>
-        <a href="{{ url_for('review_jobs') }}">Back to Review Jobs</a>
-        <a href="{{ url_for('reports') }}">Open Reports</a>
-        <a href="{{ url_for('job_decisions') }}">Saved and reviewed jobs</a>
-        {% if html_report_exists %}
-        <a href="{{ url_for('report_view', report_name=html_report_name) }}">Open full HTML report</a>
-        {% endif %}
-    </div>
-
-    {% if eligibility_counts %}
-    <div class="eligibility-summary" aria-label="Eligibility summary">
-        {% for label, count in eligibility_counts.items() %}
-        <span>{{ label }}: {{ count }}</span>
-        {% endfor %}
-    </div>
-    {% endif %}
     {% if section_name == "review_needed" and total_jobs %}
     <div class="review-display-controls" aria-label="Review display">
         <span class="muted">Display:</span>
@@ -896,5 +866,8 @@
         });
     })();
 </script>
+{% endif %}
+{% if review_navigation %}
+</div>
 {% endif %}
 {% endblock %}

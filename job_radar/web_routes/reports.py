@@ -55,6 +55,13 @@ JOB_DECISION_SECTIONS = {
     "review_needed",
     "new_jobs",
 }
+REVIEW_NAVIGATION_SECTIONS = {
+    "top_matches",
+    "potential_top_matches",
+    "location_outliers",
+    "review_needed",
+    "new_jobs",
+}
 REPORT_JOBS_PER_PAGE = 20
 COMPACT_REPORT_JOBS_PER_PAGE = 50
 
@@ -134,9 +141,13 @@ REPORT_SECTION_DETAILS = {
         "empty_message": "No tracked applications were found in the latest scan.",
     },
     "new_jobs": {
-        "title": "New Jobs",
-        "page_title": "New Jobs",
-        "description": "Actionable roles first discovered during the latest scan.",
+        "title": "New This Scan",
+        "page_title": "New This Scan",
+        "description": (
+            "A shortcut showing actionable roles first discovered during the "
+            "latest scan. These jobs also remain in their Top Match, Potential "
+            "Match, or Needs Review recommendation category."
+        ),
         "empty_message": "No new actionable jobs were found in the latest scan.",
     },
     "collector_errors": {
@@ -419,6 +430,17 @@ def register_report_routes(
             today_iso=date.today().isoformat(),
             llm_enabled=False,
             llm_summary=snapshot.summary,
+            review_navigation=section_name in REVIEW_NAVIGATION_SECTIONS,
+            review_section=section_name,
+            review_inbox=build_review_inbox_summary(
+                reports_path,
+                get_database_path(),
+                profile_id=get_profile_id(),
+            ),
+            review_saved_and_passed_count=_saved_and_passed_count(
+                get_database_path(),
+                profile_id=get_profile_id(),
+            ),
         )
 
     @app.post("/reports/jobs/<path:job_radar_id>/llm-advice")
@@ -465,6 +487,11 @@ def register_report_routes(
             latest_report=build_latest_report_summary(reports_path),
             review_inbox=build_review_inbox_summary(
                 reports_path,
+                get_database_path(),
+                profile_id=get_profile_id(),
+            ),
+            review_section="overview",
+            review_saved_and_passed_count=_saved_and_passed_count(
                 get_database_path(),
                 profile_id=get_profile_id(),
             ),
@@ -688,6 +715,16 @@ def register_report_routes(
                 decision=DECISION_PASSED,
             ),
             pass_reasons=PASS_REASONS,
+            review_section="saved_and_passed",
+            review_inbox=build_review_inbox_summary(
+                get_reports_path(),
+                get_database_path(),
+                profile_id=profile_id,
+            ),
+            review_saved_and_passed_count=_saved_and_passed_count(
+                get_database_path(),
+                profile_id=profile_id,
+            ),
         )
 
     @app.post("/job-decisions/<path:job_radar_id>")
@@ -922,6 +959,22 @@ def build_review_inbox_summary(
         tracked_applications=latest.tracked_applications,
         new_jobs=unresolved_count("new_jobs"),
         collector_errors=latest.collector_errors,
+    )
+
+
+def _saved_and_passed_count(
+    database_path: str | Path,
+    *,
+    profile_id: str | None,
+) -> int:
+    """Count durable review decisions for the shared Review Jobs navigation."""
+    if profile_id is None:
+        return 0
+    return len(
+        list_job_decisions(
+            database_path,
+            profile_id=profile_id,
+        )
     )
 
 

@@ -1,0 +1,69 @@
+{# Summary cards select the queue displayed in the workspace below. #}
+<style>
+    .review-queue-cards {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        margin: 18px 0;
+    }
+
+    .review-queue-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        color: var(--text);
+        min-height: 96px;
+        padding: 18px;
+        text-decoration: none;
+    }
+
+    .review-queue-card:hover,
+    .review-queue-card:focus-visible,
+    .review-queue-card[aria-current="page"] {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(96, 205, 255, 0.2);
+    }
+
+    .review-queue-card strong {
+        color: var(--accent);
+        display: block;
+        font-size: 1.55rem;
+        margin-bottom: 6px;
+    }
+
+    .review-workspace {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 24px;
+    }
+</style>
+<nav class="review-queue-cards" aria-label="Review job queues">
+    <a class="review-queue-card" href="{{ url_for('report_section_view', section_name='top_matches') }}"{% if review_section == 'top_matches' %} aria-current="page"{% endif %}>
+        <strong>{{ review_inbox.top_matches }}</strong>
+        <span>Top Matches</span>
+    </a>
+    <a class="review-queue-card" href="{{ url_for('report_section_view', section_name='potential_top_matches') }}"{% if review_section == 'potential_top_matches' %} aria-current="page"{% endif %}>
+        <strong>{{ review_inbox.potential_top_matches }}</strong>
+        <span>Potential Matches</span>
+    </a>
+    <a class="review-queue-card" href="{{ url_for('report_section_view', section_name='review_needed') }}"{% if review_section == 'review_needed' %} aria-current="page"{% endif %}>
+        <strong>{{ review_inbox.review_needed }}</strong>
+        <span>Needs Review</span>
+    </a>
+    {% if review_inbox.location_outliers %}
+    <a class="review-queue-card" href="{{ url_for('report_section_view', section_name='location_outliers') }}"{% if review_section == 'location_outliers' %} aria-current="page"{% endif %}>
+        <strong>{{ review_inbox.location_outliers }}</strong>
+        <span>Outside Locations</span>
+    </a>
+    {% endif %}
+    <a class="review-queue-card" href="{{ url_for('report_section_view', section_name='new_jobs') }}"{% if review_section == 'new_jobs' %} aria-current="page"{% endif %}>
+        <strong>{{ review_inbox.new_jobs }}</strong>
+        <span>New This Scan</span>
+    </a>
+    <a class="review-queue-card" href="{{ url_for('job_decisions') }}"{% if review_section == 'saved_and_passed' %} aria-current="page"{% endif %}>
+        <strong>{{ review_saved_and_passed_count }}</strong>
+        <span>Saved &amp; Passed</span>
+    </a>
+</nav>

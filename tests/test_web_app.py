@@ -924,8 +924,7 @@ def test_report_section_view_shows_structured_job_cards_for_requested_section(tm
     assert "Location: Remote - USA" in html
     assert "Hiring probability: High" in html
     assert "Eligibility: Needs Review" in html
-    assert "Eligibility summary" in html
-    assert "Needs Review: 1" in html
+    assert "Eligibility summary" not in html
     assert "Eligibility review" not in html
     assert "The posting does not provide usable compensation." in html
     assert "The posting includes an on-call requirement." in html
@@ -1099,7 +1098,17 @@ def test_potential_top_matches_show_only_jobs_awaiting_a_decision(
         "/reports/section/potential_top_matches"
     ).get_data(as_text=True)
 
-    assert "<strong>1</strong> <span>Potential Top Matches to Review</span>" in dashboard_html
+    assert "Potential Matches" in dashboard_html
+    assert "Needs Review" in dashboard_html
+    assert "New This Scan" in dashboard_html
+    assert "Its controls and collapsed company groups will open here." in dashboard_html
+    assert "Latest scan files" not in dashboard_html
+    assert "Open Reports" not in dashboard_html
+    assert 'aria-current="page">' in section_html
+    assert "Potential Matches" in section_html
+    assert "Back to dashboard" not in section_html
+    assert "Back to Review Jobs" not in section_html
+    assert "Open full HTML report" not in section_html
     assert "Needs Decision" in section_html
     assert "Saved Role" not in section_html
     assert "Applied Role" not in section_html
@@ -1647,15 +1656,16 @@ def test_report_section_view_shows_new_jobs_from_latest_scan(tmp_path: Path) -> 
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "New Jobs" in html
-    assert "Actionable roles first discovered during the latest scan." in html
+    assert "New This Scan" in html
+    assert "also remain in their Top Match" in html
+    assert "actionable roles first discovered during the" in html
     assert "NewCo" in html
     assert "Senior Linux Infrastructure Engineer" in html
     assert "Remote - USA" in html
     assert "$180,000 - $220,000" in html
     assert "Hiring probability: Medium" in html
     assert "Eligibility: Not Evaluated" in html
-    assert "Not Evaluated: 1" in html
+    assert "Eligibility summary" not in html
     assert "Eligibility review" not in html
     assert "Tailor Resume" in html
     assert "Strong infrastructure fit" in html
@@ -5755,7 +5765,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.15" in html
+    assert "RC6 Build 1.16" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

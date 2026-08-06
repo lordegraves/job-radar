@@ -1,0 +1,11 @@
+<h1 class="page-title">Review Jobs</h1>
+<div class="page-card">
+    <p>
+        Review opportunities from the latest scan. Saving, applying, or passing
+        removes a job from the inbox and keeps your decision after later scans.
+    </p>
+    {% if review_inbox.generated_at %}
+    <p class="muted">Latest scan completed {{ review_inbox.generated_at }}.</p>
+    {% endif %}
+</div>
+{% include "_review_nav.html" %}

@@ -62,17 +62,16 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-card">
-    <h1 class="page-title">Saved and Reviewed Jobs</h1>
+{% include "_review_header.html" %}
+
+<div class="review-workspace">
+    <h2>Saved &amp; Passed</h2>
     <p>
         Saved jobs are waiting for your decision. Reviewed jobs are postings you passed on and Junior will leave out of future scans.
     </p>
     <p class="muted">
         Neither list is part of your application tracker. A job enters Active Applications only after you choose “I applied.”
     </p>
-    <p><a href="{{ url_for('review_jobs') }}">Back to Review Jobs</a></p>
-</div>
-
 <div class="decision-grid">
     <section class="page-card" aria-labelledby="saved-jobs-title">
         <h2 id="saved-jobs-title">Saved for later</h2>
@@ -153,5 +152,6 @@
         <p class="muted">No jobs have been reviewed and passed.</p>
         {% endif %}
     </section>
+</div>
 </div>
 {% endblock %}

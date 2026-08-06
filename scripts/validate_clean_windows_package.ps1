@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     [string]$InstallerPath = (
-        Join-Path $PSScriptRoot "..\artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.15.exe"
+        Join-Path $PSScriptRoot "..\artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.16.exe"
     )
 )
 
