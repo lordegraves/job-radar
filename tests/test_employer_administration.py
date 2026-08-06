@@ -25,6 +25,9 @@ from job_radar.employer_storage import (
     delete_employer_source,
     list_profile_employer_assignments,
 )
+from job_radar.employer_connection_service import (
+    test_employer_connection as run_employer_connection_test,
+)
 from job_radar.domain_errors import EmployerInUseError
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_storage import create_profile
@@ -71,7 +74,10 @@ def test_admin_routes_require_unlock_and_render_catalog(tmp_path: Path) -> None:
     assert "Add employer" in unlocked_html
 
 
-def test_create_validate_enable_and_filter_employer(tmp_path: Path) -> None:
+def test_create_validate_enable_and_filter_employer(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
     database_path = tmp_path / "junior.sqlite3"
 
     created = create_employer(
@@ -89,6 +95,11 @@ def test_create_validate_enable_and_filter_employer(tmp_path: Path) -> None:
     assert created.validation_state == "not_checked"
 
     validated = validate_employer(database_path, created.employer.employer_id)
+    monkeypatch.setattr(
+        "job_radar.employer_connection_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
+    run_employer_connection_test(database_path, created.employer.employer_id)
     enabled = set_employer_lifecycle(
         database_path, created.employer.employer_id, "enable"
     )
@@ -107,6 +118,74 @@ def test_create_validate_enable_and_filter_employer(tmp_path: Path) -> None:
     assert [entry["operation"] for entry in list_employer_audit(
         database_path, created.employer.employer_id
     )] == ["enable", "validate", "create"]
+
+
+def test_source_migration_preserves_identity_and_requires_live_recheck(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    created = create_employer(
+        database_path,
+        name="Example Storage",
+        source_type="icims",
+        source_config={"source_url": "https://old.example.invalid/jobs"},
+        notes="",
+    )
+    employer_id = created.employer.employer_id
+    monkeypatch.setattr(
+        "job_radar.employer_connection_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
+    validate_employer(database_path, employer_id)
+    run_employer_connection_test(database_path, employer_id)
+    set_employer_lifecycle(database_path, employer_id, "enable")
+    assign_employer_to_profile(database_path, profile.profile_id, employer_id)
+
+    with pytest.raises(EmployerAdminError, match="Confirm"):
+        update_employer(
+            database_path,
+            employer_id,
+            name="Example Storage",
+            source_type="ashby",
+            source_config={"source_slug": "example-storage"},
+            notes="",
+        )
+
+    migrated = update_employer(
+        database_path,
+        employer_id,
+        name="Example Storage",
+        source_type="ashby",
+        source_config={"source_slug": "example-storage"},
+        notes="",
+        confirm_source_migration=True,
+    )
+
+    assert migrated.employer.employer_id == employer_id
+    assert migrated.employer.source_type == "ashby"
+    assert migrated.employer.source_config["source_slug"] == "example-storage"
+    assert migrated.employer.enabled is False
+    assert migrated.validation_state == "not_checked"
+    assert migrated.source_change_pending_test is True
+    assert [
+        item.employer_id
+        for item in list_profile_employer_assignments(
+            database_path, profile.profile_id
+        )
+    ] == [employer_id]
+    assert list_employer_audit(database_path, employer_id)[0]["operation"] == (
+        "source_migration"
+    )
+
+    validate_employer(database_path, employer_id)
+    with pytest.raises(EmployerAdminError, match="connection"):
+        set_employer_lifecycle(database_path, employer_id, "enable")
+    run_employer_connection_test(database_path, employer_id)
+    assert set_employer_lifecycle(
+        database_path, employer_id, "enable"
+    ).employer.enabled
 
 
 def test_invalid_configuration_cannot_be_enabled(tmp_path: Path) -> None:
@@ -289,6 +368,56 @@ def test_admin_connection_test_shows_safe_result(
     assert response.status_code == 200
     assert "source may have changed" in html
     assert "Source connection</dt><dd>Needs attention" in html
+
+
+def test_admin_edit_exposes_confirmed_platform_migration(tmp_path: Path) -> None:
+    app = build_test_app(tmp_path)
+    database_path = tmp_path / "data" / "junior.sqlite3"
+    record = create_employer(
+        database_path,
+        name="Example Storage",
+        source_type="icims",
+        source_config={"source_url": "https://old.example.invalid/jobs"},
+        notes="",
+    )
+    employer_id = record.employer.employer_id
+    client = app.test_client()
+    client.post("/administration/unlock", data={"confirmation": "ADMIN"})
+
+    page = client.get(
+        f"/administration/employers/{employer_id}/edit?source_type=ashby"
+    )
+    html = page.get_data(as_text=True)
+
+    assert page.status_code == 200
+    assert '<option value="ashby" selected>ashby</option>' in html
+    assert 'name="source_slug"' in html
+    assert 'name="confirm_source_migration"' in html
+    assert "for every profile using it" in html
+
+    saved = client.post(
+        f"/administration/employers/{employer_id}/edit",
+        data={
+            "name": "Example Storage",
+            "source_type": "ashby",
+            "source_slug": "example-storage",
+            "confirm_source_migration": "yes",
+            "notes": "",
+        },
+        follow_redirects=True,
+    )
+    migrated = get_admin_employer(database_path, employer_id)
+
+    assert saved.status_code == 200
+    assert migrated is not None
+    assert migrated.employer.source_type == "ashby"
+    assert migrated.source_change_pending_test is True
+    assert "Validation must pass" in saved.get_data(as_text=True)
+    validate_employer(database_path, employer_id)
+    validated_html = client.get(
+        f"/administration/employers/{employer_id}"
+    ).get_data(as_text=True)
+    assert "successful connection test is required" in validated_html
 
 
 def test_administrator_assigns_and_removes_one_profile_only(

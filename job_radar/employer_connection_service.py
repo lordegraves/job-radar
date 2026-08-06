@@ -217,6 +217,7 @@ def _store_health(
     success_time = (
         "CURRENT_TIMESTAMP" if health.state == SUCCESS else "last_connection_success_at"
     )
+    pending_test = "0" if health.state == SUCCESS else "source_change_pending_test"
     error_time = "CURRENT_TIMESTAMP" if health.state == ERROR else "NULL"
     with connect_database(db_path) as connection:
         connection.execute(
@@ -229,6 +230,7 @@ def _store_health(
                 last_connection_category = ?,
                 last_connection_message = ?,
                 last_connection_job_count = ?,
+                source_change_pending_test = {pending_test},
                 updated_at = CURRENT_TIMESTAMP
             WHERE employer_id = ?
             """,

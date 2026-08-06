@@ -379,13 +379,24 @@ def register_administration_routes(
         record = get_admin_employer(get_database_path(), employer_id)
         if record is None:
             return "Employer not found.", 404
+        requested_source = request.args.get("source_type", "").strip()
+        selected_source = (
+            requested_source
+            if requested_source in SUPPORTED_SOURCE_TYPES
+            else record.employer.source_type
+        )
         return render_template(
             "administration/employer_form.html",
             employer_record=record,
             source_types=sorted(SUPPORTED_SOURCE_TYPES),
-            selected_source=record.employer.source_type,
-            fields=source_fields(record.employer.source_type),
-            field_values=form_source_config(record.employer),
+            selected_source=selected_source,
+            original_source=record.employer.source_type,
+            fields=source_fields(selected_source),
+            field_values=(
+                form_source_config(record.employer)
+                if selected_source == record.employer.source_type
+                else {}
+            ),
             form_action=url_for(
                 "administration_employer_edit_submit",
                 employer_id=employer_id,
@@ -406,6 +417,9 @@ def register_administration_routes(
                 source_type=request.form.get("source_type", ""),
                 source_config=dict(request.form),
                 notes=request.form.get("notes", ""),
+                confirm_source_migration=(
+                    request.form.get("confirm_source_migration") == "yes"
+                ),
             )
         except EmployerAdminError as error:
             flash(str(error), "error")
@@ -413,6 +427,7 @@ def register_administration_routes(
                 url_for(
                     "administration_employer_edit",
                     employer_id=employer_id,
+                    source_type=request.form.get("source_type", ""),
                 )
             )
         flash("Employer settings saved. Validate them before enabling.", "success")

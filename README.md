@@ -37,6 +37,12 @@ source workspace. Source-test results appear once. Public reference links stay
 collapsed until needed, and an unlocked administrator can move directly from a
 company to its global source editor to correct, validate, and retest the
 collector without changing profile assignments or collected history.
+When an employer moves to another recruiting platform, the administrator can
+explicitly migrate the existing employer instead of deleting and recreating
+it. Junior preserves the employer identity, profile assignments, collected
+jobs, and application history, but disables that source until its replacement
+configuration validates and passes a live connection test. The audit records
+the platform change without copying source settings into diagnostic output.
 
 The current development build is a functional local application with up to five independent managed profiles. Python wheel, source-package, reproducible Windows executable, unsigned per-user Windows installer, Linux archive, container, and Kubernetes baselines are implemented and validated. A genuinely empty installation now opens a guided first-run path through profile creation, résumé upload, profile-owned work exclusions, company selection, and a final review. The setup checkpoint is stored safely in SQLite, so closing junior during setup returns the user to the last completed step instead of starting over. The review shows the profile, résumé, preferences, locations, companies, user-data location, and scan behavior. Finish setup remains unavailable until Junior verifies minimum usable profile rules and confirms at least one selected company collector can connect. This validation imports, scores, recommends, reports, and emails no jobs, and it explains corrections in plain language. Publicly signed release downloads, remaining editable configuration, and broader release-candidate work are still in progress.
 

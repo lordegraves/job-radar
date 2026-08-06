@@ -64,7 +64,7 @@
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <button class="button-secondary" type="submit">Disable globally</button>
             </form>
-            {% elif not record.retired and record.validation_state == 'valid' %}
+            {% elif not record.retired and record.validation_state == 'valid' and not record.source_change_pending_test %}
             <form method="post" action="{{ url_for('administration_employer_enable', employer_id=record.employer.employer_id) }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <button type="submit">Enable globally</button>
@@ -73,6 +73,8 @@
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <button class="button-danger" type="submit">Retire employer</button>
             </form>
+            {% elif not record.retired and record.validation_state == 'valid' and record.source_change_pending_test %}
+            <span class="muted">A successful connection test is required before this employer can be enabled.</span>
             {% elif not record.retired %}
             <span class="muted">Validation must pass before this employer can be enabled.</span>
             {% endif %}

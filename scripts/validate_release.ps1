@@ -9,7 +9,9 @@ param(
 $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
 $python = Join-Path $projectRoot ".venv\Scripts\python.exe"
-$pytestBaseTemp = Join-Path $projectRoot ".release-validation-pytest"
+$pytestBaseTemp = Join-Path (
+    $projectRoot
+) (".release-validation-pytest-" + [guid]::NewGuid().ToString("N"))
 $installerBuild = Join-Path $projectRoot "scripts\build_windows_installer.ps1"
 $installerValidation = Join-Path $projectRoot "scripts\validate_windows_upgrade.ps1"
 $defaultInstaller = Join-Path (

@@ -6,6 +6,16 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a guarded recruiting-platform migration workflow to the Employer
+  Catalog. An administrator can move an existing employer to a different
+  supported collector while preserving its stable identity, profile
+  assignments, collected jobs, and application history. The form explains
+  the installation-wide effect and requires explicit confirmation. A migrated
+  employer is disabled, its obsolete source-health result is cleared, and it
+  must pass configuration validation and a live connection test before it can
+  be enabled again. The sanitized audit records the change as a source
+  migration without storing collector configuration.
+
 - Consolidated each company detail page into one Job source workspace with the
   public request URL, profile state, platform, connection health, last test,
   returned-job count, and aligned actions. Source-test outcomes no longer

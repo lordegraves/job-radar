@@ -858,6 +858,7 @@ def _migrate_employer_source_health(connection: sqlite3.Connection) -> None:
         "last_connection_category": "TEXT",
         "last_connection_message": "TEXT",
         "last_connection_job_count": "INTEGER",
+        "source_change_pending_test": "INTEGER NOT NULL DEFAULT 0",
     }
     for column_name, definition in required_columns.items():
         if column_name not in existing_columns:

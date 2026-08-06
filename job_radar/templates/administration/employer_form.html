@@ -31,14 +31,15 @@
     </label>
     <label>Job source
         <select name="source_type"
-                {% if employer_record %}disabled{% else %}onchange="window.location.href='{{ url_for('administration_employer_new') }}?source_type=' + encodeURIComponent(this.value)"{% endif %}>
+                onchange="window.location.href='{% if employer_record %}{{ url_for('administration_employer_edit', employer_id=employer_record.employer.employer_id) }}{% else %}{{ url_for('administration_employer_new') }}{% endif %}?source_type=' + encodeURIComponent(this.value)">
             {% for source in source_types %}
             <option value="{{ source }}" {% if selected_source == source %}selected{% endif %}>{{ source }}</option>
             {% endfor %}
         </select>
-        {% if employer_record %}
-        <input type="hidden" name="source_type" value="{{ selected_source }}">
-        <span class="field-help">Create a separate employer record to use a different collector.</span>
+        {% if employer_record and selected_source != original_source %}
+        <span class="field-help">Changing the recruiting platform keeps this employer's profiles and history, but stops its scans until the new source is validated and tested.</span>
+        {% elif employer_record %}
+        <span class="field-help">Choose a different platform only when the employer has moved its job board.</span>
         {% else %}
         <span class="field-help">Choose the source first, then use the matching setup page.</span>
         {% endif %}
@@ -49,6 +50,16 @@
         <span class="field-help">{{ field.help_text }}</span>
     </label>
     {% endfor %}
+    {% if employer_record and selected_source != original_source %}
+    <div class="page-card warning-card">
+        <strong>Confirm recruiting-platform change</strong>
+        <p>This changes {{ employer_record.employer.name }} for every profile using it. Existing assignments, collected jobs, and application history will be preserved.</p>
+        <label class="checkbox-row">
+            <input type="checkbox" name="confirm_source_migration" value="yes" required>
+            I understand that Junior will stop scanning this employer until the new source passes validation and a connection test.
+        </label>
+    </div>
+    {% endif %}
     <label>Administrator notes (optional)
         <textarea name="notes">{{ employer_record.employer.notes if employer_record and employer_record.employer.notes else '' }}</textarea>
         <span class="field-help">Do not enter passwords, tokens, credentials, or private candidate data.</span>

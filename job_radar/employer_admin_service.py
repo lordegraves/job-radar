@@ -54,6 +54,7 @@ class EmployerAdminRecord:
     created_at: str
     updated_at: str
     assigned_profile_count: int
+    source_change_pending_test: bool = False
 
     @property
     def configured(self) -> bool:
@@ -303,8 +304,9 @@ def update_employer(
     source_type: str,
     source_config: dict[str, str],
     notes: str,
+    confirm_source_migration: bool = False,
 ) -> EmployerAdminRecord:
-    """Update structured source settings and require revalidation."""
+    """Update structured source settings and safely migrate platforms."""
 
     previous = get_admin_employer(database_path, employer_id)
     if previous is None:
@@ -313,6 +315,12 @@ def update_employer(
         raise EmployerAdminError("Enter an employer name.")
     if source_type not in SUPPORTED_SOURCE_TYPES:
         raise EmployerAdminError("Choose a supported job source.")
+    source_migration = source_type != previous.employer.source_type
+    if source_migration and not confirm_source_migration:
+        raise EmployerAdminError(
+            "Confirm that changing the recruiting platform affects every "
+            "profile using this employer."
+        )
 
     normalized_source_config = _normalize_source_config(source_type, source_config)
     # Company reference links are independent of collector settings. An
@@ -326,7 +334,10 @@ def update_employer(
         employer_id=employer_id,
         name=name.strip(),
         source_type=source_type,
-        enabled=previous.employer.enabled,
+        # A different collector is a different external system. Keep the
+        # employer identity and assignments, but stop scans until the new
+        # configuration has been validated and reached successfully.
+        enabled=False if source_migration else previous.employer.enabled,
         source_config=normalized_source_config,
         notes=notes.strip() or None,
     )
@@ -335,7 +346,8 @@ def update_employer(
         connection.execute(
             """
             UPDATE employer_sources
-            SET name = ?, source_type = ?, source_config_json = ?, notes = ?,
+            SET name = ?, source_type = ?, enabled = ?,
+                source_config_json = ?, notes = ?,
                 validation_state = ?, validation_issues_json = '[]',
                 last_validated_at = NULL, normalized_name = ?,
                 normalized_careers_url = ?, source_identifier = ?,
@@ -346,23 +358,31 @@ def update_employer(
                 last_connection_category = NULL,
                 last_connection_message = NULL,
                 last_connection_job_count = NULL,
+                source_change_pending_test = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE employer_id = ?
             """,
             (
                 employer.name,
                 employer.source_type,
+                int(employer.enabled),
                 _dump_config(employer.source_config),
                 employer.notes,
                 NOT_CHECKED,
                 normalize_company_name(employer.name),
                 _normalized_careers_url(employer.source_config),
                 _source_identifier(employer),
+                int(source_migration),
                 employer_id,
             ),
         )
         _record_audit(
-            connection, employer_id, "edit", previous, employer, previous.retired
+            connection,
+            employer_id,
+            "source_migration" if source_migration else "edit",
+            previous,
+            employer,
+            previous.retired,
         )
     return get_admin_employer(db_path, employer_id)  # type: ignore[return-value]
 
@@ -521,6 +541,10 @@ def set_employer_lifecycle(
             raise EmployerAdminError("A retired employer cannot be enabled.")
         if record.validation_state != VALID:
             raise EmployerAdminError("Validate this employer before enabling it.")
+        if record.source_change_pending_test:
+            raise EmployerAdminError(
+                "Test this employer's connection successfully before enabling it."
+            )
         enabled, retired = True, False
     elif operation == "disable":
         enabled, retired = False, record.retired
@@ -722,6 +746,9 @@ def _load_records(database_path: str | Path) -> list[EmployerAdminRecord]:
                 created_at=row["created_at"],
                 updated_at=row["updated_at"],
                 assigned_profile_count=int(row["assigned_count"]),
+                source_change_pending_test=bool(
+                    row["source_change_pending_test"]
+                ),
             )
         )
     return records
