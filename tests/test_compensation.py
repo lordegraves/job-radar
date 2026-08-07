@@ -85,6 +85,17 @@ def test_extract_annual_compensation_from_description() -> None:
     assert evaluate_compensation(extracted, 160000).label == "Meets floor"
 
 
+def test_extract_annual_compensation_recognizes_per_annum() -> None:
+    extracted = extract_annual_compensation_text(
+        "The salary range is $145,000 - $210,000 per annum."
+    )
+
+    assert extracted is not None
+    assert evaluate_compensation(extracted, 160000).range_label == (
+        "$145,000 - $210,000"
+    )
+
+
 def test_extract_annual_compensation_reads_annual_salary_heading() -> None:
     extracted = extract_annual_compensation_text(
         "The annual compensation range is listed below.\n"

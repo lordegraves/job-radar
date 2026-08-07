@@ -87,6 +87,33 @@ def test_match_resume_to_posting_reports_gap() -> None:
     assert result.gaps == ["production Kubernetes ownership"]
 
 
+def test_oracle_labeled_qualifications_produce_resume_gaps() -> None:
+    posting = JobPosting(
+        company_key="oracle-example",
+        company_name="Oracle Example",
+        source_type="oracle_hcm",
+        source_url="https://example.oraclecloud.com/job/1",
+        title="Infrastructure Engineer",
+        location="Remote",
+        description=(
+            "Responsibilities\nOperate reliable Linux infrastructure.\n"
+            "Required qualifications\n"
+            "Five years administering Oracle databases in production.\n"
+            "Experience designing enterprise database replication."
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        "Linux infrastructure and cluster operations experience.",
+    )
+
+    assert len(result.requirements_reviewed) == 2
+    assert result.gaps
+    assert any("oracle" in gap.casefold() for gap in result.gaps)
+
+
 def test_match_resume_to_posting_reports_configured_gap_without_title_guessing() -> None:
     posting = make_posting(
         title="Senior Platform Engineer",

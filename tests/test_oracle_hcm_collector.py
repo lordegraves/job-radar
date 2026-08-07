@@ -88,6 +88,8 @@ def test_collect_oracle_hcm_jobs_builds_posting(monkeypatch):
     assert jobs[0].remote_status == "On-site"
     assert jobs[0].source_url.endswith("/sites/CX/job/2612797")
     assert "Protect program information." in jobs[0].description
+    assert "Responsibilities\nCoordinate security operations." in jobs[0].description
+    assert "Required qualifications\nSecurity experience required." in jobs[0].description
     assert "Coordinate security operations." in jobs[0].description
     assert "Security experience required." in jobs[0].description
     assert jobs[0].canonical_key
@@ -130,6 +132,38 @@ def test_collect_oracle_hcm_jobs_paginates(monkeypatch):
         "findReqs;siteNumber=CX,limit=2,offset=2",
     ]
     assert all(job.detail_retrieval_state == "summary_only" for job in jobs)
+
+
+def test_long_oracle_responsibilities_without_qualifications_require_detail(
+    monkeypatch,
+):
+    def fake_get(url, params, headers, timeout):
+        return FakeResponse(
+            _payload(
+                [
+                    {
+                        "Id": "4",
+                        "Title": "Infrastructure Engineer",
+                        "PrimaryLocation": "Remote",
+                        "ExternalResponsibilitiesStr": "Operate infrastructure. " * 20,
+                    }
+                ]
+            )
+        )
+
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    jobs = collect_oracle_hcm_jobs(
+        {
+            **_config(),
+            # Imported catalog definitions pass through the same collector
+            # contract; unrelated transfer metadata must not alter completeness.
+            "catalog_origin": "imported",
+        }
+    )
+
+    assert len(jobs[0].description) > 200
+    assert jobs[0].detail_retrieval_state == "summary_only"
 
 
 def test_collect_oracle_hcm_jobs_deduplicates(monkeypatch):

@@ -152,15 +152,13 @@ def _build_posting(
     )
 
     description = _build_description(requisition)
+    # Responsibilities alone are not enough for a resume comparison. Oracle
+    # tenants often omit qualifications from the search payload even when they
+    # return a long responsibility section, so request the detail resource
+    # unless the listing itself contains usable qualification text.
     detail_retrieval_state = (
         None
-        if any(
-            _clean_text(requisition.get(field))
-            for field in (
-                "ExternalResponsibilitiesStr",
-                "ExternalQualificationsStr",
-            )
-        )
+        if _clean_text(requisition.get("ExternalQualificationsStr"))
         else "summary_only"
     )
 
@@ -208,12 +206,30 @@ def _build_posting(
 def _build_description(requisition: dict[str, Any]) -> str | None:
     parts = [
         _clean_text(requisition.get("ShortDescriptionStr")),
-        _clean_text(requisition.get("ExternalResponsibilitiesStr")),
-        _clean_text(requisition.get("ExternalQualificationsStr")),
+        _labeled_section(
+            "Responsibilities",
+            requisition.get("ExternalResponsibilitiesStr"),
+        ),
+        _labeled_section(
+            "Required qualifications",
+            requisition.get("ExternalQualificationsStr"),
+        ),
     ]
 
     description = "\n\n".join(part for part in parts if part)
     return description or None
+
+
+def _labeled_section(label: str, value: Any) -> str | None:
+    """Preserve what an Oracle field means after all ATS data is normalized."""
+
+    text = _clean_text(value)
+    if not text:
+        return None
+    first_line = text.splitlines()[0].rstrip(":").strip()
+    if first_line.casefold() == label.casefold():
+        return text
+    return f"{label}\n{text}"
 
 
 def _build_job_url(

@@ -6,6 +6,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Repaired Oracle Recruiting completeness checks so a long responsibilities
+  section cannot hide missing qualifications. Oracle list and detail fields
+  now retain explicit Responsibilities and Required qualifications boundaries
+  for the shared resume-gap evaluator, including companies imported from
+  another Junior installation. Annual compensation extraction now recognizes
+  the common Oracle wording `per annum`.
+
 - Kept the Windows desktop responsive throughout CPU-heavy scoring by moving
   GUI-started scans into a separate protected process. Scan lifecycle records,
   progress polling, durable writes, shutdown waiting, and CLI behavior continue

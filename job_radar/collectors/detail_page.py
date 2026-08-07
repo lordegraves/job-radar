@@ -307,16 +307,19 @@ def _enrich_from_oracle_detail(
     if isinstance(items, list) and items and isinstance(items[0], dict):
         detail = items[0]
     description_parts = [
-        clean_human_text(str(detail.get(field) or ""))
-        for field in (
-            "ShortDescriptionStr",
-            "ExternalShortDescriptionStr",
-            "ExternalDescriptionStr",
-            "ExternalResponsibilitiesStr",
-            "ExternalQualificationsStr",
-            "CorporateDescriptionStr",
-            "OrganizationDescriptionStr",
-        )
+        clean_human_text(str(detail.get("ShortDescriptionStr") or "")),
+        clean_human_text(str(detail.get("ExternalShortDescriptionStr") or "")),
+        clean_human_text(str(detail.get("ExternalDescriptionStr") or "")),
+        _oracle_labeled_section(
+            "Responsibilities",
+            detail.get("ExternalResponsibilitiesStr"),
+        ),
+        _oracle_labeled_section(
+            "Required qualifications",
+            detail.get("ExternalQualificationsStr"),
+        ),
+        clean_human_text(str(detail.get("CorporateDescriptionStr") or "")),
+        clean_human_text(str(detail.get("OrganizationDescriptionStr") or "")),
     ]
     description = "\n\n".join(part for part in description_parts if part)
     employment_facts = [
@@ -353,6 +356,18 @@ def _enrich_from_oracle_detail(
         remote_status=remote_status,
         detail_retrieval_state=None,
     )
+
+
+def _oracle_labeled_section(label: str, value: Any) -> str:
+    """Keep Oracle's field meaning visible to the shared requirements parser."""
+
+    text = clean_human_text(str(value or ""))
+    if not text:
+        return ""
+    first_line = text.splitlines()[0].rstrip(":").strip()
+    if first_line.casefold() == label.casefold():
+        return text
+    return f"{label}\n{text}"
 
 
 def _oracle_location(detail: dict[str, Any]) -> str | None:

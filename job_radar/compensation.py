@@ -76,7 +76,9 @@ def extract_annual_compensation_text(description: str | None) -> str | None:
 
     readable_description = re.sub(r"<[^>]+>", " ", decoded_description)
     normalized = " ".join(readable_description.split())
-    annual_marker = r"(?:annually|annual|per year|a year|/year|/yr|yearly)"
+    annual_marker = (
+        r"(?:annually|annual|per annum|per year|a year|/year|/yr|yearly)"
+    )
     currency = r"(?:USD\s*)?"
     money = rf"{currency}\$?\s*\d{{2,3}}(?:,\d{{3}})*(?:\.\d+)?\s*[kK]?"
     # Multi-level postings sometimes put ``USD`` after each endpoint instead

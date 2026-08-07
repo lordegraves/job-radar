@@ -89,6 +89,9 @@ junior currently provides:
   Workday site name, including Red Hat's public recruiting source
 - reliable Microsoft/Eightfold second-chance description retrieval using the
   platform's internal job identity while preserving stable incremental IDs
+- Oracle Recruiting detail completion that treats qualifications as required
+  evaluation data, preserves qualification-section meaning, and recognizes
+  compensation advertised `per annum`
 - Profile-owned active applications and application history stored safely in SQLite
 - profile-owned scoring, occupation-neutral recommendation policy, compensation checks, and resume/profile matching
 - structured scan snapshots and HTML reports

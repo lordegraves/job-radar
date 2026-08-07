@@ -233,6 +233,8 @@ def test_oracle_detail_uses_candidate_experience_resource(monkeypatch) -> None:
     assert calls[0][1]["params"]["onlyData"] == "true"
     assert "ExternalQualifications" not in calls[0][1]["params"]["expand"]
     assert "Required qualifications" in result.description
+    assert "Responsibilities\nOperate Linux clusters" in result.description
+    assert "Required qualifications\nRequired qualifications include" in result.description
     assert "Employment details: Full time" in result.description
     assert result.location == "Fort Collins, Colorado, United States"
     assert result.remote_status == "Hybrid"
