@@ -324,6 +324,75 @@ def test_collect_workday_jobs_fetches_complete_job_detail(
     assert "Employment type: Full time" in (postings[0].description or "")
 
 
+def test_collect_workday_jobs_fetches_detail_when_site_is_named_jobs(
+    monkeypatch,
+) -> None:
+    company_config = {
+        "company_key": "red_hat",
+        "name": "Red Hat",
+        "source_type": "workday",
+        "source_url": (
+            "https://redhat.wd5.myworkdayjobs.com/wday/cxs/redhat/jobs/jobs"
+        ),
+        "source_base_url": "https://redhat.wd5.myworkdayjobs.com/jobs",
+        "max_pages": 1,
+    }
+
+    class Response:
+        def __init__(self, payload: dict) -> None:
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return self._payload
+
+    monkeypatch.setattr(
+        "job_radar.collectors.workday.requests.post",
+        lambda *args, **kwargs: Response(
+            {
+                "total": 1,
+                "jobPostings": [
+                    {
+                        "title": "Technical Account Manager",
+                        "externalPath": (
+                            "/job/Remote-US/Technical-Account-Manager_R-123"
+                        ),
+                        "locationsText": "Remote US",
+                        "bulletFields": ["R-123"],
+                    }
+                ],
+            }
+        ),
+    )
+
+    def fake_get(url, headers, timeout):
+        assert url == (
+            "https://redhat.wd5.myworkdayjobs.com/wday/cxs/redhat/jobs/"
+            "job/Remote-US/Technical-Account-Manager_R-123"
+        )
+        return Response(
+            {
+                "jobPostingInfo": {
+                    "title": "Technical Account Manager",
+                    "jobReqId": "R-123",
+                    "location": "Remote US",
+                    "jobDescription": "Required experience supporting Linux customers.",
+                }
+            }
+        )
+
+    monkeypatch.setattr("job_radar.collectors.workday.requests.get", fake_get)
+
+    postings = collect_workday_jobs(company_config)
+
+    assert len(postings) == 1
+    assert postings[0].description == (
+        "Required experience supporting Linux customers."
+    )
+
+
 def test_collect_workday_jobs_retries_one_transient_detail_failure(
     monkeypatch,
 ) -> None:

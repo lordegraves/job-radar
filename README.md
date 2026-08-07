@@ -84,6 +84,8 @@ junior currently provides:
   do not stop after the first results page
 - marker-based pagination for older generic HTML definitions backed by
   TalentBrew or SAP SuccessFactors, plus a 2,000-listing Workday ceiling
+- complete Workday detail retrieval when an employer uses `jobs` as its
+  Workday site name, including Red Hat's public recruiting source
 - Profile-owned active applications and application history stored safely in SQLite
 - profile-owned scoring, occupation-neutral recommendation policy, compensation checks, and resume/profile matching
 - structured scan snapshots and HTML reports

@@ -127,7 +127,10 @@ def _detail_api_url(source_url: str, external_path: str) -> str | None:
     detail_path = external_path.lstrip("/")
     if detail_path.startswith("job/"):
         detail_path = detail_path[4:]
-    return source_url.split(marker, 1)[0].rstrip("/") + "/job/" + detail_path
+    # Split at the final search endpoint. Some employers name the Workday site
+    # itself "jobs" (for example, /cxs/tenant/jobs/jobs); splitting at the
+    # first occurrence drops the site name and makes every detail URL invalid.
+    return source_url.rsplit(marker, 1)[0].rstrip("/") + "/job/" + detail_path
 
 
 def _merge_workday_detail(

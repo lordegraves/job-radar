@@ -6,6 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Corrected Workday detail retrieval for employers whose Workday site is
+  itself named `jobs`. Junior now preserves that site segment when opening
+  individual postings, allowing Red Hat and similarly configured employers to
+  provide complete descriptions after all result pages are collected.
+
 - Added a first-class Google Careers collector. Junior now recognizes Google’s
   public careers URL, reads every reported results page with bounded
   concurrency, and preserves Google’s complete public descriptions,
