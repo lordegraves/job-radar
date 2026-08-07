@@ -244,6 +244,14 @@ def _recent_cached_detail(
     if datetime.now(UTC) - verified_at > DETAIL_CACHE_MAX_AGE:
         return None
     cached_posting = normalize_job_posting(cached_posting)
+    # Oracle's listing fingerprint includes the normalized source-field layout.
+    # A parser repair must invalidate an older cached detail even when the job ID,
+    # title, and URL did not change; otherwise users keep seeing pre-repair data.
+    if (
+        posting.source_type == "oracle_hcm"
+        and getattr(cached, "listing_fingerprint", None) != posting.content_hash
+    ):
+        return None
     if (
         cached_posting.source_url != posting.source_url
         or cached_posting.title != posting.title

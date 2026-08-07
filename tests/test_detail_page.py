@@ -241,6 +241,51 @@ def test_oracle_detail_uses_candidate_experience_resource(monkeypatch) -> None:
     assert result.detail_retrieval_state is None
 
 
+def test_oracle_detail_separates_embedded_requirements_from_pay_boilerplate(
+    monkeypatch,
+) -> None:
+    posting = JobPosting(
+        company_key="oracle-example",
+        company_name="Oracle Example",
+        source_type="oracle_hcm",
+        source_url=(
+            "https://example.fa.oraclecloud.com/hcmUI/CandidateExperience/"
+            "en/sites/CX/job/337903"
+        ),
+        source_job_id="337903",
+        title="Senior Site Reliability Engineer",
+        location="United States",
+        description=None,
+        normalization_state="incomplete",
+    )
+
+    class OracleResponse:
+        def json(self):
+            return {
+                "ExternalResponsibilitiesStr": (
+                    "Responsibilities\nOperate reliable cloud services.\n"
+                    "Required Skills\nTerraform and Ansible experience.\n"
+                    "SLIs, SLOs, error budgets, and KPIs."
+                ),
+                "ExternalQualificationsStr": (
+                    "Disclaimer:\nUS: Hiring Range in USD from: $81,100 to "
+                    "$187,000 per annum.\nOracle offers a benefits package."
+                ),
+                "JobSchedule": "Full time",
+            }
+
+    monkeypatch.setattr(
+        "job_radar.collectors.detail_page.get_response",
+        lambda *args, **kwargs: OracleResponse(),
+    )
+
+    result = enrich_from_public_detail_page(posting)
+
+    assert "Required qualifications\nTerraform and Ansible experience" in result.description
+    assert "Compensation and additional posting information\nDisclaimer" in result.description
+    assert "Employment details: Full time" in result.description
+
+
 def test_adp_detail_uses_public_requisition_resource(monkeypatch) -> None:
     posting = JobPosting(
         company_key="adp-example",

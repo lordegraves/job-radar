@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 from urllib.parse import urlparse
+import re
 
 import requests
 
 from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
-from job_radar.normalize import make_canonical_key, make_content_hash
+from job_radar.normalize import clean_human_text, make_canonical_key, make_content_hash
 
 
 DEFAULT_PAGE_SIZE = 25
@@ -204,26 +205,83 @@ def _build_posting(
 
 
 def _build_description(requisition: dict[str, Any]) -> str | None:
+    responsibilities, embedded_requirements = _split_oracle_responsibilities(
+        requisition.get("ExternalResponsibilitiesStr")
+    )
     parts = [
         _clean_text(requisition.get("ShortDescriptionStr")),
         _labeled_section(
             "Responsibilities",
-            requisition.get("ExternalResponsibilitiesStr"),
+            responsibilities,
         ),
-        _labeled_section(
-            "Required qualifications",
-            requisition.get("ExternalQualificationsStr"),
-        ),
+        _labeled_section("Required qualifications", embedded_requirements),
+        _oracle_qualifications_field(requisition.get("ExternalQualificationsStr")),
     ]
 
     description = "\n\n".join(part for part in parts if part)
     return description or None
 
 
+def build_oracle_detail_description(detail: dict[str, Any]) -> str:
+    """Translate Oracle's tenant-specific fields into Junior's common sections."""
+
+    responsibilities, embedded_requirements = _split_oracle_responsibilities(
+        detail.get("ExternalResponsibilitiesStr")
+    )
+    parts = [
+        clean_human_text(str(detail.get("ShortDescriptionStr") or "")),
+        clean_human_text(str(detail.get("ExternalShortDescriptionStr") or "")),
+        clean_human_text(str(detail.get("ExternalDescriptionStr") or "")),
+        _labeled_section("Responsibilities", responsibilities),
+        _labeled_section("Required qualifications", embedded_requirements),
+        _oracle_qualifications_field(detail.get("ExternalQualificationsStr")),
+        clean_human_text(str(detail.get("CorporateDescriptionStr") or "")),
+        clean_human_text(str(detail.get("OrganizationDescriptionStr") or "")),
+    ]
+    return "\n\n".join(part for part in parts if part)
+
+
+def _split_oracle_responsibilities(value: Any) -> tuple[str | None, str | None]:
+    """Separate requirements that some Oracle tenants embed in responsibilities."""
+
+    text = clean_human_text(str(value or ""))
+    if not text:
+        return None, None
+    match = re.search(
+        r"(?im)^(?:required|required minimum|minimum)\s+"
+        r"(?:skills|qualifications|experience)\s*:?\s*$",
+        text,
+    )
+    if match is None:
+        return text, None
+    responsibilities = text[: match.start()].strip() or None
+    requirements = text[match.end() :].strip() or None
+    return responsibilities, requirements
+
+
+def _oracle_qualifications_field(value: Any) -> str | None:
+    """Do not mislabel Oracle pay, benefits, and disclaimers as job requirements."""
+
+    text = clean_human_text(str(value or ""))
+    if not text:
+        return None
+    lowered = text.casefold()
+    looks_like_posting_boilerplate = lowered.startswith("disclaimer") and any(
+        marker in lowered
+        for marker in ("hiring range", "per annum", "benefits package")
+    )
+    label = (
+        "Compensation and additional posting information"
+        if looks_like_posting_boilerplate
+        else "Required qualifications"
+    )
+    return _labeled_section(label, text)
+
+
 def _labeled_section(label: str, value: Any) -> str | None:
     """Preserve what an Oracle field means after all ATS data is normalized."""
 
-    text = _clean_text(value)
+    text = clean_human_text(str(value or ""))
     if not text:
         return None
     first_line = text.splitlines()[0].rstrip(":").strip()

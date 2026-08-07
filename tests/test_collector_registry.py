@@ -346,3 +346,32 @@ def test_recent_cached_detail_reuses_unchanged_complete_description() -> None:
     assert result is not None
     assert result.location == "Denver, CO"
     assert result.detail_retrieval_state == "cached_detail_reuse"
+
+
+def test_oracle_cache_is_refetched_after_listing_parser_changes() -> None:
+    summary = JobPosting(
+        company_key="oracle-example",
+        company_name="Oracle Example",
+        source_type="oracle_hcm",
+        source_url="https://example.com/job/337903",
+        source_job_id="337903",
+        title="Senior Site Reliability Engineer",
+        location="United States",
+        description="New normalized Oracle summary",
+        content_hash="new-parser-fingerprint",
+    )
+    cached = CachedSourcePosting(
+        posting=JobPosting(
+            **{
+                **summary.__dict__,
+                "description": "Older incomplete Oracle detail text. " * 20,
+            }
+        ),
+        listing_fingerprint="old-parser-fingerprint",
+        detail_verified_at=datetime.now(UTC).isoformat(),
+    )
+
+    assert _recent_cached_detail(
+        summary,
+        {CACHE_CONFIG_KEY: {"337903": cached}},
+    ) is None

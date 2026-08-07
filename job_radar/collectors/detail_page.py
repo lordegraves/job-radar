@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urljoin, urlparse
 
 from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.oracle_hcm import build_oracle_detail_description
 from job_radar.models import JobPosting
 from job_radar.normalize import clean_human_text
 
@@ -306,22 +307,7 @@ def _enrich_from_oracle_detail(
     items = payload.get("items")
     if isinstance(items, list) and items and isinstance(items[0], dict):
         detail = items[0]
-    description_parts = [
-        clean_human_text(str(detail.get("ShortDescriptionStr") or "")),
-        clean_human_text(str(detail.get("ExternalShortDescriptionStr") or "")),
-        clean_human_text(str(detail.get("ExternalDescriptionStr") or "")),
-        _oracle_labeled_section(
-            "Responsibilities",
-            detail.get("ExternalResponsibilitiesStr"),
-        ),
-        _oracle_labeled_section(
-            "Required qualifications",
-            detail.get("ExternalQualificationsStr"),
-        ),
-        clean_human_text(str(detail.get("CorporateDescriptionStr") or "")),
-        clean_human_text(str(detail.get("OrganizationDescriptionStr") or "")),
-    ]
-    description = "\n\n".join(part for part in description_parts if part)
+    description = build_oracle_detail_description(detail)
     employment_facts = [
         clean_human_text(str(detail.get(field) or ""))
         for field in ("JobType", "JobSchedule", "WorkerType", "ContractType")
@@ -356,20 +342,6 @@ def _enrich_from_oracle_detail(
         remote_status=remote_status,
         detail_retrieval_state=None,
     )
-
-
-def _oracle_labeled_section(label: str, value: Any) -> str:
-    """Keep Oracle's field meaning visible to the shared requirements parser."""
-
-    text = clean_human_text(str(value or ""))
-    if not text:
-        return ""
-    first_line = text.splitlines()[0].rstrip(":").strip()
-    if first_line.casefold() == label.casefold():
-        return text
-    return f"{label}\n{text}"
-
-
 def _oracle_location(detail: dict[str, Any]) -> str | None:
     labels: list[str] = []
     primary = clean_human_text(str(detail.get("PrimaryLocation") or ""))

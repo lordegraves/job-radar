@@ -11,7 +11,12 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   now retain explicit Responsibilities and Required qualifications boundaries
   for the shared resume-gap evaluator, including companies imported from
   another Junior installation. Annual compensation extraction now recognizes
-  the common Oracle wording `per annum`.
+  the common Oracle wording `per annum`. Oracle tenants that embed Required
+  Skills inside the responsibilities field and put pay/benefit boilerplate in
+  the qualifications field are now translated by meaning rather than by the
+  misleading source-field name. A changed Oracle listing-parser fingerprint
+  also invalidates its older cached detail so the repair takes effect on the
+  next scan without deleting user data.
 
 - Kept the Windows desktop responsive throughout CPU-heavy scoring by moving
   GUI-started scans into a separate protected process. Scan lifecycle records,

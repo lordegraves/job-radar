@@ -917,6 +917,8 @@ def _looks_like_preferred_clause(value: str) -> bool:
             "bonus if",
             "also welcome",
             "highly preferred",
+            "useful differentiator",
+            "useful differentiators",
         )
     )
 

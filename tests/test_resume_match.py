@@ -114,6 +114,31 @@ def test_oracle_labeled_qualifications_produce_resume_gaps() -> None:
     assert any("oracle" in gap.casefold() for gap in result.gaps)
 
 
+def test_useful_differentiators_are_not_reported_as_required_gaps() -> None:
+    posting = JobPosting(
+        company_key="oracle-example",
+        company_name="Oracle Example",
+        source_type="oracle_hcm",
+        source_url="https://example.oraclecloud.com/job/1",
+        title="Site Reliability Engineer",
+        location="Remote",
+        description=(
+            "Required qualifications\n"
+            "Strong Bash scripting and Python experience; PowerShell and Go "
+            "are useful differentiators."
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        "Production Bash scripting and Python automation experience.",
+    )
+
+    assert all("powershell" not in gap.casefold() for gap in result.gaps)
+    assert all(" go " not in f" {gap.casefold()} " for gap in result.gaps)
+
+
 def test_match_resume_to_posting_reports_configured_gap_without_title_guessing() -> None:
     posting = make_posting(
         title="Senior Platform Engineer",
