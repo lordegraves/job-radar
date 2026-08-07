@@ -28,9 +28,13 @@ def register_scan_routes(
     *,
     get_runtime_paths: Callable[[], RuntimePaths],
     handle_scan_func: Callable[..., Any],
+    isolate_scan_process: bool = False,
 ) -> None:
     """Register manual scan execution and progress routes."""
-    scan_runner = ScanTaskRunner(handle_scan_func)
+    scan_runner = ScanTaskRunner(
+        handle_scan_func,
+        isolate_process=isolate_scan_process,
+    )
     app.extensions["junior_scan_runner"] = scan_runner
 
     @app.get("/scan")

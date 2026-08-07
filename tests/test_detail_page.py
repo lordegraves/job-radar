@@ -61,6 +61,40 @@ def test_enrich_from_public_detail_page_uses_visible_detail_text(
     assert result.detail_retrieval_state is None
 
 
+def test_amentum_retries_empty_accepted_detail_response(monkeypatch) -> None:
+    posting = JobPosting(
+        **{
+            **_posting().__dict__,
+            "source_type": "html",
+            "source_url": "https://www.amentumcareers.com/jobs/platform-engineer",
+        }
+    )
+    complete_html = "<main>" + (
+        "Operate reliable infrastructure, automation, monitoring, incident "
+        "response, networking, and capacity planning. " * 4
+    ) + "</main>"
+    responses = iter(
+        [
+            SimpleNamespace(text="", content=b"", status_code=202),
+            SimpleNamespace(
+                text=complete_html,
+                content=complete_html.encode("utf-8"),
+                status_code=200,
+            ),
+        ]
+    )
+    monkeypatch.setattr(
+        "job_radar.collectors.detail_page.get_response",
+        lambda *args, **kwargs: next(responses),
+    )
+    monkeypatch.setattr("job_radar.collectors.detail_page.time.sleep", lambda _: None)
+
+    result = enrich_from_public_detail_page(posting)
+
+    assert result.detail_retrieval_state is None
+    assert len(result.description or "") >= 200
+
+
 def test_html_detail_refreshes_changed_slug_from_exact_index_title(monkeypatch) -> None:
     posting = JobPosting(
         **{

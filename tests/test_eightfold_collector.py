@@ -375,6 +375,50 @@ def test_eightfold_connection_test_still_fails_when_detail_is_unavailable(
         )
 
 
+def test_cached_eightfold_retry_uses_internal_position_id_from_url(
+    monkeypatch,
+) -> None:
+    from job_radar.collectors.eightfold import enrich_cached_eightfold_posting
+    from job_radar.models import JobPosting
+
+    requested_ids: list[str] = []
+
+    def fake_detail(**kwargs):
+        requested_ids.append(kwargs["position_id"])
+        return {
+            "jobDescription": "Operate reliable infrastructure. " * 10,
+            "locations": ["United States"],
+        }
+
+    monkeypatch.setattr(
+        "job_radar.collectors.eightfold._fetch_position_detail",
+        fake_detail,
+    )
+    posting = JobPosting(
+        company_key="microsoft",
+        company_name="Microsoft",
+        source_type="eightfold",
+        source_url="https://apply.careers.microsoft.com/careers/job/1970393556957615",
+        source_job_id="200047236",
+        title="Platform Engineer",
+        location="United States",
+        description="Short summary",
+    )
+
+    enriched = enrich_cached_eightfold_posting(
+        posting,
+        {
+            "source_url": "https://apply.careers.microsoft.com",
+            "domain": "microsoft.com",
+            "name": "Microsoft",
+        },
+    )
+
+    assert requested_ids == ["1970393556957615"]
+    assert enriched.detail_retrieval_state is None
+    assert len(enriched.description or "") >= 200
+
+
 def test_eightfold_reuses_fresh_unchanged_detail(monkeypatch) -> None:
     from datetime import UTC, datetime
 

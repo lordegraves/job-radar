@@ -59,6 +59,7 @@ def create_app(
     settings_path: str | Path | None = None,
     *,
     base_directory: str | Path | None = None,
+    isolate_scan_process: bool = False,
 ) -> Flask:
     app = Flask(__name__)
     runtime_paths = (
@@ -288,6 +289,7 @@ def create_app(
         app,
         get_runtime_paths=lambda: _get_runtime_paths(app),
         handle_scan_func=handle_scan,
+        isolate_scan_process=isolate_scan_process,
     )
 
     register_report_routes(

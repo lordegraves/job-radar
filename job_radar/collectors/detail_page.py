@@ -6,6 +6,7 @@ from dataclasses import replace
 from html.parser import HTMLParser
 import json
 import re
+import time
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
@@ -189,7 +190,7 @@ def _fetch_public_detail_response(
         "User-Agent": "JobRadar/0.1 local career-source scanner",
     }
     try:
-        return get_response(
+        response = get_response(
             posting.source_url,
             headers=headers,
             timeout=20,
@@ -197,6 +198,26 @@ def _fetch_public_detail_response(
             request_error_message="Failed to fetch public job detail",
             include_response_body=True,
         )
+        if urlparse(posting.source_url).hostname in {
+            "amentumcareers.com",
+            "www.amentumcareers.com",
+        }:
+            # This source intermittently acknowledges a public detail request
+            # with an empty HTTP 202. Two paced retries recover brief source
+            # handoffs without turning one employer into a long scan delay.
+            for _attempt in range(2):
+                if response.status_code != 202 or response.content:
+                    break
+                time.sleep(1.0)
+                response = get_response(
+                    posting.source_url,
+                    headers=headers,
+                    timeout=20,
+                    error_type=CollectorError,
+                    request_error_message="Failed to fetch public job detail",
+                    include_response_body=True,
+                )
+        return response
     except CollectorError:
         pass
     if not source_index_url:

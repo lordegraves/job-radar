@@ -497,3 +497,6 @@ def test_diagnostics_links_to_read_only_source_and_scan_details(
     assert "Microsoft" in scan_details
     assert "Initial job-search request" in scan_details
     assert "HTTP 429" in scan_details
+    assert 'class="scan-warning-table"' in scan_details
+    assert ".scan-warning-table th:nth-child(1)" in scan_details
+    assert "white-space: nowrap" in scan_details

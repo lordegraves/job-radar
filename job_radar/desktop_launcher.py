@@ -10,6 +10,7 @@ import ctypes
 import hashlib
 import html
 import json
+import multiprocessing
 import os
 import platform
 import sys
@@ -469,6 +470,7 @@ def launch_desktop() -> None:
         app = create_app(
             settings_path=settings_path,
             base_directory=settings_path.parent.parent,
+            isolate_scan_process=True,
         )
         shutdown_event = threading.Event()
         app.config["JOB_RADAR_DESKTOP_SHUTDOWN_EVENT"] = shutdown_event
@@ -636,6 +638,9 @@ def show_desktop_notice(message: str) -> None:
 
 
 def main() -> None:
+    # Frozen Windows children must identify themselves before argument parsing.
+    # This lets scoring run separately without opening a second Junior window.
+    multiprocessing.freeze_support()
     try:
         launch_desktop()
     except Exception as error:

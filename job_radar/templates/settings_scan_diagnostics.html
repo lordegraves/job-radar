@@ -35,7 +35,7 @@
 
 {% if warnings %}
 <div class="table-wrap">
-    <table>
+    <table class="scan-warning-table">
         <caption class="visually-hidden">Company-source warnings from the latest scan</caption>
         <thead>
             <tr>
@@ -75,4 +75,24 @@
 {% endif %}
 
 <p><a href="{{ url_for('companies') }}#company-sources">Open Companies and source health</a></p>
+{% endblock %}
+
+{% block page_styles %}
+<style>
+    .scan-warning-table th:nth-child(1),
+    .scan-warning-table td:nth-child(1) {
+        min-width: 10rem;
+        white-space: nowrap;
+    }
+    .scan-warning-table th:nth-child(3),
+    .scan-warning-table td:nth-child(3) {
+        min-width: 8rem;
+        white-space: nowrap;
+    }
+    .scan-warning-table th:nth-child(6),
+    .scan-warning-table td:nth-child(6) {
+        min-width: 8rem;
+        white-space: nowrap;
+    }
+</style>
 {% endblock %}

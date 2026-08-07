@@ -8,7 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -556,11 +556,16 @@ def enrich_cached_eightfold_posting(
         return JobPosting(
             **{**posting.__dict__, "detail_retrieval_state": "unavailable"}
         )
+    position_id = _internal_position_id(posting)
+    if not position_id:
+        return JobPosting(
+            **{**posting.__dict__, "detail_retrieval_state": "unavailable"}
+        )
     try:
         detail = _fetch_position_detail(
             source_url=str(company_config["source_url"]).rstrip("/"),
             domain=str(company_config["domain"]),
-            position_id=posting.source_job_id,
+            position_id=position_id,
             company_name=str(company_config["name"]),
         )
     except CollectorError:
@@ -597,6 +602,16 @@ def enrich_cached_eightfold_posting(
             "detail_retrieval_state": None if description else "unavailable",
         }
     )
+
+
+def _internal_position_id(posting: JobPosting) -> str | None:
+    """Return Eightfold's internal ID rather than its display requisition ID."""
+
+    path = urlparse(posting.source_url).path.rstrip("/")
+    match = re.search(r"/careers/job/(\d+)$", path)
+    if match:
+        return match.group(1)
+    return posting.source_job_id
 
 
 def _plain_text(value: Any) -> str | None:

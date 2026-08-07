@@ -40,6 +40,7 @@ from job_radar.collectors.incremental_cache import (
     CACHE_CONFIG_KEY,
     DETAIL_CACHE_MAX_AGE,
     DETAIL_PLANNER_CONFIG_KEY,
+    WARNING_TYPES_CONFIG_KEY,
     record_collection_warning,
 )
 from job_radar.detail_retrieval import DetailRetrievalDecision
@@ -173,13 +174,18 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
         and posting.detail_retrieval_state != "skipped_unrelated"
         for posting in normalized
     )
-    if plausible_incomplete_count:
+    warning_types = company_config.get(WARNING_TYPES_CONFIG_KEY, {})
+    has_specific_detail_warning = isinstance(warning_types, dict) and any(
+        warning_type == "incomplete_position_detail_response_failure"
+        for warning_type in warning_types.values()
+    )
+    if plausible_incomplete_count and not has_specific_detail_warning:
         record_collection_warning(
             company_config,
             f"Junior collected {plausible_incomplete_count} job listing(s) selected "
             "for description retrieval without enough "
             "description content for a complete qualification assessment.",
-            warning_type="normalization_incomplete_description",
+            warning_type="incomplete_position_detail_response_failure",
         )
     # A successful Greenhouse jobs-list response is authoritative even when its
     # jobs array is empty. A missing or retired board returns an HTTP failure,
@@ -189,7 +195,11 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
         source_type == "icims"
         and company_config.get(AUTHORITATIVE_EMPTY_CONFIG_KEY)
     )
-    if not normalized and source_type != "greenhouse" and not authoritative_empty:
+    if (
+        not normalized
+        and source_type != "greenhouse"
+        and not authoritative_empty
+    ):
         message = (
             "Junior reached this company's recruiting source, but it returned no "
             "discoverable job listings. The employer may have no openings, or the "

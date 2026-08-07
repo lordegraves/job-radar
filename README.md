@@ -26,8 +26,9 @@ sliding scan toggle for the active profile; turning it off keeps the company
 visible so it can be turned back on later. A separate checkbox at the left of
 each row selects sources for connection testing. During scans, hard eligibility
 failures are discarded before résumé comparison, and the packaged local server
-continues accepting navigation and progress requests while scoring runs in the
-background. In an isolated copy of an 11,140-job profile, this reduced scoring
+uses a separate process for the CPU-heavy scan and scoring pipeline, so
+navigation, progress requests, and other pages remain responsive throughout
+scoring. In an isolated copy of an 11,140-job profile, this reduced scoring
 from roughly 7 minutes 22 seconds to 1 minute 23 seconds without changing the
 ten jobs surfaced for review.
 Company health can be filtered to Healthy, Needs attention, or Not tested.
@@ -86,6 +87,8 @@ junior currently provides:
   TalentBrew or SAP SuccessFactors, plus a 2,000-listing Workday ceiling
 - complete Workday detail retrieval when an employer uses `jobs` as its
   Workday site name, including Red Hat's public recruiting source
+- reliable Microsoft/Eightfold second-chance description retrieval using the
+  platform's internal job identity while preserving stable incremental IDs
 - Profile-owned active applications and application history stored safely in SQLite
 - profile-owned scoring, occupation-neutral recommendation policy, compensation checks, and resume/profile matching
 - structured scan snapshots and HTML reports

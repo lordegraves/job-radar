@@ -6,6 +6,20 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Kept the Windows desktop responsive throughout CPU-heavy scoring by moving
+  GUI-started scans into a separate protected process. Scan lifecycle records,
+  progress polling, durable writes, shutdown waiting, and CLI behavior continue
+  to use the same shared scan service.
+- Corrected Microsoft/Eightfold second-chance detail retrieval to use the
+  internal position ID from the public job URL rather than the display
+  requisition number. Duplicate normalization/detail warnings are now folded
+  into one accurate description-retrieval warning.
+- Added bounded retries for Amentum public job pages that temporarily return an
+  empty HTTP 202 response. Remaining genuinely unavailable descriptions are
+  identified as detail-retrieval issues with the correct failed step.
+- Made Latest Scan Details reserve readable widths for company, warning type,
+  and action so those labels no longer collapse into narrow wrapped columns.
+
 - Corrected Workday detail retrieval for employers whose Workday site is
   itself named `jobs`. Junior now preserves that site segment when opening
   individual postings, allowing Red Hat and similarly configured employers to

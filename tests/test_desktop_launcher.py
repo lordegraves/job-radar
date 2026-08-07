@@ -188,11 +188,12 @@ def test_main_bootstraps_starts_native_junior(
     monkeypatch.setattr(
         desktop_launcher,
         "create_app",
-        lambda *, settings_path, base_directory: (
+        lambda *, settings_path, base_directory, isolate_scan_process: (
             calls.update(
                 {
                     "settings_path": settings_path,
                     "base_directory": base_directory,
+                    "isolate_scan_process": isolate_scan_process,
                 }
             ),
             fake_app,
@@ -239,6 +240,7 @@ def test_main_bootstraps_starts_native_junior(
     assert calls == {
         "settings_path": settings_path,
         "base_directory": tmp_path,
+        "isolate_scan_process": True,
         "host": "127.0.0.1",
         "port": 5000,
         "app": fake_app,

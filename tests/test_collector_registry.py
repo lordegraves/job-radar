@@ -8,6 +8,7 @@ from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.incremental_cache import (
     CACHE_CONFIG_KEY,
     DETAIL_PLANNER_CONFIG_KEY,
+    record_collection_warning,
 )
 from job_radar.detail_retrieval import DetailRetrievalDecision
 from job_radar.collectors.registry import (
@@ -193,6 +194,51 @@ def test_collect_jobs_for_company_warns_when_description_is_incomplete(
     warning = config["_source_collection_warnings"][0]
     assert "selected for description retrieval" in warning
     assert "plausible" not in warning
+    assert config["_source_collection_warning_types"][warning] == (
+        "incomplete_position_detail_response_failure"
+    )
+
+
+def test_specific_detail_warning_does_not_get_duplicate_normalization_warning(
+    monkeypatch,
+) -> None:
+    def collect_with_warning(config):
+        record_collection_warning(
+            config,
+            "The source did not provide one complete description.",
+        )
+        return [
+            JobPosting(
+                company_key="synthetic",
+                company_name="Synthetic",
+                source_type="eightfold",
+                source_url="https://example.com/careers/job/123",
+                source_job_id="JR-123",
+                title="Infrastructure Engineer",
+                location="Remote",
+                description="Short listing teaser",
+                detail_retrieval_state="unavailable",
+            )
+        ]
+
+    monkeypatch.setattr(
+        "job_radar.collectors.registry.collect_eightfold_jobs",
+        collect_with_warning,
+    )
+    config = {
+        "company_key": "synthetic",
+        "name": "Synthetic",
+        "source_type": "eightfold",
+        "source_url": "https://example.com",
+        "domain": "example.com",
+    }
+
+    result = collect_jobs_for_company(config)
+
+    assert result[0].normalization_state == "incomplete"
+    assert config["_source_collection_warnings"] == [
+        "The source did not provide one complete description."
+    ]
 
 
 def test_clearly_unrelated_incomplete_listing_does_not_raise_source_warning(
