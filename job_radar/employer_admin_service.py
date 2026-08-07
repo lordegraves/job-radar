@@ -107,6 +107,7 @@ _URL_SOURCES = {
     "smartrecruiters",
     "weka",
     "workday",
+    "google_careers",
 }
 
 

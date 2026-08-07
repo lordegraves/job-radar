@@ -49,6 +49,7 @@ class CompanyWorkspaceItem:
         return {
             "adp": "ADP Workforce Now",
             "eightfold": "Eightfold",
+            "google_careers": "Google Careers",
             "html": "Public careers page",
             "oracle_hcm": "Oracle Recruiting",
         }.get(

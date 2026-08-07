@@ -131,6 +131,21 @@ def test_collect_jobs_for_company_routes_ukg(monkeypatch) -> None:
     assert result[0].normalization_state == "complete"
 
 
+def test_collect_jobs_for_company_routes_google_careers(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "job_radar.collectors.registry.collect_google_careers_jobs",
+        lambda config: [],
+    )
+    config = {
+        "company_key": "google",
+        "name": "Google",
+        "source_type": "google_careers",
+        "source_url": "https://www.google.com/about/careers/applications/jobs/results",
+    }
+
+    assert collect_jobs_for_company(config) == []
+
+
 def test_collect_jobs_for_company_routes_talentbrew(monkeypatch) -> None:
     monkeypatch.setattr(
         "job_radar.collectors.registry.collect_talentbrew_jobs",

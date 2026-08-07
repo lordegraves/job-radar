@@ -209,6 +209,7 @@ def _source_label(source_type: str) -> str:
     return {
         "adp": "ADP Workforce Now",
         "eightfold": "Eightfold",
+        "google_careers": "Google Careers",
         "html": "Standard public careers page",
         "icims": "iCIMS",
         "oracle_hcm": "Oracle Cloud HCM",

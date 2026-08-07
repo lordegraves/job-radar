@@ -152,6 +152,12 @@ COLLECTOR_CAPABILITIES = (
         "Automatic from a TalentBrew-powered careers URL",
         "Recognizes TalentBrew career sites and scans their public job listings.",
     ),
+    CollectorCapability(
+        "google_careers",
+        "Google Careers",
+        "Automatic from Google Careers URL",
+        "Scans Google's public careers search and complete job records.",
+    ),
 )
 
 

@@ -423,6 +423,21 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
             },
             scan_ready=True,
         )
+    if host in {"google.com", "www.google.com"} and parsed.path.rstrip("/") == (
+        "/about/careers/applications/jobs/results"
+    ):
+        return DetectedEmployerSource(
+            source_type="google_careers",
+            source_identifier="google-careers",
+            source_config={
+                "source_url": (
+                    "https://www.google.com/about/careers/applications/jobs/results"
+                ),
+                "careers_url": careers_url,
+                "display_name": "Google",
+            },
+            scan_ready=True,
+        )
     if host in {"lockheedmartin.com", "www.lockheedmartin.com"}:
         return DetectedEmployerSource(
             source_type="talentbrew",
@@ -1472,6 +1487,7 @@ def _source_label(source_type: str | None) -> str:
         "icims": "iCIMS",
         "ukg": "UKG Pro Recruiting",
         "eightfold": "Eightfold",
+        "google_careers": "Google Careers",
     }.get(source_type or "", "supported")
 
 

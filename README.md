@@ -78,6 +78,8 @@ are verified. See [the authoritative roadmap](docs/ROADMAP.md) and
 junior currently provides:
 
 - configured-company scanning across multiple ATS and career-site formats
+- first-class Google Careers collection with complete public descriptions,
+  stable job identifiers, location data, and bounded parallel pagination
 - bounded multi-page TalentBrew collection so large career sites such as Ford
   do not stop after the first results page
 - marker-based pagination for older generic HTML definitions backed by
@@ -111,8 +113,8 @@ junior currently provides:
 - an installation-wide employer/source catalog with independent profile assignments and per-profile enable/disable control
 - a global Collector Catalog shipped on every installation, automatic setup
   for supported ATS platforms including ADP, Recruitee, Workday, Oracle,
-  Phenom, Eightfold, UKG Pro Recruiting/UltiPro, and a validated public-page
-  fallback
+  Phenom, Eightfold, UKG Pro Recruiting/UltiPro, Google Careers, and a
+  validated public-page fallback
 - clickable Diagnostics details with safe latest-scan warnings, read-only
   company-source health, background connection testing, and selected-company
   scans that preserve the latest full-scan report

@@ -6,6 +6,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a first-class Google Careers collector. Junior now recognizes Google’s
+  public careers URL, reads every reported results page with bounded
+  concurrency, and preserves Google’s complete public descriptions,
+  qualifications, locations, compensation text, and stable job identifiers.
+  Company setup validates Google directly instead of incorrectly reporting
+  that Bing could not verify the valid public job source.
+
 - Rebuilt RC6 Build 1.17 with a Windows desktop-shell recovery path. If the
   packaged Python.NET/WinForms backend cannot initialize, Junior now records
   privacy-safe runtime evidence and opens its already-running local interface

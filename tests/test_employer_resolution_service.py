@@ -591,6 +591,53 @@ def test_unknown_site_must_pass_generic_collector_before_being_added(
     assert employer.enabled is True
 
 
+def test_google_careers_url_uses_first_class_collector() -> None:
+    detected = detect_employer_source(
+        "https://www.google.com/about/careers/applications/jobs/results"
+    )
+
+    assert detected.source_type == "google_careers"
+    assert detected.source_identifier == "google-careers"
+    assert detected.scan_ready is True
+    assert detected.source_config["display_name"] == "Google"
+
+
+def test_google_careers_url_can_be_confirmed_and_added(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    careers_url = "https://www.google.com/about/careers/applications/jobs/results"
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
+
+    detected = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        careers_url=careers_url,
+    )
+    created = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        careers_url=careers_url,
+        confirm_detected=True,
+    )
+
+    assert detected.status == DETECTED_SCAN_READY
+    assert detected.employer_name == "Google"
+    assert detected.detected_source_label == "Google Careers"
+    assert created.status == CREATED_SCAN_READY
+    employer = get_employer_source(database_path, "google")
+    assert employer is not None
+    assert employer.source_type == "google_careers"
+    assert list_profile_employer_assignments(
+        database_path, profile.profile_id
+    )[0].employer_id == "google"
+
+
 def test_unknown_site_failure_directs_user_to_safe_support(
     tmp_path: Path,
     monkeypatch,
