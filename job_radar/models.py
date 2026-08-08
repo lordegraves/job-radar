@@ -18,6 +18,10 @@ class JobPosting:
     salary_text: str | None = None
     canonical_key: str | None = None
     content_hash: str | None = None
+    # The listing fingerprint answers "must Junior fetch detail again?" while
+    # content_hash answers "did the normalized job change?" Keeping them
+    # separate prevents shared normalization from erasing collector upgrades.
+    listing_fingerprint: str | None = None
     detail_retrieval_reason: str | None = None
     detail_retrieval_state: str | None = None
     normalization_state: str | None = None

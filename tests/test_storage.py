@@ -1078,6 +1078,43 @@ def test_source_posting_cache_replaces_one_company_atomically(
     ) == {}
 
 
+def test_source_posting_cache_uses_posting_listing_fingerprint_by_default(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "cache.sqlite3"
+    initialize_database(database_path)
+    base = make_posting()
+    posting = JobPosting(
+        **{
+            **base.__dict__,
+            "listing_fingerprint": "oracle-detail-v4-fingerprint",
+        }
+    )
+    identity = posting.source_job_id or posting.source_url
+
+    replace_source_posting_cache(
+        database_path,
+        company_key=posting.company_key,
+        company_name=posting.company_name,
+        source_type=posting.source_type,
+        postings=[posting],
+        listing_fingerprints={},
+        reused_identities=set(),
+        observed_at="2026-08-08T12:00:00+00:00",
+    )
+
+    cached = fetch_source_posting_cache(
+        database_path,
+        posting.company_key,
+        posting.source_type,
+    )[identity]
+    assert cached.listing_fingerprint == "oracle-detail-v4-fingerprint"
+    assert (
+        cached.posting.listing_fingerprint
+        == "oracle-detail-v4-fingerprint"
+    )
+
+
 def test_incomplete_detail_is_not_marked_as_verified_cache(tmp_path: Path) -> None:
     database_path = tmp_path / "cache.sqlite3"
     initialize_database(database_path)

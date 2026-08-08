@@ -2322,6 +2322,7 @@ def fetch_source_posting_cache(
             description=row["description"],
             canonical_key=row["canonical_key"],
             content_hash=row["content_hash"],
+            listing_fingerprint=row["listing_fingerprint"],
         )
         cached[row["source_identity"]] = CachedSourcePosting(
             posting=posting,
@@ -2357,7 +2358,10 @@ def replace_source_posting_cache(
             identity = posting.source_job_id or posting.source_url
             if not identity:
                 continue
-            fingerprint = listing_fingerprints.get(identity, posting.content_hash or "")
+            fingerprint = listing_fingerprints.get(
+                identity,
+                posting.listing_fingerprint or posting.content_hash or "",
+            )
             existing = connection.execute(
                 """
                 SELECT detail_verified_at

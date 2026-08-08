@@ -160,6 +160,7 @@ def normalize_job_posting(posting: JobPosting) -> JobPosting:
         salary_text=salary_text,
         canonical_key=canonical_key,
         content_hash=content_hash,
+        listing_fingerprint=clean_text(posting.listing_fingerprint) or None,
         detail_retrieval_reason=posting.detail_retrieval_reason,
         detail_retrieval_state=posting.detail_retrieval_state,
         normalization_state=state,

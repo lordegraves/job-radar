@@ -132,10 +132,14 @@ def write_evaluation_audit(
                 ),
                 (
                     "Requirement comparison: "
-                    f"{len(resume_match.requirements_reviewed or [])} reviewed; "
-                    f"{len(resume_match.supported_requirements or [])} supported; "
-                    f"{len(resume_match.gaps)} gaps; "
-                    f"{len(resume_match.critical_gaps or [])} critical gaps"
+                    + (
+                        f"{len(resume_match.requirements_reviewed or [])} reviewed; "
+                        f"{len(resume_match.supported_requirements or [])} supported; "
+                        f"{len(resume_match.gaps)} gaps; "
+                        f"{len(resume_match.critical_gaps or [])} critical gaps"
+                        if resume_match.requirements_reviewed
+                        else "required qualifications not stated; gaps not verifiable"
+                    )
                     if resume_match
                     else "Requirement comparison: Not evaluated"
                 ),

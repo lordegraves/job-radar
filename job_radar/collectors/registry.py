@@ -249,7 +249,8 @@ def _recent_cached_detail(
     # title, and URL did not change; otherwise users keep seeing pre-repair data.
     if (
         posting.source_type == "oracle_hcm"
-        and getattr(cached, "listing_fingerprint", None) != posting.content_hash
+        and getattr(cached, "listing_fingerprint", None)
+        != (posting.listing_fingerprint or posting.content_hash)
     ):
         return None
     if (

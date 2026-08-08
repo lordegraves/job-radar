@@ -78,7 +78,16 @@ def _format_resume_gaps(scored_posting: ScoredPosting) -> str:
     groups: list[str] = []
     if scored_posting.resume_match.gaps:
         groups.extend(scored_posting.resume_match.gaps)
-    return "\n".join(groups) if groups else "None"
+    if groups:
+        return "\n".join(groups)
+    if not scored_posting.resume_match.requirements_reviewed:
+        # A complete posting can still omit mandatory qualifications. That is
+        # uncertainty, not proof that the candidate has no material gaps.
+        return (
+            "Qualification gaps could not be verified because the posting "
+            "does not state required qualifications"
+        )
+    return "None"
 
 
 def _get_technical_match_label(scored_posting: ScoredPosting) -> str:

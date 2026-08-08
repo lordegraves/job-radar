@@ -94,6 +94,7 @@ def test_collect_oracle_hcm_jobs_builds_posting(monkeypatch):
     assert "Security experience required." in jobs[0].description
     assert jobs[0].canonical_key
     assert jobs[0].content_hash
+    assert jobs[0].listing_fingerprint
     assert jobs[0].detail_retrieval_state == "summary_only"
 
 

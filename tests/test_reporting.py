@@ -243,6 +243,26 @@ def test_incomplete_tracked_job_does_not_claim_no_strengths_or_gaps() -> None:
     )
 
 
+def test_posting_without_required_qualifications_does_not_claim_no_gaps() -> None:
+    scored = ScoredPosting(
+        posting=make_posting(),
+        score=1,
+        score_reasons=[],
+        resume_match=ResumeMatchResult(
+            label="Medium",
+            evidence=["data center operations"],
+            gaps=[],
+            requirements_reviewed=[],
+            supported_requirements=[],
+        ),
+    )
+
+    assert _format_resume_gaps(scored) == (
+        "Qualification gaps could not be verified because the posting "
+        "does not state required qualifications"
+    )
+
+
 def test_confirmed_location_mismatch_is_not_described_as_uncertain() -> None:
     scored = ScoredPosting(
         posting=make_posting(),

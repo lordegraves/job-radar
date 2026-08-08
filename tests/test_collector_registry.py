@@ -16,6 +16,7 @@ from job_radar.collectors.registry import (
     collect_jobs_for_company,
 )
 from job_radar.models import JobPosting
+from job_radar.normalize import normalize_job_posting
 from job_radar.storage import CachedSourcePosting
 
 
@@ -359,6 +360,7 @@ def test_oracle_cache_is_refetched_after_listing_parser_changes() -> None:
         location="United States",
         description="New normalized Oracle summary",
         content_hash="new-parser-fingerprint",
+        listing_fingerprint="new-parser-fingerprint",
     )
     cached = CachedSourcePosting(
         posting=JobPosting(
@@ -375,3 +377,23 @@ def test_oracle_cache_is_refetched_after_listing_parser_changes() -> None:
         summary,
         {CACHE_CONFIG_KEY: {"337903": cached}},
     ) is None
+
+
+def test_oracle_cache_version_survives_shared_normalization() -> None:
+    summary = JobPosting(
+        company_key="oracle-example",
+        company_name="Oracle Example",
+        source_type="oracle_hcm",
+        source_url="https://example.com/job/337903",
+        source_job_id="337903",
+        title="Senior Site Reliability Engineer",
+        location="United States",
+        description="Short Oracle listing summary.",
+        listing_fingerprint="oracle-detail-v4-fingerprint",
+        detail_retrieval_state="summary_only",
+    )
+
+    normalized = normalize_job_posting(summary)
+
+    assert normalized.content_hash != summary.listing_fingerprint
+    assert normalized.listing_fingerprint == "oracle-detail-v4-fingerprint"

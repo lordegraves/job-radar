@@ -83,6 +83,10 @@ def test_about_page_shows_safe_version_and_update_details(tmp_path: Path) -> Non
     assert "What Junior does" in about_html
     assert "Scans &amp; results" in about_html
     assert "Privacy &amp; safety" in about_html
+    assert "automatically refreshes affected cached details" in about_html
+    assert "does not state any required qualifications" in about_html
+    assert "does not turn preferred qualifications into mandatory ones" in about_html
+    assert "run a new scan so Junior can refresh affected job details" in about_html
     assert "grid-template-columns: repeat(8, minmax(0, 1fr))" in about_html
     assert "white-space: nowrap" in about_html
     assert 'aria-label="Settings and diagnostics"' in about_html

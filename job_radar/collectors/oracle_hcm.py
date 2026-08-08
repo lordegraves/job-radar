@@ -19,7 +19,7 @@ DEFAULT_MAX_PAGES = 40
 # Include this in Oracle listing fingerprints whenever detail-field semantics
 # change. It makes the next scan refresh older "complete" cached descriptions
 # without deleting user data or disabling incremental scans for other sources.
-ORACLE_DETAIL_NORMALIZATION_VERSION = 3
+ORACLE_DETAIL_NORMALIZATION_VERSION = 4
 
 EXPAND_FIELDS = (
     "requisitionList.workLocation,"
@@ -166,6 +166,17 @@ def _build_posting(
     # produced by this parser version) before qualification assessment.
     detail_retrieval_state = "summary_only"
 
+    listing_fingerprint = make_content_hash(
+        title,
+        location,
+        "\n".join(
+            (
+                f"oracle-detail-v{ORACLE_DETAIL_NORMALIZATION_VERSION}",
+                description or "",
+            )
+        ),
+    )
+
     posting = JobPosting(
         company_key=company_key,
         company_name=company_name,
@@ -179,6 +190,7 @@ def _build_posting(
         salary_text=None,
         canonical_key=None,
         content_hash=None,
+        listing_fingerprint=listing_fingerprint,
         detail_retrieval_state=detail_retrieval_state,
     )
 
@@ -201,13 +213,9 @@ def _build_posting(
         content_hash=make_content_hash(
             posting.title,
             posting.location,
-            "\n".join(
-                (
-                    f"oracle-detail-v{ORACLE_DETAIL_NORMALIZATION_VERSION}",
-                    posting.description or "",
-                )
-            ),
+            posting.description,
         ),
+        listing_fingerprint=posting.listing_fingerprint,
         detail_retrieval_state=posting.detail_retrieval_state,
     )
 
