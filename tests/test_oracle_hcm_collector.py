@@ -94,6 +94,38 @@ def test_collect_oracle_hcm_jobs_builds_posting(monkeypatch):
     assert "Security experience required." in jobs[0].description
     assert jobs[0].canonical_key
     assert jobs[0].content_hash
+    assert jobs[0].detail_retrieval_state == "summary_only"
+
+
+def test_oracle_boilerplate_qualifications_still_require_detail(monkeypatch):
+    def fake_get(url, params, headers, timeout):
+        return FakeResponse(
+            _payload(
+                [
+                    {
+                        "Id": "337903",
+                        "Title": "Senior Site Reliability Engineer",
+                        "PrimaryLocation": "United States",
+                        "ExternalResponsibilitiesStr": (
+                            "Operate services.\nRequired Skills\n"
+                            "Kubernetes, Terraform, and SLO experience."
+                        ),
+                        "ExternalQualificationsStr": (
+                            "Disclaimer: Hiring Range in USD from: "
+                            "$81,100 to $187,000 per annum. Benefits apply."
+                        ),
+                    }
+                ]
+            )
+        )
+
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    job = collect_oracle_hcm_jobs(_config())[0]
+
+    assert "Required qualifications" in job.description
+    assert "$81,100 to $187,000 per annum" in job.description
+    assert job.detail_retrieval_state == "summary_only"
 
 
 def test_collect_oracle_hcm_jobs_paginates(monkeypatch):

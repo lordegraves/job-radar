@@ -1161,7 +1161,9 @@ def _handle_scan_unlocked(
 
         scored_postings = []
 
-        for posting in collected_postings:
+        scoring_total = len(collected_postings)
+        scoring_last_progress = scoring_started
+        for scoring_number, posting in enumerate(collected_postings, start=1):
             score, score_evidence = score_posting_with_evidence(
                 posting,
                 scoring_config,
@@ -1305,6 +1307,26 @@ def _handle_scan_unlocked(
                     application=application,
                 )
             )
+
+            # Keep progress visible and hand time back to the operating system
+            # during very large scans. This does not change evaluation order or
+            # decisions; it prevents one uninterrupted scoring loop from making
+            # the desktop feel locked.
+            now = monotonic()
+            if scoring_number == scoring_total or now - scoring_last_progress >= 1.0:
+                update_scan_run_progress(
+                    database_path,
+                    scan_run_id=scan_run_id,
+                    current_stage=current_stage,
+                    companies_scanned=companies_scanned,
+                    jobs_found=total_jobs,
+                    collector_errors=len(collector_errors),
+                    current_operation=(
+                        f"Evaluating job {scoring_number:,} of {scoring_total:,}"
+                    ),
+                )
+                scoring_last_progress = now
+                sleep(0.001)
 
         # AI assistance is deliberately user-requested per job. Enabling it must
         # never add paid provider calls, latency, or nondeterminism to a scan.

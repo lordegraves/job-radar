@@ -28,7 +28,9 @@ each row selects sources for connection testing. During scans, hard eligibility
 failures are discarded before résumé comparison, and the packaged local server
 uses a separate process for the CPU-heavy scan and scoring pipeline, so
 navigation, progress requests, and other pages remain responsive throughout
-scoring. In an isolated copy of an 11,140-job profile, this reduced scoring
+scoring. That worker runs below the desktop's operating-system priority and
+reports bounded job-by-job progress during large evaluation sets. In an
+isolated copy of an 11,140-job profile, this reduced scoring
 from roughly 7 minutes 22 seconds to 1 minute 23 seconds without changing the
 ten jobs surfaced for review.
 Company health can be filtered to Healthy, Needs attention, or Not tested.

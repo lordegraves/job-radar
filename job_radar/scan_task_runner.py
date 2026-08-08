@@ -1,6 +1,7 @@
 """Run one GUI-started scan without blocking the rest of the local app."""
 
 import multiprocessing
+import os
 import threading
 from collections.abc import Callable
 from typing import Any
@@ -119,8 +120,38 @@ def _run_scan_process(
     """Keep CPU-heavy scoring outside the desktop server's Python process."""
 
     try:
+        _reduce_worker_priority()
         handle_scan(**scan_arguments)
     except Exception:
         # The scan lifecycle owns sanitized diagnostics. A nonzero child exit
         # tells the parent only that the protected scan did not finish.
         raise SystemExit(1) from None
+
+
+def _reduce_worker_priority(platform_name: str | None = None) -> bool:
+    """Let the desktop remain responsive while a background scan uses the CPU."""
+
+    try:
+        if (platform_name or os.name) == "nt":
+            # BELOW_NORMAL_PRIORITY_CLASS affects only this child process. The
+            # desktop server keeps normal priority for navigation and progress.
+            import ctypes
+            from ctypes import wintypes
+
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+            kernel32.SetPriorityClass.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+            kernel32.SetPriorityClass.restype = wintypes.BOOL
+            process = kernel32.GetCurrentProcess()
+            if not kernel32.SetPriorityClass(process, 0x00004000):
+                raise ctypes.WinError(ctypes.get_last_error())
+            return True
+        else:
+            nice = getattr(os, "nice", None)
+            if callable(nice):
+                nice(5)
+                return True
+    except (AttributeError, OSError):
+        # Priority tuning is a responsiveness aid, never a scan requirement.
+        return False
+    return False

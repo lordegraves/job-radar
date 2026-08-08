@@ -3,7 +3,7 @@
 from pathlib import Path
 import threading
 
-from job_radar.scan_task_runner import ScanTaskRunner
+from job_radar.scan_task_runner import ScanTaskRunner, _reduce_worker_priority
 
 
 def _write_process_marker(marker_path: str) -> None:
@@ -38,3 +38,13 @@ def test_process_worker_finishes_outside_the_server_process(tmp_path: Path) -> N
     assert marker.read_text(encoding="utf-8") == "finished"
     assert not runner.is_running
     assert not runner.failed
+
+
+def test_worker_priority_failure_does_not_block_scan(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "job_radar.scan_task_runner.os.nice",
+        lambda value: (_ for _ in ()).throw(OSError("unsupported")),
+        raising=False,
+    )
+
+    assert not _reduce_worker_priority("posix")

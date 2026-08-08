@@ -16,6 +16,10 @@ from job_radar.normalize import clean_human_text, make_canonical_key, make_conte
 
 DEFAULT_PAGE_SIZE = 25
 DEFAULT_MAX_PAGES = 40
+# Include this in Oracle listing fingerprints whenever detail-field semantics
+# change. It makes the next scan refresh older "complete" cached descriptions
+# without deleting user data or disabling incremental scans for other sources.
+ORACLE_DETAIL_NORMALIZATION_VERSION = 3
 
 EXPAND_FIELDS = (
     "requisitionList.workLocation,"
@@ -154,14 +158,13 @@ def _build_posting(
 
     description = _build_description(requisition)
     # Responsibilities alone are not enough for a resume comparison. Oracle
-    # tenants often omit qualifications from the search payload even when they
-    # return a long responsibility section, so request the detail resource
-    # unless the listing itself contains usable qualification text.
-    detail_retrieval_state = (
-        None
-        if _clean_text(requisition.get("ExternalQualificationsStr"))
-        else "summary_only"
-    )
+    # tenants often omit important facts from the search payload even when they
+    # return a long responsibility section.
+    # Oracle frequently puts pay, benefits, and legal boilerplate in its field
+    # named ExternalQualificationsStr. The list response is therefore only a
+    # summary; plausible jobs must use the public detail resource (or a cache
+    # produced by this parser version) before qualification assessment.
+    detail_retrieval_state = "summary_only"
 
     posting = JobPosting(
         company_key=company_key,
@@ -198,7 +201,12 @@ def _build_posting(
         content_hash=make_content_hash(
             posting.title,
             posting.location,
-            posting.description,
+            "\n".join(
+                (
+                    f"oracle-detail-v{ORACLE_DETAIL_NORMALIZATION_VERSION}",
+                    posting.description or "",
+                )
+            ),
         ),
         detail_retrieval_state=posting.detail_retrieval_state,
     )

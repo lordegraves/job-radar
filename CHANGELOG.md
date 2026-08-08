@@ -17,11 +17,16 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   misleading source-field name. A changed Oracle listing-parser fingerprint
   also invalidates its older cached detail so the repair takes effect on the
   next scan without deleting user data.
+  Oracle detail-cache entries are now explicitly versioned, preventing an old
+  seven-day cache row from bypassing a newer parser when the public listing is
+  otherwise unchanged.
 
 - Kept the Windows desktop responsive throughout CPU-heavy scoring by moving
   GUI-started scans into a separate protected process. Scan lifecycle records,
   progress polling, durable writes, shutdown waiting, and CLI behavior continue
-  to use the same shared scan service.
+  to use the same shared scan service. The scan child now runs below normal
+  desktop priority and publishes bounded job-evaluation progress while yielding
+  briefly between progress intervals.
 - Corrected Microsoft/Eightfold second-chance detail retrieval to use the
   internal position ID from the public job URL rather than the display
   requisition number. Duplicate normalization/detail warnings are now folded
