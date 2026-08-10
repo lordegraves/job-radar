@@ -66,8 +66,8 @@
 
 <div class="page-card">
     <p>
-        Search for a company already in Junior by name, or paste any official
-        company webpage to add a new one. Junior will determine what happens for
+        To add a new company, paste any official company webpage. Enter a name
+        only when the company is already in Junior's local catalog. Junior will determine what happens for
         <strong>{{ catalog.active_profile.display_name }}'s</strong> profile.
     </p>
     <p class="muted">
@@ -85,13 +85,13 @@
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="retry_request_id" value="{{ retry_request_id or '' }}">
     <label for="company-search">
-        <span>Existing company name or any official company URL</span>
+        <span>Official company URL, or an existing catalog name</span>
         <input
             id="company-search"
             name="company"
             type="search"
             value="{{ submission }}"
-            placeholder="Example Company or https://www.example.com"
+            placeholder="https://www.example.com"
             autofocus
         >
     </label>

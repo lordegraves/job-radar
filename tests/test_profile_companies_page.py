@@ -613,8 +613,9 @@ def test_add_company_page_searches_safe_catalog_and_adds_available_employer(
     page_response = client.get("/companies/add?q=cafe")
     page_html = page_response.get_data(as_text=True)
 
-    assert "paste any official" in page_html
-    assert "company webpage to add a new one" in page_html
+    assert "To add a new company, paste any official" in page_html
+    assert "Enter a name" in page_html
+    assert "only when the company is already in Junior's local catalog" in page_html
     assert "homepage, careers page, department page" in page_html
 
     assert page_response.status_code == 200
@@ -729,7 +730,12 @@ def test_name_only_addition_searches_catalog_only(
     )
 
     assert response.status_code == 200
-    assert "paste any official company webpage" in response.get_data(as_text=True)
+    html = response.get_data(as_text=True)
+    assert "To add a new company, paste any official company webpage" in html
+    assert "Enter a name" in html
+    assert "only when the company is already in Junior's local catalog" in html
+    assert "Official company URL, or an existing catalog name" in html
+    assert 'placeholder="https://www.example.com"' in html
     assert get_profile(database_path, profile.profile_id).company_ids == ()
 
 

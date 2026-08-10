@@ -87,6 +87,11 @@ def test_about_page_shows_safe_version_and_update_details(tmp_path: Path) -> Non
     assert "does not state any required qualifications" in about_html
     assert "does not turn preferred qualifications into mandatory ones" in about_html
     assert "run a new scan so Junior can refresh affected job details" in about_html
+    assert "Enter a name only to select a company already" in about_html
+    assert "To discover and add a new company, paste any official company URL" in about_html
+    assert "You do not need to hunt for the recruiting platform" in about_html
+    assert "Walmart is profile-aware" in about_html
+    assert "does not send the profile name" in about_html
     assert "grid-template-columns: repeat(8, minmax(0, 1fr))" in about_html
     assert "white-space: nowrap" in about_html
     assert 'aria-label="Settings and diagnostics"' in about_html

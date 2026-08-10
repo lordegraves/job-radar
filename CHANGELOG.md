@@ -16,7 +16,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   rejects repeated, truncated, or over-limit scoped results rather than
   silently accepting an incomplete collection.
 
-- Replaced optional Bing company lookup with layered discovery from any
+- Replaced optional external company-name lookup with layered discovery from any
   official company URL. Name-only input now searches the local catalog only.
   Junior follows a bounded set of relevant official pages, recognizes linked
   recruiting platforms, derives collector configuration, validates actual
@@ -44,7 +44,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   pagination, and job-detail support are Junior's responsibility instead of
   asking users to find a more technical recruiting-platform URL. The Add
   Company form now states before submission that a public careers-page URL is
-  required unless optional Bing company lookup is enabled. Completed
+  required unless optional external company-name lookup is enabled. Completed
   background source tests refresh the Companies workspace so its health summary
   cannot remain stale until Junior is reopened.
 
@@ -93,7 +93,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   concurrency, and preserves Google’s complete public descriptions,
   qualifications, locations, compensation text, and stable job identifiers.
   Company setup validates Google directly instead of incorrectly reporting
-  that Bing could not verify the valid public job source.
+  that the retired external lookup could not verify the valid public job source.
 
 - Rebuilt RC6 Build 1.17 with a Windows desktop-shell recovery path. If the
   packaged Python.NET/WinForms backend cannot initialize, Junior now records
@@ -652,7 +652,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 - Added a two-minute overall ceiling to unfamiliar company-source discovery.
   Timed-out discovery saves no employer or profile assignment, and the Add
   Company page continues to show an active checking indicator while it runs.
-- Added a global, default-off Bing company-lookup setting with plain-language
+- Added a global, default-off external company-lookup setting with plain-language
   disclosure of its limited advantage, complete search payload, IP-address
   exposure, reliability risk, and strict separation from normal scans.
 - Distinguished an unavailable optional lookup from a completed lookup with no
@@ -681,7 +681,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   platform, latest check, and returned-job count on the normal company page.
   Users can rerun that non-destructive test without Administration access.
 - When explicitly enabled in Settings, blocked or separated employer landing
-  pages can use an optional bounded Bing lookup containing only the submitted
+  pages can use an optional bounded external lookup containing only the submitted
   company name and domain. Junior probes only identity-related results, stores
   only a verified working source, and discards rejected candidates without
   creating database clutter.
