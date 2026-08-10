@@ -137,8 +137,8 @@ COLLECTOR_CAPABILITIES = (
     CollectorCapability(
         "usajobs",
         "USAJOBS",
-        "Collector available; requires a complete USAJOBS search",
-        "Scans configured public USAJOBS searches.",
+        "API access and organization setup required",
+        "Scans configured public USAJOBS searches after the registered email and authorization key are saved securely in Settings.",
     ),
     CollectorCapability(
         "html",

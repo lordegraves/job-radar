@@ -890,6 +890,13 @@ def _handle_scan_unlocked(
                 collection_config = dict(company)
                 if source_type == "walmart":
                     collection_config.update(walmart_scope_config(job_preferences))
+                if source_type == "usajobs":
+                    collection_config.update(
+                        {
+                            "usajobs_contact_email": settings.usajobs.contact_email,
+                            "usajobs_credential_key": settings.usajobs.credential_key,
+                        }
+                    )
                 collection_config[CACHE_CONFIG_KEY] = fetch_source_posting_cache(
                     database_path,
                     str(company_key),

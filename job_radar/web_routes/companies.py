@@ -93,6 +93,7 @@ def register_company_routes(
         lambda employer_id: test_employer_connection(
             database_path,
             employer_id,
+            settings_path=settings_path,
         ),
         record_unexpected_failure=record_source_test_failure,
     )
@@ -282,6 +283,7 @@ def register_company_routes(
             test_employer_connection(
                 get_database_path(),
                 company_key,
+                settings_path=settings_path,
             )
         except EmployerConnectionError as error:
             flash(str(error), "error")

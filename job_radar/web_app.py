@@ -24,6 +24,7 @@ from job_radar.operational_event_log import (
 from job_radar.session_secret import load_or_create_session_secret
 from job_radar.profile_storage import get_active_profile
 from job_radar.first_run_service import needs_first_run_setup
+from job_radar.starter_catalog_service import seed_starter_catalog
 from job_radar.job_decision_service import (
     DECISION_PASSED,
     DECISION_SAVED,
@@ -120,6 +121,7 @@ def create_app(
         }
 
     initialize_database(runtime_paths.database_path)
+    seed_starter_catalog(runtime_paths.database_path)
     # Complete the protected one-time employer migration before any profile,
     # company, or recommendation page builds a profile-owned workspace.
     import_pending_legacy_employers(

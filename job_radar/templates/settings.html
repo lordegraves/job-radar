@@ -386,6 +386,50 @@
 
     <details
         class="settings-section"
+        id="usajobs-settings"
+        {% if open_section == "usajobs" %}open{% endif %}
+    >
+        <summary>
+            <h2>USAJOBS API access</h2>
+            <p class="settings-summary">{{ usajobs_form.status }}</p>
+        </summary>
+        <div class="settings-content">
+            <p>USAJOBS requires free API access before Junior can test or scan a federal organization. Request an authorization key from <a href="https://developer.usajobs.gov/APIRequest/Index" target="_blank" rel="noopener noreferrer">USAJOBS Developer</a>, then save the registered email and key here.</p>
+            <p class="muted">Junior stores the authorization key in your operating system's credential manager, not in settings, SQLite, logs, diagnostics, or support packages. The registered contact email is not secret and remains in settings.</p>
+            {% if usajobs_connection_test %}
+            <div class="connection-status {{ usajobs_connection_test.tone }}">
+                <span class="connection-dot" aria-hidden="true"></span>
+                {{ usajobs_connection_test.status }}
+            </div>
+            <p>{{ usajobs_connection_test.reason }}</p>
+            {% endif %}
+            <form class="settings-panel" method="post" action="{{ url_for('settings_usajobs_save') }}" data-preserve-settings-scroll>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <div class="form-grid">
+                    <label>USAJOBS registered email
+                        <input type="email" name="contact_email" value="{{ usajobs_form.contact_email }}" autocomplete="email" required>
+                    </label>
+                    <label>USAJOBS authorization key
+                        <input type="password" name="authorization_key" autocomplete="new-password">
+                        <span class="muted">Leave blank to keep the saved key. Junior never displays it.</span>
+                    </label>
+                </div>
+                <div class="inline-actions">
+                    <button type="submit">Save USAJOBS access</button>
+                    <button class="button-secondary" type="submit" formaction="{{ url_for('settings_usajobs_test') }}">Test USAJOBS access</button>
+                </div>
+            </form>
+            {% if usajobs_form.credential_saved %}
+            <form method="post" action="{{ url_for('settings_usajobs_remove') }}" data-preserve-settings-scroll>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button class="button-danger" type="submit">Remove saved USAJOBS access</button>
+            </form>
+            {% endif %}
+        </div>
+    </details>
+
+    <details
+        class="settings-section"
         id="schedule-settings"
         {% if open_section == "schedule" %}open{% endif %}
     >

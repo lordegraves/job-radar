@@ -114,6 +114,5 @@ def test_companies_page_import_appends_global_catalog_only(tmp_path: Path) -> No
     html = imported.get_data(as_text=True)
     assert "Added 1 companies to the global catalog" in html
     assert "No profile company list was changed" in html
-    assert len(list_employer_sources(destination_database)) == 1
+    assert len(list_employer_sources(destination_database)) == 51
     assert get_active_profile(destination_database).company_ids == ()
-

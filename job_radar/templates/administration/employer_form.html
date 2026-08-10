@@ -44,6 +44,12 @@
         <span class="field-help">Choose the source first, then use the matching setup page.</span>
         {% endif %}
     </label>
+    {% if selected_source == "usajobs" %}
+    <div class="page-card warning-card">
+        <strong>USAJOBS API access is required</strong>
+        <p>Junior cannot test or scan this organization until the registered contact email and authorization key are saved in <a href="{{ url_for('settings', section='usajobs') }}">Settings &rarr; USAJOBS API access</a>. The key belongs in the operating-system credential manager, never in this employer form or its notes.</p>
+    </div>
+    {% endif %}
     {% for field in fields %}
     <label>{{ field.label }}{% if not field.required %} (optional){% endif %}
         <input name="{{ field.key }}" value="{{ field_values.get(field.key, '') }}" {% if field.required %}required{% endif %}>

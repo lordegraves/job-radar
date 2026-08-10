@@ -895,7 +895,6 @@ def _resolve_generic_source(
     discoveries = _discover_branded_sources(
         normalized_url,
         discovery_observer=discovery_observer,
-        walmart_scope=walmart_scope,
     )
     discoveries.append(
         DetectedEmployerSource(
@@ -909,6 +908,7 @@ def _resolve_generic_source(
         discoveries,
         display_name=display_name,
         discovery_observer=discovery_observer,
+        walmart_scope=walmart_scope,
     )
     if tested_source is None:
         return EmployerResolutionResult(

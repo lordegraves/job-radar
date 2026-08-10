@@ -23,6 +23,7 @@ from job_radar.employer_resolution_service import (
     _eightfold_detection_from_html,
     _discover_branded_sources,
     _first_working_source,
+    _resolve_generic_source,
     _talentbrew_detection_from_html,
     detect_employer_source,
     normalize_careers_url,
@@ -797,6 +798,37 @@ def test_unknown_site_failure_directs_user_to_safe_support(
     assert "claytonmgraves@outlook.com" in result.message
     assert "Do not send passwords" in result.message
     assert list_profile_employer_assignments(database_path, profile.profile_id) == []
+
+
+def test_generic_discovery_accepts_profile_scope_without_changing_page_traversal(
+    monkeypatch,
+) -> None:
+    observed = {}
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda url, **kwargs: [],
+    )
+
+    def first_working(discoveries, **kwargs):
+        observed.update(kwargs)
+        return None
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._first_working_source",
+        first_working,
+    )
+
+    result = _resolve_generic_source(
+        display_name="Example Kitchens",
+        normalized_url="https://example.invalid/careers",
+        discovery_observer=None,
+        walmart_scope={"walmart_target_roles": ["Platform Engineer"]},
+    )
+
+    assert result.status == UNSUPPORTED_SITE
+    assert observed["walmart_scope"] == {
+        "walmart_target_roles": ["Platform Engineer"]
+    }
 
 
 def test_unknown_site_discovery_has_an_overall_timeout_and_writes_nothing(

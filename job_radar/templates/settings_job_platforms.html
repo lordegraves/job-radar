@@ -33,7 +33,12 @@
             {% for capability in capabilities %}
             <tr>
                 <td><strong>{{ capability.name }}</strong></td>
-                <td>{{ capability.setup }}</td>
+                <td>
+                    {{ capability.setup }}
+                    {% if capability.source_type == "usajobs" %}
+                    <br><a href="{{ url_for('settings', section='usajobs') }}">Configure USAJOBS API access</a>
+                    {% endif %}
+                </td>
                 <td>{{ capability.description }}</td>
             </tr>
             {% endfor %}

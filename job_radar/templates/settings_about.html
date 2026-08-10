@@ -204,9 +204,10 @@
         <summary><h2>Settings and backups</h2><p>Email, scheduling, retention, backup, and recovery.</p></summary>
         <div class="help-content">
             <ul>
-                <li><strong>Settings</strong> controls report retention, optional email delivery, scan scheduling, and application preferences.</li>
+                <li><strong>Settings</strong> controls report retention, optional email delivery, USAJOBS API access, scan scheduling, and application preferences.</li>
                 <li>Profile / Resume can transfer profile configuration without résumés or job activity.</li>
                 <li>Companies can append public collector definitions without replacing the receiving catalog or changing profile assignments.</li>
+                <li>New and upgraded installations receive a 50-employer starter catalog. None are selected automatically, and removing one does not cause Junior to restore it later.</li>
                 <li>Administration contains full backup, restore, export, and other installation-wide controls.</li>
                 <li>A Junior backup includes application-owned settings and data, but never operating-system credentials.</li>
                 <li>Updates and repairs replace application files while preserving user-owned data.</li>
@@ -222,6 +223,7 @@
                 <li>Your profile, résumé, decisions, applications, history, reports, and database remain in Junior's local user-data directory.</li>
                 <li>Company scans request public career-site information. Employers and their service providers can see ordinary network connection details.</li>
                 <li>For Walmart, Junior sends the active profile's target-role and preferred-location search terms to Walmart's public careers service. It does not send the profile name, rÃ©sumÃ©, skills, compensation, exclusions, applications, history, or credentials.</li>
+                <li>USAJOBS organizations require API access. Add the registered email and authorization key under <strong>Settings → USAJOBS API access</strong>. Junior stores the key only in the operating-system credential manager.</li>
                 <li>Email sends a generated report only when you configure and request it.</li>
                 <li>Company setup reads only the public company pages you submit and the public job-platform pages they advertise.</li>
                 <li>Never send a résumé, database, password, access token, or API key with a normal support request.</li>

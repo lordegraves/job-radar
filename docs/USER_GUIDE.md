@@ -568,13 +568,38 @@ downloads complete descriptions for those jobs. Changing profiles changes the
 scope used by the next scan; the preferences are never stored in Walmart's
 shared company definition.
 
+USAJOBS requires API access before Junior can test or scan a configured federal
+organization. Request a key from the USAJOBS Developer site, then open
+**Settings → USAJOBS API access** and enter the registered contact email and
+authorization key. Junior stores the key in the operating-system credential
+manager and never writes it to settings, SQLite, logs, diagnostics, backups, or
+support packages. The email is a required USAJOBS request header and is stored
+as ordinary non-secret configuration. Leave the key field blank when saving
+later changes to retain the current key. Use **Test USAJOBS access** to verify
+the saved values, or **Remove saved USAJOBS access** to delete the key. Advanced
+CLI and server deployments may continue using the documented environment
+variables instead.
+
 An unfinished setup attempt created by an earlier Junior build appears in **Company setup requests**. **Retry setup** reruns current discovery, while **Remove attempt** hides the legacy attempt after confirmation without deleting a working company, job, application, or history record. New failed submissions do not add rows to this queue. After a company is added successfully, Junior returns to **Your Companies** with a temporary, dismissible confirmation instead of leaving the old URL in the form. Open a company to see whether its job source is connected, which recruiting platform it uses, when it was last checked, and how many jobs the latest check returned. **Test job source** safely reruns that public read without importing jobs or requiring Administration access. Background test completion refreshes the saved source-health summary automatically. Open the same page to correct a spelling mistake in the shared name; this changes the installation-wide display name but preserves the working collector configuration and existing history. **Remove from this profile** removes only the active profile's scanning assignment. Permanent global employer deletion remains protected in Administration.
 
 The global **Collector Catalog** is available from Settings and Administration
-on every installation, including a fresh installation with no employers. It
-describes the job platforms Junior knows how to scan. This catalog is separate
-from the global **Employer Catalog**, which remains empty on a new installation
-until users add employers.
+on every installation and describes the job platforms Junior knows how to
+scan. The separate **Employer Catalog** starts with 50 release-tested employers.
+Junior adds no starter employer to a profile automatically: choose only the
+ones you want scanned. Upgrades append a missing starter catalog version without
+overwriting an existing employer, changing profile assignments, or restoring a
+starter employer that was later removed.
+
+The RC6 Build 1.19 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
+Block, Brex, Canonical, Carta, Carvana, Chime, Cloudflare, Coinbase, Coursera,
+Datadog, Discord, DoorDash, Dropbox, Duolingo, Elastic, Figma, Ford Motor
+Company, GitLab, Google, Grafana Labs, Gusto, HelloFresh, HubSpot, Instacart,
+Khan Academy, Lucid Motors, Lyft, Microsoft, MongoDB, Mozilla, Okta, Oscar
+Health, Peloton, Pinterest, Reddit, Relativity Space, Robinhood, Samsara, SoFi,
+Stripe, Sweetgreen, Toast, Vox Media, Walmart, Waymo, and Wikimedia Foundation.
+This is also the field-test list. Testers should add only relevant employers,
+run **Test job source**, and verify that a normal scan returns current jobs with
+complete descriptions and more than the first results page where applicable.
 
 ### Company-discovery field-test matrix
 

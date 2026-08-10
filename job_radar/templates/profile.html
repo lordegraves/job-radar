@@ -404,13 +404,8 @@
         <div>
             <dt>Companies</dt>
             <dd>
-                {% if company_workspace.total_companies %}
-                {{ company_workspace.total_companies }}
-                compan{{ "y" if company_workspace.total_companies == 1 else "ies" }}
-                configured
-                {% else %}
-                No companies configured
-                {% endif %}
+                {{ company_workspace.scanning_companies }} selected for scanning;
+                {{ company_workspace.total_companies }} available
                 <span class="actions">
                 <a class="button-link button-secondary" href="{{ url_for('companies') }}">Manage companies</a>
                 </span>

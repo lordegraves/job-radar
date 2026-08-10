@@ -2822,6 +2822,41 @@ def test_llm_connection_endpoint_reports_feature_under_development(
     assert 'id="llm-settings" open' in " ".join(html.split())
 
 
+def test_settings_explains_and_saves_usajobs_api_access(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_file, database_file)
+    saved = {}
+    monkeypatch.setattr(
+        "job_radar.web_routes.settings.save_usajobs_settings",
+        lambda path, **kwargs: saved.update(kwargs),
+    )
+    client = create_app(settings_path=str(settings_file)).test_client()
+
+    page = client.get("/settings?section=usajobs").get_data(as_text=True)
+    response = client.post(
+        "/settings/usajobs",
+        data={
+            "contact_email": "tester@example.com",
+            "authorization_key": "private-form-key",
+        },
+        follow_redirects=True,
+    )
+    html = response.get_data(as_text=True)
+
+    assert "USAJOBS API access" in page
+    assert "requires free API access" in page
+    assert "operating system's credential manager" in page
+    assert "USAJOBS API access saved securely" in html
+    assert saved == {
+        "contact_email": "tester@example.com",
+        "authorization_key": "private-form-key",
+    }
+
+
 def test_llm_save_endpoint_cannot_enable_feature(tmp_path: Path) -> None:
     settings_file = tmp_path / "settings.yaml"
     database_file = tmp_path / "job_radar.sqlite3"
@@ -2898,7 +2933,7 @@ def test_diagnostics_page_shows_safe_health_summary(tmp_path: Path) -> None:
     assert "Email delivery" in html
     assert "Category: Configuration" in html
     assert "Raw exceptions" in html
-    assert "No company sources are configured yet." in html
+    assert "50 source(s) are enabled" in html
     assert "startup-errors.log" in html
     assert "Developer logs" in html
     assert "newest sanitized startup entry" in html
@@ -5822,7 +5857,8 @@ def test_profile_summary_and_edit_page_have_separate_jobs(tmp_path: Path) -> Non
     assert "Disabled" in summary_html
     assert "Not shown" not in summary_html
     assert "Companies" in summary_html
-    assert "No companies configured" in summary_html
+    assert "0 selected for scanning;" in summary_html
+    assert "50 available" in summary_html
     assert 'href="/companies"' in summary_html
     assert "Manage companies" in summary_html
     assert f'href="/profile/{profile.profile_id}/edit"' in summary_html
@@ -6402,7 +6438,7 @@ def test_supported_job_platforms_are_visible_without_employers(
         employer_count = connection.execute(
             "SELECT COUNT(*) FROM employer_sources"
         ).fetchone()
-    assert employer_count is not None and employer_count[0] == 0
+    assert employer_count is not None and employer_count[0] == 50
 
 
 def test_web_startup_imports_pending_legacy_companies(
@@ -6464,5 +6500,5 @@ companies:
             "SELECT COUNT(*) FROM profile_company_associations"
         ).fetchone()
     assert pending is not None and pending[0] == 0
-    assert employer_count is not None and employer_count[0] == 1
+    assert employer_count is not None and employer_count[0] == 51
     assert association_count is not None and association_count[0] == 1

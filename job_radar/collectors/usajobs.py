@@ -7,6 +7,7 @@ from typing import Any
 
 from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.credential_store import CredentialStoreError, get_credential
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
 
@@ -16,18 +17,33 @@ DEFAULT_RESULTS_PER_PAGE = 100
 MAX_PAGES = 5
 
 
-def _get_required_env(name: str) -> str:
-    value = os.environ.get(name)
-    if not value:
-        raise CollectorError(f"Missing required environment variable: {name}")
-    return value
-
-
-def _build_headers() -> dict[str, str]:
+def _build_headers(company_config: dict[str, Any]) -> dict[str, str]:
+    user_agent = str(company_config.get("usajobs_contact_email") or "").strip()
+    credential_reference = str(
+        company_config.get("usajobs_credential_key") or ""
+    ).strip()
+    authorization_key = ""
+    if credential_reference:
+        try:
+            authorization_key = get_credential(credential_reference) or ""
+        except CredentialStoreError as error:
+            raise CollectorError(
+                "USAJOBS secure credential storage is unavailable."
+            ) from error
+    # Environment variables remain a compatibility fallback for CLI and
+    # server deployments. Desktop users configure these values in Settings.
+    user_agent = user_agent or os.environ.get("USAJOBS_USER_AGENT", "").strip()
+    authorization_key = authorization_key or os.environ.get(
+        "USAJOBS_AUTHORIZATION_KEY", ""
+    ).strip()
+    if not user_agent or not authorization_key:
+        raise CollectorError(
+            "USAJOBS API access is required. Open Settings and configure USAJOBS."
+        )
     return {
         "Host": "data.usajobs.gov",
-        "User-Agent": _get_required_env("USAJOBS_USER_AGENT"),
-        "Authorization-Key": _get_required_env("USAJOBS_AUTHORIZATION_KEY"),
+        "User-Agent": user_agent,
+        "Authorization-Key": authorization_key,
     }
 
 
@@ -183,7 +199,7 @@ def _get_total_pages(payload: dict[str, Any]) -> int:
 
 
 def collect_usajobs(company_config: dict[str, Any]) -> list[JobPosting]:
-    headers = _build_headers()
+    headers = _build_headers(company_config)
     postings: list[JobPosting] = []
 
     for page in range(1, MAX_PAGES + 1):

@@ -143,6 +143,13 @@ resume content, skills, compensation preferences, exclusions, application
 history, or credentials. Those search terms are used in memory for the current
 request and are not stored in Walmart's shared company definition.
 
+USAJOBS authorization keys are stored only through the operating-system
+credential manager. Settings contains the registered USAJOBS contact email and
+a non-secret credential reference, never the key. Tests, logs, diagnostics,
+backups, profile exports, and support packages must not contain the key. CLI and
+server deployments may provide the registered email and key through their
+process environment; normal desktop users configure them through Settings.
+
 The manual update check sends Junior's installed version to GitHub's public
 releases API. It does not download or install software. Junior contains no
 application analytics, advertising tracker, central learning service, or

@@ -98,6 +98,14 @@ class LlmSettings:
 
 
 @dataclass(frozen=True)
+class UsaJobsSettings:
+    """USAJOBS API identity without containing the authorization key."""
+
+    contact_email: str
+    credential_key: str
+
+
+@dataclass(frozen=True)
 class ApplicationSettings(Mapping[str, Any]):
     """Application-owned settings loaded from the current settings YAML file.
 
@@ -114,6 +122,7 @@ class ApplicationSettings(Mapping[str, Any]):
     email: EmailSettings
     retention: RetentionSettings
     llm: LlmSettings
+    usajobs: UsaJobsSettings
     _data: dict[str, Any] = field(repr=False, compare=False)
 
     @property
@@ -223,6 +232,7 @@ def load_settings(
     email = _validate_email_settings(data.get("email", {}))
     retention = _validate_retention_settings(data.get("retention", {}))
     llm = _validate_llm_settings(data.get("llm", {}))
+    usajobs = _validate_usajobs_settings(data.get("usajobs", {}))
 
     # Preserve the original mapping shape during the compatibility migration.
     # Existing CLI and GUI callers can keep using [] and .get() until each
@@ -244,7 +254,27 @@ def load_settings(
         email=email,
         retention=retention,
         llm=llm,
+        usajobs=usajobs,
         _data=normalized_data,
+    )
+
+
+def _validate_usajobs_settings(raw_usajobs: Any) -> UsaJobsSettings:
+    if raw_usajobs is None:
+        raw_usajobs = {}
+    if not isinstance(raw_usajobs, dict):
+        raise ConfigError("settings.yaml usajobs section must be a mapping")
+    contact_email = raw_usajobs.get("contact_email", "")
+    credential_key = raw_usajobs.get("credential_key", "")
+    if not isinstance(contact_email, str):
+        raise ConfigError("settings.yaml usajobs.contact_email must be a string")
+    if not isinstance(credential_key, str):
+        raise ConfigError("settings.yaml usajobs.credential_key must be a string")
+    if contact_email.strip() and "@" not in contact_email:
+        raise ConfigError("settings.yaml usajobs.contact_email must be an email address")
+    return UsaJobsSettings(
+        contact_email=contact_email.strip(),
+        credential_key=credential_key.strip(),
     )
 
 

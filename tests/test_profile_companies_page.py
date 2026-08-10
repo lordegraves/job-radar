@@ -109,7 +109,7 @@ def test_companies_page_shows_global_catalog_with_profile_scan_state(
     assert "Companies and source health" in html
     assert '<details class="page-card company-health-section" id="company-sources">' in html
     assert '<details class="page-card company-health-section" id="company-sources" open>' not in html
-    assert "Verification needed: 3 sources have not been tested." in html
+    assert "Verification needed: 53 sources have not been tested." in html
     assert "Test all untested sources" in html
     assert "Test selected sources" in html
     assert 'class="test-selection-column"' in html
@@ -176,8 +176,8 @@ def test_companies_page_collapsed_source_health_summary_turns_green(
     client.post("/companies/healthy_company/test-source")
     html = client.get("/companies").get_data(as_text=True)
 
-    assert "Healthy: all 1 company source is working." in html
-    assert 'class="company-health-overall status-enabled"' in html
+    assert "Verification needed: 50 sources have not been tested." in html
+    assert 'class="company-health-overall status-disabled"' in html
 
 
 def test_company_source_test_normal_form_submission_returns_to_companies(
@@ -383,8 +383,9 @@ def test_companies_page_shows_empty_profile_guidance(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "No companies have been added to this search yet." in html
-    assert "will not scan employers from another profile" in html
+    assert "50" in html
+    assert "Walmart" in html
+    assert "Choose which companies Junior scans" in html
 
 
 def test_companies_page_can_pause_and_resume_active_profile_company(

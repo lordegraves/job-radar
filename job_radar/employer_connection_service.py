@@ -11,6 +11,7 @@ from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.icims import AUTHORITATIVE_EMPTY_CONFIG_KEY
 from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.collectors.walmart import walmart_scope_config
+from job_radar.config import load_settings
 from job_radar.database import connect_database
 from job_radar.diagnostic_service import classify_collector_failure
 from job_radar.employer_admin_service import validate_source_configuration
@@ -51,6 +52,8 @@ class EmployerConnectionError(ValueError):
 def test_employer_connection(
     database_path: str | Path,
     employer_id: str,
+    *,
+    settings_path: str | Path | None = None,
 ) -> EmployerConnectionHealth:
     """Run a bounded collector read and persist only a sanitized outcome."""
 
@@ -59,15 +62,26 @@ def test_employer_connection(
         raise EmployerConnectionError("That employer no longer exists.")
 
     issues = validate_source_configuration(employer)
-    if employer.source_type == "usajobs" and not all(
-        os.environ.get(name)
-        for name in ("USAJOBS_USER_AGENT", "USAJOBS_AUTHORIZATION_KEY")
-    ):
+    usajobs_settings = (
+        load_settings(settings_path).usajobs if settings_path is not None else None
+    )
+    has_usajobs_access = bool(
+        (
+            usajobs_settings
+            and usajobs_settings.contact_email
+            and usajobs_settings.credential_key
+        )
+        or all(
+            os.environ.get(name)
+            for name in ("USAJOBS_USER_AGENT", "USAJOBS_AUTHORIZATION_KEY")
+        )
+    )
+    if employer.source_type == "usajobs" and not has_usajobs_access:
         health = _error_health(
             "configuration",
             "USAJobs API access is not configured on this computer. Junior "
             "needs a USAJobs contact email and authorization key before it can "
-            "test or scan federal sources.",
+            "test or scan federal sources. Open Settings and configure USAJOBS.",
         )
     elif issues:
         message = (
@@ -83,6 +97,13 @@ def test_employer_connection(
     else:
         try:
             source_config = employer.to_company_config()
+            if employer.source_type == "usajobs" and usajobs_settings is not None:
+                source_config.update(
+                    {
+                        "usajobs_contact_email": usajobs_settings.contact_email,
+                        "usajobs_credential_key": usajobs_settings.credential_key,
+                    }
+                )
             if employer.source_type == "walmart":
                 active_profile = get_active_profile(database_path)
                 source_config.update(

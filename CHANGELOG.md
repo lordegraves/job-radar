@@ -6,6 +6,18 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a versioned 50-employer starter catalog built from sources that returned
+  current jobs through Junior's collectors. It is append-only, creates no
+  profile assignments, preserves existing employer definitions, does not alter
+  first-run detection, and does not restore a starter entry after the user
+  removes it.
+- Added normal-user USAJOBS API credential management under Settings. The
+  registered contact email is stored as non-secret configuration, while the
+  authorization key is saved only in the operating-system credential manager.
+  Users can save, replace, test, and remove access; collector and employer setup
+  guidance links directly to the required Settings section. Environment
+  variables remain a backward-compatible CLI/server fallback.
+
 - Added a first-class, profile-aware Walmart Careers collector. Junior detects
   Walmart's ordinary careers URL, searches the public Walmart-family catalog
   using the active profile's declared target roles and preferred locations,

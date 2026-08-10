@@ -9,6 +9,12 @@ retention:
   log_policy: latest_only
   log_count: 1
 
+# USAJOBS requires a registered contact email and authorization key. The key
+# is stored in the operating-system credential manager through Settings.
+usajobs:
+  contact_email: ""
+  credential_key: ""
+
 # Optional external advisory is off until the user reviews and accepts the
 # privacy warning, then stores an API key in the OS credential manager.
 llm:

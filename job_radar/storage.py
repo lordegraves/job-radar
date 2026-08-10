@@ -374,6 +374,11 @@ def _schema_migrations() -> tuple:
             "add employer source-change verification state",
             _migrate_employer_source_change_verification,
         ),
+        (
+            35,
+            "add versioned starter employer catalog",
+            _migrate_starter_employer_catalog,
+        ),
     )
 
 
@@ -798,6 +803,28 @@ def _migrate_employer_sources(connection: sqlite3.Connection) -> None:
             )
             """
         )
+
+
+def _migrate_starter_employer_catalog(connection: sqlite3.Connection) -> None:
+    """Track packaged seeds without treating them as user-created employers."""
+
+    existing_columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(employer_sources)").fetchall()
+    }
+    if "catalog_origin" not in existing_columns:
+        connection.execute(
+            "ALTER TABLE employer_sources ADD COLUMN "
+            "catalog_origin TEXT NOT NULL DEFAULT 'user'"
+        )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS starter_catalog_versions (
+            catalog_version INTEGER PRIMARY KEY,
+            applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
 
 
 def _migrate_employer_catalog_administration(

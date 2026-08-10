@@ -85,6 +85,13 @@ from job_radar.update_install_service import (
     download_verified_update,
     launch_windows_installer,
 )
+from job_radar.usajobs_settings_service import (
+    UsaJobsSettingsError,
+    load_usajobs_settings_form,
+    remove_usajobs_settings,
+    save_usajobs_settings,
+    test_usajobs_settings,
+)
 
 
 @dataclass(frozen=True)
@@ -126,6 +133,8 @@ def register_settings_routes(
             schedule_view=build_schedule_view(runtime_paths.database_path),
             scheduler_integration=inspect_scheduler(),
             llm_connection_test=session.get("llm_connection_test"),
+            usajobs_form=load_usajobs_settings_form(settings_path),
+            usajobs_connection_test=session.get("usajobs_connection_test"),
             open_section=request.args.get("section", "").strip(),
         )
 
@@ -464,6 +473,50 @@ def register_settings_routes(
         session.pop("llm_connection_test", None)
         flash("AI résumé tailoring is under development.", "info")
         return _settings_section_redirect("llm")
+
+    @app.post("/settings/usajobs")
+    def settings_usajobs_save():
+        session.pop("usajobs_connection_test", None)
+        try:
+            save_usajobs_settings(
+                settings_path,
+                contact_email=request.form.get("contact_email", ""),
+                authorization_key=request.form.get("authorization_key", ""),
+            )
+        except UsaJobsSettingsError as error:
+            flash(str(error), "error")
+        else:
+            flash("USAJOBS API access saved securely.", "success")
+        return _settings_section_redirect("usajobs")
+
+    @app.post("/settings/usajobs/test")
+    def settings_usajobs_test():
+        try:
+            message = test_usajobs_settings(settings_path)
+        except UsaJobsSettingsError as error:
+            session["usajobs_connection_test"] = {
+                "tone": "error",
+                "status": "Needs attention",
+                "reason": str(error),
+            }
+        else:
+            session["usajobs_connection_test"] = {
+                "tone": "success",
+                "status": "Connected",
+                "reason": message,
+            }
+        return _settings_section_redirect("usajobs")
+
+    @app.post("/settings/usajobs/remove")
+    def settings_usajobs_remove():
+        session.pop("usajobs_connection_test", None)
+        try:
+            remove_usajobs_settings(settings_path)
+        except UsaJobsSettingsError as error:
+            flash(str(error), "error")
+        else:
+            flash("USAJOBS API access removed from this computer.", "success")
+        return _settings_section_redirect("usajobs")
 
     @app.post("/settings/schedule/system/apply")
     def settings_schedule_system_apply():

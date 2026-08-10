@@ -92,6 +92,10 @@ junior currently provides:
   matching the active profile's target roles and preferred locations, carries
   Walmart's server-side scope across pagination, and retrieves complete job
   descriptions without ingesting its roughly 45,000 unrelated openings
+- GUI-managed USAJOBS API access: Settings stores the registered contact email
+  as non-secret configuration and keeps the authorization key only in the
+  operating-system credential manager; environment variables remain an
+  advanced CLI/server fallback
 - bounded multi-page TalentBrew collection so large career sites such as Ford
   do not stop after the first results page
 - marker-based pagination for older generic HTML definitions backed by
@@ -135,6 +139,9 @@ junior currently provides:
 - scan lifecycle records, progress state, cross-process locking, stage-specific failures, and bounded pagination
 - non-blocking GUI scans with app-wide progress and completion notifications
 - an installation-wide employer/source catalog with independent profile assignments and per-profile enable/disable control
+- a 50-employer starter catalog on new and upgraded installations; it adds no
+  profile assignments, never replaces user-managed definitions, and is applied
+  only once so a company the user removes stays removed
 - a global Collector Catalog shipped on every installation, automatic setup
   for supported ATS platforms including ADP, Recruitee, Workday, Oracle,
   Phenom, Eightfold, UKG Pro Recruiting/UltiPro, Google Careers, and a
@@ -178,6 +185,16 @@ set of relevant public links, derives the recruiting-platform configuration,
 uses the collector's normal pagination, and saves nothing until it validates
 actual public jobs. An unsupported result saves no partial company and does not
 ask the user to hunt for a technical ATS URL.
+
+USAJOBS is the exception because its public search API requires credentials
+issued to the user. Request free API access from the USAJOBS Developer site,
+then open **Settings → USAJOBS API access** and save the registered contact
+email and authorization key. Use **Test USAJOBS access** before configuring a
+federal organization. Junior keeps the key only in the operating-system
+credential manager and stores only the non-secret email and credential
+reference in settings. Normal desktop users do not need environment variables;
+the existing environment-variable path remains available for advanced CLI and
+server deployments.
 
 Junior owns application identifiers. The internal Junior ID is hidden from
 normal forms and reports. A scan-linked application reuses the identifier

@@ -165,9 +165,9 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
 
     companies_html = client.get("/setup/companies").get_data(as_text=True)
     assert "Step 3 of 4" in companies_html
-    assert "<strong>0</strong> companies are currently included" in " ".join(
-        companies_html.split()
-    )
+    normalized_companies = " ".join(companies_html.split())
+    assert "<strong>50</strong> companies are available" in normalized_companies
+    assert "<strong>0</strong> are selected" in normalized_companies
 
     review_response = client.post("/setup/review")
     assert review_response.headers["Location"] == "/setup/review"

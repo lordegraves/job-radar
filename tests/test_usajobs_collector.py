@@ -6,6 +6,7 @@ import pytest
 
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.usajobs import (
+    _build_headers,
     _build_params,
     _parse_search_items,
 )
@@ -38,6 +39,31 @@ def test_build_params_includes_extra_query_params():
     assert params["Organization"] == "NN"
     assert params["Keyword"] == "linux"
     assert "LocationName" not in params
+
+
+def test_build_headers_uses_gui_credential_reference(monkeypatch):
+    monkeypatch.setattr(
+        "job_radar.collectors.usajobs.get_credential",
+        lambda reference: "saved-key" if reference == "usajobs:key" else None,
+    )
+
+    headers = _build_headers(
+        make_company(
+            usajobs_contact_email="tester@example.com",
+            usajobs_credential_key="usajobs:key",
+        )
+    )
+
+    assert headers["User-Agent"] == "tester@example.com"
+    assert headers["Authorization-Key"] == "saved-key"
+
+
+def test_build_headers_explains_gui_setup_when_access_is_missing(monkeypatch):
+    monkeypatch.delenv("USAJOBS_USER_AGENT", raising=False)
+    monkeypatch.delenv("USAJOBS_AUTHORIZATION_KEY", raising=False)
+
+    with pytest.raises(CollectorError, match="Open Settings"):
+        _build_headers(make_company())
 
 
 def test_parse_search_items_returns_job_postings():
