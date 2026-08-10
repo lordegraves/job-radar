@@ -210,35 +210,30 @@ These corrections must be implemented and verified before RC5 is accepted:
   and provide safe retry, removal, and support paths without exposing raw
   network or collector failures.
 
-### External company-source lookup (Release Requirement)
+### Layered company-source discovery (Release Requirement)
 
-Junior remains local-first. It must exhaust local source detection and its
-packaged collector catalog before contacting an external search provider.
+Junior remains local-first and does not use a general web-search provider for
+company setup. A name searches only the installation's existing employer
+catalog. Any official company URL may seed bounded public-page discovery.
 
 | Requirement | Status Planned/Completed | Release behavior |
 | --- | --- | --- |
-| Local-first trigger | Completed | An external lookup may run only after local source detection and packaged collector probes cannot identify a working source. |
-| Service disclosure | Completed | Junior must identify the specific external service before sending a request and must document any future provider change. |
-| Exact payload disclosure | Completed | Junior must disclose the exact request payload, including every transmitted field, and the network metadata the provider may observe, including the user's IP address. |
-| Data minimization | Completed | Only the minimum public company identity may be sent: company name and public domain. Profile information, résumé contents, desired roles, locations, application history, contact details, database contents, URL paths, query parameters, and fragments must not be sent. |
-| User consent and control | Completed | External Bing lookup must be controlled by one installation-wide on/off setting that defaults to **Off**. Settings must clearly explain its limited advantage, transmitted data, privacy tradeoffs, and lack of guaranteed availability. Changing it must affect only future company setup attempts, never existing companies or normal scans. |
-| Bounded timing | Completed | Public page and search requests have individual timeouts, unfamiliar-source discovery stops after two minutes, and the Add Company page shows an animated checking state. A timeout writes no employer or profile assignment. |
-| Offline and unavailable-service behavior | Completed | Junior must explain that local discovery completed but the optional external lookup could not run. It must not silently retry later, create an unfinished company, or imply that the source works. |
-| Independent validation | Completed | External lookup results are never authoritative. They may propose candidate career sources, but Junior independently validates every suggested source using its normal collector validation before saving anything. |
-| Transient working data | Completed | Candidate sources, failed probes, intermediate search results, and external-search responses are transient. They do not become durable application data unless a final company source has been independently validated and accepted. |
-| Visible lookup outcome | Completed | Junior must tell the user when an external lookup was used and whether it found a source, without exposing raw search responses or unsafe diagnostics. |
+| Local catalog names | Completed | Name-only input searches the existing local catalog and never performs an external search. |
+| Flexible official URL | Completed | Users may submit a homepage, careers page, department page, search page, or public job posting instead of locating an ATS URL. |
+| Bounded traversal | Completed | Junior follows only a bounded set of relevant public pages and related official hosts, with request, page-count, document-size, and overall time limits. |
+| Platform derivation | In Progress | Junior recognizes direct platform URLs, advertised links, redirects, metadata, and supported custom-domain fingerprints. Each platform is labeled automatic only after this path is verified. |
+| Normal-depth validation | Completed | Candidate sources use their normal collector pagination during setup; no one-page shortcut may prove a source healthy. |
+| Actual-job proof | Completed | Junior saves a company only after the selected collector returns actual public job records. Empty, blocked, or incompatible candidates create no company. |
+| Privacy-safe reconstruction | Completed | Unified diagnostics record bounded page, host, candidate, collector, outcome, timing, and job-count evidence without secrets, profile contents, raw errors, or URL query data. |
+| Honest failure | Completed | Unsupported results identify a Junior compatibility limitation, do not ask users to hunt for another URL, and provide a safe support path. |
 
-### Current implementation (RC5 observations)
+### Current implementation (RC6 Build 1.19 observations)
 
-- RC5 uses Bing only when the installation-wide setting is enabled and the
-  submitted public page, local source detection, packaged collector probes,
-  and generic HTML collection do not produce a working source. The setting
-  defaults to Off, and normal scans never use Bing.
-- The Bing request currently sends a search phrase derived from the submitted
-  company name and public hostname plus the words `official careers jobs`, and
-  requests an RSS response.
-- The search request currently has a 20-second timeout. Failed requests return
-  no candidates and do not create a company.
+- Optional Bing lookup and its Settings control have been removed.
+- NetApp's ordinary careers homepage resolves to TalentBrew and returned 302
+  actual jobs across its public result depth during the 2026-08-10 live check.
+- Walmart and Nutanix remain documented unsupported field-test cases because
+  candidate collectors could not independently return actual jobs.
 - The complete unfamiliar-source discovery operation stops after two minutes.
   The interface shows an animated checking message while it runs. If the limit
   is reached, Junior saves no employer or profile assignment and offers a safe

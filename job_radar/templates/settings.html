@@ -146,7 +146,7 @@
 {% include "_support_nav.html" %}
 
 <div class="page-card">
-    <p>Configure Junior's reports, email, scan schedule, and optional external company lookup.</p>
+        <p>Configure Junior's reports, email, scan schedule, and application preferences.</p>
     <p>
         Each section below is collapsed until you need it.
         Health checks, version information, runtime paths, and logs are under
@@ -482,66 +482,6 @@
         </div>
     </details>
 
-    <details
-        class="settings-section"
-        id="company-discovery-settings"
-        {% if open_section == "company-discovery" %}open{% endif %}
-    >
-        <summary>
-            <h2>External company lookup</h2>
-            <p class="settings-summary">{% if discovery_form.external_lookup_enabled %}Enabled{% else %}Off (recommended){% endif %}</p>
-        </summary>
-        <div class="settings-content">
-            <p>
-                Junior first checks the public careers address and its built-in
-                collectors. If those checks fail, this optional setting permits
-                a limited Bing search for possible official careers sites.
-            </p>
-            <div class="settings-grid">
-                <section class="settings-panel">
-                    <h3>What Bing receives</h3>
-                    <p>
-                        Bing receives a search phrase containing only the submitted
-                        company name, its public domain, and the words
-                        <code>official careers jobs</code>.
-                    </p>
-                    <ul class="privacy-list">
-                        <li>The submitted company name and public domain.</li>
-                        <li>The words <code>official careers jobs</code>.</li>
-                        <li>Your IP address and ordinary connection details.</li>
-                    </ul>
-                    <p class="muted">
-                        Junior never sends profile, résumé, application, database,
-                        contact, or submitted URL-path information.
-                    </p>
-                </section>
-                <section class="settings-panel">
-                    <h3>Safety boundary</h3>
-                    <p>
-                        Bing results are never accepted as proof. Junior validates
-                        every candidate using its normal collector before saving a
-                        company, then discards failed candidates and search responses.
-                    </p>
-                    <p class="muted">This setting is never used during normal scans.</p>
-                </section>
-            </div>
-            <form method="post" action="{{ url_for('settings_company_discovery_save') }}">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                <label>
-                    <input
-                        name="external_lookup"
-                        type="checkbox"
-                        value="enabled"
-                        {% if discovery_form.external_lookup_enabled %}checked{% endif %}
-                    >
-                    Allow optional Bing company lookup
-                </label>
-                <div class="inline-actions">
-                    <button type="submit">Save external lookup setting</button>
-                </div>
-            </form>
-        </div>
-    </details>
 </div>
 
 <script>

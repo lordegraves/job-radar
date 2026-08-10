@@ -17,13 +17,12 @@ from job_radar.employer_resolution_service import (
     DETECTED_SCAN_READY,
     DETECTED_SETUP_REQUIRED,
     DISCOVERY_TIMED_OUT,
-    EXTERNAL_LOOKUP_DISABLED,
-    EXTERNAL_LOOKUP_UNAVAILABLE,
-    ExternalLookupAttempt,
     INVALID_INPUT,
     MATCHED_EXISTING,
     UNSUPPORTED_SITE,
     _eightfold_detection_from_html,
+    _discover_branded_sources,
+    _first_working_source,
     _talentbrew_detection_from_html,
     detect_employer_source,
     normalize_careers_url,
@@ -159,7 +158,12 @@ def test_name_and_url_normalization_is_safe_and_stable() -> None:
             "recruiting.ultipro.com:tenant:board-id",
             True,
         ),
-        ("https://jobs.smartrecruiters.com/Example", "smartrecruiters", None, False),
+        (
+            "https://jobs.smartrecruiters.com/Example",
+            "smartrecruiters",
+            "example",
+            True,
+        ),
         ("https://example.invalid/careers", "html", None, False),
     ),
 )
@@ -196,6 +200,67 @@ def test_custom_domain_eightfold_markers_build_a_scan_ready_source() -> None:
         "domain": "example.com",
         "careers_url": "https://www.example-systems.invalid/careers",
     }
+
+
+def test_layered_discovery_follows_official_pages_to_supported_platform(
+    monkeypatch,
+) -> None:
+    pages = {
+        "https://example.invalid/": '<a href="/about/careers">Careers</a>',
+        "https://example.invalid/about/careers": (
+            '<a href="https://jobs.smartrecruiters.com/ExampleCo">Open jobs</a>'
+        ),
+    }
+    requested: list[str] = []
+
+    class Response:
+        def __init__(self, url: str, text: str) -> None:
+            self.url = url
+            self.text = text
+
+    def fetch(url: str, **kwargs):
+        requested.append(url)
+        return Response(url, pages.get(url, ""))
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.get_response",
+        fetch,
+    )
+
+    discoveries = _discover_branded_sources("https://example.invalid/")
+
+    assert any(
+        item.source_type == "smartrecruiters"
+        and item.source_identifier == "exampleco"
+        for item in discoveries
+    )
+    assert len(requested) == len(set(requested))
+
+
+def test_source_validation_uses_normal_collector_depth(monkeypatch) -> None:
+    captured: list[dict[str, object]] = []
+
+    def collect(config):
+        captured.append(config)
+        return [object(), object()]
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        collect,
+    )
+    discovery = DetectedEmployerSource(
+        source_type="greenhouse",
+        source_identifier="example",
+        source_config={"source_slug": "example"},
+        scan_ready=True,
+    )
+
+    result = _first_working_source([discovery], display_name="Example")
+
+    assert result == (discovery, 2)
+    assert captured[0]["connection_test"] is True
+    assert "max_pages" not in captured[0]
+    assert "page_size" not in captured[0]
 
 
 def test_exact_name_url_alias_and_already_assigned_resolution(
@@ -394,52 +459,26 @@ def test_name_only_without_lookup_saves_no_review_request(
             ORDER BY created_at, request_id
             """
         ).fetchall()
-    assert name_only.status == EXTERNAL_LOOKUP_DISABLED
+    assert name_only.status == UNSUPPORTED_SITE
     assert unsupported.status == DETECTED_SETUP_REQUIRED
     assert requests == []
     assert list_profile_employer_assignments(database_path, profile.profile_id) == []
 
 
-def test_name_only_lookup_adds_only_an_independently_verified_source(
+def test_name_only_never_uses_removed_external_lookup(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
     database_path = tmp_path / "junior.sqlite3"
     profile = create_test_profile(database_path)
-    careers_url = "https://jobs.example.invalid/openings"
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service._discover_public_job_sources",
-        lambda **kwargs: ExternalLookupAttempt(
-            state="candidates",
-            discoveries=(
-                DetectedEmployerSource(
-                    source_type="html",
-                    source_identifier=None,
-                    source_config={
-                        "source_url": careers_url,
-                        "careers_url": careers_url,
-                    },
-                    scan_ready=True,
-                ),
-            ),
-        ),
-    )
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service.collect_jobs_for_company",
-        lambda config: [object()],
-    )
-
     result = resolve_employer_submission(
         database_path,
         profile_id=profile.profile_id,
         company_name="Example Catering",
-        allow_external_lookup=True,
     )
 
-    assert result.status == CREATED_SCAN_READY
-    employer = get_employer_source(database_path, result.employer_id or "")
-    assert employer is not None
-    assert employer.source_config["source_url"] == careers_url
+    assert result.status == UNSUPPORTED_SITE
+    assert "official company webpage" in result.message
     with sqlite3.connect(database_path) as connection:
         assert connection.execute(
             "SELECT request_id FROM employer_review_requests"
@@ -615,7 +654,7 @@ def test_unknown_site_must_pass_generic_collector_before_being_added(
 
     monkeypatch.setattr(
         "job_radar.employer_resolution_service._discover_branded_sources",
-        lambda url: [],
+        lambda url, **kwargs: [],
     )
     monkeypatch.setattr(
         "job_radar.employer_resolution_service.collect_jobs_for_company",
@@ -691,11 +730,7 @@ def test_unknown_site_failure_directs_user_to_safe_support(
     profile = create_test_profile(database_path)
     monkeypatch.setattr(
         "job_radar.employer_resolution_service._discover_branded_sources",
-        lambda url: [],
-    )
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service._discover_public_job_sources",
-        lambda **kwargs: ExternalLookupAttempt(state="no_match"),
+        lambda url, **kwargs: [],
     )
     monkeypatch.setattr(
         "job_radar.employer_resolution_service.collect_jobs_for_company",
@@ -708,7 +743,6 @@ def test_unknown_site_failure_directs_user_to_safe_support(
         company_name="Example Kitchens",
         careers_url="https://careers.example.invalid/jobs",
         confirm_detected=True,
-        allow_external_lookup=True,
     )
 
     assert result.status == UNSUPPORTED_SITE
@@ -764,20 +798,19 @@ def test_blocked_landing_page_can_find_and_verify_separate_official_job_site(
     landing_url = "https://example-kitchens.invalid/careers"
     job_url = "https://jobs.example-kitchens.invalid/search-jobs"
 
-    class SearchResponse:
-        text = (
-            '<a href="/l/?uddg=https%3A%2F%2Funrelated.invalid%2Fjobs">Bad</a>'
-            '<a href="/l/?uddg=https%3A%2F%2Fjobs.example-kitchens.invalid'
-            '%2Fsearch-jobs">Official careers</a>'
-        )
-
     monkeypatch.setattr(
         "job_radar.employer_resolution_service._discover_branded_sources",
-        lambda url: [],
-    )
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service.get_response",
-        lambda *args, **kwargs: SearchResponse(),
+        lambda url, **kwargs: [
+            DetectedEmployerSource(
+                source_type="html",
+                source_identifier="jobs.example-kitchens.invalid",
+                source_config={
+                    "source_url": job_url,
+                    "careers_url": landing_url,
+                },
+                scan_ready=True,
+            )
+        ],
     )
 
     attempted_sources: list[str] = []
@@ -798,14 +831,13 @@ def test_blocked_landing_page_can_find_and_verify_separate_official_job_site(
         company_name="Example Kitchens",
         careers_url=landing_url,
         confirm_detected=True,
-        allow_external_lookup=True,
     )
 
     assert created.status == CREATED_SCAN_READY
     employer = get_employer_source(database_path, "example-kitchens")
     assert employer is not None
     assert employer.source_config["source_url"] == job_url
-    assert "https://unrelated.invalid/jobs" not in attempted_sources
+    assert attempted_sources[0] == job_url
     with sqlite3.connect(database_path) as connection:
         stored_employers = connection.execute(
             "SELECT employer_id FROM employer_sources"
@@ -815,110 +847,6 @@ def test_blocked_landing_page_can_find_and_verify_separate_official_job_site(
         ).fetchall()
     assert stored_employers == [("example-kitchens",)]
     assert review_requests == []
-
-
-def test_unknown_site_requires_consent_and_discloses_complete_lookup_payload(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    database_path = tmp_path / "junior.sqlite3"
-    profile = create_test_profile(database_path)
-    external_lookup_called = False
-
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service._discover_branded_sources",
-        lambda url: [],
-    )
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service.collect_jobs_for_company",
-        lambda config: [],
-    )
-
-    def discover(**kwargs):
-        nonlocal external_lookup_called
-        external_lookup_called = True
-        return []
-
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service._discover_public_job_sources",
-        discover,
-    )
-
-    result = resolve_employer_submission(
-        database_path,
-        profile_id=profile.profile_id,
-        company_name="Example Kitchens",
-        careers_url=(
-            "https://careers.example.invalid/jobs"
-            "?tenant=private-path-value"
-        ),
-        confirm_detected=True,
-    )
-
-    assert result.status == EXTERNAL_LOOKUP_DISABLED
-    assert result.external_lookup_provider == "Bing"
-    assert result.external_lookup_fields == (
-        (
-            "q",
-            "Example Kitchens careers.example.invalid official careers jobs",
-        ),
-        ("format", "rss"),
-    )
-    assert "private-path-value" not in str(result.external_lookup_fields)
-    assert external_lookup_called is False
-    assert list_profile_employer_assignments(database_path, profile.profile_id) == []
-
-
-@pytest.mark.parametrize(
-    ("lookup_attempt", "expected_status", "expected_message"),
-    [
-        (
-            ExternalLookupAttempt(state="unavailable"),
-            EXTERNAL_LOOKUP_UNAVAILABLE,
-            "Bing could not be reached",
-        ),
-        (
-            ExternalLookupAttempt(state="no_match"),
-            UNSUPPORTED_SITE,
-            "accepted this public careers address",
-        ),
-    ],
-)
-def test_enabled_external_lookup_reports_safe_distinct_failure_outcomes(
-    tmp_path: Path,
-    monkeypatch,
-    lookup_attempt: ExternalLookupAttempt,
-    expected_status: str,
-    expected_message: str,
-) -> None:
-    database_path = tmp_path / "junior.sqlite3"
-    profile = create_test_profile(database_path)
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service._discover_branded_sources",
-        lambda url: [],
-    )
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service.collect_jobs_for_company",
-        lambda config: [],
-    )
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service._discover_public_job_sources",
-        lambda **kwargs: lookup_attempt,
-    )
-
-    result = resolve_employer_submission(
-        database_path,
-        profile_id=profile.profile_id,
-        company_name="Example Kitchens",
-        careers_url="https://careers.example.invalid/jobs",
-        confirm_detected=True,
-        allow_external_lookup=True,
-    )
-
-    assert result.status == expected_status
-    assert expected_message in result.message
-    assert result.external_lookup_provider == "Bing"
-    assert list_profile_employer_assignments(database_path, profile.profile_id) == []
 
 
 def test_concurrent_submission_cannot_duplicate_scan_ready_employer(

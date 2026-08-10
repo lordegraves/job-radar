@@ -556,9 +556,9 @@ Existing YAML profiles are not migrated automatically. junior now has an interna
 
 Employer organizations and source definitions are shared once per local junior installation, while each managed profile has its own company list. The normal Companies workspace shows the active profile's employers and whether each one is Scanning or Paused. You can pause, resume, or remove a company for that profile without changing another profile.
 
-Junior does not recommend where you should work or claim that its local catalog represents the complete employer market. You choose the employers to monitor. Select **Add company** and paste the employer's public careers-page URL. To enter only a company name, first enable optional Bing company lookup in Settings. Review the match Junior finds locally. When Junior recognizes an existing employer or a supported career platform, it asks you to confirm before adding it. Junior can configure supported ATS addresses directly and can inspect ATS links and metadata hidden behind a branded employer careers page. Current automatic setup includes ADP Workforce Now, Recruitee, Workday, Oracle HCM, Phenom, Eightfold, Greenhouse, Lever, and Ashby, with a validated public-page fallback. Junior never silently adds or scans a company.
+Junior does not recommend where you should work or claim that its local catalog represents the complete employer market. You choose the employers to monitor. Select **Add company** and enter an existing catalog name or paste any official company URL. A homepage, careers page, department page, search page, or public job posting is acceptable. When Junior recognizes an existing employer or validates a supported career platform, it asks you to confirm before adding it. Junior never silently adds or scans a company.
 
-To add a company, enter its ordinary name or public careers URL. Junior looks for an exact known company first. If more than one company may match, Junior asks you to choose instead of merging them. For a recognized platform, Junior derives the collector configuration from the public address. For an unfamiliar site, Junior shows that it is working while it follows public redirects, inspects advertised recruiting-platform links and metadata, and tries the compatible collectors whose required settings can be derived safely. These direct checks do not require an external search provider. If they fail, an optional global setting can permit a Bing lookup using only the public company name and hostname plus the words `official careers jobs`; Bing can also observe normal connection information such as the user's IP address. The setting defaults to Off, affects only future company-setup attempts, and is never used during normal scans. It never sends profile information, résumé information, desired roles, locations, application history, URL paths, query parameters, or fragments. External results are suggestions rather than proof: Junior still validates each candidate with its normal collector before saving anything. Rejected search results, candidate URLs, and failed probe details are discarded after the request; they do not create company or review records. Junior clearly distinguishes an external service that could not be reached from a completed lookup that did not produce a verified source, and it never silently retries later. Junior saves the source only after a collector returns a credible public job posting. A name-only submission uses external lookup only when that setting is enabled; otherwise Junior saves no unfinished company or administrator request. If automatic setup fails, use the displayed support contact. Never send passwords, access tokens, résumés, or other private data with a support request.
+To add a company, enter its ordinary name or any official company URL. A name searches the existing local catalog only; on a new installation that catalog is initially empty. For a URL, Junior follows a bounded set of relevant public pages and redirects, inspects recruiting-platform links and metadata, derives compatible collector settings, and validates the source using normal pagination. Junior saves the source only after a collector returns actual public job postings. Rejected candidates and failed probe details do not create company or review records. If automatic setup fails, the problem is a Junior compatibility limitation rather than a request for the user to locate an ATS URL. Use the displayed support contact and include the public company URL. Never send passwords, access tokens, résumés, or other private data with a support request.
 
 An unfinished setup attempt created by an earlier Junior build appears in **Company setup requests**. **Retry setup** reruns current discovery, while **Remove attempt** hides the legacy attempt after confirmation without deleting a working company, job, application, or history record. New failed submissions do not add rows to this queue. After a company is added successfully, Junior returns to **Your Companies** with a temporary, dismissible confirmation instead of leaving the old URL in the form. Open a company to see whether its job source is connected, which recruiting platform it uses, when it was last checked, and how many jobs the latest check returned. **Test job source** safely reruns that public read without importing jobs or requiring Administration access. Background test completion refreshes the saved source-health summary automatically. Open the same page to correct a spelling mistake in the shared name; this changes the installation-wide display name but preserves the working collector configuration and existing history. **Remove from this profile** removes only the active profile's scanning assignment. Permanent global employer deletion remains protected in Administration.
 
@@ -567,6 +567,29 @@ on every installation, including a fresh installation with no employers. It
 describes the job platforms Junior knows how to scan. This catalog is separate
 from the global **Employer Catalog**, which remains empty on a new installation
 until users add employers.
+
+### Company-discovery field-test matrix
+
+Testers should paste the entry URL shown below, not search for a more technical
+ATS address. Record the detected platform, job count, elapsed time, and whether
+Junior added the company. Public sites change, so a changed result is useful
+test evidence rather than something to work around.
+
+| Company | Entry URL | Expected result for this build |
+|---|---|---|
+| NetApp | `https://careers.netapp.com/` | TalentBrew; add succeeds; completeness baseline was 302 jobs on 2026-08-10 |
+| Lockheed Martin | `https://www.lockheedmartin.com/en-us/careers/index.html` | TalentBrew; add succeeds when public jobs are available |
+| Microsoft | `https://careers.microsoft.com/` | Eightfold; add succeeds when public jobs are available |
+| Google | `https://www.google.com/about/careers/applications/jobs/results/` | Google Careers; add succeeds when public jobs are available |
+| Nintendo | `https://careers.nintendo.com/` | Standard public page; add succeeds when public jobs are available |
+| Walmart | `https://careers.walmart.com/` | Known unsupported automatic setup; no company is saved |
+| Nutanix | `https://careers.nutanix.com/en/jobs/` | Known unsupported while its browser challenge blocks independent collector validation; no company is saved |
+
+For each successful case, open the company afterward and run **Test job
+source**. A healthy result must identify the same platform and return actual
+jobs. For a failure, create a diagnostic package and report the entry URL and
+time of the attempt. Do not include passwords, tokens, résumés, or private
+profile data.
 
 Technical job-source settings do not appear in the normal Companies workspace. They are managed in the session-guarded Administration area after typing `ADMIN`. This confirmation is a safety boundary, not a password.
 

@@ -6,6 +6,15 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Replaced optional Bing company lookup with layered discovery from any
+  official company URL. Name-only input now searches the local catalog only.
+  Junior follows a bounded set of relevant official pages, recognizes linked
+  recruiting platforms, derives collector configuration, validates actual
+  jobs with normal collector pagination, and saves nothing on failure. The Add
+  Company and Settings interfaces now state these boundaries directly, and the
+  collector catalog distinguishes verified automatic setup from collectors
+  whose automatic setup is not yet verified.
+
 - Consolidated non-scan diagnostics into a bounded, correlated
   `junior-application.log` while preserving separate latest-scan and per-run
   scan/evaluation traces. Company-add attempts now record enough privacy-safe

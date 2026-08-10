@@ -2800,7 +2800,6 @@ def test_settings_page_shows_read_only_runtime_settings(tmp_path: Path) -> None:
         "email-settings",
         "schedule-settings",
         "llm-settings",
-        "company-discovery-settings",
     ):
         assert f'id="{section_id}"' in normalized_settings_html
         assert f'id="{section_id}" open' not in normalized_settings_html
@@ -5765,7 +5764,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.18" in html
+    assert "RC6 Build 1.19" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

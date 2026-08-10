@@ -130,10 +130,11 @@ Required protections:
 
 junior scans only configured sources.
 
-Optional Bing company lookup is disabled by default. When enabled, it runs only
-after direct company-source checks fail and sends the public company name,
-public hostname, the phrase `official careers jobs`, and `format=rss`. Candidate
-results remain transient until Junior independently validates a working source.
+Company setup requests only the public company URL supplied by the user and a
+bounded set of relevant public links advertised by that site. Name-only input
+never invokes an external search provider; it searches the local catalog.
+Candidate sources remain transient until Junior independently validates actual
+public jobs through a supported collector.
 
 The manual update check sends Junior's installed version to GitHub's public
 releases API. It does not download or install software. Junior contains no

@@ -4,10 +4,6 @@ import json
 from pathlib import Path
 
 from job_radar.employer_models import EmployerSource
-from job_radar.employer_resolution_service import (
-    DetectedEmployerSource,
-    ExternalLookupAttempt,
-)
 from job_radar.employer_storage import (
     get_employer_source,
     is_profile_employer_enabled,
@@ -617,8 +613,9 @@ def test_add_company_page_searches_safe_catalog_and_adds_available_employer(
     page_response = client.get("/companies/add?q=cafe")
     page_html = page_response.get_data(as_text=True)
 
-    assert "Paste the employer's public careers-page URL" in page_html
-    assert "company name with Bing enabled" in page_html
+    assert "paste any official" in page_html
+    assert "company webpage to add a new one" in page_html
+    assert "homepage, careers page, department page" in page_html
 
     assert page_response.status_code == 200
     assert "Add a company" in page_html
@@ -710,7 +707,7 @@ def test_add_company_page_blocks_incomplete_and_duplicate_employers(
     )
 
 
-def test_name_only_addition_uses_enabled_lookup_without_saving_review(
+def test_name_only_addition_searches_catalog_only(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -723,34 +720,8 @@ def test_name_only_addition_uses_enabled_lookup_without_saving_review(
     )
     create_profile(database_path, profile)
     set_active_profile(database_path, profile.profile_id)
-    careers_url = "https://jobs.example.invalid/openings"
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service._discover_public_job_sources",
-        lambda **kwargs: ExternalLookupAttempt(
-            state="candidates",
-            discoveries=(
-                DetectedEmployerSource(
-                    source_type="html",
-                    source_identifier=None,
-                    source_config={
-                        "source_url": careers_url,
-                        "careers_url": careers_url,
-                    },
-                    scan_ready=True,
-                ),
-            ),
-        ),
-    )
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service.collect_jobs_for_company",
-        lambda config: [object()],
-    )
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
     client = app.test_client()
-    client.post(
-        "/settings/company-discovery",
-        data={"external_lookup": "enabled"},
-    )
 
     response = client.post(
         "/companies/add/resolve",
@@ -758,12 +729,8 @@ def test_name_only_addition_uses_enabled_lookup_without_saving_review(
     )
 
     assert response.status_code == 200
-    assert "was added and will be included in future scans" in response.get_data(
-        as_text=True
-    )
-    assert get_profile(database_path, profile.profile_id).company_ids == (
-        "example-kitchens",
-    )
+    assert "paste any official company webpage" in response.get_data(as_text=True)
+    assert get_profile(database_path, profile.profile_id).company_ids == ()
 
 
 def test_add_company_by_careers_url_requires_detected_source_confirmation(
@@ -872,7 +839,7 @@ def test_add_company_by_complete_adp_url_requests_name_and_adds_source(
     )
 
 
-def test_unknown_company_source_explains_disabled_external_lookup(
+def test_unknown_company_source_explains_compatibility_limit(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -887,20 +854,13 @@ def test_unknown_company_source_explains_disabled_external_lookup(
     set_active_profile(database_path, profile.profile_id)
     monkeypatch.setattr(
         "job_radar.employer_resolution_service._discover_branded_sources",
-        lambda url: [],
+        lambda url, **kwargs: [],
     )
     monkeypatch.setattr(
         "job_radar.employer_resolution_service.collect_jobs_for_company",
         lambda config: [],
     )
 
-    def unexpected_external_lookup(**kwargs):
-        raise AssertionError("External lookup ran without consent.")
-
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service._discover_public_job_sources",
-        unexpected_external_lookup,
-    )
     app = create_app(settings_path=settings_path, base_directory=tmp_path)
     client = app.test_client()
 
@@ -916,11 +876,9 @@ def test_unknown_company_source_explains_disabled_external_lookup(
     html = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Optional Bing lookup is disabled" in html
-    assert "Bing is not required for Junior to operate" in html
-    assert "To continue without Bing" in html
-    assert "public careers-page URL" in html
-    assert "Review external lookup privacy" in html
+    assert "could not yet identify and validate its job platform" in html
+    assert "You do not need to find another URL" in html
+    assert "claytonmgraves@outlook.com" in html
     assert get_profile(database_path, profile.profile_id).company_ids == ()
     events = [
         json.loads(line)
@@ -934,90 +892,10 @@ def test_unknown_company_source_explains_disabled_external_lookup(
     assert events[-1]["attempt_id"] == events[0]["attempt_id"]
     assert events[-1]["submission_type"] == "confirmed_url"
     assert events[-1]["submitted_host"] == "careers.example.invalid"
-    assert events[-1]["final_status"] == "EXTERNAL_LOOKUP_DISABLED"
+    assert events[-1]["final_status"] == "UNSUPPORTED_SITE"
     assert events[-1]["company_created"] is False
     assert events[-1]["company_assigned"] is False
     assert events[-1]["elapsed_seconds"] >= 0
-
-
-def test_external_lookup_preference_is_visible_and_editable_in_settings(
-    tmp_path: Path,
-) -> None:
-    settings_path = tmp_path / "settings.yaml"
-    database_path = tmp_path / "job_radar.sqlite3"
-    write_settings_file(settings_path, database_path)
-    app = create_app(settings_path=settings_path, base_directory=tmp_path)
-    client = app.test_client()
-
-    settings_page = client.get("/settings").get_data(as_text=True)
-    privacy_page = client.get(
-        "/settings?section=company-discovery"
-    ).get_data(as_text=True)
-
-    assert "External company lookup" in settings_page
-    assert "Allow optional Bing company lookup" in privacy_page
-    assert "Bing receives a search phrase" in privacy_page
-    normalized_page = " ".join(privacy_page.split())
-    assert 'id="company-discovery-settings" open' in normalized_page
-
-    saved = client.post(
-        "/settings/company-discovery",
-        data={"external_lookup": "enabled"},
-        follow_redirects=True,
-    )
-    saved_html = saved.get_data(as_text=True)
-
-    assert "External company lookup preference saved." in saved_html
-    assert 'value="enabled"' in saved_html
-    assert "checked" in saved_html
-
-
-def test_enabled_external_lookup_unavailable_is_explained_without_saving(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    settings_path = tmp_path / "settings.yaml"
-    database_path = tmp_path / "job_radar.sqlite3"
-    write_settings_file(settings_path, database_path)
-    profile = ManagedProfile(
-        profile_id="profile_aaaaaaaa",
-        display_name="Culinary Profile",
-    )
-    create_profile(database_path, profile)
-    set_active_profile(database_path, profile.profile_id)
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service._discover_branded_sources",
-        lambda url: [],
-    )
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service.collect_jobs_for_company",
-        lambda config: [],
-    )
-    monkeypatch.setattr(
-        "job_radar.employer_resolution_service._discover_public_job_sources",
-        lambda **kwargs: ExternalLookupAttempt(state="unavailable"),
-    )
-    app = create_app(settings_path=settings_path, base_directory=tmp_path)
-    client = app.test_client()
-    client.post(
-        "/settings/company-discovery",
-        data={"external_lookup": "enabled"},
-    )
-
-    response = client.post(
-        "/companies/add/confirm-detected",
-        data={
-            "company_name": "Example Kitchens",
-            "careers_url": "https://careers.example.invalid/jobs",
-        },
-    )
-    html = response.get_data(as_text=True)
-
-    assert response.status_code == 200
-    assert "Bing could not be reached" in html
-    assert "will not retry later by itself" in html
-    assert "direct company checks still work without Bing" in html
-    assert get_profile(database_path, profile.profile_id).company_ids == ()
 
 
 def test_company_detail_shows_and_refreshes_safe_source_health(

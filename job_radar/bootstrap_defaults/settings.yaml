@@ -9,9 +9,6 @@ retention:
   log_policy: latest_only
   log_count: 1
 
-company_discovery:
-  external_lookup: false
-
 # Optional external advisory is off until the user reviews and accepts the
 # privacy warning, then stores an API key in the OS credential manager.
 llm:

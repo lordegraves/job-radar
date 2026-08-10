@@ -525,9 +525,6 @@ def register_company_routes(
                 if looks_like_url
                 else ""
             ),
-            "external_lookup_enabled": (
-                settings.company_discovery.external_lookup_enabled
-            ),
         }
         record_company_discovery_event(
             settings.logs_path,
@@ -539,9 +536,6 @@ def register_company_routes(
             profile_id=workspace.active_profile.profile_id,
             company_name="" if looks_like_url else submission,
             careers_url=submission if looks_like_url else "",
-            allow_external_lookup=(
-                settings.company_discovery.external_lookup_enabled
-            ),
             discovery_observer=lambda stage, fields: (
                 record_company_discovery_event(
                     settings.logs_path,
@@ -589,9 +583,6 @@ def register_company_routes(
         company_name = request.form.get("company_name", "").strip()
         careers_url = request.form.get("careers_url", "").strip()
         retry_request_id = request.form.get("retry_request_id", "").strip()
-        allow_external_lookup = load_settings(
-            settings_path
-        ).company_discovery.external_lookup_enabled
         logs_path = load_settings(settings_path).logs_path
         attempt_id = getattr(g, "junior_request_id", "company-confirm")
         started = monotonic()
@@ -604,7 +595,6 @@ def register_company_routes(
                 ).hostname
                 or ""
             ).casefold(),
-            "external_lookup_enabled": allow_external_lookup,
         }
         record_company_discovery_event(
             logs_path,
@@ -617,7 +607,6 @@ def register_company_routes(
             company_name=company_name,
             careers_url=careers_url,
             confirm_detected=True,
-            allow_external_lookup=allow_external_lookup,
             discovery_observer=lambda stage, fields: (
                 record_company_discovery_event(
                     logs_path,

@@ -24,11 +24,6 @@ from job_radar import __build__, __version__
 from job_radar.application_info_service import build_application_info
 from job_radar.build_info import RELEASE_LABEL, RELEASE_TAG
 from job_radar.collector_catalog import list_collector_capabilities
-from job_radar.company_discovery_settings_service import (
-    CompanyDiscoverySettingsError,
-    load_company_discovery_settings_form,
-    save_company_discovery_settings,
-)
 from job_radar.config import load_settings
 from job_radar.diagnostic_log_service import (
     DiagnosticLogError,
@@ -130,7 +125,6 @@ def register_settings_routes(
             delivery_test=session.get("email_delivery_test"),
             schedule_view=build_schedule_view(runtime_paths.database_path),
             scheduler_integration=inspect_scheduler(),
-            discovery_form=load_company_discovery_settings_form(settings_path),
             llm_connection_test=session.get("llm_connection_test"),
             open_section=request.args.get("section", "").strip(),
         )
@@ -193,33 +187,6 @@ def register_settings_routes(
                 else None
             ),
         )
-
-    @app.get("/settings/company-discovery")
-    def settings_company_discovery():
-        """Keep old bookmarks working after lookup controls moved to Settings."""
-
-        return redirect(
-            url_for(
-                "settings",
-                section="company-discovery",
-                _anchor="company-discovery-settings",
-            )
-        )
-
-    @app.post("/settings/company-discovery")
-    def settings_company_discovery_save():
-        try:
-            save_company_discovery_settings(
-                settings_path,
-                external_lookup_enabled=(
-                    request.form.get("external_lookup") == "enabled"
-                ),
-            )
-        except CompanyDiscoverySettingsError as error:
-            flash(str(error), "error")
-        else:
-            flash("External company lookup preference saved.", "success")
-        return _settings_section_redirect("company-discovery")
 
     @app.post("/settings/about/check-updates")
     def settings_about_check_updates():

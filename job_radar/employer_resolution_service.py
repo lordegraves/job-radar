@@ -12,7 +12,6 @@ from html import unescape
 from pathlib import Path
 from urllib.parse import (
     parse_qsl,
-    unquote,
     urlencode,
     urljoin,
     urlsplit,
@@ -40,9 +39,6 @@ AMBIGUOUS_MATCH = "AMBIGUOUS_MATCH"
 UNSUPPORTED_SITE = "UNSUPPORTED_SITE"
 INVALID_INPUT = "INVALID_INPUT"
 ALREADY_ASSIGNED = "ALREADY_ASSIGNED"
-EXTERNAL_LOOKUP_DISABLED = "EXTERNAL_LOOKUP_DISABLED"
-EXTERNAL_LOOKUP_UNAVAILABLE = "EXTERNAL_LOOKUP_UNAVAILABLE"
-EXTERNAL_LOOKUP_NO_SOURCE = "EXTERNAL_LOOKUP_NO_SOURCE"
 DISCOVERY_TIMED_OUT = "DISCOVERY_TIMED_OUT"
 
 _TRACKING_QUERY_KEYS = {
@@ -51,34 +47,18 @@ _TRACKING_QUERY_KEYS = {
     "mc_cid",
     "mc_eid",
 }
-_PUBLIC_SOURCE_SEARCH_URL = "https://www.bing.com/search"
 _COMPANY_DISCOVERY_TIMEOUT_SECONDS = 120
-_GENERIC_COMPANY_WORDS = {
-    "careers",
-    "com",
-    "company",
-    "corp",
-    "corporation",
-    "edu",
+_DISCOVERY_MAX_PAGES = 12
+_DISCOVERY_MAX_DOCUMENT_BYTES = 8_000_000
+_CAREER_LINK_TERMS = (
+    "career",
     "employment",
-    "gov",
-    "group",
-    "holdings",
-    "invalid",
-    "jobs",
-    "net",
-    "org",
-}
-_EXCLUDED_DISCOVERY_DOMAINS = {
-    "bing.com",
-    "britannica.com",
-    "facebook.com",
-    "glassdoor.com",
-    "indeed.com",
-    "linkedin.com",
-    "mapquest.com",
-    "wikipedia.org",
-}
+    "job",
+    "join-us",
+    "join_us",
+    "opportunit",
+    "work-with-us",
+)
 
 
 @dataclass(frozen=True)
@@ -89,6 +69,8 @@ class DetectedEmployerSource:
     source_identifier: str | None
     source_config: dict[str, str]
     scan_ready: bool
+    confidence: str = "high"
+    evidence: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -104,16 +86,6 @@ class EmployerResolutionResult:
     possible_employers: tuple[tuple[str, str], ...] = ()
     detected_source_label: str | None = None
     requires_company_name: bool = False
-    external_lookup_provider: str | None = None
-    external_lookup_fields: tuple[tuple[str, str], ...] = ()
-
-
-@dataclass(frozen=True)
-class ExternalLookupAttempt:
-    """Keep one external response and its safe outcome in request memory only."""
-
-    state: str
-    discoveries: tuple[DetectedEmployerSource, ...] = ()
 
 
 def resolve_employer_submission(
@@ -123,7 +95,6 @@ def resolve_employer_submission(
     company_name: str = "",
     careers_url: str = "",
     confirm_detected: bool = False,
-    allow_external_lookup: bool = False,
     discovery_observer: Callable[[str, Mapping[str, object]], None] | None = None,
 ) -> EmployerResolutionResult:
     """Resolve, safely create, or queue one company for a managed profile."""
@@ -251,7 +222,6 @@ def resolve_employer_submission(
             display_name=display_name,
             normalized_name=normalized_name,
             normalized_url=normalized_url,
-            allow_external_lookup=allow_external_lookup,
             discovery_observer=discovery_observer,
         )
     return _create_and_assign_name_only(
@@ -259,7 +229,6 @@ def resolve_employer_submission(
         profile_id=profile_id,
         display_name=display_name,
         normalized_name=normalized_name,
-        allow_external_lookup=allow_external_lookup,
         discovery_observer=discovery_observer,
     )
 
@@ -360,6 +329,53 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
         ukg_detection = _ukg_detection(careers_url)
         if ukg_detection is not None:
             return ukg_detection
+    if host == "jobs.smartrecruiters.com" and slug:
+        return DetectedEmployerSource(
+            source_type="smartrecruiters",
+            source_identifier=slug.casefold(),
+            source_config={
+                "source_url": (
+                    f"https://api.smartrecruiters.com/v1/companies/{slug}/postings"
+                ),
+                "company_identifier": slug,
+                "careers_url": careers_url,
+            },
+            scan_ready=True,
+            evidence=("SmartRecruiters public job-board URL",),
+        )
+    if host == "ats.rippling.com" and slug:
+        return DetectedEmployerSource(
+            source_type="rippling",
+            source_identifier=slug.casefold(),
+            source_config={
+                "source_slug": slug,
+                "careers_url": careers_url,
+            },
+            scan_ready=True,
+            evidence=("Rippling ATS public job-board URL",),
+        )
+    if host == "jobs.dayforcehcm.com" and slug:
+        return DetectedEmployerSource(
+            source_type="dayforce",
+            source_identifier=f"{host}:{slug.casefold()}",
+            source_config={
+                "source_url": careers_url,
+                "careers_url": careers_url,
+            },
+            scan_ready=True,
+            evidence=("Dayforce public candidate-portal URL",),
+        )
+    if host.endswith(".referrals.selectminds.com"):
+        return DetectedEmployerSource(
+            source_type="selectminds",
+            source_identifier=host.casefold(),
+            source_config={
+                "source_url": careers_url,
+                "careers_url": careers_url,
+            },
+            scan_ready=True,
+            evidence=("SelectMinds public careers hostname",),
+        )
     if host == "careers.nintendo.com":
         return DetectedEmployerSource(
             source_type="html",
@@ -785,7 +801,6 @@ def _create_and_assign_generic(
     display_name: str,
     normalized_name: str,
     normalized_url: str,
-    allow_external_lookup: bool,
     discovery_observer: Callable[[str, Mapping[str, object]], None] | None,
 ) -> EmployerResolutionResult:
     """Enable an unfamiliar public careers page only after extracting real jobs."""
@@ -795,7 +810,6 @@ def _create_and_assign_generic(
         _resolve_generic_source,
         display_name=display_name,
         normalized_url=normalized_url,
-        allow_external_lookup=allow_external_lookup,
         discovery_observer=discovery_observer,
     )
     try:
@@ -837,112 +851,32 @@ def _create_and_assign_name_only(
     profile_id: str,
     display_name: str,
     normalized_name: str,
-    allow_external_lookup: bool,
     discovery_observer: Callable[[str, Mapping[str, object]], None] | None,
 ) -> EmployerResolutionResult:
     """Resolve a company name without creating unfinished administrator work."""
 
-    lookup_fields = _public_lookup_request_fields(
-        display_name=display_name,
-        careers_url="",
+    return EmployerResolutionResult(
+        status=UNSUPPORTED_SITE,
+        message=(
+            "Junior did not find that name in this installation's company "
+            "catalog. To add a new company, paste any official company webpage, "
+            "such as its homepage, careers page, or a public job posting."
+        ),
+        employer_name=display_name,
     )
-    if not allow_external_lookup:
-        return EmployerResolutionResult(
-            status=EXTERNAL_LOOKUP_DISABLED,
-            message=(
-                "Junior did not create an unfinished company. Optional Bing "
-                "lookup is disabled, so Junior cannot safely identify an "
-                "arbitrary company from its name alone."
-            ),
-            employer_name=display_name,
-            external_lookup_provider="Bing",
-            external_lookup_fields=lookup_fields,
-        )
-
-    executor = ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(
-        _discover_public_job_sources,
-        display_name=display_name,
-        careers_url="",
-    )
-    try:
-        lookup_attempt = future.result(timeout=_COMPANY_DISCOVERY_TIMEOUT_SECONDS)
-    except FutureTimeoutError:
-        future.cancel()
-        return EmployerResolutionResult(
-            status=DISCOVERY_TIMED_OUT,
-            message=(
-                "Junior stopped checking after two minutes and did not add "
-                "the company. You can safely try again later."
-            ),
-            employer_name=display_name,
-        )
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
-
-    _observe_discovery(
-        discovery_observer,
-        "external_lookup",
-        external_lookup_enabled=True,
-        outcome=lookup_attempt.state,
-    )
-    if lookup_attempt.state == "unavailable":
-        return EmployerResolutionResult(
-            status=EXTERNAL_LOOKUP_UNAVAILABLE,
-            message=(
-                "Bing could not be reached for the optional company lookup. "
-                "No company or setup request was saved."
-            ),
-            employer_name=display_name,
-            external_lookup_provider="Bing",
-            external_lookup_fields=lookup_fields,
-        )
-    tested_source = _first_working_source(
-        list(lookup_attempt.discoveries),
-        display_name=display_name,
-        discovery_observer=discovery_observer,
-    )
-    if tested_source is None:
-        return EmployerResolutionResult(
-            status=UNSUPPORTED_SITE,
-            message=(
-                "Junior could not independently verify a public source with "
-                "actual jobs for that company name. No company or setup "
-                "request was saved."
-            ),
-            employer_name=display_name,
-            external_lookup_provider="Bing",
-            external_lookup_fields=lookup_fields,
-        )
-    detection, job_count = tested_source
-    discovered_url = str(
-        detection.source_config.get("careers_url")
-        or detection.source_config.get("source_url")
-        or ""
-    )
-    if not discovered_url:
-        return _source_test_failed()
-    return _create_and_assign_scan_ready(
-        database_path,
-        profile_id=profile_id,
-        display_name=display_name,
-        normalized_name=normalized_name,
-        normalized_url=normalize_careers_url(discovered_url),
-        detection=detection,
-        connection_job_count=job_count,
-    )
-
 
 def _resolve_generic_source(
     *,
     display_name: str,
     normalized_url: str,
-    allow_external_lookup: bool,
     discovery_observer: Callable[[str, Mapping[str, object]], None] | None,
 ) -> EmployerResolutionResult | tuple[DetectedEmployerSource, int]:
     """Run bounded network-only discovery without writing application data."""
 
-    discoveries = _discover_branded_sources(normalized_url)
+    discoveries = _discover_branded_sources(
+        normalized_url,
+        discovery_observer=discovery_observer,
+    )
     discoveries.append(
         DetectedEmployerSource(
             source_type="html",
@@ -957,79 +891,20 @@ def _resolve_generic_source(
         discovery_observer=discovery_observer,
     )
     if tested_source is None:
-        lookup_fields = _public_lookup_request_fields(
-            display_name=display_name,
+        return EmployerResolutionResult(
+            status=UNSUPPORTED_SITE,
+            message=(
+                "Junior confirmed this is a public company website but could "
+                "not yet identify and validate its job platform. No company "
+                "was added. You do not need to find another URL; this is a "
+                "Junior compatibility limitation. Contact Clayton Graves at "
+                "claytonmgraves@outlook.com and include the public company "
+                "URL. Do not send passwords, access tokens, resumes, or other "
+                "private data."
+            ),
+            employer_name=display_name,
             careers_url=normalized_url,
         )
-        if not allow_external_lookup:
-            _observe_discovery(
-                discovery_observer,
-                "external_lookup",
-                external_lookup_enabled=False,
-                outcome="skipped",
-            )
-            return EmployerResolutionResult(
-                status=EXTERNAL_LOOKUP_DISABLED,
-                message=(
-                    "Junior completed its local checks but could not locate a "
-                    "working job source. Optional Bing lookup is disabled. No "
-                    "company was added."
-                ),
-                employer_name=display_name,
-                careers_url=normalized_url,
-                external_lookup_provider="Bing",
-                external_lookup_fields=lookup_fields,
-            )
-        # A corporate landing page may block automated access or live on a
-        # different domain from the real job search. The fallback sends only
-        # the public company identity, then validates every candidate locally.
-        lookup_attempt = _discover_public_job_sources(
-            display_name=display_name,
-            careers_url=normalized_url,
-        )
-        _observe_discovery(
-            discovery_observer,
-            "external_lookup",
-            external_lookup_enabled=True,
-            outcome=lookup_attempt.state,
-        )
-        if lookup_attempt.state == "unavailable":
-            return EmployerResolutionResult(
-                status=EXTERNAL_LOOKUP_UNAVAILABLE,
-                message=(
-                    "Junior completed its direct checks, but Bing could not "
-                    "be reached for the optional lookup. No company was added "
-                    "and Junior will not retry later by itself."
-                ),
-                employer_name=display_name,
-                careers_url=normalized_url,
-                external_lookup_provider="Bing",
-                external_lookup_fields=lookup_fields,
-            )
-        tested_source = _first_working_source(
-            list(lookup_attempt.discoveries),
-            display_name=display_name,
-            discovery_observer=discovery_observer,
-        )
-        if tested_source is None:
-            return EmployerResolutionResult(
-                status=UNSUPPORTED_SITE,
-                message=(
-                    "Junior accepted this public careers address, but could "
-                    "not verify a supported source containing actual job "
-                    "postings. No company was added. You do not need to hunt "
-                    "for a recruiting-platform URL. Contact Clayton Graves "
-                    "at claytonmgraves@outlook.com and include this public "
-                    "careers URL. Do not send passwords, access tokens, "
-                    "résumés, or other private data."
-                ),
-                employer_name=display_name,
-                careers_url=normalized_url,
-                external_lookup_provider="Bing",
-                external_lookup_fields=lookup_fields,
-            )
-    if tested_source is None:
-        return _source_test_failed()
     return tested_source
 
 
@@ -1055,9 +930,9 @@ def _first_working_source(
             "name": display_name,
             "source_type": discovery.source_type,
             **discovery.source_config,
-            # Setup confirmation validates one page instead of running a full scan.
-            "max_pages": 1,
-            "page_size": 10,
+            # Company setup must prove the saved collector can traverse its
+            # normal result depth, not merely parse a convenient first page.
+            "connection_test": True,
         }
         try:
             postings = collect_jobs_for_company(candidate_config)
@@ -1110,6 +985,176 @@ def _source_test_failed() -> EmployerResolutionResult:
 
 def _discover_branded_sources(
     careers_url: str,
+    *,
+    discovery_observer: Callable[[str, Mapping[str, object]], None] | None = None,
+) -> list[DetectedEmployerSource]:
+    """Traverse bounded official pages and rank complete platform sources."""
+
+    parsed_input = urlsplit(careers_url)
+    official_host = (parsed_input.hostname or "").casefold()
+    queue = [careers_url]
+    queued = {careers_url.casefold()}
+    visited: set[str] = set()
+    discoveries: list[DetectedEmployerSource] = []
+    document_bytes = 0
+
+    while queue and len(visited) < _DISCOVERY_MAX_PAGES:
+        page_url = queue.pop(0)
+        key = page_url.casefold()
+        if key in visited:
+            continue
+        visited.add(key)
+        _observe_discovery(
+            discovery_observer,
+            "page_fetch_started",
+            page_number=len(visited),
+            queue_depth=len(queue),
+            candidate_host=(urlsplit(page_url).hostname or "").casefold(),
+        )
+        try:
+            response = get_response(
+                page_url,
+                headers={
+                    "Accept": "text/html,application/xhtml+xml",
+                    "User-Agent": "Junior/0.2 local career-source discovery",
+                },
+                timeout=20,
+            )
+        except requests.RequestException:
+            _observe_discovery(
+                discovery_observer,
+                "page_fetch_finished",
+                page_number=len(visited),
+                candidate_host=(urlsplit(page_url).hostname or "").casefold(),
+                outcome="failed",
+            )
+            continue
+        html = response.text
+        discoveries.extend(
+            _discover_sources_from_document(
+                source_url=response.url,
+                careers_url=careers_url,
+                html=html,
+            )
+        )
+        document_bytes += len(html.encode("utf-8", errors="ignore"))
+        _observe_discovery(
+            discovery_observer,
+            "page_fetch_finished",
+            page_number=len(visited),
+            candidate_host=(urlsplit(response.url).hostname or "").casefold(),
+            document_bytes=document_bytes,
+            outcome="inspected",
+        )
+        if document_bytes > _DISCOVERY_MAX_DOCUMENT_BYTES:
+            break
+        advertised_urls = _advertised_page_urls(response.url, html)
+        for advertised_url in advertised_urls:
+            detected = detect_employer_source(advertised_url)
+            if detected.scan_ready:
+                discoveries.append(
+                    DetectedEmployerSource(
+                        source_type=detected.source_type,
+                        source_identifier=detected.source_identifier,
+                        source_config={
+                            **detected.source_config,
+                            "careers_url": careers_url,
+                        },
+                        scan_ready=True,
+                        confidence=detected.confidence,
+                        evidence=detected.evidence,
+                    )
+                )
+            if _should_follow_discovery_page(
+                advertised_url,
+                official_host=official_host,
+            ):
+                candidate_key = advertised_url.casefold()
+                if candidate_key not in queued and candidate_key not in visited:
+                    queue.append(advertised_url)
+                    queued.add(candidate_key)
+        if len(visited) == 1:
+            origin = urlsplit(response.url)
+            root = urlunsplit((origin.scheme, origin.netloc, "/", "", ""))
+            for path in ("/careers", "/jobs", "/join-us", "/work-with-us"):
+                candidate = urljoin(root, path)
+                candidate_key = candidate.casefold()
+                if candidate_key not in queued:
+                    queue.append(candidate)
+                    queued.add(candidate_key)
+    unique = _deduplicate_discoveries(discoveries)
+    _observe_discovery(
+        discovery_observer,
+        "source_discovery_finished",
+        page_number=len(visited),
+        document_bytes=document_bytes,
+        candidate_number=len(unique),
+        outcome="candidates" if unique else "not_found",
+    )
+    return unique
+
+
+def _advertised_page_urls(source_url: str, html: str) -> list[str]:
+    """Extract linked and embedded URLs without executing page scripts."""
+
+    values = [source_url]
+    values.extend(
+        urljoin(source_url, unescape(value))
+        for value in re.findall(
+            r"(?:href|src|action)=[\"']([^\"']+)[\"']",
+            html,
+            flags=re.IGNORECASE,
+        )
+    )
+    values.extend(
+        unescape(value)
+        for value in re.findall(
+            r"https://[^\"'<>()\s\\]+",
+            html,
+            flags=re.IGNORECASE,
+        )
+    )
+    normalized: list[str] = []
+    for value in values:
+        try:
+            normalized.append(normalize_careers_url(value))
+        except ValueError:
+            continue
+    return list(dict.fromkeys(normalized))
+
+
+def _should_follow_discovery_page(url: str, *, official_host: str) -> bool:
+    parsed = urlsplit(url)
+    host = (parsed.hostname or "").casefold()
+    if not host or not _hosts_are_related(host, official_host):
+        return False
+    target = f"{parsed.path}?{parsed.query}".casefold()
+    return any(term in target for term in _CAREER_LINK_TERMS)
+
+
+def _hosts_are_related(left: str, right: str) -> bool:
+    return bool(
+        left == right
+        or left.endswith(f".{right}")
+        or right.endswith(f".{left}")
+    )
+
+
+def _deduplicate_discoveries(
+    discoveries: list[DetectedEmployerSource],
+) -> list[DetectedEmployerSource]:
+    unique: dict[tuple[str | None, str], DetectedEmployerSource] = {}
+    for discovery in discoveries:
+        key = (
+            discovery.source_type,
+            json.dumps(discovery.source_config, sort_keys=True),
+        )
+        unique.setdefault(key, discovery)
+    return list(unique.values())
+
+
+def _discover_single_page_sources(
+    careers_url: str,
 ) -> list[DetectedEmployerSource]:
     """Derive credible collector configurations advertised by a public page."""
 
@@ -1124,11 +1169,22 @@ def _discover_branded_sources(
         )
     except requests.RequestException:
         return []
-    html = response.text
+    return _discover_sources_from_document(
+        source_url=response.url,
+        careers_url=careers_url,
+        html=response.text,
+    )
+
+
+def _discover_sources_from_document(
+    *, source_url: str, careers_url: str, html: str
+) -> list[DetectedEmployerSource]:
+    """Extract collector configurations from one already-fetched document."""
+
     discoveries: list[DetectedEmployerSource] = []
-    advertised_urls = [response.url]
+    advertised_urls = [source_url]
     advertised_urls.extend(
-        urljoin(response.url, unescape(match))
+        urljoin(source_url, unescape(match))
         for match in re.findall(
             r'href=["\']([^"\']+)["\']',
             html,
@@ -1154,44 +1210,19 @@ def _discover_branded_sources(
                 )
             )
     custom_eightfold = _eightfold_detection_from_html(
-        source_url=response.url,
+        source_url=source_url,
         careers_url=careers_url,
         html=html,
     )
     if custom_eightfold is not None:
         discoveries.append(custom_eightfold)
     talentbrew = _talentbrew_detection_from_html(
-        source_url=response.url,
+        source_url=source_url,
         careers_url=careers_url,
         html=html,
     )
     if talentbrew is not None:
         discoveries.append(talentbrew)
-    identity_tokens = _company_identity_tokens("", careers_url)
-    custom_platform_candidates: list[str] = []
-    for advertised_url in advertised_urls:
-        try:
-            normalized_advertised_url = normalize_careers_url(advertised_url)
-        except ValueError:
-            continue
-        detected = detect_employer_source(normalized_advertised_url)
-        if (
-            not detected.scan_ready
-            and detected.source_type == "html"
-            and _candidate_matches_company(
-                normalized_advertised_url,
-                identity_tokens,
-            )
-            and normalized_advertised_url != response.url
-        ):
-            custom_platform_candidates.append(normalized_advertised_url)
-    for candidate_url in list(dict.fromkeys(custom_platform_candidates))[:4]:
-        discovered = _discover_custom_platform(
-            candidate_url,
-            careers_url=careers_url,
-        )
-        if discovered is not None:
-            discoveries.append(discovered)
     workday_links = re.findall(
         r'https://[^"\'<>\s]+\.myworkdayjobs\.com/[^"\'<>\s?&]+',
         unescape(html),
@@ -1342,146 +1373,6 @@ def _observe_discovery(
             return
 
 
-def _discover_public_job_sources(
-    *,
-    display_name: str,
-    careers_url: str,
-) -> ExternalLookupAttempt:
-    """Find a separated official job site without sending private user data."""
-
-    request_fields = dict(
-        _public_lookup_request_fields(
-            display_name=display_name,
-            careers_url=careers_url,
-        )
-    )
-    try:
-        response = get_response(
-            _PUBLIC_SOURCE_SEARCH_URL,
-            params=request_fields,
-            headers={
-                "Accept": "text/html,application/xhtml+xml",
-                "User-Agent": "Junior/0.2 local career-source discovery",
-            },
-            timeout=20,
-        )
-    except requests.RequestException:
-        return ExternalLookupAttempt(state="unavailable")
-
-    identity_tokens = _company_identity_tokens(display_name, careers_url)
-    discoveries: list[DetectedEmployerSource] = []
-    seen_urls: set[str] = set()
-    advertised_results = re.findall(
-        r'href=["\']([^"\']+)["\']',
-        response.text,
-        flags=re.IGNORECASE,
-    )
-    advertised_results.extend(
-        re.findall(
-            r"<link>(https?://[^<]+)</link>",
-            response.text,
-            flags=re.IGNORECASE,
-        )
-    )
-    for raw_href in advertised_results:
-        candidate_url = _public_search_result_url(raw_href)
-        if candidate_url is None or candidate_url in seen_urls:
-            continue
-        seen_urls.add(candidate_url)
-        if not _candidate_matches_company(candidate_url, identity_tokens):
-            continue
-        detected = detect_employer_source(candidate_url)
-        if detected.scan_ready:
-            discoveries.append(
-                DetectedEmployerSource(
-                    source_type=detected.source_type,
-                    source_identifier=detected.source_identifier,
-                    source_config={
-                        **detected.source_config,
-                        "careers_url": careers_url or candidate_url,
-                    },
-                    scan_ready=True,
-                )
-            )
-        else:
-            discoveries.append(
-                DetectedEmployerSource(
-                    source_type="html",
-                    source_identifier=None,
-                    source_config={
-                        "source_url": candidate_url,
-                        "careers_url": careers_url or candidate_url,
-                    },
-                    scan_ready=True,
-                )
-            )
-        if len(discoveries) >= 6:
-            break
-    return ExternalLookupAttempt(
-        state="candidates" if discoveries else "no_match",
-        discoveries=tuple(discoveries),
-    )
-
-
-def _public_lookup_request_fields(
-    *,
-    display_name: str,
-    careers_url: str,
-) -> tuple[tuple[str, str], ...]:
-    """Build the complete, displayable payload sent to the search provider."""
-
-    hostname = urlsplit(careers_url).hostname or ""
-    public_identity = " ".join(
-        part for part in (display_name, hostname) if part
-    )
-    return (
-        ("q", f"{public_identity} official careers jobs"),
-        ("format", "rss"),
-    )
-
-
-def _public_search_result_url(raw_href: str) -> str | None:
-    """Extract and validate one public HTTP result from a search page."""
-
-    href = unescape(raw_href)
-    parsed = urlsplit(href)
-    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
-    if "uddg" in query:
-        href = unquote(query["uddg"])
-    try:
-        return normalize_careers_url(href)
-    except ValueError:
-        return None
-
-
-def _company_identity_tokens(display_name: str, careers_url: str) -> set[str]:
-    """Return distinctive public words used to reject unrelated search results."""
-
-    host = urlsplit(careers_url).hostname or ""
-    words = re.findall(r"[a-z0-9]+", f"{display_name} {host}".casefold())
-    return {
-        word
-        for word in words
-        if len(word) >= 4 and word not in _GENERIC_COMPANY_WORDS
-    }
-
-
-def _candidate_matches_company(
-    candidate_url: str,
-    identity_tokens: set[str],
-) -> bool:
-    """Require a visible company-identity overlap before probing a result."""
-
-    host = (urlsplit(candidate_url).hostname or "").casefold()
-    if any(
-        host == domain or host.endswith(f".{domain}")
-        for domain in _EXCLUDED_DISCOVERY_DOMAINS
-    ):
-        return False
-    searchable = re.sub(r"[^a-z0-9]+", "", candidate_url.casefold())
-    return bool(identity_tokens) and any(
-        token in searchable for token in identity_tokens
-    )
 
 
 def _create_pending_review(

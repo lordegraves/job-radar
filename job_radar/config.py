@@ -86,13 +86,6 @@ class RetentionSettings:
 
 
 @dataclass(frozen=True)
-class CompanyDiscoverySettings:
-    """Control whether Junior may use an external company-source lookup."""
-
-    external_lookup_enabled: bool
-
-
-@dataclass(frozen=True)
 class LlmSettings:
     """Optional external advisory settings without containing an API key."""
 
@@ -120,7 +113,6 @@ class ApplicationSettings(Mapping[str, Any]):
     active_profile: ActiveProfileSettings
     email: EmailSettings
     retention: RetentionSettings
-    company_discovery: CompanyDiscoverySettings
     llm: LlmSettings
     _data: dict[str, Any] = field(repr=False, compare=False)
 
@@ -230,9 +222,6 @@ def load_settings(
     )
     email = _validate_email_settings(data.get("email", {}))
     retention = _validate_retention_settings(data.get("retention", {}))
-    company_discovery = _validate_company_discovery_settings(
-        data.get("company_discovery", {})
-    )
     llm = _validate_llm_settings(data.get("llm", {}))
 
     # Preserve the original mapping shape during the compatibility migration.
@@ -254,7 +243,6 @@ def load_settings(
         active_profile=active_profile,
         email=email,
         retention=retention,
-        company_discovery=company_discovery,
         llm=llm,
         _data=normalized_data,
     )
@@ -301,26 +289,6 @@ def _validate_llm_settings(raw_llm: Any) -> LlmSettings:
         credential_key=credential_key.strip(),
         privacy_acknowledged=acknowledged,
         max_reviews_per_scan=max_reviews,
-    )
-
-
-def _validate_company_discovery_settings(
-    raw_company_discovery: Any,
-) -> CompanyDiscoverySettings:
-    if raw_company_discovery is None:
-        raw_company_discovery = {}
-    if not isinstance(raw_company_discovery, dict):
-        raise ConfigError(
-            "settings.yaml company_discovery section must be a mapping"
-        )
-    external_lookup = raw_company_discovery.get("external_lookup", False)
-    if not isinstance(external_lookup, bool):
-        raise ConfigError(
-            "settings.yaml company_discovery external_lookup must be "
-            "true or false"
-        )
-    return CompanyDiscoverySettings(
-        external_lookup_enabled=external_lookup
     )
 
 

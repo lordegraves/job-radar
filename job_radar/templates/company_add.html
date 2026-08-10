@@ -66,14 +66,14 @@
 
 <div class="page-card">
     <p>
-        Paste the employer's public careers-page URL. Junior will look for an
-        existing company first, then safely determine what happens next for
+        Search for a company already in Junior by name, or paste any official
+        company webpage to add a new one. Junior will determine what happens for
         <strong>{{ catalog.active_profile.display_name }}'s</strong> profile.
     </p>
     <p class="muted">
-        Want to enter only the company name? First enable optional Bing company
-        lookup in Settings. Without Bing enabled, a public careers-page URL is
-        required. Profile and résumé information are never included.
+        The URL can be a homepage, careers page, department page, search page,
+        or public job posting. Junior—not you—is responsible for locating the
+        recruiting platform and validating its actual jobs.
     </p>
 </div>
 
@@ -85,13 +85,13 @@
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="retry_request_id" value="{{ retry_request_id or '' }}">
     <label for="company-search">
-        <span>Public careers-page URL, or company name with Bing enabled</span>
+        <span>Existing company name or any official company URL</span>
         <input
             id="company-search"
             name="company"
             type="search"
             value="{{ submission }}"
-            placeholder="https://careers.example.com"
+            placeholder="Example Company or https://www.example.com"
             autofocus
         >
     </label>
@@ -167,33 +167,6 @@
     </form>
     {% elif resolution.status == 'CREATED_SCAN_READY' %}
     <p><a href="{{ url_for('companies') }}">Return to Your Companies</a></p>
-    {% elif resolution.status == 'EXTERNAL_LOOKUP_DISABLED' %}
-    <p>
-        Bing is not required for Junior to operate. It is an optional fallback
-        for employers whose public careers page does not reveal where its job
-        system is hosted.
-    </p>
-    <p class="muted">
-        To continue without Bing, paste the employer's ordinary public
-        careers-page URL. To search using only the company name, enable optional
-        Bing lookup in Settings after reviewing exactly what it sends and the
-        privacy tradeoffs. Existing companies and normal scans do not use Bing.
-    </p>
-    <p><a href="{{ url_for('settings_company_discovery') }}">Review external lookup privacy</a></p>
-    {% elif resolution.status == 'EXTERNAL_LOOKUP_UNAVAILABLE' %}
-    <p class="muted">
-        Junior's direct company checks still work without Bing. You can try
-        this company again later. You do not need to identify its recruiting
-        platform or find a different URL. Existing companies and normal scans
-        are unaffected.
-    </p>
-    {% elif resolution.status == 'EXTERNAL_LOOKUP_NO_SOURCE' %}
-    <p class="muted">
-        Bing results are never accepted as proof. Junior tested the relevant
-        candidates it found and discarded them because none produced a
-        credible public job. Your submitted company name or careers URL was
-        acceptable; Junior needs additional source support.
-    </p>
     {% elif resolution.status == 'UNSUPPORTED_SITE' %}
     <p class="muted">
         Junior did not save a partial company. The address you entered was
