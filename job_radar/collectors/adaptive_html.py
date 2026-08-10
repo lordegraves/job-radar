@@ -39,7 +39,89 @@ def collect_adaptive_html_jobs(
             first_html=html,
             first_page=first_page,
         )
-    return first_page
+    return _collect_numbered_pages(
+        company_config,
+        first_html=html,
+        first_page=first_page,
+    )
+
+
+def _collect_numbered_pages(
+    company_config: dict[str, Any],
+    *,
+    first_html: str,
+    first_page: list[JobPosting],
+) -> list[JobPosting]:
+    """Follow explicit same-site page links on generic career sites."""
+
+    source_url = str(company_config["source_url"])
+    max_pages = get_positive_int(
+        company_config,
+        key="max_pages",
+        default=DEFAULT_MAX_PAGES,
+        maximum=ABSOLUTE_HTML_MAX_PAGES,
+    )
+    postings: list[JobPosting] = []
+    seen_jobs: set[str] = set()
+    seen_pages = {source_url}
+    current_url = source_url
+    current_html = first_html
+    page_postings = first_page
+
+    for page_number in range(1, max_pages + 1):
+        new_postings = _append_new(postings, seen_jobs, page_postings)
+        if not page_postings or not new_postings or page_number >= max_pages:
+            break
+        next_url = _next_numbered_page_url(current_html, current_url, seen_pages)
+        if next_url is None:
+            break
+        seen_pages.add(next_url)
+        try:
+            current_html, page_postings = collect_html_jobs_document(
+                company_config,
+                next_url,
+            )
+        except CollectorError as error:
+            raise CollectorError(
+                "The public career site failed while reading a later results page.",
+                failure_stage="results_pagination_request",
+            ) from error
+        current_url = next_url
+
+    return postings
+
+
+def _next_numbered_page_url(
+    html: str,
+    current_url: str,
+    seen_pages: set[str],
+) -> str | None:
+    """Return the lowest later page number advertised on the current page."""
+
+    parsed_current = urlparse(current_url)
+    current_values = parse_qs(parsed_current.query).get("page", ["1"])
+    try:
+        current_page = int(current_values[0])
+    except (TypeError, ValueError):
+        current_page = 1
+
+    candidates: list[tuple[int, str]] = []
+    for href in re.findall(r"href\s*=\s*['\"]([^'\"]+)['\"]", html, re.IGNORECASE):
+        absolute = urljoin(current_url, unescape(href))
+        parsed = urlparse(absolute)
+        if parsed.netloc.casefold() != parsed_current.netloc.casefold():
+            continue
+        values = parse_qs(parsed.query).get("page")
+        if not values:
+            continue
+        try:
+            page = int(values[0])
+        except (TypeError, ValueError):
+            continue
+        normalized = parsed._replace(fragment="").geturl()
+        if page > current_page and normalized not in seen_pages:
+            candidates.append((page, normalized))
+    return min(candidates, default=(0, None), key=lambda item: item[0])[1]
 
 
 def _collect_successfactors_pages(

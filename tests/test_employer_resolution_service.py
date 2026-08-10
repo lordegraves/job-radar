@@ -17,12 +17,12 @@ from job_radar.employer_resolution_service import (
     DETECTED_SETUP_REQUIRED,
     DISCOVERY_TIMED_OUT,
     EXTERNAL_LOOKUP_DISABLED,
-    EXTERNAL_LOOKUP_NO_SOURCE,
     EXTERNAL_LOOKUP_UNAVAILABLE,
     ExternalLookupAttempt,
     INVALID_INPUT,
     MATCHED_EXISTING,
     PENDING_REVIEW,
+    UNSUPPORTED_SITE,
     _eightfold_detection_from_html,
     _talentbrew_detection_from_html,
     detect_employer_source,
@@ -666,7 +666,7 @@ def test_unknown_site_failure_directs_user_to_safe_support(
         allow_external_lookup=True,
     )
 
-    assert result.status == EXTERNAL_LOOKUP_NO_SOURCE
+    assert result.status == UNSUPPORTED_SITE
     assert "claytonmgraves@outlook.com" in result.message
     assert "Do not send passwords" in result.message
     assert list_profile_employer_assignments(database_path, profile.profile_id) == []
@@ -834,8 +834,8 @@ def test_unknown_site_requires_consent_and_discloses_complete_lookup_payload(
         ),
         (
             ExternalLookupAttempt(state="no_match"),
-            EXTERNAL_LOOKUP_NO_SOURCE,
-            "did not find a job source it could independently verify",
+            UNSUPPORTED_SITE,
+            "accepted this public careers address",
         ),
     ],
 )

@@ -481,3 +481,28 @@ def test_parse_html_jobs_supports_amentum_job_title_ids() -> None:
     assert postings[0].location is None
     assert postings[0].canonical_key is not None
     assert postings[0].content_hash is not None
+
+
+def test_parse_html_jobs_recognizes_employer_owned_job_cards() -> None:
+    html = """
+    <a href="/en/jobs/32248/systems-reliability-engineer/"
+       class="stretched-link js-view-job">
+        Systems Reliability Engineer III - Linux &amp; Virtualization
+    </a>
+    """
+
+    postings = _parse_html_jobs(
+        company_config={
+            "company_key": "example",
+            "name": "Example",
+            "source_type": "html",
+        },
+        html=html,
+        source_url="https://careers.example.com/en/jobs/",
+    )
+
+    assert len(postings) == 1
+    assert postings[0].title == (
+        "Systems Reliability Engineer III - Linux & Virtualization"
+    )
+    assert postings[0].source_job_id == "32248"

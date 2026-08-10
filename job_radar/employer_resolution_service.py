@@ -911,15 +911,15 @@ def _resolve_generic_source(
         )
         if tested_source is None:
             return EmployerResolutionResult(
-                status=EXTERNAL_LOOKUP_NO_SOURCE,
+                status=UNSUPPORTED_SITE,
                 message=(
-                    "Junior completed the optional Bing lookup but did not "
-                    "find a job source it could independently verify. No "
-                    "company was added. Check that this is the employer's "
-                    "main public careers page. If the address is correct, "
-                    "contact Clayton Graves at claytonmgraves@outlook.com and "
-                    "include the public careers URL. Do not send passwords, "
-                    "access tokens, résumés, or other private data."
+                    "Junior accepted this public careers address, but could "
+                    "not verify a supported source containing actual job "
+                    "postings. No company was added. You do not need to hunt "
+                    "for a recruiting-platform URL. Contact Clayton Graves "
+                    "at claytonmgraves@outlook.com and include this public "
+                    "careers URL. Do not send passwords, access tokens, "
+                    "résumés, or other private data."
                 ),
                 employer_name=display_name,
                 careers_url=normalized_url,
@@ -993,12 +993,16 @@ def _first_working_source(
 
 
 def _source_test_failed() -> EmployerResolutionResult:
-    return _invalid(
-        "Junior could not find a reliable public job feed or job list at that "
-        "address. Check that this is the employer's main public careers page. "
-        "If the address is correct, contact Clayton Graves at "
-        "claytonmgraves@outlook.com and include the public careers URL. "
-        "Do not send passwords, access tokens, résumés, or other private data."
+    return EmployerResolutionResult(
+        status=UNSUPPORTED_SITE,
+        message=(
+            "Junior accepted this public careers address, but could not verify "
+            "a supported source containing actual job postings. No company "
+            "was added. You do not need to find a different recruiting-platform "
+            "URL. Contact Clayton Graves at claytonmgraves@outlook.com and "
+            "include this public careers URL. Do not send passwords, access "
+            "tokens, résumés, or other private data."
+        ),
     )
 
 

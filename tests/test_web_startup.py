@@ -173,7 +173,7 @@ def test_unexpected_startup_failure_writes_diagnostic_log(
     log_text = diagnostic_log_path.read_text(encoding="utf-8")
 
     assert "junior startup failure" in log_text
-    assert "Build: RC6 Build 1.17" in log_text
+    assert "Build: RC6 Build 1.18" in log_text
     assert "Failure stage: application_startup" in log_text
     assert "Failure category: unexpected_application_failure" in log_text
     assert "Error type: RuntimeError" in log_text

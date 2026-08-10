@@ -9,12 +9,14 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.17`
+- Current field-test build: `RC6 Build 1.18`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-RC6 Build 1.17 is a field-test build. It carries the
+RC6 Build 1.18 is a field-test build. It improves company setup by accepting
+normal public careers pages, validating actual job records, and following
+bounded numbered result pages. It also carries the
 active profile's Strong fit capabilities into résumé comparison, while still
 requiring matching evidence in the résumé and posting. Broad shared words or
 tools do not make different professions equivalent, and Junior keeps sparse
@@ -87,6 +89,8 @@ junior currently provides:
   do not stop after the first results page
 - marker-based pagination for older generic HTML definitions backed by
   TalentBrew or SAP SuccessFactors, plus a 2,000-listing Workday ceiling
+- bounded numbered-page collection for employer-owned public career sites,
+  with company setup accepted only after Junior parses an actual public job
 - complete Workday detail retrieval when an employer uses `jobs` as its
   Workday site name, including Red Hat's public recruiting source
 - reliable Microsoft/Eightfold second-chance description retrieval using the
@@ -165,7 +169,11 @@ An optional global Bing fallback defaults off and is never required for company
 setup or normal scans. It must verify a credible job result before saving an
 employer and discard unsuccessful probe data when the request finishes. The
 setup result distinguishes an unavailable optional service from a completed
-lookup that produced no independently verified source.
+lookup that produced no independently verified source. Users may submit the
+company name or its normal public careers page; finding the recruiting
+platform, deriving pagination, and validating real job records are Junior's
+responsibility. An unsupported result saves no partial company and does not ask
+the user to hunt for a different ATS URL.
 
 Junior owns application identifiers. The internal Junior ID is hidden from
 normal forms and reports. A scan-linked application reuses the identifier
@@ -432,7 +440,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support email handoff, MSIX, and signing items above remain planned
-RC6 capabilities and are not implemented in RC6 Build 1.17. Users choose the
+RC6 capabilities and are not implemented in RC6 Build 1.18. Users choose the
 profile and download the troubleshooting ZIP themselves. Interactive
 company-source discovery writes a separate bounded
 `junior-company-discovery.log` containing only public hostnames, collector
@@ -602,7 +610,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.17.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.18.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

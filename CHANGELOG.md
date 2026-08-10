@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Prepared RC6 Build 1.18 by expanding the validated public-page collector to
+  recognize employer-owned job-card links and follow advertised same-site
+  numbered result pages within
+  existing safety bounds. Add Company still saves nothing until Junior parses
+  an actual public job. Unsupported sites now explain that platform discovery,
+  pagination, and job-detail support are Junior's responsibility instead of
+  asking users to find a more technical recruiting-platform URL.
+
 - Repaired Oracle Recruiting completeness checks so a long responsibilities
   section cannot hide missing qualifications. Oracle list and detail fields
   now retain explicit Responsibilities and Required qualifications boundaries

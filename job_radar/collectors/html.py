@@ -81,6 +81,7 @@ class HTMLJobLinkParser(HTMLParser):
         element_id = attrs_dict.get("id") or ""
 
         supported_link_classes = {
+            "js-view-job",
             "jobTitle-link",
             "results-list__item-title--link",
             "list-item__link",

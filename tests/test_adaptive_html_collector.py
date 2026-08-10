@@ -26,13 +26,41 @@ def _posting(job_id: str) -> JobPosting:
     )
 
 
-def test_unknown_html_source_remains_single_page(monkeypatch) -> None:
+def test_generic_source_stops_when_no_numbered_page_is_advertised(monkeypatch) -> None:
     monkeypatch.setattr(
         "job_radar.collectors.adaptive_html.collect_html_jobs_document",
         lambda config, url: ("<html>ordinary careers page</html>", [_posting("1")]),
     )
 
     assert len(collect_adaptive_html_jobs(_config())) == 1
+
+
+def test_generic_source_follows_advertised_numbered_pages(monkeypatch) -> None:
+    requested = []
+
+    def fake_document(config, url):
+        del config
+        requested.append(url)
+        if "page=2" in url:
+            return ("<html>No later page</html>", [_posting("3")])
+        return (
+            "<a href='?q=engineer&amp;page=2#results'>Next</a>"
+            "<a href='?q=engineer&amp;page=3#results'>3</a>",
+            [_posting("1"), _posting("2")],
+        )
+
+    monkeypatch.setattr(
+        "job_radar.collectors.adaptive_html.collect_html_jobs_document",
+        fake_document,
+    )
+
+    postings = collect_adaptive_html_jobs(_config())
+
+    assert [posting.source_job_id for posting in postings] == ["1", "2", "3"]
+    assert requested == [
+        "https://jobs.example.com/search?q=engineer",
+        "https://jobs.example.com/search?q=engineer&page=2",
+    ]
 
 
 def test_older_talentbrew_html_configuration_uses_p_pages(monkeypatch) -> None:
