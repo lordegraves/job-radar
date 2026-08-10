@@ -13,6 +13,7 @@ from job_radar.employer_resolution_service import (
     ALREADY_ASSIGNED,
     AMBIGUOUS_MATCH,
     CREATED_SCAN_READY,
+    DetectedEmployerSource,
     DETECTED_SCAN_READY,
     DETECTED_SETUP_REQUIRED,
     DISCOVERY_TIMED_OUT,
@@ -21,7 +22,6 @@ from job_radar.employer_resolution_service import (
     ExternalLookupAttempt,
     INVALID_INPUT,
     MATCHED_EXISTING,
-    PENDING_REVIEW,
     UNSUPPORTED_SITE,
     _eightfold_detection_from_html,
     _talentbrew_detection_from_html,
@@ -369,7 +369,7 @@ def test_complete_adp_url_requires_name_then_creates_scan_ready_employer(
     assert employer.source_config["locale"] == "en_US"
 
 
-def test_name_only_uses_review_but_unknown_url_waits_for_validation(
+def test_name_only_without_lookup_saves_no_review_request(
     tmp_path: Path,
 ) -> None:
     database_path = tmp_path / "junior.sqlite3"
@@ -394,11 +394,56 @@ def test_name_only_uses_review_but_unknown_url_waits_for_validation(
             ORDER BY created_at, request_id
             """
         ).fetchall()
-    assert name_only.status == PENDING_REVIEW
+    assert name_only.status == EXTERNAL_LOOKUP_DISABLED
     assert unsupported.status == DETECTED_SETUP_REQUIRED
-    assert len(requests) == 1
-    assert requests[0][1:] == (PENDING_REVIEW, "PENDING")
+    assert requests == []
     assert list_profile_employer_assignments(database_path, profile.profile_id) == []
+
+
+def test_name_only_lookup_adds_only_an_independently_verified_source(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    careers_url = "https://jobs.example.invalid/openings"
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_public_job_sources",
+        lambda **kwargs: ExternalLookupAttempt(
+            state="candidates",
+            discoveries=(
+                DetectedEmployerSource(
+                    source_type="html",
+                    source_identifier=None,
+                    source_config={
+                        "source_url": careers_url,
+                        "careers_url": careers_url,
+                    },
+                    scan_ready=True,
+                ),
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
+
+    result = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name="Example Catering",
+        allow_external_lookup=True,
+    )
+
+    assert result.status == CREATED_SCAN_READY
+    employer = get_employer_source(database_path, result.employer_id or "")
+    assert employer is not None
+    assert employer.source_config["source_url"] == careers_url
+    with sqlite3.connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT request_id FROM employer_review_requests"
+        ).fetchall() == []
 
 
 def test_assignments_remain_profile_specific(

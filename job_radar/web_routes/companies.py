@@ -502,6 +502,7 @@ def register_company_routes(
 
         submission = request.form.get("company", "").strip()
         retry_request_id = request.form.get("retry_request_id", "").strip()
+        settings = load_settings(settings_path)
         looks_like_url = (
             "://" in submission
             or ("." in submission and " " not in submission)
@@ -511,6 +512,12 @@ def register_company_routes(
             profile_id=workspace.active_profile.profile_id,
             company_name="" if looks_like_url else submission,
             careers_url=submission if looks_like_url else "",
+            allow_external_lookup=(
+                settings.company_discovery.external_lookup_enabled
+            ),
+            discovery_observer=lambda stage, fields: (
+                record_company_discovery_event(settings.logs_path, stage, fields)
+            ),
         )
         catalog = build_company_catalog_view(
             get_database_path(),

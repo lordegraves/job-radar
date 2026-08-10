@@ -44,7 +44,9 @@ display without removing that historical warning from the scan audit. Valid
 empty Greenhouse and iCIMS boards are reported as connected with no openings.
 Junior does not start a source-test batch while a scan is running, and an
 unexpected background-test failure is identified as a Junior test problem
-rather than being mislabeled as a failed employer source.
+rather than being mislabeled as a failed employer source. When a background
+test finishes, the Companies workspace reloads its saved health evidence so a
+successful retest cannot remain visibly stale until Junior is reopened.
 
 Each company detail page groups profile status, recruiting platform, connection
 health, last check, returned-job count, and the public request URL into one Job
@@ -173,7 +175,9 @@ lookup that produced no independently verified source. Users may submit the
 company name or its normal public careers page; finding the recruiting
 platform, deriving pagination, and validating real job records are Junior's
 responsibility. An unsupported result saves no partial company and does not ask
-the user to hunt for a different ATS URL.
+the user to hunt for a different ATS URL. Name-only submissions use the
+optional lookup only when the user has enabled it; otherwise Junior saves no
+unfinished company or administrator request and explains the consent choice.
 
 Junior owns application identifiers. The internal Junior ID is hidden from
 normal forms and reports. A scan-linked application reuses the identifier
@@ -917,6 +921,9 @@ Junior also creates safety backups automatically immediately before an eligible 
 Special thanks to Dawn Peacock for extensive early usability testing and
 workflow feedback that directly shaped the RC5 review workflow, job management
 model, and company discovery improvements.
+
+Special thanks to Jerry Reddick for field testing Junior's company discovery
+and job-source workflows and providing direct usability feedback.
 
 ## Documentation
 

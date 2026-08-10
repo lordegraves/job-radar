@@ -811,6 +811,7 @@
             .map((row) => [row.dataset.employerId, row])
     );
     let polling = false;
+    let startedOnThisPage = false;
 
     function updateOverallHealth() {
         if (!healthOverall) return;
@@ -909,6 +910,10 @@
                         `Testing finished: ${current.completed} checked, ` +
                         `${current.failed} need attention.`;
                 }
+                if (startedOnThisPage && current.total) {
+                    window.location.reload();
+                    return;
+                }
             }
         } catch {
             status.textContent =
@@ -919,6 +924,7 @@
     }
 
     async function startTest(formData) {
+        startedOnThisPage = true;
         status.textContent = "Preparing company source tests.";
         step.textContent = "Junior is building the test queue.";
         meter.removeAttribute("value");

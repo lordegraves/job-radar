@@ -3,7 +3,10 @@
 from pathlib import Path
 
 from job_radar.employer_models import EmployerSource
-from job_radar.employer_resolution_service import ExternalLookupAttempt
+from job_radar.employer_resolution_service import (
+    DetectedEmployerSource,
+    ExternalLookupAttempt,
+)
 from job_radar.employer_storage import (
     get_employer_source,
     is_profile_employer_enabled,
@@ -122,6 +125,8 @@ def test_companies_page_shows_global_catalog_with_profile_scan_state(
     assert 'id="source-test-meter"' in html
     assert 'X-Junior-Background-Test": "1"' in html
     assert 'submittedButton.textContent = "Starting tests..."' in html
+    assert "let startedOnThisPage = false;" in html
+    assert "window.location.reload();" in html
     assert "testButtons.forEach((button) => { button.disabled = true; });" in html
     assert ">Remove</button>" not in html
     assert "Find a company" in html
@@ -698,6 +703,62 @@ def test_add_company_page_blocks_incomplete_and_duplicate_employers(
     assert "already included" in duplicate_response.get_data(as_text=True)
     assert get_profile(database_path, profile.profile_id).company_ids == (
         "assigned_cafe",
+    )
+
+
+def test_name_only_addition_uses_enabled_lookup_without_saving_review(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Culinary Profile",
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    careers_url = "https://jobs.example.invalid/openings"
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_public_job_sources",
+        lambda **kwargs: ExternalLookupAttempt(
+            state="candidates",
+            discoveries=(
+                DetectedEmployerSource(
+                    source_type="html",
+                    source_identifier=None,
+                    source_config={
+                        "source_url": careers_url,
+                        "careers_url": careers_url,
+                    },
+                    scan_ready=True,
+                ),
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [object()],
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+    client = app.test_client()
+    client.post(
+        "/settings/company-discovery",
+        data={"external_lookup": "enabled"},
+    )
+
+    response = client.post(
+        "/companies/add/resolve",
+        data={"company": "Example Kitchens"},
+    )
+
+    assert response.status_code == 200
+    assert "was added and will be included in future scans" in response.get_data(
+        as_text=True
+    )
+    assert get_profile(database_path, profile.profile_id).company_ids == (
+        "example-kitchens",
     )
 
 

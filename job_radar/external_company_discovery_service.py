@@ -12,6 +12,7 @@ from job_radar.employer_resolution_service import (
     MATCHED_EXISTING,
     PENDING_REVIEW,
     EmployerResolutionResult,
+    _create_pending_review,
     normalize_company_name,
     resolve_employer_submission,
 )
@@ -191,12 +192,24 @@ def send_external_candidate_to_review(
         raise ExternalCompanyDiscoveryError(
             "That company suggestion is no longer available."
         )
-    result = resolve_employer_submission(
-        db_path,
-        profile_id=profile_id,
-        company_name=candidate.proposed_name,
-        careers_url=candidate.proposed_careers_url or "",
-    )
+    if candidate.proposed_careers_url:
+        result = resolve_employer_submission(
+            db_path,
+            profile_id=profile_id,
+            company_name=candidate.proposed_name,
+            careers_url=candidate.proposed_careers_url,
+        )
+    else:
+        # This action explicitly asks Junior to create administrator review
+        # work; ordinary name-only Add Company submissions no longer do so.
+        result = _create_pending_review(
+            db_path,
+            profile_id=profile_id,
+            display_name=candidate.proposed_name,
+            normalized_name=normalize_company_name(candidate.proposed_name),
+            normalized_url=None,
+            detection_result=PENDING_REVIEW,
+        )
     readiness = {
         MATCHED_EXISTING: MATCHED_EXISTING,
         PENDING_REVIEW: NEEDS_ADMIN_REVIEW,

@@ -10,9 +10,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   recognize employer-owned job-card links and follow advertised same-site
   numbered result pages within
   existing safety bounds. Add Company still saves nothing until Junior parses
-  an actual public job. Unsupported sites now explain that platform discovery,
+  an actual public job. Name-only additions now use the consented external
+  lookup instead of creating unfinished administrator requests, and failed
+  attempts save nothing. Unsupported sites explain that platform discovery,
   pagination, and job-detail support are Junior's responsibility instead of
-  asking users to find a more technical recruiting-platform URL.
+  asking users to find a more technical recruiting-platform URL. Completed
+  background source tests refresh the Companies workspace so its health summary
+  cannot remain stale until Junior is reopened.
 
 - Repaired Oracle Recruiting completeness checks so a long responsibilities
   section cannot hide missing qualifications. Oracle list and detail fields

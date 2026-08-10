@@ -254,13 +254,13 @@ def resolve_employer_submission(
             allow_external_lookup=allow_external_lookup,
             discovery_observer=discovery_observer,
         )
-    return _create_pending_review(
+    return _create_and_assign_name_only(
         db_path,
         profile_id=profile_id,
         display_name=display_name,
         normalized_name=normalized_name,
-        normalized_url=None,
-        detection_result=PENDING_REVIEW,
+        allow_external_lookup=allow_external_lookup,
+        discovery_observer=discovery_observer,
     )
 
 
@@ -831,6 +831,108 @@ def _create_and_assign_generic(
     )
 
 
+def _create_and_assign_name_only(
+    database_path: Path,
+    *,
+    profile_id: str,
+    display_name: str,
+    normalized_name: str,
+    allow_external_lookup: bool,
+    discovery_observer: Callable[[str, Mapping[str, object]], None] | None,
+) -> EmployerResolutionResult:
+    """Resolve a company name without creating unfinished administrator work."""
+
+    lookup_fields = _public_lookup_request_fields(
+        display_name=display_name,
+        careers_url="",
+    )
+    if not allow_external_lookup:
+        return EmployerResolutionResult(
+            status=EXTERNAL_LOOKUP_DISABLED,
+            message=(
+                "Junior did not create an unfinished company. Optional Bing "
+                "lookup is disabled, so Junior cannot safely identify an "
+                "arbitrary company from its name alone."
+            ),
+            employer_name=display_name,
+            external_lookup_provider="Bing",
+            external_lookup_fields=lookup_fields,
+        )
+
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(
+        _discover_public_job_sources,
+        display_name=display_name,
+        careers_url="",
+    )
+    try:
+        lookup_attempt = future.result(timeout=_COMPANY_DISCOVERY_TIMEOUT_SECONDS)
+    except FutureTimeoutError:
+        future.cancel()
+        return EmployerResolutionResult(
+            status=DISCOVERY_TIMED_OUT,
+            message=(
+                "Junior stopped checking after two minutes and did not add "
+                "the company. You can safely try again later."
+            ),
+            employer_name=display_name,
+        )
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    _observe_discovery(
+        discovery_observer,
+        "external_lookup",
+        external_lookup_enabled=True,
+        outcome=lookup_attempt.state,
+    )
+    if lookup_attempt.state == "unavailable":
+        return EmployerResolutionResult(
+            status=EXTERNAL_LOOKUP_UNAVAILABLE,
+            message=(
+                "Bing could not be reached for the optional company lookup. "
+                "No company or setup request was saved."
+            ),
+            employer_name=display_name,
+            external_lookup_provider="Bing",
+            external_lookup_fields=lookup_fields,
+        )
+    tested_source = _first_working_source(
+        list(lookup_attempt.discoveries),
+        display_name=display_name,
+        discovery_observer=discovery_observer,
+    )
+    if tested_source is None:
+        return EmployerResolutionResult(
+            status=UNSUPPORTED_SITE,
+            message=(
+                "Junior could not independently verify a public source with "
+                "actual jobs for that company name. No company or setup "
+                "request was saved."
+            ),
+            employer_name=display_name,
+            external_lookup_provider="Bing",
+            external_lookup_fields=lookup_fields,
+        )
+    detection, job_count = tested_source
+    discovered_url = str(
+        detection.source_config.get("careers_url")
+        or detection.source_config.get("source_url")
+        or ""
+    )
+    if not discovered_url:
+        return _source_test_failed()
+    return _create_and_assign_scan_ready(
+        database_path,
+        profile_id=profile_id,
+        display_name=display_name,
+        normalized_name=normalized_name,
+        normalized_url=normalize_careers_url(discovered_url),
+        detection=detection,
+        connection_job_count=job_count,
+    )
+
+
 def _resolve_generic_source(
     *,
     display_name: str,
@@ -1296,7 +1398,7 @@ def _discover_public_job_sources(
                     source_identifier=detected.source_identifier,
                     source_config={
                         **detected.source_config,
-                        "careers_url": careers_url,
+                        "careers_url": careers_url or candidate_url,
                     },
                     scan_ready=True,
                 )
@@ -1308,7 +1410,7 @@ def _discover_public_job_sources(
                     source_identifier=None,
                     source_config={
                         "source_url": candidate_url,
-                        "careers_url": careers_url,
+                        "careers_url": careers_url or candidate_url,
                     },
                     scan_ready=True,
                 )

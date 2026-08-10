@@ -102,6 +102,7 @@ def test_about_page_shows_safe_version_and_update_details(tmp_path: Path) -> Non
     assert "never downloads or installs an" in about_html
     assert "update without your approval" in about_html
     assert "Dawn Peacock" in about_html
+    assert "Jerry Reddick" in about_html
     assert "GPL-3.0-only" in about_html
     assert __version__ in about_html
     assert str(tmp_path.resolve()) in about_html

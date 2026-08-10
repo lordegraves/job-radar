@@ -10,7 +10,11 @@ from job_radar.employer_admin_service import (
     set_employer_lifecycle,
     validate_employer,
 )
-from job_radar.employer_resolution_service import resolve_employer_submission
+from job_radar.employer_resolution_service import (
+    PENDING_REVIEW,
+    _create_pending_review,
+    normalize_company_name,
+)
 from job_radar.employer_review_service import (
     CANCELLED,
     CONFIGURED_NEW,
@@ -46,10 +50,15 @@ def create_test_profile(
 
 
 def create_pending_request(database_path: Path, profile_id: str) -> str:
-    result = resolve_employer_submission(
+    # Existing 1.17 requests remain supported even though new name-only
+    # submissions no longer create administrator cleanup work.
+    result = _create_pending_review(
         database_path,
         profile_id=profile_id,
-        company_name="Example Kitchens",
+        display_name="Example Kitchens",
+        normalized_name=normalize_company_name("Example Kitchens"),
+        normalized_url=None,
+        detection_result=PENDING_REVIEW,
     )
     assert result.review_request_id is not None
     return result.review_request_id
