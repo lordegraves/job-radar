@@ -35,7 +35,7 @@ from job_radar.employer_storage import (
     list_profile_employer_assignments,
     upsert_employer_source,
 )
-from job_radar.profile_models import ManagedProfile
+from job_radar.profile_models import ManagedProfile, ProfilePreferences
 from job_radar.profile_storage import create_profile
 from job_radar.storage import initialize_database
 
@@ -720,6 +720,54 @@ def test_google_careers_url_can_be_confirmed_and_added(
     assert list_profile_employer_assignments(
         database_path, profile.profile_id
     )[0].employer_id == "google"
+
+
+def test_walmart_url_uses_profile_scope_and_adds_first_class_collector(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = ManagedProfile(
+        profile_id="profile_1234abcd",
+        display_name="Test User",
+        preferences=ProfilePreferences(
+            target_roles=("Platform Engineer",),
+            preferred_locations=("Colorado", "Remote"),
+        ),
+    )
+    create_profile(database_path, profile)
+    observed = {}
+
+    def collect(config):
+        observed.update(config)
+        return [object()]
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        collect,
+    )
+
+    detected = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        careers_url="https://careers.walmart.com/",
+    )
+    created = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        careers_url="https://careers.walmart.com/",
+        confirm_detected=True,
+    )
+
+    assert detected.status == DETECTED_SCAN_READY
+    assert detected.detected_source_label == "Walmart Careers"
+    assert created.status == CREATED_SCAN_READY
+    assert observed["walmart_target_roles"] == ["Platform Engineer"]
+    assert observed["walmart_locations"] == ["Colorado", "Remote"]
+    employer = get_employer_source(database_path, "walmart")
+    assert employer is not None
+    assert employer.source_type == "walmart"
+    assert "walmart_target_roles" not in employer.source_config
 
 
 def test_unknown_site_failure_directs_user_to_safe_support(

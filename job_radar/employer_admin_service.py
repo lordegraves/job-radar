@@ -108,6 +108,7 @@ _URL_SOURCES = {
     "weka",
     "workday",
     "google_careers",
+    "walmart",
 }
 
 

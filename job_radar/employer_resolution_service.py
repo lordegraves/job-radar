@@ -25,6 +25,7 @@ from job_radar.collectors.collector_http import get_response
 from job_radar.database import connect_database
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.registry import collect_jobs_for_company
+from job_radar.collectors.walmart import walmart_scope_config
 from job_radar.employer_storage import list_profile_employer_assignments
 from job_radar.profile_storage import get_profile
 from job_radar.storage import initialize_database
@@ -189,6 +190,7 @@ def resolve_employer_submission(
                 or _display_name_from_detection(normalized_url, detection)
             ),
             discovery_observer=discovery_observer,
+            walmart_scope=walmart_scope_config(get_profile(db_path, profile_id).preferences),
         )
         if tested_source is None:
             return _source_test_failed()
@@ -289,6 +291,19 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
     host = parsed.hostname or ""
     parts = [part for part in parsed.path.split("/") if part]
     slug = parts[0] if parts else None
+
+    if host in {"careers.walmart.com", "www.careers.walmart.com"}:
+        return DetectedEmployerSource(
+            source_type="walmart",
+            source_identifier="walmart-careers-us",
+            source_config={
+                "source_url": "https://careers.walmart.com/api/graphql",
+                "careers_url": careers_url,
+                "display_name": "Walmart",
+            },
+            scan_ready=True,
+            evidence=("Walmart public careers hostname",),
+        )
 
     if host in {"boards.greenhouse.io", "job-boards.greenhouse.io"} and slug:
         return _slug_detection("greenhouse", slug, careers_url)
@@ -811,6 +826,9 @@ def _create_and_assign_generic(
         display_name=display_name,
         normalized_url=normalized_url,
         discovery_observer=discovery_observer,
+        walmart_scope=walmart_scope_config(
+            get_profile(database_path, profile_id).preferences
+        ),
     )
     try:
         source_result = future.result(timeout=_COMPANY_DISCOVERY_TIMEOUT_SECONDS)
@@ -870,12 +888,14 @@ def _resolve_generic_source(
     display_name: str,
     normalized_url: str,
     discovery_observer: Callable[[str, Mapping[str, object]], None] | None,
+    walmart_scope: Mapping[str, object] | None = None,
 ) -> EmployerResolutionResult | tuple[DetectedEmployerSource, int]:
     """Run bounded network-only discovery without writing application data."""
 
     discoveries = _discover_branded_sources(
         normalized_url,
         discovery_observer=discovery_observer,
+        walmart_scope=walmart_scope,
     )
     discoveries.append(
         DetectedEmployerSource(
@@ -913,6 +933,7 @@ def _first_working_source(
     *,
     display_name: str,
     discovery_observer: Callable[[str, Mapping[str, object]], None] | None = None,
+    walmart_scope: Mapping[str, object] | None = None,
 ) -> tuple[DetectedEmployerSource, int] | None:
     """Probe derived collector configurations and keep the first real job feed."""
 
@@ -934,6 +955,8 @@ def _first_working_source(
             # normal result depth, not merely parse a convenient first page.
             "connection_test": True,
         }
+        if discovery.source_type == "walmart" and walmart_scope is not None:
+            candidate_config.update(walmart_scope)
         try:
             postings = collect_jobs_for_company(candidate_config)
         except (CollectorError, OSError, ValueError, requests.RequestException):
@@ -1485,6 +1508,7 @@ def _source_label(source_type: str | None) -> str:
         "ukg": "UKG Pro Recruiting",
         "eightfold": "Eightfold",
         "google_careers": "Google Careers",
+        "walmart": "Walmart Careers",
     }.get(source_type or "", "supported")
 
 

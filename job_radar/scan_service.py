@@ -9,6 +9,7 @@ from threading import Lock
 from time import monotonic, sleep
 
 from job_radar.candidate_profile import CandidateProfile
+from job_radar.collectors.walmart import walmart_scope_config
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.detail_page import (
     DETAIL_PAGE_SOURCE_TYPES,
@@ -887,6 +888,8 @@ def _handle_scan_unlocked(
                 company_name = company["name"]
                 source_type = company["source_type"]
                 collection_config = dict(company)
+                if source_type == "walmart":
+                    collection_config.update(walmart_scope_config(job_preferences))
                 collection_config[CACHE_CONFIG_KEY] = fetch_source_posting_cache(
                     database_path,
                     str(company_key),

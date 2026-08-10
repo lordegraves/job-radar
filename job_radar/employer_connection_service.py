@@ -10,11 +10,13 @@ import requests
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.collectors.icims import AUTHORITATIVE_EMPTY_CONFIG_KEY
 from job_radar.collectors.registry import collect_jobs_for_company
+from job_radar.collectors.walmart import walmart_scope_config
 from job_radar.database import connect_database
 from job_radar.diagnostic_service import classify_collector_failure
 from job_radar.employer_admin_service import validate_source_configuration
 from job_radar.employer_storage import get_employer_source
 from job_radar.storage import initialize_database
+from job_radar.profile_storage import get_active_profile
 
 
 SUCCESS = "success"
@@ -81,6 +83,13 @@ def test_employer_connection(
     else:
         try:
             source_config = employer.to_company_config()
+            if employer.source_type == "walmart":
+                active_profile = get_active_profile(database_path)
+                source_config.update(
+                    walmart_scope_config(
+                        active_profile.preferences if active_profile else None
+                    )
+                )
             # A health check proves that the source is readable; it must not
             # perform the full, potentially thousands-of-jobs scan.
             # Eightfold's most common field failure occurs only when moving to

@@ -148,6 +148,21 @@ def test_collect_jobs_for_company_routes_google_careers(monkeypatch) -> None:
     assert collect_jobs_for_company(config) == []
 
 
+def test_collect_jobs_for_company_routes_walmart(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "job_radar.collectors.registry.collect_walmart_jobs",
+        lambda config: [],
+    )
+    config = {
+        "company_key": "walmart",
+        "name": "Walmart",
+        "source_type": "walmart",
+        "source_url": "https://careers.walmart.com/api/graphql",
+    }
+
+    assert collect_jobs_for_company(config) == []
+
+
 def test_collect_jobs_for_company_routes_talentbrew(monkeypatch) -> None:
     monkeypatch.setattr(
         "job_radar.collectors.registry.collect_talentbrew_jobs",

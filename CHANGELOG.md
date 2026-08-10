@@ -6,6 +6,16 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added a first-class, profile-aware Walmart Careers collector. Junior detects
+  Walmart's ordinary careers URL, searches the public Walmart-family catalog
+  using the active profile's declared target roles and preferred locations,
+  preserves the server's exact scope across every reported result page, and
+  retrieves complete public descriptions in bounded batches. Role and location
+  preferences remain profile-owned and are never copied into the shared
+  employer definition. A connection test samples one page; an actual scan
+  rejects repeated, truncated, or over-limit scoped results rather than
+  silently accepting an incomplete collection.
+
 - Replaced optional Bing company lookup with layered discovery from any
   official company URL. Name-only input now searches the local catalog only.
   Junior follows a bounded set of relevant official pages, recognizes linked

@@ -136,6 +136,13 @@ never invokes an external search provider; it searches the local catalog.
 Candidate sources remain transient until Junior independently validates actual
 public jobs through a supported collector.
 
+The Walmart collector sends the active profile's declared target-role and
+preferred-location search terms to Walmart's public careers service so it can
+request a bounded, relevant result set. It does not send the profile name,
+resume content, skills, compensation preferences, exclusions, application
+history, or credentials. Those search terms are used in memory for the current
+request and are not stored in Walmart's shared company definition.
+
 The manual update check sends Junior's installed version to GitHub's public
 releases API. It does not download or install software. Junior contains no
 application analytics, advertising tracker, central learning service, or

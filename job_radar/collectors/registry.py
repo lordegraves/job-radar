@@ -36,6 +36,7 @@ from job_radar.collectors.recruitee import collect_recruitee_jobs
 from job_radar.collectors.eightfold import collect_eightfold_jobs
 from job_radar.collectors.ukg import collect_ukg_jobs
 from job_radar.collectors.google_careers import collect_google_careers_jobs
+from job_radar.collectors.walmart import collect_walmart_jobs
 from job_radar.collectors.incremental_cache import (
     CACHE_CONFIG_KEY,
     DETAIL_CACHE_MAX_AGE,
@@ -124,6 +125,9 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
 
     elif source_type == "google_careers":
         postings = collect_google_careers_jobs(company_config)
+
+    elif source_type == "walmart":
+        postings = collect_walmart_jobs(company_config)
 
     else:
         raise CollectorError(

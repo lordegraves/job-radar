@@ -158,6 +158,12 @@ COLLECTOR_CAPABILITIES = (
         "Automatic from Google Careers URL",
         "Scans Google's public careers search and complete job records.",
     ),
+    CollectorCapability(
+        "walmart",
+        "Walmart Careers",
+        "Automatic and scoped to the active profile",
+        "Scans every Walmart-family job matching the profile's target roles and locations.",
+    ),
 )
 
 

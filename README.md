@@ -88,6 +88,10 @@ junior currently provides:
 - configured-company scanning across multiple ATS and career-site formats
 - first-class Google Careers collection with complete public descriptions,
   stable job identifiers, location data, and bounded parallel pagination
+- profile-aware Walmart Careers collection that exhausts the public jobs
+  matching the active profile's target roles and preferred locations, carries
+  Walmart's server-side scope across pagination, and retrieves complete job
+  descriptions without ingesting its roughly 45,000 unrelated openings
 - bounded multi-page TalentBrew collection so large career sites such as Ford
   do not stop after the first results page
 - marker-based pagination for older generic HTML definitions backed by

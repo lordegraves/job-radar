@@ -232,8 +232,12 @@ catalog. Any official company URL may seed bounded public-page discovery.
 - Optional Bing lookup and its Settings control have been removed.
 - NetApp's ordinary careers homepage resolves to TalentBrew and returned 302
   actual jobs across its public result depth during the 2026-08-10 live check.
-- Walmart and Nutanix remain documented unsupported field-test cases because
-  candidate collectors could not independently return actual jobs.
+- Walmart now uses a first-class profile-aware collector rather than ingesting
+  its roughly 45,000-opening family catalog. A live synthetic Platform
+  Engineer/Colorado-or-Remote scope returned all 14 reported jobs with complete
+  descriptions, and the normal Add Company GUI completed successfully.
+- Nutanix's standard public page currently returns actual jobs; complete
+  pagination remains a field-test observation rather than a verified claim.
 - The complete unfamiliar-source discovery operation stops after two minutes.
   The interface shows an animated checking message while it runs. If the limit
   is reached, Junior saves no employer or profile assignment and offers a safe

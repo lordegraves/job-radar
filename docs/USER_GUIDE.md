@@ -560,6 +560,14 @@ Junior does not recommend where you should work or claim that its local catalog 
 
 To add a company, enter its ordinary name or any official company URL. A name searches the existing local catalog only; on a new installation that catalog is initially empty. For a URL, Junior follows a bounded set of relevant public pages and redirects, inspects recruiting-platform links and metadata, derives compatible collector settings, and validates the source using normal pagination. Junior saves the source only after a collector returns actual public job postings. Rejected candidates and failed probe details do not create company or review records. If automatic setup fails, the problem is a Junior compatibility limitation rather than a request for the user to locate an ATS URL. Use the displayed support contact and include the public company URL. Never send passwords, access tokens, résumés, or other private data with a support request.
 
+Walmart is intentionally profile-aware. Its public catalog contains roughly
+45,000 Walmart, Sam's Club, and Vizio openings, most unrelated to an individual
+professional search. Junior asks Walmart for the active profile's declared
+target roles and preferred locations, exhausts that scoped result set, and
+downloads complete descriptions for those jobs. Changing profiles changes the
+scope used by the next scan; the preferences are never stored in Walmart's
+shared company definition.
+
 An unfinished setup attempt created by an earlier Junior build appears in **Company setup requests**. **Retry setup** reruns current discovery, while **Remove attempt** hides the legacy attempt after confirmation without deleting a working company, job, application, or history record. New failed submissions do not add rows to this queue. After a company is added successfully, Junior returns to **Your Companies** with a temporary, dismissible confirmation instead of leaving the old URL in the form. Open a company to see whether its job source is connected, which recruiting platform it uses, when it was last checked, and how many jobs the latest check returned. **Test job source** safely reruns that public read without importing jobs or requiring Administration access. Background test completion refreshes the saved source-health summary automatically. Open the same page to correct a spelling mistake in the shared name; this changes the installation-wide display name but preserves the working collector configuration and existing history. **Remove from this profile** removes only the active profile's scanning assignment. Permanent global employer deletion remains protected in Administration.
 
 The global **Collector Catalog** is available from Settings and Administration
@@ -582,8 +590,8 @@ test evidence rather than something to work around.
 | Microsoft | `https://careers.microsoft.com/` | Eightfold; add succeeds when public jobs are available |
 | Google | `https://www.google.com/about/careers/applications/jobs/results/` | Google Careers; add succeeds when public jobs are available |
 | Nintendo | `https://careers.nintendo.com/` | Standard public page; add succeeds when public jobs are available |
-| Walmart | `https://careers.walmart.com/` | Known unsupported automatic setup; no company is saved |
-| Nutanix | `https://careers.nutanix.com/en/jobs/` | Known unsupported while its browser challenge blocks independent collector validation; no company is saved |
+| Walmart | `https://careers.walmart.com/` | Walmart Careers; add succeeds when the active profile has target roles; live synthetic scope returned 14 of 14 jobs with complete descriptions on 2026-08-10 |
+| Nutanix | `https://careers.nutanix.com/en/jobs/` | Standard public page currently returns actual jobs; record the count because full pagination remains a field-test target |
 
 For each successful case, open the company afterward and run **Test job
 source**. A healthy result must identify the same platform and return actual
