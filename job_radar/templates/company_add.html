@@ -66,16 +66,14 @@
 
 <div class="page-card">
     <p>
-        Enter a company name or careers URL. Junior will look for an existing
-        company first, then safely determine what happens next for
+        Paste the employer's public careers-page URL. Junior will look for an
+        existing company first, then safely determine what happens next for
         <strong>{{ catalog.active_profile.display_name }}'s</strong> profile.
     </p>
     <p class="muted">
-        Adding a company affects only this profile. Junior checks the public
-        page and its recruiting platform before saving anything. If the
-        employer keeps its job search on a separate site, Junior may perform a
-        limited public lookup using only the company name and public domain.
-        Profile and résumé information are never included.
+        Want to enter only the company name? First enable optional Bing company
+        lookup in Settings. Without Bing enabled, a public careers-page URL is
+        required. Profile and résumé information are never included.
     </p>
 </div>
 
@@ -87,13 +85,13 @@
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="retry_request_id" value="{{ retry_request_id or '' }}">
     <label for="company-search">
-        <span>Company name or careers URL</span>
+        <span>Public careers-page URL, or company name with Bing enabled</span>
         <input
             id="company-search"
             name="company"
             type="search"
             value="{{ submission }}"
-            placeholder="Example Company or https://careers.example.com"
+            placeholder="https://careers.example.com"
             autofocus
         >
     </label>
@@ -176,10 +174,10 @@
         system is hosted.
     </p>
     <p class="muted">
-        Your company name or public careers URL is acceptable. You can enable
-        optional Bing lookup in Settings after reviewing exactly what it sends
-        and the privacy tradeoffs. Existing companies and normal scans do not
-        use Bing.
+        To continue without Bing, paste the employer's ordinary public
+        careers-page URL. To search using only the company name, enable optional
+        Bing lookup in Settings after reviewing exactly what it sends and the
+        privacy tradeoffs. Existing companies and normal scans do not use Bing.
     </p>
     <p><a href="{{ url_for('settings_company_discovery') }}">Review external lookup privacy</a></p>
     {% elif resolution.status == 'EXTERNAL_LOOKUP_UNAVAILABLE' %}

@@ -14,7 +14,9 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   lookup instead of creating unfinished administrator requests, and failed
   attempts save nothing. Unsupported sites explain that platform discovery,
   pagination, and job-detail support are Junior's responsibility instead of
-  asking users to find a more technical recruiting-platform URL. Completed
+  asking users to find a more technical recruiting-platform URL. The Add
+  Company form now states before submission that a public careers-page URL is
+  required unless optional Bing company lookup is enabled. Completed
   background source tests refresh the Companies workspace so its health summary
   cannot remain stale until Junior is reopened.
 

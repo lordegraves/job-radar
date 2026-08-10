@@ -616,6 +616,9 @@ def test_add_company_page_searches_safe_catalog_and_adds_available_employer(
     page_response = client.get("/companies/add?q=cafe")
     page_html = page_response.get_data(as_text=True)
 
+    assert "Paste the employer's public careers-page URL" in page_html
+    assert "company name with Bing enabled" in page_html
+
     assert page_response.status_code == 200
     assert "Add a company" in page_html
     assert "Example Cafe" in page_html
@@ -914,6 +917,8 @@ def test_unknown_company_source_explains_disabled_external_lookup(
     assert response.status_code == 200
     assert "Optional Bing lookup is disabled" in html
     assert "Bing is not required for Junior to operate" in html
+    assert "To continue without Bing" in html
+    assert "public careers-page URL" in html
     assert "Review external lookup privacy" in html
     assert get_profile(database_path, profile.profile_id).company_ids == ()
 

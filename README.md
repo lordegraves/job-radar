@@ -172,7 +172,8 @@ setup or normal scans. It must verify a credible job result before saving an
 employer and discard unsuccessful probe data when the request finishes. The
 setup result distinguishes an unavailable optional service from a completed
 lookup that produced no independently verified source. Users may submit the
-company name or its normal public careers page; finding the recruiting
+company's public careers-page URL. A name-only submission requires the optional
+Bing lookup to be enabled; finding the recruiting
 platform, deriving pagination, and validating real job records are Junior's
 responsibility. An unsupported result saves no partial company and does not ask
 the user to hunt for a different ATS URL. Name-only submissions use the
