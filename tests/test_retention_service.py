@@ -251,3 +251,33 @@ def test_log_retention_keeps_each_troubleshooting_purpose_separately(
     assert (logs / names[5]).is_file()
     assert not (logs / names[6]).exists()
     assert (logs / names[7]).is_file()
+
+
+def test_log_retention_enforces_total_byte_ceiling(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    reports = tmp_path / "reports"
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    names = tuple(
+        f"junior-scan-run-{run}-2026080{run}T120000Z.log"
+        for run in range(1, 4)
+    )
+    for name in names:
+        (logs / name).write_text("x" * 60, encoding="utf-8")
+    monkeypatch.setattr(
+        "job_radar.retention_service.MAX_RETAINED_DATED_LOG_BYTES",
+        100,
+    )
+
+    run_retention(
+        reports,
+        logs,
+        report_policy=policy("latest_only"),
+        log_policy=policy("custom", count=50),
+    )
+
+    assert not (logs / names[0]).exists()
+    assert not (logs / names[1]).exists()
+    assert (logs / names[2]).is_file()

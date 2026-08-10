@@ -6,6 +6,15 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Consolidated non-scan diagnostics into a bounded, correlated
+  `junior-application.log` while preserving separate latest-scan and per-run
+  scan/evaluation traces. Company-add attempts now record enough privacy-safe
+  stages and final state to distinguish URL acceptance, source validation, and
+  actual company creation or assignment. Troubleshooting packages include the
+  unified log automatically. The application log retains at most two 2 MB
+  generations, and dated scan history has a 100 MB aggregate ceiling in
+  addition to the configured per-family count.
+
 - Prepared RC6 Build 1.18 by expanding the validated public-page collector to
   recognize employer-owned job-card links and follow advertised same-site
   numbered result pages within

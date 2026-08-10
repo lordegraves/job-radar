@@ -8,6 +8,7 @@ import sys
 import traceback
 from datetime import UTC, date, datetime
 from pathlib import Path
+from time import monotonic
 
 from flask import Flask, g, jsonify, redirect, render_template, request, url_for
 
@@ -16,7 +17,10 @@ from job_radar.build_info import RELEASE_LABEL
 from job_radar.config import ConfigError
 from job_radar.csrf import register_csrf_protection
 from job_radar.runtime_paths import RuntimePaths, get_default_user_data_directory
-from job_radar.operational_event_log import record_operational_event
+from job_radar.operational_event_log import (
+    record_operational_event,
+    set_diagnostic_operation_id,
+)
 from job_radar.session_secret import load_or_create_session_secret
 from job_radar.profile_storage import get_active_profile
 from job_radar.first_run_service import needs_first_run_setup
@@ -130,6 +134,20 @@ def create_app(
         """Give related GUI and error events one safe correlation value."""
 
         g.junior_request_id = secrets.token_hex(6)
+        set_diagnostic_operation_id(g.junior_request_id)
+        g.junior_request_started = monotonic()
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            record_operational_event(
+                _get_runtime_paths(app).logs_path,
+                kind="user_actions",
+                subsystem="web",
+                event="user_action_started",
+                fields={
+                    "request_id": g.junior_request_id,
+                    "endpoint": request.endpoint or "unknown",
+                    "method": request.method,
+                },
+            )
 
     @app.after_request
     def record_user_action(response):
@@ -147,6 +165,11 @@ def create_app(
                     "endpoint": request.endpoint or "unknown",
                     "method": request.method,
                     "status_code": response.status_code,
+                    "elapsed_seconds": round(
+                        monotonic()
+                        - getattr(g, "junior_request_started", monotonic()),
+                        3,
+                    ),
                 },
             )
         return response

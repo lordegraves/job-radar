@@ -15,7 +15,8 @@ from job_radar.diagnostic_service import DiagnosticsView
 MAX_VISIBLE_LOGS = 20
 MAX_LOG_VIEW_BYTES = 200_000
 _OWNED_LOG_PATTERN = re.compile(
-    r"^(?:junior-actions\.log|junior-company-discovery\.log|"
+    r"^(?:junior-application\.log|junior-application\.log\.previous|"
+    r"junior-actions\.log|junior-company-discovery\.log|"
     r"junior-company-discovery\.log\.previous|"
     r"junior-diagnostics\.log|junior-email\.log|junior-last-scan\.log|"
     r"junior-update\.log|"
@@ -71,8 +72,14 @@ def list_diagnostic_logs(logs_path: str | Path) -> tuple[DiagnosticLogFile, ...]
             for path in directory.iterdir()
             if path.is_file() and _OWNED_LOG_PATTERN.fullmatch(path.name)
         ),
-        key=lambda path: path.stat().st_mtime,
-        reverse=True,
+        key=lambda path: (
+            {
+                "junior-application.log": 0,
+                "junior-last-scan.log": 1,
+                "junior-application.log.previous": 2,
+            }.get(path.name, 3),
+            -path.stat().st_mtime,
+        ),
     )[:MAX_VISIBLE_LOGS]
     return tuple(
         DiagnosticLogFile(
@@ -231,6 +238,8 @@ def _log_title(log_name: str) -> str:
     if log_name.startswith("junior-evaluation-run-"):
         return "Job evaluation trace"
     return {
+        "junior-application.log": "Application activity",
+        "junior-application.log.previous": "Previous application activity",
         "junior-actions.log": "User action history",
         "junior-last-scan.log": "Latest scan activity",
         "junior-company-discovery.log": "Company discovery activity",
@@ -277,6 +286,13 @@ def _log_description(log_name: str) -> str:
             "reason-code, and final-outcome trace. Résumé and description text are excluded."
         )
     descriptions = {
+        "junior-application.log": (
+            "Correlated company setup, user action, database, email, update, "
+            "decision, and sanitized application-error activity."
+        ),
+        "junior-application.log.previous": (
+            "The prior bounded application activity log retained during rotation."
+        ),
         "junior-actions.log": (
             "Safe records of Save, Pass, Apply, and other deliberate job "
             "decisions. Job descriptions and profile contents are excluded."

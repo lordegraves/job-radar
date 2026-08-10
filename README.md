@@ -447,9 +447,10 @@ not be removed by an update, repair, or uninstall.
 The Contact support email handoff, MSIX, and signing items above remain planned
 RC6 capabilities and are not implemented in RC6 Build 1.18. Users choose the
 profile and download the troubleshooting ZIP themselves. Interactive
-company-source discovery writes a separate bounded
-`junior-company-discovery.log` containing only public hostnames, collector
-families, safe outcomes, counts, and timestamps.
+company-source discovery writes correlated events to the bounded
+`junior-application.log`. Each attempt records its submission type, public
+hostname, stages, collector families, safe outcomes, counts, elapsed time, and
+whether a company was actually created or assigned.
 
 ### Planned RC7 language assistance
 
@@ -837,19 +838,22 @@ Every unlocked Administration subpage includes an explicit **Back to Settings & 
 
 The **Settings & Diagnostics** workspace provides normal-user controls for email, scheduling, retention, and optional external company lookup in collapsed expandable sections. Its separate **Diagnostics** view summarizes application configuration, the latest scan, company sources, and email delivery with green, yellow, red, or neutral status cards. Help remains its own primary page rather than appearing again inside the Settings submenu. Email setup distinguishes a connection test that sends nothing, a privacy-safe diagnostic test email, and delivery of the latest scan summary. The diagnostic message confirms configuration, secure connection, authentication, and server handoff without including addresses, credentials, profile data, résumé contents, or raw server responses. The readable summary is the email body; the full HTML report remains attached. Email test and delivery outcomes appear in a dedicated sanitized Email activity log. Problems are categorized as configuration, collector, network, email, or unexpected application failures and include a plain-language next step. A separate developer-log pane shows one recognized Junior-owned log at a time as timestamped structured text and downloads a complete `.log` copy without simplifying or dropping safe fields. Selecting another log returns to the log viewer instead of the top of the page. The on-screen view is limited to the newest 200,000 bytes. It is not a general file browser: nested paths, arbitrary logs, editing, deletion, and unrestricted downloads are rejected. Job descriptions, profile and résumé contents, credentials, tokens, environment contents, request headers, and raw exception text are neither stored in these logs nor displayed. AI résumé tailoring is visibly marked **Under development** and provides no enablement, credential, provider, or connection-test controls. Job reports provide no tailoring action. Retained experimental AI code does not send data, alter Junior's deterministic scoring, or add provider calls, cost, or delay to scans. Administration includes the global Employer Catalog, where an unlocked administrator can create and edit structured employer-source settings, run bounded local validation, test the real collector connection without importing jobs, and enable, disable, or retire an employer. A connection test records the last attempt, last success, last problem, returned-job count, and a safe troubleshooting category. It never stores raw collector or network error text, and editing source settings clears stale connection health. The employer detail page can assign an available, validated employer to any managed profile or remove one profile's assignment without affecting another profile or deleting collected history. Permanent deletion requires typing `DELETE` and is permitted only when no profile assignment or collected job references the employer; otherwise the administrator must disable or retire it. The Employer Review Queue lets unresolved profile submissions be matched to an existing employer, used to prefill a new employer, assigned after availability checks, or closed as unsupported, rejected, or duplicate. Recommendation Administration provides employer/profile diagnostics, global employer recommendation metadata and eligibility, profile-specific feedback inspection and guarded reset, and explicitly bounded rebuilds for one profile, one employer, or every profile. Recommendation maintenance has a sanitized audit and does not silently override profile feedback. Review decisions have a sanitized audit trail. New and edited employers must validate before they can be globally enabled. Disabling or retiring preserves profile assignments and collected history; an unavailable employer is omitted from scans until it is enabled again. Packaged company defaults are empty for new installations. Existing legacy definitions import only once into the active profile, never replace a user-edited database employer with the same stable ID, and remain separate from later user-owned catalog changes. Other Administration categories remain planned.
 
-Developer logs retain allowlisted scan, job-evaluation, database, user-action,
-application-error, decision, email, company-discovery, update, and startup
-events as dated records. Scan and evaluation filenames identify the exact scan
-run; database logs retain writes, slow operations, and rollbacks while omitting
-routine fast reads. User-action logs record the route and result without form
-values. Application-error logs retain a safe error type and correlation ID,
-never raw exception text. Structured operational events identify their schema,
+Developer logs retain allowlisted scan and job-evaluation traces, a unified
+application activity history, and startup failures. Scan and evaluation
+filenames identify the exact scan run. The application log correlates database
+writes and slow operations, user actions, safe failures, decisions, email,
+company discovery, and updates while omitting routine fast reads and form
+values. Safe failures retain an error type and correlation ID, never raw
+exception text. Structured operational events identify their schema,
 Junior version and build, subsystem, severity, stage, status, counts, timing,
 reason codes, and safe failure category when those facts apply. The viewer
 and complete timestamped `.log` downloads use conventional one-line structured
 text: timestamp, severity, subsystem, event, and detailed `key=value` fields.
-The configured dated-log retention count is applied independently to each log
-purpose so useful error or database history is not displaced by scan activity.
+Non-scan activity is consolidated in `junior-application.log`, which rotates at
+2 MB and keeps one previous file. Scan and evaluation traces remain separate.
+The configured dated-log retention count is applied independently to each scan
+log purpose, and a 100 MB aggregate ceiling removes the oldest dated trace when
+the configured count would otherwise consume excessive storage.
 A developer can follow the same scan run or request across related logs and
 inspect every retained safe field without exposing full job descriptions,
 profile settings, résumé contents, submitted form values, secrets, environment
@@ -901,7 +905,14 @@ The same expandable Email section provides **Send latest scan summary** as an ex
 
 The downloadable `junior-last-scan.log` records the newest scan's stages,
 collector types, counts, safe failure categories, and elapsed time.
-`junior-diagnostics.log` retains a bounded operational history. Neither log
+`junior-application.log` correlates company setup, user actions, database work,
+email, updates, job decisions, and safe application failures. Company setup
+records whether the input was a name or URL, public hostnames, discovery and
+validation stages, final status, elapsed time, and whether Junior actually
+created or assigned the company. It is included automatically in every
+troubleshooting package. Scan run and evaluation traces remain separate.
+Application logging is limited to the current 2 MB file plus one previous file;
+dated scan/evaluation history also has a 100 MB aggregate ceiling. None of the logs
 contains job listings, employer names, submitted URLs, profile settings, or
 résumé contents.
 

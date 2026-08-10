@@ -69,35 +69,31 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
 
     assert {log.name for log in logs} == {
         "junior-actions.log",
+        "junior-application.log",
         "junior-last-scan.log",
-        "junior-company-discovery.log",
         "junior-company-discovery.log.previous",
         "junior-update.log",
-        "junior-email.log",
         "startup-errors.log",
         "junior-20260723T120000000000Z.log",
     }
     titles = {log.name: log.title for log in logs}
+    assert titles["junior-application.log"] == "Application activity"
     assert titles["junior-actions.log"] == "User action history"
     assert titles["junior-last-scan.log"] == "Latest scan activity"
-    assert titles["junior-company-discovery.log"] == (
-        "Company discovery activity"
-    )
     assert titles["junior-company-discovery.log.previous"] == (
         "Previous company discovery activity"
     )
     assert titles["junior-update.log"] == "Update activity"
-    assert titles["junior-email.log"] == "Email activity"
     assert all(log.description for log in logs)
 
-    content = (tmp_path / "junior-company-discovery.log").read_text(
+    content = (tmp_path / "junior-application.log").read_text(
         encoding="utf-8"
     )
     assert "careers.example.test" in content
     assert "talentbrew" in content
     assert "unsafe_url" not in content
 
-    email_content = (tmp_path / "junior-email.log").read_text(
+    email_content = (tmp_path / "junior-application.log").read_text(
         encoding="utf-8"
     )
     assert "email_connection_test" in email_content
@@ -112,7 +108,7 @@ def test_lists_only_recognized_junior_logs(tmp_path: Path) -> None:
         provider="private@example.test",
         reason_code="invalid_provider",
     )
-    email_content = (tmp_path / "junior-email.log").read_text(
+    email_content = (tmp_path / "junior-application.log").read_text(
         encoding="utf-8"
     )
     assert "private@example.test" not in email_content
@@ -266,7 +262,7 @@ def test_decision_log_records_developer_metadata(tmp_path: Path) -> None:
 
     assert written is True
     payload = json.loads(
-        (tmp_path / "junior-actions.log").read_text(encoding="utf-8")
+        (tmp_path / "junior-application.log").read_text(encoding="utf-8")
     )
     assert payload["schema_version"] == 1
     assert payload["application_version"]

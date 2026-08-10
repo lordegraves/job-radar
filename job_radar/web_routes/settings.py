@@ -271,7 +271,7 @@ def register_settings_routes(
                     / "last-update-result.json"
                 ),
                 log_path=(
-                    get_runtime_paths().logs_path / "junior-update.log"
+                    get_runtime_paths().logs_path / "junior-application.log"
                 ),
                 expected_build=(
                     f"{RELEASE_LABEL} Build {update.available_build}"

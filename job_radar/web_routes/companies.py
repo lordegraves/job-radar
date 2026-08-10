@@ -1,11 +1,14 @@
 """Serve profile-aware company-source list and detail pages."""
 
 from collections.abc import Callable
+from time import monotonic
+from urllib.parse import urlparse
 
 from flask import (
     Flask,
     abort,
     flash,
+    g,
     jsonify,
     make_response,
     redirect,
@@ -507,6 +510,30 @@ def register_company_routes(
             "://" in submission
             or ("." in submission and " " not in submission)
         )
+        attempt_id = getattr(g, "junior_request_id", "company-add")
+        started = monotonic()
+        common_fields = {
+            "attempt_id": attempt_id,
+            "submission_type": "url" if looks_like_url else "name",
+            "submitted_host": (
+                (
+                    urlparse(
+                        submission if "://" in submission else f"//{submission}"
+                    ).hostname
+                    or ""
+                ).casefold()
+                if looks_like_url
+                else ""
+            ),
+            "external_lookup_enabled": (
+                settings.company_discovery.external_lookup_enabled
+            ),
+        }
+        record_company_discovery_event(
+            settings.logs_path,
+            "attempt_started",
+            common_fields,
+        )
         resolution = resolve_employer_submission(
             get_database_path(),
             profile_id=workspace.active_profile.profile_id,
@@ -516,8 +543,30 @@ def register_company_routes(
                 settings.company_discovery.external_lookup_enabled
             ),
             discovery_observer=lambda stage, fields: (
-                record_company_discovery_event(settings.logs_path, stage, fields)
+                record_company_discovery_event(
+                    settings.logs_path,
+                    stage,
+                    {**common_fields, **fields},
+                )
             ),
+        )
+        record_company_discovery_event(
+            settings.logs_path,
+            "attempt_finished",
+            {
+                **common_fields,
+                "final_status": resolution.status,
+                "company_created": resolution.status == CREATED_SCAN_READY,
+                "company_assigned": resolution.status
+                in {CREATED_SCAN_READY, ALREADY_ASSIGNED},
+                "elapsed_seconds": round(monotonic() - started, 3),
+                "outcome": (
+                    "verified"
+                    if resolution.status
+                    in {CREATED_SCAN_READY, ALREADY_ASSIGNED}
+                    else "rejected"
+                ),
+            },
         )
         catalog = build_company_catalog_view(
             get_database_path(),
@@ -544,6 +593,24 @@ def register_company_routes(
             settings_path
         ).company_discovery.external_lookup_enabled
         logs_path = load_settings(settings_path).logs_path
+        attempt_id = getattr(g, "junior_request_id", "company-confirm")
+        started = monotonic()
+        common_fields = {
+            "attempt_id": attempt_id,
+            "submission_type": "confirmed_url",
+            "submitted_host": (
+                urlparse(
+                    careers_url if "://" in careers_url else f"//{careers_url}"
+                ).hostname
+                or ""
+            ).casefold(),
+            "external_lookup_enabled": allow_external_lookup,
+        }
+        record_company_discovery_event(
+            logs_path,
+            "attempt_started",
+            common_fields,
+        )
         resolution = resolve_employer_submission(
             get_database_path(),
             profile_id=workspace.active_profile.profile_id,
@@ -552,8 +619,30 @@ def register_company_routes(
             confirm_detected=True,
             allow_external_lookup=allow_external_lookup,
             discovery_observer=lambda stage, fields: (
-                record_company_discovery_event(logs_path, stage, fields)
+                record_company_discovery_event(
+                    logs_path,
+                    stage,
+                    {**common_fields, **fields},
+                )
             ),
+        )
+        record_company_discovery_event(
+            logs_path,
+            "attempt_finished",
+            {
+                **common_fields,
+                "final_status": resolution.status,
+                "company_created": resolution.status == CREATED_SCAN_READY,
+                "company_assigned": resolution.status
+                in {CREATED_SCAN_READY, ALREADY_ASSIGNED},
+                "elapsed_seconds": round(monotonic() - started, 3),
+                "outcome": (
+                    "verified"
+                    if resolution.status
+                    in {CREATED_SCAN_READY, ALREADY_ASSIGNED}
+                    else "rejected"
+                ),
+            },
         )
         if resolution.status in {CREATED_SCAN_READY, ALREADY_ASSIGNED}:
             if retry_request_id and resolution.employer_id:

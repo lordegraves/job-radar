@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
@@ -10,21 +11,29 @@ from threading import Lock
 from job_radar import __build__, __version__
 
 
+APPLICATION_LOG_NAME = "junior-application.log"
+APPLICATION_PREVIOUS_LOG_NAME = "junior-application.log.previous"
 MAX_LOG_BYTES = 2_000_000
-MAX_RETAINED_BYTES = 1_500_000
-_PROCESS_STAMP = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 _WRITE_LOCK = Lock()
-_LOG_NAMES = {
-    "database": f"junior-database-{_PROCESS_STAMP}.log",
-    "errors": f"junior-errors-{_PROCESS_STAMP}.log",
-    "user_actions": f"junior-user-actions-{_PROCESS_STAMP}.log",
-}
+_SUPPORTED_KINDS = {"database", "errors", "user_actions", "application"}
+_OPERATION_ID: ContextVar[str | None] = ContextVar(
+    "junior_diagnostic_operation_id",
+    default=None,
+)
+
+
+def set_diagnostic_operation_id(operation_id: str | None) -> None:
+    """Correlate all safe events emitted while one task is running."""
+
+    _OPERATION_ID.set(operation_id)
 
 
 def operational_log_name(kind: str) -> str:
     """Return the timestamped filename owned by one application process."""
 
-    return _LOG_NAMES[kind]
+    if kind not in _SUPPORTED_KINDS:
+        raise ValueError(f"unsupported operational log kind: {kind}")
+    return APPLICATION_LOG_NAME
 
 
 def record_operational_event(
@@ -38,7 +47,7 @@ def record_operational_event(
 ) -> bool:
     """Append an already-sanitized event and never interrupt product work."""
 
-    if kind not in _LOG_NAMES:
+    if kind not in _SUPPORTED_KINDS:
         raise ValueError(f"unsupported operational log kind: {kind}")
     payload = {
         "timestamp": datetime.now(UTC).isoformat(),
@@ -48,12 +57,16 @@ def record_operational_event(
         "severity": severity,
         "subsystem": subsystem,
         "event": event,
+        "category": kind,
     }
+    operation_id = _OPERATION_ID.get()
+    if operation_id:
+        payload["operation_id"] = operation_id
     payload.update(_safe_values(fields or {}))
     try:
         directory = Path(logs_path)
         directory.mkdir(parents=True, exist_ok=True)
-        path = directory / _LOG_NAMES[kind]
+        path = directory / APPLICATION_LOG_NAME
         with _WRITE_LOCK:
             _bound_existing_log(path)
             with path.open("a", encoding="utf-8", newline="\n") as stream:
@@ -87,10 +100,5 @@ def _safe_values(fields: dict[str, object]) -> dict[str, object]:
 def _bound_existing_log(path: Path) -> None:
     if not path.is_file() or path.stat().st_size < MAX_LOG_BYTES:
         return
-    with path.open("rb") as stream:
-        stream.seek(-MAX_RETAINED_BYTES, 2)
-        retained = stream.read()
-    first_newline = retained.find(b"\n")
-    if first_newline >= 0:
-        retained = retained[first_newline + 1 :]
-    path.write_bytes(retained)
+    previous = path.with_name(APPLICATION_PREVIOUS_LOG_NAME)
+    path.replace(previous)

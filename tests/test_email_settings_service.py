@@ -355,7 +355,7 @@ def test_email_setup_sends_safe_diagnostic_test_and_records_activity(
     assert captured["email_settings"].enabled is False
     assert "Diagnostic email sent" in html
     assert "Junior sent the diagnostic test email." in html
-    email_log = tmp_path / "logs" / "junior-email.log"
+    email_log = tmp_path / "logs" / "junior-application.log"
     assert email_log.is_file()
     content = email_log.read_text(encoding="utf-8")
     assert "email_diagnostic_message" in content

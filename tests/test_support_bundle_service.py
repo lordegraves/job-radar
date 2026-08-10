@@ -37,6 +37,10 @@ def test_support_bundle_contains_safe_reproduction_data_only(tmp_path: Path) -> 
     (reports / "target-scan.json").write_text('{"summary": {}}', encoding="utf-8")
     (reports / "target-scan-raw.zip").write_bytes(b"private raw scan")
     (logs / "junior-diagnostics.log").write_text("safe log", encoding="utf-8")
+    (logs / "junior-application.log").write_text(
+        '{"event":"company_discovery","attempt_id":"safe-123"}\n',
+        encoding="utf-8",
+    )
     (logs / "arbitrary.log").write_text("not allowlisted", encoding="utf-8")
     (resumes / "resume.pdf").write_bytes(b"resume contents")
     runtime = RuntimePaths.from_settings(settings, base_directory=tmp_path)
@@ -60,6 +64,8 @@ def test_support_bundle_contains_safe_reproduction_data_only(tmp_path: Path) -> 
         assert "configuration/junior-profile-configuration.json" in names
         assert "configuration/junior-company-catalog.json" in names
         assert "logs/junior-diagnostics.log" in names
+        assert "logs/junior-application.log" in names
+        assert b"safe-123" in archive.read("logs/junior-application.log")
         assert "manifest.json" in names
         assert "README.txt" in names
         assert not any("resume" in name.casefold() for name in names)

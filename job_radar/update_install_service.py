@@ -122,7 +122,7 @@ def launch_windows_installer(
     )
     update_result_path.parent.mkdir(parents=True, exist_ok=True)
     update_log_path = log_path or (
-        update_result_path.parent.parent / "logs" / "junior-update.log"
+        update_result_path.parent.parent / "logs" / "junior-application.log"
     )
     update_log_path.parent.mkdir(parents=True, exist_ok=True)
     _append_update_event(

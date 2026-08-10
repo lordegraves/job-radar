@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
-from datetime import UTC, datetime
 from pathlib import Path
 
-from job_radar import __build__, __version__
+from job_radar.operational_event_log import record_operational_event
 
-LOG_NAME = "junior-company-discovery.log"
-MAX_LOG_BYTES = 1_000_000
 _SAFE_FIELDS = {
+    "attempt_id",
     "candidate_host",
     "candidate_number",
     "external_lookup_enabled",
@@ -19,6 +16,12 @@ _SAFE_FIELDS = {
     "outcome",
     "source_type",
     "stage",
+    "submission_type",
+    "submitted_host",
+    "final_status",
+    "company_created",
+    "company_assigned",
+    "elapsed_seconds",
 }
 
 
@@ -26,33 +29,23 @@ def record_company_discovery_event(
     logs_path: str | Path,
     stage: str,
     fields: Mapping[str, object],
-) -> None:
+) -> bool:
     """Append one allowlisted event without URLs, user data, or exceptions."""
 
-    directory = Path(logs_path)
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / LOG_NAME
-    if path.exists() and path.stat().st_size >= MAX_LOG_BYTES:
-        path.replace(directory / f"{LOG_NAME}.previous")
-    payload = {
-        "timestamp": datetime.now(UTC).isoformat(),
-        "schema_version": 1,
-        "application_version": __version__,
-        "application_build": __build__,
-        "subsystem": "company_discovery",
-        "severity": _event_severity(fields),
-        "event": "company_discovery",
-        "stage": stage,
-    }
-    payload.update(
-        {
+    safe_fields = {
             key: value
             for key, value in fields.items()
-            if key in _SAFE_FIELDS and isinstance(value, (bool, int, str))
+            if key in _SAFE_FIELDS and isinstance(value, (bool, float, int, str))
         }
+    safe_fields["stage"] = stage
+    return record_operational_event(
+        logs_path,
+        kind="application",
+        subsystem="company_discovery",
+        event="company_discovery",
+        severity=_event_severity(fields),
+        fields=safe_fields,
     )
-    with path.open("a", encoding="utf-8", newline="\n") as stream:
-        stream.write(json.dumps(payload, sort_keys=True) + "\n")
 
 
 def _event_severity(fields: Mapping[str, object]) -> str:

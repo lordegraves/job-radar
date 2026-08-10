@@ -700,6 +700,16 @@ credentials, or raw exception text. **Open Data Directory** opens the active
 workspace, and **Copy details** copies safe version and health information for
 support.
 
+The troubleshooting package automatically includes Junior's unified
+`junior-application.log` and its separate scan diagnostics. Application events
+share a safe operation ID so support can reconstruct company setup, user
+actions, database work, email, updates, decisions, and failures without form
+values or private content. Company setup includes the public hostname,
+discovery stages, final result, elapsed time, and whether Junior actually
+created or assigned the company. The application log rotates at 2 MB and keeps
+one previous file. Dated scan and evaluation traces follow the configured
+retention count and a 100 MB total ceiling.
+
 Common situations:
 
 - **Junior says it is already running:** use the existing window. If no window

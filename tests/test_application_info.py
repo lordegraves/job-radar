@@ -448,7 +448,7 @@ def test_desktop_update_downloads_verifies_launches_and_closes(
     assert launched[0][0] == tmp_path / update.installer_name
     assert launched[0][1]["application_path"] == Path(sys.executable)
     assert launched[0][1]["log_path"] == (
-        tmp_path / "logs" / "junior-update.log"
+            tmp_path / "logs" / "junior-application.log"
     )
     assert launched[0][1]["expected_build"] == (
         f"RC6 Build {update.available_build}"

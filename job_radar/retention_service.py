@@ -164,6 +164,32 @@ def _prune_owned_logs(logs_directory: Path, *, keep: int) -> None:
                 # Antivirus and report viewers can briefly lock old Windows logs.
                 # Preserve the completed scan and retry cleanup on a later run.
                 continue
+    _prune_owned_logs_to_byte_ceiling(logs_directory)
+
+
+MAX_RETAINED_DATED_LOG_BYTES = 100_000_000
+
+
+def _prune_owned_logs_to_byte_ceiling(logs_directory: Path) -> None:
+    """Bound dated scan history even when the configured file count is high."""
+
+    dated_logs = sorted(
+        (
+            path
+            for path in logs_directory.iterdir()
+            if path.is_file() and _OWNED_LOG_PATTERN.fullmatch(path.name)
+        ),
+        key=lambda path: (path.stat().st_mtime, path.name),
+    )
+    retained_bytes = sum(path.stat().st_size for path in dated_logs)
+    while retained_bytes > MAX_RETAINED_DATED_LOG_BYTES and len(dated_logs) > 1:
+        path = dated_logs.pop(0)
+        try:
+            size = path.stat().st_size
+            path.unlink()
+        except OSError:
+            continue
+        retained_bytes -= size
 
 
 def _owned_log_family(name: str) -> str:

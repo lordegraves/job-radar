@@ -1543,7 +1543,7 @@ def test_saved_job_can_be_passed_with_notes_and_records_safe_event(
     )[0]
     assert decision.notes == "Short contract."
     assert decision.decision_reason == "Contract duration"
-    action_log = (tmp_path / "junior-actions.log").read_text(
+    action_log = (tmp_path / "junior-application.log").read_text(
         encoding="utf-8"
     )
     assert '"status": "completed"' in action_log

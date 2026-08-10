@@ -1,5 +1,6 @@
 """Verify company pages display active-profile employer ownership."""
 
+import json
 from pathlib import Path
 
 from job_radar.employer_models import EmployerSource
@@ -921,6 +922,22 @@ def test_unknown_company_source_explains_disabled_external_lookup(
     assert "public careers-page URL" in html
     assert "Review external lookup privacy" in html
     assert get_profile(database_path, profile.profile_id).company_ids == ()
+    events = [
+        json.loads(line)
+        for line in (tmp_path / "logs" / "junior-application.log")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if '"subsystem": "company_discovery"' in line
+    ]
+    assert events[0]["stage"] == "attempt_started"
+    assert events[-1]["stage"] == "attempt_finished"
+    assert events[-1]["attempt_id"] == events[0]["attempt_id"]
+    assert events[-1]["submission_type"] == "confirmed_url"
+    assert events[-1]["submitted_host"] == "careers.example.invalid"
+    assert events[-1]["final_status"] == "EXTERNAL_LOOKUP_DISABLED"
+    assert events[-1]["company_created"] is False
+    assert events[-1]["company_assigned"] is False
+    assert events[-1]["elapsed_seconds"] >= 0
 
 
 def test_external_lookup_preference_is_visible_and_editable_in_settings(
