@@ -42,7 +42,7 @@
 {% block content %}
 <div class="page-card">
     <h1 class="page-title">{{ "Create profile" if create_new else "Edit profile" }}</h1>
-    <p class="muted">{{ "Build a new profile without changing an existing one." if create_new else "Update the selected profile. Changes are not written until you save." }}</p>
+    <p class="muted">{{ "Build a new job plan without changing an existing one." if create_new else "Update the selected job plan. Changes are not written until you save." }}</p>
     <div class="actions">
         <a id="back-to-profile" class="button-link button-secondary" href="{{ url_for('profile') }}">Back to profile summary</a>
     </div>

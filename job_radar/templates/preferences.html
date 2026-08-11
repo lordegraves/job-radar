@@ -432,6 +432,25 @@
     {% endif %}
 </div>
 
+<div class="section">
+    <h2>Build a profile Junior can use</h2>
+    <p>An effective profile describes both <strong>the jobs you want</strong> and <strong>the work you can demonstrate</strong>. Junior needs both to separate realistic opportunities from jobs that only share a title or a few keywords.</p>
+    <ol>
+        <li><strong>Choose a focused group of related target roles.</strong> Add titles that describe work you would genuinely accept, not every role you might consider someday.</li>
+        <li><strong>Set the practical limits for this search.</strong> Include every acceptable job level, employment type, workplace arrangement, location, schedule, travel amount, and compensation range.</li>
+        <li><strong>Upload a current résumé.</strong> Junior uses its text as evidence when comparing jobs, but uploading it does not choose your strengths or job-fit preferences for you.</li>
+        <li><strong>Review Job Fit after saving.</strong> Put work your résumé clearly demonstrates in Strong Match, related work that needs closer review in Needs Review, and work you do not want in Avoid.</li>
+    </ol>
+    <p class="muted"><strong>Leadership titles matter:</strong> if this profile targets Director, Head, Vice President, or similar leadership roles, include Executive under Job levels unless you intentionally want Junior to exclude that level.</p>
+    {% if not create_new and active_managed_profile %}
+    <div class="actions">
+        <a class="button-link button-secondary" href="{{ url_for('profile_fit_board_page', profile_id=active_managed_profile.profile_id) }}">Review Job Fit for this profile</a>
+    </div>
+    {% else %}
+    <p class="muted">Create the profile first. You can then upload the résumé and open Job Fit from the profile summary.</p>
+    {% endif %}
+</div>
+
 <input id="occupation-selections-json" name="occupation_selections_json" type="hidden">
 <input id="location-selections-json" name="location_selections_json" type="hidden">
 <div class="preference-layout">
@@ -464,7 +483,7 @@
             <div class="employment-settings">
                 <div class="control-field">
                     <label>Job levels to include</label>
-                    <span class="field-help">Select every level that belongs in this profile. junior will classify each posting.</span>
+                    <span class="field-help">Select every level you would accept. Director, Head, Vice President, and similar leadership roles are usually classified as Executive.</span>
                     <details id="job-levels" class="checklist-select">
                         <summary id="job-levels-summary">Choose job levels</summary>
                         <div class="checklist-menu">
@@ -521,6 +540,11 @@
                     <span class="field-help">Higher compensation will not make an unsuitable job a better fit.</span>
                     <input id="compensation-floor" name="compensation_floor_usd" type="number" min="0" step="1000" value="{{ saved_preferences.compensation_floor_usd if saved_preferences and saved_preferences.compensation_floor_usd is not none else '' }}" placeholder="Example: 75000">
                 </div>
+            </div>
+            <div id="executive-level-warning" class="warning" hidden>
+                <strong>This profile includes leadership titles that Junior usually classifies as Executive.</strong>
+                <span>Include Executive unless you intentionally want those jobs excluded.</span>
+                <button id="include-executive-level" class="button-secondary" type="button">Include Executive</button>
             </div>
         </section>
 
@@ -601,7 +625,7 @@
                 {% if not create_new and profile.core_strengths %}
                 <ul>{% for item in profile.core_strengths %}<li>{{ item }}</li>{% endfor %}</ul>
                 {% else %}
-                <p class="muted">{% if create_new %}Upload a résumé after creating the profile.{% else %}No strengths are available yet. Résumé-derived insights will appear here when that analysis is connected.{% endif %}</p>
+                <p class="muted">{% if create_new %}After creating this profile, upload a résumé and use Job Fit to identify work it clearly demonstrates.{% else %}No demonstrated strengths are recorded. Upload a current résumé, then use Job Fit to mark the skills and responsibilities it clearly supports.{% endif %}</p>
                 {% endif %}
             </div>
             <div class="summary-section">
@@ -649,19 +673,7 @@
 </form>
 
 <div class="section">
-    <details class="technical-details">
-        <summary>Show the legacy rules scans still use today</summary>
-        <div class="technical-details-content">
-            {% if scoring_preferences.load_error %}
-            <p>{{ scoring_preferences.load_error }}</p>
-            {% else %}
-            <p><strong>Important:</strong> These existing keyword safeguards remain unchanged. The preview controls above do not replace or modify them.</p>
-            <p><strong>Current positive signals:</strong> {{ scoring_preferences.positive_keywords | map(attribute='term') | join(', ') }}</p>
-            <p><strong>Current explicit title safeguards:</strong> {{ scoring_preferences.excluded_title_keywords | join(', ') }}</p>
-            <p><strong>Current recognized allowed-location terms:</strong> {{ scoring_preferences.allowed_locations | join(', ') }}</p>
-            {% endif %}
-        </div>
-    </details>
+    <p class="muted">Job Fit keeps Junior's established scan rules synchronized behind this profile. Normal use does not require reviewing or editing legacy keywords.</p>
     <p class="muted">Occupation suggestions use the O*NET 30.3 Database from the U.S. Department of Labor, Employment and Training Administration under the CC BY 4.0 license. Location suggestions use the U.S. Census Bureau 2025 Gazetteer Files. junior has reduced both sources to the fields needed for this preview; neither source has approved or tested these changes.</p>
 </div>
 
@@ -957,6 +969,9 @@
         const workSummary = [];
         workSummary.push(state.occupations.length ? `Jobs involving: ${state.occupations.map((item) => item.label).join(", ")}` : "No occupations selected yet.");
         const selectedLevels = Array.from(document.querySelectorAll("input[name='responsibility-level']:checked")).map((input) => input.value);
+        const leadershipRole = state.occupations.some((item) => /\b(?:director|head|vice president|vp)\b/i.test(item.label));
+        const executiveWarning = document.getElementById("executive-level-warning");
+        executiveWarning.hidden = !leadershipRole || selectedLevels.includes("Executive");
         document.getElementById("job-levels-summary").textContent = selectedLevels.join(", ") || "Choose job levels";
         workSummary.push(selectedLevels.length ? `At these job levels: ${selectedLevels.join(", ")}` : "No job levels selected yet.");
         listItems(document.getElementById("work-summary"), workSummary);
@@ -996,6 +1011,12 @@
         listItems(document.getElementById("location-summary"), locationSummary);
 
     }
+
+    document.getElementById("include-executive-level").addEventListener("click", () => {
+        const executive = document.querySelector("input[name='responsibility-level'][value='Executive']");
+        executive.checked = true;
+        render();
+    });
 
     render();
 })();

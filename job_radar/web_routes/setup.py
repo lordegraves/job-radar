@@ -8,8 +8,9 @@ from flask import Flask, flash, redirect, render_template, request, url_for
 from job_radar.first_run_service import needs_first_run_setup
 from job_radar.company_workspace_service import build_company_workspace
 from job_radar.profile_storage import get_active_profile
+from job_radar.profile_fit_service import build_profile_fit_board
 from job_radar.setup_progress_service import (
-    COMPANIES,
+    FIT,
     REVIEW,
     advance_setup,
     complete_setup,
@@ -24,6 +25,7 @@ def register_setup_routes(
     app: Flask,
     *,
     get_database_path: Callable[[], str],
+    get_base_directory: Callable[[], str],
 ) -> None:
     """Register the first-run welcome boundary."""
 
@@ -53,12 +55,38 @@ def register_setup_routes(
         workspace = build_company_workspace(get_database_path())
         if workspace.active_profile is None:
             return redirect(url_for("setup_welcome"))
-        return render_template("setup_companies.html", workspace=workspace)
+        untested_sources = sum(
+            company.connection_health.state == "not_tested"
+            for company in workspace.companies
+        )
+        return render_template(
+            "setup_companies.html",
+            workspace=workspace,
+            untested_sources=untested_sources,
+        )
+
+    @app.get("/setup/job-fit")
+    def setup_job_fit() -> str:
+        profile = get_active_profile(get_database_path())
+        if profile is None:
+            return redirect(url_for("setup_welcome"))
+        managed_profile, fit_signals = build_profile_fit_board(
+            get_database_path(),
+            profile.profile_id,
+            base_directory=get_base_directory(),
+        )
+        return render_template(
+            "profile_fit_board.html",
+            managed_profile=managed_profile,
+            fit_signals=fit_signals,
+            fit_error="",
+            setup_mode=True,
+        )
 
     @app.post("/setup/skip-resume")
     def setup_skip_resume():
-        advance_setup(get_database_path(), COMPANIES)
-        return redirect(url_for("setup_companies"))
+        advance_setup(get_database_path(), FIT)
+        return redirect(url_for("setup_job_fit"))
 
     @app.post("/setup/review")
     def setup_begin_review():

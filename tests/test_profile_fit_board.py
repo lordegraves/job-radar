@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from io import BytesIO
 
 from job_radar.profile_models import ManagedProfile, ProfilePreferences
 from job_radar.profile_scoring import resolve_effective_scoring_config
@@ -189,3 +190,58 @@ def test_fit_board_rejects_duplicate_terms(tmp_path: Path) -> None:
 
     assert response.status_code == 302
     assert "fit_error=" in response.headers["Location"]
+
+
+def test_fit_board_suggests_exact_resume_capabilities_without_activating_them(
+    tmp_path: Path,
+) -> None:
+    settings_path = _write_settings(tmp_path)
+    database_path = tmp_path / "data" / "job_radar.sqlite3"
+    profile = ManagedProfile(
+        profile_id="profile_bbbbbbbb",
+        display_name="Services Leadership",
+        preferences=ProfilePreferences(
+            target_roles=("Solution Architect",),
+        ),
+        scoring_config={
+            "positive_keywords": {},
+            "negative_keywords": {},
+            "top_matches": {"strong_signals": []},
+            "review_needed": {"strong_signals": []},
+        },
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(
+        settings_path=str(settings_path),
+        base_directory=str(tmp_path),
+    )
+    client = app.test_client()
+    upload = client.post(
+        f"/profile/{profile.profile_id}/resume",
+        data={
+            "resume_file": (
+                BytesIO(
+                    b"Summary\nSolution Architect\nTechnical Skills\n"
+                    b"Professional services scoping\nSOW authoring\n"
+                    b"Professional Experience\nUnrelated narrative"
+                ),
+                "resume.txt",
+            )
+        },
+        content_type="multipart/form-data",
+    )
+    assert upload.status_code == 302
+
+    html = client.get(f"/profile/{profile.profile_id}/fit").get_data(as_text=True)
+    assert "Solution Architect" in html
+    assert "Professional services scoping" in html
+    assert "SOW authoring" in html
+    assert "exact words in your résumé" in html
+    assert 'data-category="review"' in html
+
+    stored = get_profile(database_path, profile.profile_id)
+    assert stored is not None
+    assert stored.fit_signals == ()
+    assert stored.scoring_config is not None
+    assert stored.scoring_config["positive_keywords"] == {}

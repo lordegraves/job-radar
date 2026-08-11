@@ -6,6 +6,31 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Prepare **RC6 Build 1.21** for field testing with clear profile-building
+  guidance, guided starter-catalog verification, unambiguous automatic versus checkbox-based source testing,
+  reliable embedded-browser test-scope submission, and recognition of
+  **Key Qualifications** as mandatory posting requirements.
+- Explain on profile create/edit pages that a usable profile needs both focused
+  target work and demonstrated Job Fit evidence. The form now identifies the
+  normal Executive classification of Director/Head/VP roles, links saved
+  profiles to Job Fit, and states accurately that résumé upload does not choose
+  strengths or fit preferences automatically.
+- Add Job Fit as a resumable five-step first-run stage. Exact target-role and
+  clearly labeled skills-section phrases found in the managed résumé begin as
+  inactive Needs Review suggestions; only the user's saved classifications
+  update the established scoring rules. Setup now requires saved Strong Match
+  or Needs Review evidence and detects leadership targets that omit Executive.
+  The profile form provides a one-click Executive correction, links directly
+  to Job Fit, and no longer exposes legacy keyword rules as normal-user inputs.
+- Guide first-run users into the starter catalog to test unverified sources and
+  choose scanning employers. Company testing now distinguishes the automatic
+  all-untested action from manually checked source tests, and setup review shows
+  the actual scanning count instead of labeling the whole catalog as selected.
+  Embedded-browser submission no longer misroutes the automatic test to the
+  checkbox-based action when the browser omits its clicked-button metadata.
+- Recognize **Key Qualifications** as a mandatory qualification section while
+  continuing to exclude optional "is a plus" items and later compensation or
+  benefit sections from required-qualification gaps.
 - Prevent URL-based company setup from falling into partial catalog-name
   matching, so similarly named employers such as Vast Space and VAST Data stay
   separate.

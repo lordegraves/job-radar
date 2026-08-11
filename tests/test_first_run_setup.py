@@ -17,6 +17,7 @@ from job_radar.profile_storage import (
 from job_radar.setup_progress_service import (
     COMPANIES,
     COMPLETE,
+    FIT,
     RESUME,
     REVIEW,
     advance_setup,
@@ -134,7 +135,7 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
     assert create_response.headers["Location"].startswith("/setup/resume")
 
     resume_page = client.get(create_response.headers["Location"])
-    assert "Step 2 of 4" in resume_page.get_data(as_text=True)
+    assert "Step 2 of 5" in resume_page.get_data(as_text=True)
     profile = get_active_profile(tmp_path / "junior.sqlite3")
     assert profile is not None
     progress = get_setup_progress(tmp_path / "junior.sqlite3")
@@ -158,16 +159,42 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
         content_type="multipart/form-data",
     )
 
-    assert upload_response.headers["Location"] == "/setup/companies"
+    assert upload_response.headers["Location"] == "/setup/job-fit"
+    progress = get_setup_progress(tmp_path / "junior.sqlite3")
+    assert progress is not None
+    assert progress.current_step == FIT
+
+    fit_html = client.get("/setup/job-fit").get_data(as_text=True)
+    assert "Step 3 of 5" in fit_html
+    assert "Needs Review and do not affect scans" in " ".join(fit_html.split())
+    fit_response = client.post(
+        f"/profile/{profile.profile_id}/fit",
+        data={
+            "setup_mode": "1",
+            "fit_signals_json": json.dumps(
+                [
+                    {
+                        "term": "Commercial baking",
+                        "category": "strong",
+                        "explanation": "Demonstrated résumé experience.",
+                    }
+                ]
+            ),
+        },
+    )
+    assert fit_response.headers["Location"] == "/setup/companies"
     progress = get_setup_progress(tmp_path / "junior.sqlite3")
     assert progress is not None
     assert progress.current_step == COMPANIES
 
     companies_html = client.get("/setup/companies").get_data(as_text=True)
-    assert "Step 3 of 4" in companies_html
+    assert "Step 4 of 5" in companies_html
     normalized_companies = " ".join(companies_html.split())
     assert "<strong>50</strong> companies are available" in normalized_companies
     assert "<strong>0</strong> are selected" in normalized_companies
+    assert "Open and test the starter catalog" in companies_html
+    assert "No checkboxes are needed for that test" in companies_html
+    assert "Catalog-wide testing is recommended, not required" in companies_html
 
     review_response = client.post("/setup/review")
     assert review_response.headers["Location"] == "/setup/review"
@@ -177,7 +204,7 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
 
     review_html = client.get("/setup/review").get_data(as_text=True)
     assert 'data-submit-pending-label="Testing setup..."' in review_html
-    assert "Step 4 of 4" in review_html
+    assert "Step 5 of 5" in review_html
     assert "Fictional Baker" in review_html
     assert "Bakers" in review_html
     assert "Commission-only sales" in review_html
@@ -187,6 +214,8 @@ def test_guided_setup_reuses_profile_resume_company_and_review_workflows(
     assert "10%" in review_html
     assert "resume.md" in review_html
     assert "junior will scan only the companies you deliberately selected" in review_html
+    assert "<strong>0</strong> selected for scanning" in review_html
+    assert "50 available; 50 not scanning" in review_html
     assert str(tmp_path) in review_html
     upsert_employer_source(
         tmp_path / "junior.sqlite3",
@@ -263,10 +292,37 @@ def test_setup_cannot_finish_without_successful_validation(
     completion_page = client.get(completion.headers["Location"])
 
     assert "Add at least one company" in validation_page.get_data(as_text=True)
+    assert "Review Job Fit and save at least one" in validation_page.get_data(
+        as_text=True
+    )
     assert "Test the setup successfully" in completion_page.get_data(as_text=True)
     progress = get_setup_progress(database_path)
     assert progress is not None
     assert progress.completed_at is None
+
+
+def test_setup_validation_explains_leadership_level_conflict(tmp_path: Path) -> None:
+    app = _app(tmp_path)
+    client = app.test_client()
+    database_path = tmp_path / "junior.sqlite3"
+    profile = ManagedProfile(
+        profile_id="profile_87654321",
+        display_name="Leadership Search",
+        preferences=ProfilePreferences(
+            target_roles=("Director of Professional Services",),
+            seniority_levels=("Senior",),
+            work_arrangements=("Remote",),
+        ),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    start_setup(database_path)
+    advance_setup(database_path, REVIEW, profile_id=profile.profile_id)
+
+    response = client.post("/setup/validate")
+    html = client.get(response.headers["Location"]).get_data(as_text=True)
+
+    assert "does not include the Executive job level" in html
 
 
 def test_setup_can_skip_resume_and_resume_at_companies(tmp_path: Path) -> None:
@@ -293,11 +349,11 @@ def test_setup_can_skip_resume_and_resume_at_companies(tmp_path: Path) -> None:
     assert create_response.headers["Location"].startswith("/setup/resume")
 
     skip_response = client.post("/setup/skip-resume")
-    assert skip_response.headers["Location"] == "/setup/companies"
+    assert skip_response.headers["Location"] == "/setup/job-fit"
     progress = get_setup_progress(tmp_path / "junior.sqlite3")
     assert progress is not None
-    assert progress.current_step == COMPANIES
+    assert progress.current_step == FIT
     assert progress.profile_id is not None
     assert _app(tmp_path).test_client().get("/").headers[
         "Location"
-    ] == "/setup/companies?setup=1"
+    ] == "/setup/job-fit?setup=1"

@@ -286,6 +286,7 @@ def create_app(
     register_setup_routes(
         app,
         get_database_path=lambda: _get_database_path(app),
+        get_base_directory=lambda: str(_get_runtime_paths(app).base_directory),
     )
 
     register_company_routes(

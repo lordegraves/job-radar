@@ -9,14 +9,47 @@ from typing import Any
 from job_radar.config import ConfigError
 from job_radar.normalize import clean_text
 from job_radar.profile_fit import build_initial_fit_signals
+from job_radar.profile_context import managed_profile_to_candidate_profile
 from job_radar.profile_models import FIT_SIGNAL_CATEGORIES, FitSignal, ManagedProfile
 from job_radar.profile_scoring import resolve_effective_scoring_config
 from job_radar.profile_storage import get_profile, update_profile
+from job_radar.resume_loader import load_resume_text
+
+
+_SKILL_SECTION_HEADINGS = {
+    "areas of expertise",
+    "competencies",
+    "core competencies",
+    "core skills",
+    "expertise",
+    "key skills",
+    "skills",
+    "technical skills",
+}
+_SECTION_END_HEADINGS = {
+    "certifications",
+    "education",
+    "employment",
+    "employment history",
+    "experience",
+    "professional experience",
+    "projects",
+    "references",
+    "summary",
+    "work experience",
+}
+_NON_CAPABILITY_LINES = _SKILL_SECTION_HEADINGS | {
+    "active",
+    "expired certifications",
+}
+_MAX_RESUME_SUGGESTIONS = 20
 
 
 def build_profile_fit_board(
     database_path: str | Path,
     profile_id: str,
+    *,
+    base_directory: str | Path | None = None,
 ) -> tuple[ManagedProfile, tuple[FitSignal, ...]]:
     """Load one profile and return its saved or conservatively inferred board."""
 
@@ -24,7 +57,90 @@ def build_profile_fit_board(
     if profile is None or profile.archived:
         raise ConfigError("The selected profile is not available.")
 
-    return profile, build_initial_fit_signals(profile)
+    initial = list(build_initial_fit_signals(profile))
+    if profile.fit_signals or base_directory is None:
+        return profile, tuple(initial)
+
+    seen = {signal.term.casefold() for signal in initial}
+    for signal in _resume_backed_suggestions(profile, base_directory):
+        if signal.term.casefold() in seen:
+            continue
+        seen.add(signal.term.casefold())
+        initial.append(signal)
+    return profile, tuple(initial)
+
+
+def _resume_backed_suggestions(
+    profile: ManagedProfile,
+    base_directory: str | Path,
+) -> tuple[FitSignal, ...]:
+    """Suggest bounded exact résumé evidence without deciding that it is strong."""
+
+    if profile.resume is None:
+        return ()
+    candidate = managed_profile_to_candidate_profile(
+        profile,
+        base_directory=Path(base_directory),
+    )
+    if candidate.resume is None:
+        return ()
+    try:
+        resume_text = load_resume_text(candidate.resume.source_path)
+    except ConfigError:
+        return ()
+
+    normalized_resume = clean_text(resume_text).casefold()
+    suggestions: list[str] = []
+    for role in profile.preferences.target_roles:
+        normalized_role = clean_text(role).casefold()
+        if len(normalized_role) >= 4 and normalized_role in normalized_resume:
+            suggestions.append(role)
+
+    in_skill_section = False
+    for raw_line in resume_text.splitlines():
+        line = " ".join(raw_line.split()).strip(" •▪◦-–—")
+        normalized = clean_text(line).casefold().rstrip(":")
+        if normalized in _SKILL_SECTION_HEADINGS:
+            in_skill_section = True
+            continue
+        if in_skill_section and normalized in _SECTION_END_HEADINGS:
+            break
+        if not in_skill_section or not _is_capability_line(line, normalized):
+            continue
+        suggestions.append(line)
+
+    result: list[FitSignal] = []
+    seen: set[str] = set()
+    for term in suggestions:
+        normalized = term.casefold()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(
+            FitSignal(
+                term=term,
+                category="review",
+                explanation=(
+                    "Junior found these exact words in your résumé. Move this to "
+                    "Strong Match only when it describes work you can clearly "
+                    "demonstrate."
+                ),
+                evidence_source="resume",
+            )
+        )
+        if len(result) >= _MAX_RESUME_SUGGESTIONS:
+            break
+    return tuple(result)
+
+
+def _is_capability_line(line: str, normalized: str) -> bool:
+    if normalized in _NON_CAPABILITY_LINES:
+        return False
+    if not 2 <= len(line) <= 120:
+        return False
+    if "@" in line or normalized.startswith(("http://", "https://")):
+        return False
+    return any(character.isalpha() for character in line)
 
 
 def save_profile_fit_board(

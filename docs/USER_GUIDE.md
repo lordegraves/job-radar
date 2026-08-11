@@ -236,10 +236,13 @@ The guided workflow:
    travel tolerance, and optional exclusions the user chooses.
 3. Accepts a PDF, DOCX, Markdown, or plain-text résumé, or allows that step to
    be skipped and completed later.
-4. Adds at least one employer the user wants Junior to monitor.
-5. Shows a plain-language review of the profile, résumé, preferences,
+4. Opens Job Fit. Exact résumé-backed suggestions begin in Needs Review and
+   remain inactive until the user classifies and saves them. At least one
+   Strong Match or Needs Review item is required to finish setup.
+5. Adds at least one employer the user wants Junior to monitor.
+6. Shows a plain-language review of the profile, résumé, preferences,
    locations, employers, data location, and expected scan behavior.
-6. Tests that the minimum profile information and at least one selected
+7. Tests that the minimum profile information and at least one selected
    employer source are usable before enabling **Finish setup**.
 
 Junior saves the current setup step. Closing the application during setup does
@@ -523,6 +526,17 @@ Tracker and History are mutually exclusive. A record should not exist in both at
 
 The Profile / Resume page shows candidate readiness and resume-derived fit information. It also allows you to create, edit, select, and safely delete managed profiles without editing YAML. A profile that owns Active Applications or Application History cannot be deleted because those job-search records must be preserved.
 
+An effective profile describes both the jobs you want and the work you can demonstrate:
+
+1. Choose a focused group of related target roles rather than every role you might consider.
+2. Select every practical limit you would accept, including job level, employment type, workplace arrangement, location, schedule, travel, and compensation. Director, Head, Vice President, and similar leadership roles are usually classified as Executive.
+3. Upload a current résumé so Junior can compare the posting with evidence from your work history.
+4. Open **Job Fit** after saving. Put clearly demonstrated skills and responsibilities in **Strong Match**, related work that needs closer review in **Needs Review**, and unwanted work in **Avoid**.
+
+Uploading a résumé extracts text for comparison; it does not choose strengths or Job Fit preferences automatically. Junior may place bounded exact phrases from clearly labeled résumé skills or competency sections into Needs Review as suggestions. These suggestions do not affect scans until you review and save them. A profile with target roles but no saved Strong Match or Needs Review evidence is incomplete and cannot finish first-run setup.
+
+When a target title contains Director, Head, Vice President, or VP and Executive is not selected, the profile form displays a warning and an **Include Executive** action. Keep Executive excluded only when you intentionally do not want Junior to consider that level.
+
 When a managed profile is selected, future scans use its candidate-fit signals, compensation values, and managed resume. If no managed profile is selected, the existing YAML profile remains in use. junior does not automatically convert, overwrite, or remove an existing YAML profile.
 
 Supported resume formats:
@@ -558,7 +572,7 @@ Employer organizations and source definitions are shared once per local junior i
 
 Junior does not recommend where you should work or claim that its local catalog represents the complete employer market. You choose the employers to monitor. Select **Add company** and enter an existing catalog name or paste any official company URL. A homepage, careers page, department page, search page, or public job posting is acceptable. When Junior recognizes an existing employer or validates a supported career platform, it asks you to confirm before adding it. Junior never silently adds or scans a company.
 
-To add a company, enter its ordinary name or any official company URL. A name searches the existing local catalog only; on a new installation that catalog is initially empty. For a URL, Junior follows a bounded set of relevant public pages and redirects, inspects recruiting-platform links and metadata, derives compatible collector settings, and validates the source using normal pagination. Junior saves the source only after a collector returns actual public job postings. Rejected candidates and failed probe details do not create company or review records. If automatic setup fails, the problem is a Junior compatibility limitation rather than a request for the user to locate an ATS URL. Use the displayed support contact and include the public company URL. Never send passwords, access tokens, résumés, or other private data with a support request.
+To add a company, enter its ordinary name or any official company URL. A name searches the existing local catalog only; new installations include the 50-employer starter catalog described below. For a URL, Junior follows a bounded set of relevant public pages and redirects, inspects recruiting-platform links and metadata, derives compatible collector settings, and validates the source using normal pagination. Junior saves the source only after a collector returns actual public job postings. Rejected candidates and failed probe details do not create company or review records. If automatic setup fails, the problem is a Junior compatibility limitation rather than a request for the user to locate an ATS URL. Use the displayed support contact and include the public company URL. Never send passwords, access tokens, résumés, or other private data with a support request.
 
 Walmart is intentionally profile-aware. Its public catalog contains roughly
 45,000 Walmart, Sam's Club, and Vizio openings, most unrelated to an individual
@@ -590,7 +604,15 @@ ones you want scanned. Upgrades append a missing starter catalog version without
 overwriting an existing employer, changing profile assignments, or restoring a
 starter employer that was later removed.
 
-The RC6 Build 1.19 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
+During first-run setup, select **Open and test the starter catalog**. Use
+**Test every source not tested yet** to check the complete untested group; this
+action requires no row checkboxes. Use **Choose specific sources to test** only
+when you intend to check or recheck particular employers. After testing, turn
+on **Scanning** only for employers you want in the active profile, then return
+to setup. Catalog-wide testing is recommended, while the final setup validation
+separately requires at least one enabled company source to connect successfully.
+
+The RC6 Build 1.21 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
 Block, Brex, Canonical, Carta, Carvana, Chime, Cloudflare, Coinbase, Coursera,
 Datadog, Discord, DoorDash, Dropbox, Duolingo, Elastic, Figma, Ford Motor
 Company, GitLab, Google, Grafana Labs, Gusto, HelloFresh, HubSpot, Instacart,

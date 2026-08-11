@@ -54,20 +54,24 @@
     data-status-url="{{ url_for('scan_status') }}"
     {% if request.args.get('targeted_scan') != 'started' %}hidden{% endif %}
 >
-    <h2>Scan selected companies</h2>
+    <h2>Scan checked companies</h2>
     <div class="source-test-summary-header">
         <strong id="targeted-scan-status">Starting the selected-company scan.</strong>
         <span id="targeted-scan-percent">0%</span>
     </div>
     <progress id="targeted-scan-meter" max="100" value="0"></progress>
     <p id="targeted-scan-step" class="muted" aria-live="polite">
-        Junior is preparing the selected sources.
+        Junior is preparing the checked sources.
     </p>
 </section>
 
 <section class="page-card" id="source-test-progress" data-status-url="{{ url_for('settings_source_health_status') }}">
     <h2>Test company sources</h2>
     <p>Tests run one at a time in the background so Junior remains usable.</p>
+    <p>
+        <strong>Test every source not tested yet</strong> ignores the row
+        checkboxes. Check rows only when testing or scanning specific companies.
+    </p>
 
     <div class="source-test-summary" aria-live="polite">
         <div class="source-test-summary-header">
@@ -109,14 +113,14 @@
     <form method="post" action="{{ url_for('settings_source_health_test') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <div class="button-row">
-            <button type="submit" name="test_scope" value="untested" data-submit-pending-label="Starting tests...">Test all untested sources</button>
-            <button class="button-secondary" type="submit" name="test_scope" value="selected" data-submit-pending-label="Starting tests...">Test selected sources</button>
+            <button type="submit" name="test_scope" value="untested" data-submit-pending-label="Starting tests...">Test every source not tested yet</button>
+            <button class="button-secondary" type="submit" name="test_scope" value="selected" data-submit-pending-label="Starting tests...">Test checked sources</button>
             <button
                 class="button-secondary"
                 type="submit"
                 formaction="{{ url_for('run_selected_scan') }}"
                 data-submit-pending-label="Starting selected scan..."
-            >Scan selected companies</button>
+            >Scan checked companies</button>
         </div>
         <p class="muted">
             A selected-company scan imports and scores current jobs but writes a
@@ -128,7 +132,7 @@
                 <caption class="visually-hidden">Company source health and connection-test results</caption>
                 <thead>
                     <tr>
-                        <th><input id="select-all-sources" type="checkbox" aria-label="Select all sources"></th>
+                        <th><input id="select-all-sources" type="checkbox" aria-label="Check all sources for testing or scanning"></th>
                         <th>Company and platform</th>
                         <th>Latest scan result</th>
                         <th>Connection test</th>
@@ -266,7 +270,7 @@
                     scanMeter.value = 0;
                     scanPercent.textContent = "Starting";
                     scanStatus.textContent = "Starting the selected-company scan.";
-                    scanStep.textContent = "Junior is preparing the selected sources.";
+                    scanStep.textContent = "Junior is preparing the checked sources.";
                     window.setTimeout(pollScan, 500);
                     return;
                 }

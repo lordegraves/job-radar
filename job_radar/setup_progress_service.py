@@ -10,10 +10,11 @@ from job_radar.storage import initialize_database
 
 PROFILE = "profile"
 RESUME = "resume"
+FIT = "fit"
 COMPANIES = "companies"
 REVIEW = "review"
 COMPLETE = "complete"
-SETUP_STEPS = (PROFILE, RESUME, COMPANIES, REVIEW, COMPLETE)
+SETUP_STEPS = (PROFILE, RESUME, FIT, COMPANIES, REVIEW, COMPLETE)
 
 
 @dataclass(frozen=True)
@@ -169,6 +170,7 @@ def incomplete_setup_destination(
     return {
         PROFILE: "new_profile_page",
         RESUME: "setup_resume",
+        FIT: "setup_job_fit",
         COMPANIES: "setup_companies",
         REVIEW: "setup_review",
     }.get(progress.current_step)

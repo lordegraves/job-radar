@@ -42,10 +42,7 @@ from job_radar.profile_transfer_service import (
     import_profile,
 )
 from job_radar.profile_storage import get_profile
-from job_radar.scoring_preferences import (
-    build_effective_scoring_preferences_view,
-)
-from job_radar.setup_progress_service import COMPANIES, RESUME, advance_setup
+from job_radar.setup_progress_service import COMPANIES, FIT, RESUME, advance_setup
 
 
 def register_profile_routes(
@@ -139,10 +136,6 @@ def register_profile_routes(
             "has_profile": (
                 active_managed_profile is not None
                 or profile_view.candidate_profile_exists
-            ),
-            "scoring_preferences": build_effective_scoring_preferences_view(
-                database_path,
-                scoring_path,
             ),
             "preference_error": request.args.get(
                 "preference_error", ""
@@ -278,6 +271,7 @@ def register_profile_routes(
             managed_profile, fit_signals = build_profile_fit_board(
                 database_path,
                 profile_id,
+                base_directory=base_directory,
             )
         except (ConfigError, ProfileStorageError, ValueError) as error:
             return _profile_redirect("error", str(error))
@@ -287,6 +281,7 @@ def register_profile_routes(
             managed_profile=managed_profile,
             fit_signals=fit_signals,
             fit_error=request.args.get("fit_error", "").strip(),
+            setup_mode=request.args.get("setup") == "1",
         )
 
     @app.get("/profile/<profile_id>/roles")
@@ -558,9 +553,15 @@ def register_profile_routes(
                     "profile_fit_board_page",
                     profile_id=profile_id,
                     fit_error=str(error),
+                    setup=(
+                        "1" if request.form.get("setup_mode") == "1" else None
+                    ),
                 )
             )
 
+        if request.form.get("setup_mode") == "1":
+            advance_setup(database_path, COMPANIES, profile_id=profile_id)
+            return redirect(url_for("setup_companies"))
         return redirect(url_for("profile", profile_result="fit_preferences_saved"))
 
     @app.post("/profile/delete")
@@ -628,10 +629,10 @@ def register_profile_routes(
         if request.form.get("setup_mode") == "1":
             advance_setup(
                 database_path,
-                COMPANIES,
+                FIT,
                 profile_id=profile_id,
             )
-            return redirect(url_for("setup_companies"))
+            return redirect(url_for("setup_job_fit"))
         return redirect(url_for("profile", upload_result="success"))
 
     def _profile_redirect(result: str, error: str = ""):

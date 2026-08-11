@@ -110,8 +110,9 @@ def test_companies_page_shows_global_catalog_with_profile_scan_state(
     assert '<details class="page-card company-health-section" id="company-sources">' in html
     assert '<details class="page-card company-health-section" id="company-sources" open>' not in html
     assert "Verification needed: 53 sources have not been tested." in html
-    assert "Test all untested sources" in html
-    assert "Test selected sources" in html
+    assert "Test every source not tested yet" in html
+    assert "Choose specific sources to test" in html
+    assert "row checkboxes are ignored" in html
     assert 'class="test-selection-column"' in html
     assert 'class="source-select"' in html
     assert 'class="profile-scan-switch" aria-hidden="true"' in html
@@ -133,14 +134,35 @@ def test_companies_page_shows_global_catalog_with_profile_scan_state(
         in html
     )
     assert '<option value="untested">Not tested</option>' in html
-    assert 'aria-label="Select all visible company sources"' in html
+    assert 'aria-label="Check all visible sources for testing"' in html
     assert 'data-health-state="not_tested"' in html
     assert 'row.dataset.healthState === "error"' in html
     assert 'row.dataset.healthState === "not_tested"' in html
     assert "if (checkbox && !row.hidden)" in html
     assert "if (checkbox) checkbox.checked = false;" in html
-    assert "Run selected tests" in html
+    assert "Test checked sources" in html
+    assert "Some embedded browser versions do not populate SubmitEvent.submitter" in html
+    assert '|| (selectedControls?.hidden ? "untested" : "selected")' in html
     assert "<summary>More</summary>" not in html
+
+
+def test_companies_page_guides_first_run_catalog_testing(tmp_path: Path) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+
+    html = app.test_client().get("/companies?setup=1").get_data(as_text=True)
+
+    assert "Setup step 3: Test and choose employers" in html
+    assert "This action does not use the row checkboxes" in html
+    assert "Return to setup" in html
 
 
 def test_companies_page_collapsed_source_health_summary_turns_green(
@@ -261,6 +283,42 @@ def test_company_source_test_background_request_returns_status_json(
 
     assert response.status_code == 202
     assert response.get_json() == {"status": "starting", "total": 1}
+
+
+def test_all_untested_source_action_requires_no_checked_rows(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings_path = tmp_path / "settings.yaml"
+    database_path = tmp_path / "job_radar.sqlite3"
+    write_settings_file(settings_path, database_path)
+    profile = ManagedProfile(
+        profile_id="profile_aaaaaaaa",
+        display_name="Test Profile",
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    started_with: list[str] = []
+
+    def capture_start(_runner, employer_ids, **_kwargs):
+        started_with.extend(employer_ids)
+        return True
+
+    monkeypatch.setattr(
+        "job_radar.source_test_runner.SourceTestRunner.start",
+        capture_start,
+    )
+    app = create_app(settings_path=settings_path, base_directory=tmp_path)
+
+    response = app.test_client().post(
+        "/companies/test-sources",
+        data={"test_scope": "untested"},
+        headers={"X-Junior-Background-Test": "1"},
+    )
+
+    assert response.status_code == 202
+    assert response.get_json() == {"status": "starting", "total": 50}
+    assert len(started_with) == 50
 
 
 def test_company_source_test_waits_for_running_scan(tmp_path: Path) -> None:

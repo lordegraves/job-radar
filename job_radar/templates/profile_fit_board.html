@@ -134,13 +134,16 @@
 
 {% block content %}
 <div class="page-card">
+    {% if setup_mode %}<p class="muted">Step 3 of 5</p>{% endif %}
     <h1 class="page-title">Job fit preferences</h1>
     <p class="muted">
-        junior built this starting point from your profile and current scoring rules.
-        Move anything that does not look right. Your changes will be preserved.
+        Junior built this starting point from saved profile rules and may suggest
+        exact capabilities found in your résumé. Résumé suggestions begin in
+        Needs Review and do not affect scans until you review and save them.
     </p>
+    <p>Move work you can clearly demonstrate to <strong>Strong Match</strong>. Keep related or uncertain work in <strong>Needs Review</strong>, move unwanted work to <strong>Avoid</strong>, and use <strong>Ignored</strong> for words Junior should not judge.</p>
     <div class="actions">
-        <a class="button-link button-secondary" href="{{ url_for('profile') }}">Back to profile summary</a>
+        <a class="button-link button-secondary" href="{{ url_for('setup_resume') if setup_mode else url_for('profile') }}">{{ 'Back to résumé' if setup_mode else 'Back to profile summary' }}</a>
     </div>
 </div>
 
@@ -153,6 +156,7 @@
 
 <form id="fit-board-form" method="post" action="{{ url_for('save_profile_fit_board_route', profile_id=managed_profile.profile_id) }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    {% if setup_mode %}<input type="hidden" name="setup_mode" value="1">{% endif %}
     <input id="fit-signals-json" name="fit_signals_json" type="hidden">
 
     <div class="fit-board">
@@ -218,8 +222,8 @@
     </div>
 
     <div class="actions">
-        <button type="submit">Save job-fit preferences</button>
-        <a class="button-link button-secondary" href="{{ url_for('profile') }}">Cancel</a>
+        <button type="submit">{{ 'Save and continue' if setup_mode else 'Save job-fit preferences' }}</button>
+        <a class="button-link button-secondary" href="{{ url_for('setup_resume') if setup_mode else url_for('profile') }}">Cancel</a>
     </div>
 </form>
 

@@ -254,6 +254,18 @@
 {% elif workspace.active_profile %}
 <h1 class="page-title">Your Companies</h1>
 
+{% if setup_mode %}
+<div class="page-card">
+    <h2>Setup step 3: Test and choose employers</h2>
+    <ol>
+        <li>Expand <strong>Companies and source health</strong> below.</li>
+        <li>Use <strong>Test every source not tested yet</strong>. This action does not use the row checkboxes.</li>
+        <li>Turn on <strong>Scanning</strong> for the employers you want Junior to scan.</li>
+    </ol>
+    <a class="button-link" href="{{ url_for('setup_companies') }}">Return to setup</a>
+</div>
+{% endif %}
+
 <div class="page-card">
     <p>
         Choose which companies Junior scans for
@@ -363,6 +375,12 @@
         Actual selected-company scans belong on the Scan page.
         <a href="{{ url_for('settings_job_platforms') }}">View the collector catalog</a>.
     </p>
+    <p>
+        <strong>Test every source not tested yet</strong> automatically checks the
+        entire untested group; row checkboxes are ignored. Use
+        <strong>Choose specific sources to test</strong> only when you want to check
+        or recheck particular employers.
+    </p>
     <div class="company-filter-form" aria-label="Filter companies">
         <label>
             Find a company
@@ -419,10 +437,10 @@
     <form id="company-source-test-form" method="post" action="{{ url_for('test_company_sources') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <div class="company-test-controls">
-            <button type="submit" name="test_scope" value="untested">Test all untested sources</button>
-            <button class="button-secondary" id="choose-selected-sources" type="button">Test selected sources</button>
+            <button type="submit" name="test_scope" value="untested">Test every source not tested yet</button>
+            <button class="button-secondary" id="choose-selected-sources" type="button">Choose specific sources to test</button>
             <span id="selected-test-controls" hidden>
-                <button type="submit" name="test_scope" value="selected">Run selected tests</button>
+                <button type="submit" name="test_scope" value="selected">Test checked sources</button>
                 <button class="button-secondary" id="cancel-source-selection" type="button">Cancel</button>
             </span>
         </div>
@@ -433,7 +451,7 @@
         <caption class="visually-hidden">Companies, profile status, and source health</caption>
         <thead>
             <tr>
-                <th class="test-selection-column"><input id="select-all-sources" type="checkbox" aria-label="Select all visible company sources"></th>
+                <th class="test-selection-column"><input id="select-all-sources" type="checkbox" aria-label="Check all visible sources for testing"></th>
                 <th>Company and platform</th>
                 <th>Profile status</th>
                 <th>Connection health</th>
@@ -457,7 +475,7 @@
                         name="employer_id"
                         value="{{ company.company_key }}"
                         form="company-source-test-form"
-                        aria-label="Select {{ company.name }}"
+                        aria-label="Check {{ company.name }} for testing"
                     >
                 </td>
                 <td>
@@ -716,6 +734,16 @@
     const filterState = document.getElementById("company-filter-state");
     const filterResult = document.getElementById("company-filter-result");
     const testButtons = Array.from(form?.querySelectorAll("button[type='submit']") || []);
+    let requestedTestScope = null;
+
+    // Some embedded browser versions do not populate SubmitEvent.submitter.
+    // Capture the scope on click so the catalog-wide action never falls back
+    // to the checkbox-based test by mistake.
+    testButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            requestedTestScope = button.value;
+        });
+    });
 
     document.querySelectorAll(".profile-scan-checkbox").forEach((checkbox) => {
         checkbox.addEventListener("change", async () => {
@@ -903,8 +931,8 @@
             } else {
                 polling = false;
                 testButtons.forEach((button) => { button.disabled = false; });
-                testButtons[0].textContent = "Test all untested sources";
-                if (testButtons[1]) testButtons[1].textContent = "Run selected tests";
+                testButtons[0].textContent = "Test every source not tested yet";
+                if (testButtons[1]) testButtons[1].textContent = "Test checked sources";
                 if (current.total) {
                     status.textContent =
                         `Testing finished: ${current.completed} checked, ` +
@@ -940,8 +968,8 @@
         if (!response.ok) {
             step.textContent = payload.message || "Junior could not start the test.";
             testButtons.forEach((button) => { button.disabled = false; });
-            testButtons[0].textContent = "Test all untested sources";
-            if (testButtons[1]) testButtons[1].textContent = "Run selected tests";
+            testButtons[0].textContent = "Test every source not tested yet";
+            if (testButtons[1]) testButtons[1].textContent = "Test checked sources";
             return;
         }
         if (!polling) poll();
@@ -950,10 +978,14 @@
     form.addEventListener("submit", (event) => {
         event.preventDefault();
         const submittedButton = event.submitter;
+        const testScope = submittedButton?.value
+            || requestedTestScope
+            || (selectedControls?.hidden ? "untested" : "selected");
+        requestedTestScope = null;
         testButtons.forEach((button) => { button.disabled = true; });
         if (submittedButton) submittedButton.textContent = "Starting tests...";
         const data = new FormData(form);
-        data.set("test_scope", event.submitter?.value || "selected");
+        data.set("test_scope", testScope);
         startTest(data);
     });
 

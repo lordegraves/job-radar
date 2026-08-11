@@ -53,6 +53,27 @@ def validate_first_run_setup(
         preferences = profile.preferences
         if not preferences.target_roles:
             issues.append("Add at least one target role to the profile.")
+        if not any(
+            signal.category in {"strong", "review"}
+            for signal in profile.fit_signals
+        ):
+            issues.append(
+                "Review Job Fit and save at least one demonstrated or related "
+                "skill or responsibility."
+            )
+        leadership_titles = ("director", "head", "vice president", "vp")
+        if (
+            any(
+                any(title in role.casefold() for title in leadership_titles)
+                for role in preferences.target_roles
+            )
+            and "Executive" not in preferences.seniority_levels
+        ):
+            issues.append(
+                "This profile targets Director, Head, VP, or similar roles but "
+                "does not include the Executive job level. Review the profile "
+                "or remove those leadership targets."
+            )
         if not preferences.work_arrangements:
             issues.append("Choose at least one workplace arrangement.")
         office_modes = {"Hybrid", "On-site", "Flex"}

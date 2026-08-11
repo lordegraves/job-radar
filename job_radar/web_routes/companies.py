@@ -134,6 +134,7 @@ def register_company_routes(
                 },
                 source_health=source_health,
                 source_test_status=source_test_runner.status(),
+                setup_mode=request.args.get("setup") == "1",
             )
 
         return render_template(
@@ -209,13 +210,17 @@ def register_company_routes(
             ]
         selected = [company_id for company_id in requested if company_id in available]
         if not selected:
+            if request.form.get("test_scope") == "untested":
+                message = "Every available company source has already been tested."
+            else:
+                message = "Check at least one company source to test."
             if not background_request:
-                flash("Select at least one company source to test.", "error")
+                flash(message, "warning")
                 return redirect(url_for("companies"))
             return jsonify(
                 {
                     "status": "error",
-                    "message": "Select at least one company source to test.",
+                    "message": message,
                 }
             ), 400
         if not source_test_runner.start(

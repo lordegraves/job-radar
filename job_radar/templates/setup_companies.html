@@ -2,18 +2,25 @@
 {% extends "base.html" %}
 {% block title %}Choose companies - junior{% endblock %}
 {% block content %}
-<p class="muted">Step 3 of 4</p>
+<p class="muted">Step 4 of 5</p>
 <h1 class="page-title">Choose companies</h1>
 <section class="page-card">
-    <p>Junior scans only companies you deliberately add to <strong>{{ workspace.active_profile.display_name }}</strong>.</p>
-    <p><strong>{{ workspace.total_companies }}</strong> companies are available; <strong>{{ workspace.scanning_companies }}</strong> are selected for this profile.</p>
+    <h2>Start with the employer catalog</h2>
+    <p>Junior includes a starter catalog so you do not have to configure every recruiting source yourself.</p>
+    <ol>
+        <li>Test sources that have not been checked on this installation yet. No checkboxes are needed for that test.</li>
+        <li>Turn on <strong>Scanning</strong> only for employers you want in <strong>{{ workspace.active_profile.display_name }}</strong>'s job search.</li>
+        <li>Return here and continue to the final setup review.</li>
+    </ol>
+    <p><strong>{{ workspace.total_companies }}</strong> companies are available; <strong>{{ workspace.scanning_companies }}</strong> are selected for this profile; <strong>{{ untested_sources }}</strong> sources have not been tested yet.</p>
     <div class="actions">
-        <a class="button-link" href="{{ url_for('add_company_page') }}">Add a company</a>
+        <a class="button-link" href="{{ url_for('companies', setup='1') }}#company-sources">Open and test the starter catalog</a>
+        <a class="button-link button-secondary" href="{{ url_for('add_company_page') }}">Add another company</a>
         <form method="post" action="{{ url_for('setup_begin_review') }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <button class="button-secondary" type="submit">Continue to review</button>
         </form>
     </div>
-    <p class="muted">Choose from the catalog or add another employer, then return here to review the selected count.</p>
+    <p class="muted">Catalog-wide testing is recommended, not required. The final setup check separately confirms that at least one company you enabled for scanning is working.</p>
 </section>
 {% endblock %}

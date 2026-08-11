@@ -2,10 +2,11 @@
 {% extends "base.html" %}
 {% block title %}Add your résumé - junior{% endblock %}
 {% block content %}
-<p class="muted">Step 2 of 4</p>
+<p class="muted">Step 2 of 5</p>
 <h1 class="page-title">Add your résumé</h1>
 <section class="page-card">
     <p>Junior stores its own safe copy with <strong>{{ profile.display_name }}</strong>. Moving or renaming the original file later will not break this profile.</p>
+    <p class="muted">After upload, Junior will suggest exact résumé-backed capabilities for you to review. It will not silently decide that a skill is a Strong Match.</p>
     <form method="post" action="{{ url_for('upload_managed_resume', profile_id=profile.profile_id) }}" enctype="multipart/form-data">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="setup_mode" value="1">
@@ -17,7 +18,7 @@
     </form>
     <form method="post" action="{{ url_for('setup_skip_resume') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        <button class="button-secondary" type="submit">Skip for now</button>
+        <button class="button-secondary" type="submit">Skip résumé and review Job Fit</button>
     </form>
 </section>
 {% endblock %}

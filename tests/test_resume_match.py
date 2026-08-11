@@ -1068,6 +1068,36 @@ def test_nlr_basic_and_additional_required_qualification_sections_are_mandatory(
     assert all("national laboratory" not in item for item in result.requirements_reviewed)
 
 
+def test_cloudflare_key_qualification_section_is_mandatory() -> None:
+    posting = make_posting(
+        title="Distributed Systems Engineer - Data Platform",
+        description=(
+            "What you'll do\n"
+            "Build and operate distributed database services.\n"
+            "Key Qualifications\n"
+            "3+ years of software development experience, including distributed "
+            "systems or databases.\n"
+            "Strong programming skills, preferably in Go.\n"
+            "Experience with SQL and database internals.\n"
+            "Experience with Kubernetes is a plus.\n"
+            "Compensation\n"
+            "$137,000 - $198,000 annually."
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        "Operated Linux infrastructure and Kubernetes platforms.",
+    )
+
+    assert result.requirements_reviewed
+    assert any("3+ years" in item for item in result.requirements_reviewed)
+    assert any("database internals" in item for item in result.requirements_reviewed)
+    assert all("Kubernetes is a plus" not in item for item in result.requirements_reviewed)
+    assert all("$137,000" not in item for item in result.requirements_reviewed)
+
+
 def test_optional_strong_plus_clause_is_not_a_required_gap() -> None:
     posting = make_posting(
         title="Infrastructure Solution Architect",

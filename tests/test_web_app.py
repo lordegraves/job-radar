@@ -5771,6 +5771,16 @@ review_needed:
     assert "Create profile" in html
     assert "You are not running a job-board search from this page" in html
     assert "during company scans" in html
+    assert "Build a profile Junior can use" in html
+    assert "the jobs you want" in html
+    assert "the work you can demonstrate" in html
+    assert "uploading it does not choose your strengths" in html
+    assert "Director, Head, Vice President" in html
+    assert "Include Executive" in html
+    assert 'id="executive-level-warning"' in html
+    assert "legacy rules scans still use today" not in html
+    assert "Normal use does not require reviewing or editing legacy keywords" in html
+    assert "Create the profile first" in html
     assert "Find an occupation" in html
     assert "Job requirements" in html
     assert 'id="add-occupation"' not in html
@@ -5799,7 +5809,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.19" in html
+    assert "RC6 Build 1.21" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html
@@ -5868,6 +5878,9 @@ def test_profile_summary_and_edit_page_have_separate_jobs(tmp_path: Path) -> Non
     assert "Cancel" in edit_html
     assert 'name="occupation_selections_json"' in edit_html
     assert "Save changes" in edit_html
+    assert "Review Job Fit for this profile" in edit_html
+    assert f'href="/profile/{profile.profile_id}/fit"' in edit_html
+    assert "Résumé-derived insights will appear here" not in edit_html
 
 
 def test_search_preferences_creates_profile_and_guides_resume_upload(
