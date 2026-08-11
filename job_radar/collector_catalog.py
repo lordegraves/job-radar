@@ -144,7 +144,7 @@ COLLECTOR_CAPABILITIES = (
         "html",
         "Standard public careers page",
         "Automatic only after real-job validation",
-        "Scans supported public career pages that do not use a known platform.",
+        "Scans supported public career pages, including HRMDirect/ClearCompany boards, that do not use a dedicated collector.",
     ),
     CollectorCapability(
         "talentbrew",

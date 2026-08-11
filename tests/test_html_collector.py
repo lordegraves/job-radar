@@ -88,6 +88,64 @@ def test_parse_html_jobs_reads_schema_org_job_posting() -> None:
     assert jobs[0].source_url == "https://careers.example.invalid/jobs/head-baker"
 
 
+def test_parse_html_jobs_reads_complete_embedded_jobs_data() -> None:
+    html = """
+    <script>
+    const jobsData = [{
+      "id": 1639,
+      "name_with_override": "Senior Payroll Officer",
+      "full_description": "Run weekly payroll and maintain strong controls.",
+      "location": "Wellington"
+    }];
+    </script>
+    """
+
+    jobs = _parse_html_jobs(
+        _company_config(),
+        html,
+        "https://careers.example.test/jobs",
+    )
+
+    assert len(jobs) == 1
+    assert jobs[0].source_job_id == "1639"
+    assert jobs[0].title == "Senior Payroll Officer"
+    assert jobs[0].location == "Wellington"
+    assert jobs[0].description == (
+        "Run weekly payroll and maintain strong controls."
+    )
+    assert jobs[0].source_url == "https://careers.example.test/jobs/1639"
+
+
+def test_parse_html_jobs_reads_legacy_hrmdirect_rows() -> None:
+    html = """
+    <tr class="reqitem" data-req-id="3699712">
+      <td>Engineering</td>
+      <td class="posTitle"><a href="job-opening.php?req=3699712&amp;#job">
+        GNC Engineer III
+      </td>
+      <td class="state">TX</td>
+    </tr>
+    <tr class="reqitem" data-req-id="3699723">
+      <td>Engineering</td>
+      <td class="posTitle"><a href="job-opening.php?req=3699723&amp;#job">
+        Platform Engineer
+      </td>
+      <td class="state">CA</td>
+    </tr>
+    """
+
+    jobs = _parse_html_jobs(
+        _company_config(),
+        html,
+        "https://example.hrmdirect.com/employment/job-openings.php?search=true",
+    )
+
+    assert [(job.source_job_id, job.title, job.location) for job in jobs] == [
+        ("3699712", "GNC Engineer III", "TX"),
+        ("3699723", "Platform Engineer", "CA"),
+    ]
+
+
 def test_parse_html_jobs_supports_configured_nintendo_job_cards() -> None:
     html = """
     <a class="job-card" href="/jobs/4130435009/">

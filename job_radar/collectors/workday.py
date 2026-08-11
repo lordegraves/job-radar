@@ -422,21 +422,26 @@ def collect_workday_jobs(company_config: dict[str, Any]) -> list[JobPosting]:
             raise CollectorError("Workday payload does not contain a jobPostings list")
 
         raw_job_dicts = [job for job in raw_jobs if isinstance(job, dict)]
-        # Four workers substantially reduce large Workday feeds without
-        # creating an unbounded burst against an employer's public service.
-        with ThreadPoolExecutor(
-            max_workers=min(4, max(1, len(raw_job_dicts)))
-        ) as executor:
-            enriched_dicts = list(
-                executor.map(
-                    lambda job: _fetch_workday_detail(
-                        str(source_url),
-                        job,
-                        company_config,
-                    ),
-                    raw_job_dicts,
+        if company_config.get("connection_test") is True:
+            # Setup still walks every advertised result page so the saved
+            # pagination is proven, but description bodies belong to scans.
+            enriched_dicts = raw_job_dicts
+        else:
+            # Four workers substantially reduce large Workday feeds without
+            # creating an unbounded burst against an employer's public service.
+            with ThreadPoolExecutor(
+                max_workers=min(4, max(1, len(raw_job_dicts)))
+            ) as executor:
+                enriched_dicts = list(
+                    executor.map(
+                        lambda job: _fetch_workday_detail(
+                            str(source_url),
+                            job,
+                            company_config,
+                        ),
+                        raw_job_dicts,
+                    )
                 )
-            )
         enriched_jobs = iter(enriched_dicts)
         enriched_jobs = [
             next(enriched_jobs) if isinstance(raw_job, dict) else raw_job

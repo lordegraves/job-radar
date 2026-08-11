@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Expanded layered company discovery to follow explicit cross-domain ATS
+  handoffs, browser-rendered careers modules, Workday links embedded in
+  blocked corporate pages, HRMDirect/ClearCompany boards, and bounded
+  WordPress job sitemaps. Setup now proves full result pagination without
+  downloading every description, preserves filtered subsidiary scopes, and
+  reports explicit empty or expired boards as no current jobs instead of a
+  compatibility failure. Overlapping parent and subsidiary scans retain one
+  posting under the more specific source.
 - Fixed Walmart connection health so a successful profile-scoped search with
   zero matching jobs is reported as connected with no active-profile matches,
   rather than incorrectly suggesting that Walmart has no openings or changed

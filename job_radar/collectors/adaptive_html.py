@@ -99,19 +99,30 @@ def _next_numbered_page_url(
     """Return the lowest later page number advertised on the current page."""
 
     parsed_current = urlparse(current_url)
-    current_values = parse_qs(parsed_current.query).get("page", ["1"])
+    current_query = parse_qs(parsed_current.query)
+    parameter = "start" if "start" in current_query else "page"
+    default_value = "0" if parameter == "start" else "1"
+    current_values = current_query.get(parameter, [default_value])
     try:
         current_page = int(current_values[0])
     except (TypeError, ValueError):
         current_page = 1
 
     candidates: list[tuple[int, str]] = []
-    for href in re.findall(r"href\s*=\s*['\"]([^'\"]+)['\"]", html, re.IGNORECASE):
+    for href in re.findall(
+        r"(?:href|data-url)\s*=\s*['\"]([^'\"]+)['\"]",
+        html,
+        re.IGNORECASE,
+    ):
         absolute = urljoin(current_url, unescape(href))
         parsed = urlparse(absolute)
         if parsed.netloc.casefold() != parsed_current.netloc.casefold():
             continue
-        values = parse_qs(parsed.query).get("page")
+        candidate_query = parse_qs(parsed.query)
+        candidate_parameter = "start" if "start" in candidate_query else "page"
+        if candidate_parameter != parameter and parameter in current_query:
+            continue
+        values = candidate_query.get(candidate_parameter)
         if not values:
             continue
         try:

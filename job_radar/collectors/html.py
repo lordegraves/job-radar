@@ -252,6 +252,10 @@ def _parse_html_jobs(
     html: str,
     source_url: str,
 ) -> list[JobPosting]:
+    hrmdirect_postings = _hrmdirect_postings(company_config, html, source_url)
+    if hrmdirect_postings:
+        return hrmdirect_postings
+
     configured_patterns = company_config.get("job_link_patterns", ())
     patterns = (
         tuple(str(item) for item in configured_patterns if str(item))
@@ -264,12 +268,17 @@ def _parse_html_jobs(
     )
     parser.feed(html)
 
-    postings: list[JobPosting] = [
+    postings: list[JobPosting] = _embedded_jobs_data_postings(
+        company_config,
+        html,
+        source_url,
+    )
+    postings.extend(
         posting
         for item in parser.structured_jobs
         if (posting := _structured_posting(company_config, item, source_url))
         is not None
-    ]
+    )
 
     for title, posting_url in _dedupe_links(parser.job_links):
         source_job_id = _extract_source_job_id(posting_url)
@@ -303,6 +312,111 @@ def _parse_html_jobs(
             )
         )
 
+    return postings
+
+
+def _hrmdirect_postings(
+    company_config: dict[str, Any],
+    html: str,
+    page_url: str,
+) -> list[JobPosting]:
+    """Parse HRMDirect's legacy rows whose job anchors are not always closed."""
+
+    if not (urlparse(page_url).hostname or "").casefold().endswith(
+        ".hrmdirect.com"
+    ):
+        return []
+    postings: list[JobPosting] = []
+    for row_match in re.finditer(
+        r"<tr\b[^>]*data-req-id=[\"']([^\"']+)[\"'][^>]*>(.*?)</tr>",
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    ):
+        source_job_id, row = row_match.groups()
+        title_match = re.search(
+            r"class=[\"'][^\"']*\bposTitle\b[^\"']*[\"'][^>]*>"
+            r"\s*<a\b[^>]*href=[\"']([^\"']+)[\"'][^>]*>(.*?)(?:</a>|</td>)",
+            row,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if title_match is None:
+            continue
+        href, raw_title = title_match.groups()
+        title = _plain_text(raw_title)
+        state_match = re.search(
+            r"class=[\"'][^\"']*\bstate\b[^\"']*[\"'][^>]*>(.*?)</td>",
+            row,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        location = _plain_text(state_match.group(1)) if state_match else None
+        if not title:
+            continue
+        posting_url = urljoin(page_url, unescape(href))
+        postings.append(
+            JobPosting(
+                company_key=str(company_config["company_key"]),
+                company_name=str(company_config["name"]),
+                source_type=str(company_config["source_type"]),
+                source_job_id=source_job_id,
+                source_url=posting_url,
+                title=title,
+                location=location,
+                description=None,
+                canonical_key=make_canonical_key(
+                    str(company_config["company_key"]), title, location
+                ),
+                content_hash=make_content_hash(title, location, None),
+            )
+        )
+    return postings
+
+
+def _embedded_jobs_data_postings(
+    company_config: dict[str, Any],
+    html: str,
+    page_url: str,
+) -> list[JobPosting]:
+    """Read complete public jobs from a page's simple ``jobsData`` bootstrap."""
+
+    marker = re.search(r"\b(?:const|let|var)\s+jobsData\s*=\s*", html)
+    if marker is None:
+        return []
+    try:
+        payload, _end = json.JSONDecoder().raw_decode(html[marker.end() :])
+    except (TypeError, json.JSONDecodeError):
+        return []
+    if not isinstance(payload, list):
+        return []
+
+    postings: list[JobPosting] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        source_job_id = _plain_text(item.get("id"))
+        title = _plain_text(item.get("name_with_override") or item.get("name"))
+        if not source_job_id or not title:
+            continue
+        location = _plain_text(item.get("location"))
+        description = _plain_text(
+            item.get("full_description") or item.get("short_description")
+        )
+        posting_url = urljoin(page_url, f"/jobs/{source_job_id}")
+        postings.append(
+            JobPosting(
+                company_key=str(company_config["company_key"]),
+                company_name=str(company_config["name"]),
+                source_type=str(company_config["source_type"]),
+                source_job_id=source_job_id,
+                source_url=posting_url,
+                title=title,
+                location=location,
+                description=description,
+                canonical_key=make_canonical_key(
+                    str(company_config["company_key"]), title, location
+                ),
+                content_hash=make_content_hash(title, location, description),
+            )
+        )
     return postings
 
 

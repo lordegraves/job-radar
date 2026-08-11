@@ -173,6 +173,11 @@
         acceptable; resolving the recruiting platform, pagination, and job
         details is Junior's responsibility.
     </p>
+    {% elif resolution.status == 'NO_CURRENT_JOBS' %}
+    <p class="muted">
+        This is a valid result, not a setup failure. Junior will recheck the
+        same official URL when you submit it again later.
+    </p>
     {% elif resolution.status == 'PENDING_REVIEW' %}
     <p class="muted">
         The company is now in this profile as <strong>Setup needed</strong>.

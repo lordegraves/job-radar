@@ -63,6 +63,35 @@ def test_generic_source_follows_advertised_numbered_pages(monkeypatch) -> None:
     ]
 
 
+def test_generic_source_follows_advertised_start_offsets(monkeypatch) -> None:
+    requested = []
+    config = _config()
+    config["source_url"] = "https://jobs.example.com/positions/"
+
+    def fake_document(config, url):
+        del config
+        requested.append(url)
+        if "start=36" in url:
+            return ("<html>No later offset</html>", [_posting("3")])
+        return (
+            "<button data-url='/positions/?start=36'>Load more</button>",
+            [_posting("1"), _posting("2")],
+        )
+
+    monkeypatch.setattr(
+        "job_radar.collectors.adaptive_html.collect_html_jobs_document",
+        fake_document,
+    )
+
+    postings = collect_adaptive_html_jobs(config)
+
+    assert [posting.source_job_id for posting in postings] == ["1", "2", "3"]
+    assert requested == [
+        "https://jobs.example.com/positions/",
+        "https://jobs.example.com/positions/?start=36",
+    ]
+
+
 def test_older_talentbrew_html_configuration_uses_p_pages(monkeypatch) -> None:
     monkeypatch.setattr(
         "job_radar.collectors.adaptive_html.collect_html_jobs_document",

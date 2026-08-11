@@ -73,6 +73,43 @@ def test_parse_workday_jobs_returns_job_postings() -> None:
     assert posting.content_hash is not None
 
 
+def test_connection_test_walks_workday_results_without_detail_requests(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "job_radar.collectors.workday._fetch_workday_page",
+        lambda source_url, *, payload: {
+            "total": 1,
+            "jobPostings": [
+                {
+                    "title": "Infrastructure Engineer",
+                    "externalPath": "/job/Remote/Infrastructure_R123",
+                    "bulletFields": ["R123"],
+                    "locationsText": "Remote",
+                }
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        "job_radar.collectors.workday._fetch_workday_detail",
+        lambda *args, **kwargs: pytest.fail("detail request should be skipped"),
+    )
+
+    postings = collect_workday_jobs(
+        {
+            "company_key": "example",
+            "name": "Example",
+            "source_type": "workday",
+            "source_url": "https://example.test/wday/cxs/example/jobs/jobs",
+            "source_base_url": "https://example.test/jobs",
+            "connection_test": True,
+        }
+    )
+
+    assert len(postings) == 1
+    assert postings[0].source_job_id == "R123"
+
+
 def test_parse_workday_jobs_uses_external_path_for_placeholder_job_id() -> None:
     company_config = {
         "company_key": "intel",

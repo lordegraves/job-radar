@@ -1,5 +1,6 @@
 """Tests that each company source type is routed to the correct collector."""
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -213,6 +214,90 @@ def test_collect_jobs_for_company_warns_when_description_is_incomplete(
     assert config["_source_collection_warning_types"][warning] == (
         "incomplete_position_detail_response_failure"
     )
+
+
+def test_connection_test_validates_listing_index_without_detail_requests(
+    monkeypatch,
+) -> None:
+    summary = JobPosting(
+        company_key="synthetic",
+        company_name="Synthetic",
+        source_type="html",
+        source_url="https://example.com/job/1",
+        source_job_id="1",
+        title="Infrastructure Engineer",
+        location="Remote",
+        description="Short listing teaser",
+    )
+    monkeypatch.setattr(
+        "job_radar.collectors.registry.collect_adaptive_html_jobs",
+        lambda config: [summary],
+    )
+    monkeypatch.setattr(
+        "job_radar.collectors.registry.enrich_from_public_detail_page",
+        lambda *args, **kwargs: pytest.fail("detail page should not be requested"),
+    )
+    config = {
+        "company_key": "synthetic",
+        "name": "Synthetic",
+        "source_type": "html",
+        "source_url": "https://example.com/jobs",
+        "connection_test": True,
+    }
+
+    result = collect_jobs_for_company(config)
+
+    assert result[0].normalization_state == "incomplete"
+    assert "_source_collection_warnings" not in config
+
+
+def test_deadline_validated_feed_excludes_retained_expired_job_pages(
+    monkeypatch,
+) -> None:
+    summaries = [
+        JobPosting(
+            company_key="synthetic",
+            company_name="Synthetic",
+            source_type="html",
+            source_url=f"https://example.com/job-post/{job_id}",
+            source_job_id=job_id,
+            title=title,
+            location="Remote",
+            description=None,
+        )
+        for job_id, title in (("old", "Old Role"), ("future", "Future Role"))
+    ]
+    monkeypatch.setattr(
+        "job_radar.collectors.registry.collect_adaptive_html_jobs",
+        lambda config: summaries,
+    )
+
+    def enrich(posting, *, source_api_url=None):
+        del source_api_url
+        deadline = (
+            "End date for tendering position: 1 January 2000"
+            if posting.source_job_id == "old"
+            else "Application deadline: January 1, 2999"
+        )
+        return replace(posting, description=f"Role details. {deadline}")
+
+    monkeypatch.setattr(
+        "job_radar.collectors.registry.enrich_from_public_detail_page",
+        enrich,
+    )
+
+    result = collect_jobs_for_company(
+        {
+            "company_key": "synthetic",
+            "name": "Synthetic",
+            "source_type": "html",
+            "source_url": "https://example.com/job-post-sitemap.xml",
+            "connection_test": True,
+            "validate_deadlines": True,
+        }
+    )
+
+    assert [posting.source_job_id for posting in result] == ["future"]
 
 
 def test_specific_detail_warning_does_not_get_duplicate_normalization_warning(

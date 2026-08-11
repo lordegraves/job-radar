@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 from threading import Lock
 from time import monotonic, sleep
+from urllib.parse import parse_qsl, urlsplit
 
 from job_radar.candidate_profile import CandidateProfile
 from job_radar.collectors.walmart import walmart_scope_config
@@ -702,6 +703,36 @@ def _apply_llm_fit_review(
     )
 
 
+def _dedupe_cross_company_postings(
+    collected_by_company: dict[int, list[JobPosting]],
+    companies: list[dict[str, object]],
+) -> list[JobPosting]:
+    """Keep one shared posting and prefer the most narrowly scoped employer."""
+
+    selected: dict[str, tuple[int, int]] = {}
+    postings: list[JobPosting] = []
+    for company_number in sorted(collected_by_company):
+        company = companies[company_number - 1]
+        configured_source = str(company.get("source_url") or "")
+        specificity = len(parse_qsl(urlsplit(configured_source).query))
+        for posting in collected_by_company[company_number]:
+            source_url = (posting.source_url or "").strip().casefold().rstrip("/")
+            key = source_url or (
+                f"{posting.source_type}:{posting.source_job_id}:"
+                f"{posting.company_key}"
+            )
+            existing = selected.get(key)
+            if existing is None:
+                selected[key] = (specificity, len(postings))
+                postings.append(posting)
+                continue
+            existing_specificity, index = existing
+            if specificity > existing_specificity:
+                selected[key] = (specificity, index)
+                postings[index] = posting
+    return postings
+
+
 def handle_scan(
     config_path: str,
     settings_path: str,
@@ -1128,8 +1159,10 @@ def _handle_scan_unlocked(
                     elapsed_seconds=elapsed_seconds(diagnostic_started),
                 )
 
-        for company_number in sorted(collected_by_company):
-            collected_postings.extend(collected_by_company[company_number])
+        collected_postings = _dedupe_cross_company_postings(
+            collected_by_company,
+            companies,
+        )
 
         current_stage = "scoring"
         scoring_started = monotonic()

@@ -2,10 +2,12 @@
 
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date
 from pathlib import Path
 from threading import Event
 
 import pytest
+import requests
 
 from job_radar.employer_connection_service import get_employer_connection_health
 from job_radar.employer_models import EmployerSource
@@ -19,9 +21,13 @@ from job_radar.employer_resolution_service import (
     DISCOVERY_TIMED_OUT,
     INVALID_INPUT,
     MATCHED_EXISTING,
+    NO_CURRENT_JOBS,
     UNSUPPORTED_SITE,
     _eightfold_detection_from_html,
     _discover_branded_sources,
+    _discovery_priority,
+    _domain_slug_ats_candidates,
+    _document_reports_expired_opening,
     _first_working_source,
     _resolve_generic_source,
     _talentbrew_detection_from_html,
@@ -54,6 +60,25 @@ def test_talentbrew_markers_create_reusable_job_search_detection() -> None:
         "https://careers.example.test/search-jobs"
     )
     assert detection.source_config["job_link_patterns"] == ["/job/"]
+
+
+def test_talentbrew_detection_preserves_employer_scope_without_geolocation() -> None:
+    detection = _talentbrew_detection_from_html(
+        source_url=(
+            "https://jobs.example.test/search-jobs?orgIds=391-28648&"
+            "ascf=Industrial%20Light%20%26%20Magic&glat=34.05&glon=-118.24&p=3"
+        ),
+        careers_url="https://example.test/careers",
+        html='<script src="https://tbcdn.talentbrew.com/site.js"></script>',
+    )
+
+    assert detection is not None
+    assert detection.source_config["source_url"] == (
+        "https://jobs.example.test/search-jobs?"
+        "orgIds=391-28648&ascf=Industrial+Light+%26+Magic"
+    )
+    assert "orgids=391-28648" in detection.source_identifier
+    assert "glat" not in detection.source_identifier
 
 
 def create_test_profile(
@@ -109,6 +134,12 @@ def test_name_and_url_normalization_is_safe_and_stable() -> None:
         ("https://boards.greenhouse.io/example", "greenhouse", "example", True),
         ("https://jobs.lever.co/example", "lever", "example", True),
         ("https://jobs.ashbyhq.com/example", "ashby", "example", True),
+        (
+            "https://example.hrmdirect.com/employment/job-openings.php?search=true",
+            "html",
+            "hrmdirect:example.hrmdirect.com",
+            True,
+        ),
         (
             "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/"
             "recruitment.html?cid=example-tenant"
@@ -236,6 +267,243 @@ def test_layered_discovery_follows_official_pages_to_supported_platform(
         for item in discoveries
     )
     assert len(requested) == len(set(requested))
+
+
+def test_layered_discovery_inspects_explicit_external_careers_handoff(
+    monkeypatch,
+) -> None:
+    official_url = "https://example.invalid/careers"
+    filtered_url = (
+        "https://jobs.parent.invalid/search-jobs?division=Example+Studio"
+    )
+    pages = {
+        official_url: f'<a href="{filtered_url}">Browse job opportunities</a>',
+        filtered_url: '<script src="https://tbcdn.talentbrew.com/site.js"></script>',
+    }
+    requested: list[str] = []
+
+    class Response:
+        def __init__(self, url: str, text: str) -> None:
+            self.url = url
+            self.text = text
+
+    def fetch(url: str, **kwargs):
+        requested.append(url)
+        return Response(url, pages.get(url, ""))
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.get_response",
+        fetch,
+    )
+
+    discoveries = _discover_branded_sources(official_url)
+
+    talentbrew = next(item for item in discoveries if item.source_type == "talentbrew")
+    assert talentbrew.source_config["source_url"] == filtered_url
+    assert filtered_url in requested
+
+
+def test_layered_discovery_does_not_follow_social_job_links(monkeypatch) -> None:
+    official_url = "https://example.invalid/careers"
+    social_url = "https://www.linkedin.com/company/example/jobs/"
+    requested: list[str] = []
+
+    class Response:
+        def __init__(self, url: str, text: str) -> None:
+            self.url = url
+            self.text = text
+
+    def fetch(url: str, **kwargs):
+        requested.append(url)
+        return Response(url, f'<a href="{social_url}">Jobs</a>')
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.get_response",
+        fetch,
+    )
+
+    _discover_branded_sources(official_url)
+
+    assert social_url not in requested
+
+
+def test_layered_discovery_inspects_lazy_loaded_careers_module(monkeypatch) -> None:
+    official_url = "https://example.invalid/careers"
+    app_url = "https://example.invalid/assets/app.js"
+    careers_module = "https://example.invalid/assets/CareersView.123.js"
+    adp_url = (
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/"
+        "recruitment.html?cid=11111111-2222-3333-4444-555555555555&"
+        "ccId=19000101_000001"
+    )
+    pages = {
+        official_url: f'<script type="module" src="{app_url}"></script>',
+        app_url: 'const route = "./CareersView.123.js";',
+        careers_module: f'const openings = "{adp_url}";',
+    }
+
+    class Response:
+        def __init__(self, url: str) -> None:
+            self.url = url
+            self.text = pages.get(url, "")
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.get_response",
+        lambda url, **kwargs: Response(url),
+    )
+
+    discoveries = _discover_branded_sources(official_url)
+
+    assert any(item.source_type == "adp" for item in discoveries)
+
+
+def test_blocked_official_page_can_use_maintained_public_handoff(monkeypatch) -> None:
+    def blocked(*args, **kwargs):
+        raise requests.RequestException("blocked")
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.get_response",
+        blocked,
+    )
+
+    discoveries = _discover_branded_sources(
+        "https://www.sony.com/en_us/SCA/careers/main.html"
+    )
+
+    source = next(item for item in discoveries if item.source_type == "workday")
+    assert source.source_config["source_url"] == (
+        "https://sonyglobal.wd1.myworkdayjobs.com/wday/cxs/"
+        "sonyglobal/SonyGlobalCareers/jobs"
+    )
+
+
+def test_explicit_empty_careers_page_is_not_reported_as_unsupported(
+    monkeypatch,
+) -> None:
+    empty = DetectedEmployerSource(
+        source_type=None,
+        source_identifier=None,
+        source_config={},
+        scan_ready=False,
+        evidence=("explicit no current openings",),
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda *args, **kwargs: [empty],
+    )
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        lambda config: [],
+    )
+
+    result = _resolve_generic_source(
+        display_name="Example Research Center",
+        normalized_url="https://example.invalid/careers",
+        discovery_observer=None,
+    )
+
+    assert result.status == NO_CURRENT_JOBS
+    assert "requires at least one actual job" in result.message
+
+
+def test_expired_public_job_deadline_is_not_treated_as_an_active_job() -> None:
+    assert _document_reports_expired_opening(
+        "End date for tendering position: 30 June 2026",
+        today=date(2026, 8, 11),
+    )
+    assert not _document_reports_expired_opening(
+        "Application deadline: September 30, 2026",
+        today=date(2026, 8, 11),
+    )
+
+
+def test_layered_discovery_builds_html_source_from_repeated_job_links(
+    monkeypatch,
+) -> None:
+    url = "https://example.invalid/careers/positions/"
+    html = (
+        '<a href="/careers/positions/software-engineer-1001/">Software Engineer</a>'
+        '<a href="/careers/positions/platform-engineer-1002/">Platform Engineer</a>'
+    )
+
+    class Response:
+        def __init__(self) -> None:
+            self.url = url
+            self.text = html
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.get_response",
+        lambda *args, **kwargs: Response(),
+    )
+
+    discoveries = _discover_branded_sources(url)
+
+    source = next(item for item in discoveries if item.source_type == "html")
+    assert source.source_config["source_url"] == url
+    assert source.source_config["job_link_patterns"] == ["/careers/positions/"]
+
+
+def test_complete_embedded_feed_outranks_landing_page_teaser(monkeypatch) -> None:
+    landing_url = "https://careers.example.invalid"
+    jobs_url = f"{landing_url}/jobs"
+    pages = {
+        landing_url: (
+            f'<a href="{jobs_url}">All jobs</a>'
+            '<a href="/jobs/1">One</a><a href="/jobs/2">Two</a>'
+        ),
+        jobs_url: "<script>const jobsData = [{\"id\": 1}];</script>",
+    }
+
+    class Response:
+        def __init__(self, url: str) -> None:
+            self.url = url
+            self.text = pages.get(url, "")
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.get_response",
+        lambda url, **kwargs: Response(url),
+    )
+
+    discoveries = _discover_branded_sources(landing_url)
+    discoveries.sort(key=_discovery_priority)
+
+    assert discoveries[0].source_config["source_url"] == jobs_url
+    assert discoveries[0].evidence == ("embedded public job data",)
+
+
+def test_detected_platform_outranks_secondary_html_category() -> None:
+    careers_url = "https://jobs.example.invalid/"
+    category = DetectedEmployerSource(
+        source_type="html",
+        source_identifier="html:category",
+        source_config={
+            "source_url": f"{careers_url}category/engineering",
+            "careers_url": careers_url,
+        },
+        scan_ready=True,
+    )
+    platform = DetectedEmployerSource(
+        source_type="talentbrew",
+        source_identifier="talentbrew:example",
+        source_config={
+            "source_url": f"{careers_url}search-jobs",
+            "careers_url": careers_url,
+        },
+        scan_ready=True,
+    )
+
+    assert _discovery_priority(platform) < _discovery_priority(category)
+
+
+def test_domain_probe_includes_safe_company_suffix_variant() -> None:
+    candidates = _domain_slug_ats_candidates("https://www.example-space.com/careers")
+
+    greenhouse_slugs = {
+        item.source_config.get("source_slug")
+        for item in candidates
+        if item.source_type == "greenhouse"
+    }
+    assert greenhouse_slugs == {"example-space", "example"}
 
 
 def test_source_validation_uses_normal_collector_depth(monkeypatch) -> None:
@@ -893,7 +1161,7 @@ def test_domain_ats_recovery_rejects_candidates_without_actual_jobs(
     )
 
     assert result.status == UNSUPPORTED_SITE
-    assert attempted == ["html", "ashby", "greenhouse", "lever"]
+    assert attempted == ["html", "ashby", "greenhouse", "lever", "html"]
 
 
 def test_unknown_site_discovery_has_an_overall_timeout_and_writes_nothing(

@@ -3,6 +3,7 @@
 from dataclasses import replace
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+import re
 from typing import Any
 
 from job_radar.collectors.ashby import collect_ashby_jobs
@@ -136,8 +137,15 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
         )
 
     normalized = normalize_job_postings(postings)
+    connection_test = bool(company_config.get("connection_test"))
+    validate_deadlines = bool(company_config.get("validate_deadlines"))
     planner = company_config.get(DETAIL_PLANNER_CONFIG_KEY)
     def enrich(posting: JobPosting) -> JobPosting:
+        # Company setup proves that a real, traversable listing index exists.
+        # Fetching every detail page here can exceed the GUI timeout; normal
+        # scans still perform full profile-aware detail retrieval below.
+        if connection_test and not validate_deadlines:
+            return posting
         if posting.normalization_state != "incomplete":
             return posting
         decision = (
@@ -173,6 +181,10 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
             normalized = list(detail_executor.map(enrich, normalized))
     else:
         normalized = [enrich(posting) for posting in normalized]
+    if validate_deadlines:
+        normalized = [
+            posting for posting in normalized if not _posting_deadline_expired(posting)
+        ]
     plausible_incomplete_count = sum(
         posting.normalization_state == "incomplete"
         and posting.detail_retrieval_state != "skipped_unrelated"
@@ -183,7 +195,11 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
         warning_type == "incomplete_position_detail_response_failure"
         for warning_type in warning_types.values()
     )
-    if plausible_incomplete_count and not has_specific_detail_warning:
+    if (
+        plausible_incomplete_count
+        and not connection_test
+        and not has_specific_detail_warning
+    ):
         record_collection_warning(
             company_config,
             f"Junior collected {plausible_incomplete_count} job listing(s) selected "
@@ -220,6 +236,29 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
             warning_type="empty_source_result",
         )
     return normalized
+
+
+def _posting_deadline_expired(posting: JobPosting) -> bool:
+    """Reject retained public job pages whose stated deadline has passed."""
+
+    text = posting.description or ""
+    matches = re.findall(
+        r"(?:end date for tendering position|application deadline|closing date)"
+        r"\s*:?\s*([A-Za-z]+\s+\d{1,2},?\s+\d{4}|"
+        r"\d{1,2}\s+[A-Za-z]+\s+\d{4})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    for value in matches:
+        normalized = " ".join(value.replace(",", "").split())
+        for date_format in ("%B %d %Y", "%d %B %Y"):
+            try:
+                deadline = datetime.strptime(normalized, date_format).date()
+            except ValueError:
+                continue
+            if deadline < datetime.now(UTC).date():
+                return True
+    return False
 
 
 def _recent_cached_detail(

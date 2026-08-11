@@ -8,6 +8,7 @@ import unicodedata
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
+from datetime import date, datetime
 from html import unescape
 from pathlib import Path
 from urllib.parse import (
@@ -28,6 +29,7 @@ from job_radar.collectors.registry import collect_jobs_for_company
 from job_radar.collectors.walmart import walmart_scope_config
 from job_radar.employer_storage import list_profile_employer_assignments
 from job_radar.profile_storage import get_profile
+from job_radar.normalize import clean_human_text
 from job_radar.storage import initialize_database
 
 
@@ -38,6 +40,7 @@ CREATED_SCAN_READY = "CREATED_SCAN_READY"
 PENDING_REVIEW = "PENDING_REVIEW"
 AMBIGUOUS_MATCH = "AMBIGUOUS_MATCH"
 UNSUPPORTED_SITE = "UNSUPPORTED_SITE"
+NO_CURRENT_JOBS = "NO_CURRENT_JOBS"
 INVALID_INPUT = "INVALID_INPUT"
 ALREADY_ASSIGNED = "ALREADY_ASSIGNED"
 DISCOVERY_TIMED_OUT = "DISCOVERY_TIMED_OUT"
@@ -60,10 +63,26 @@ _CAREER_LINK_TERMS = (
     "opportunit",
     "work-with-us",
 )
+_EXTERNAL_HANDOFF_BLOCKED_HOSTS = {
+    "facebook.com",
+    "instagram.com",
+    "linkedin.com",
+    "twitter.com",
+    "x.com",
+    "youtube.com",
+}
+_TALENTBREW_NON_SCOPE_QUERY_KEYS = {
+    "glat",
+    "glon",
+    "latitude",
+    "longitude",
+    "p",
+}
 _DOMAIN_SLUG_ATS_URLS = (
     "https://jobs.ashbyhq.com/{slug}",
     "https://boards.greenhouse.io/{slug}",
     "https://jobs.lever.co/{slug}",
+    "https://{slug}.hrmdirect.com/employment/job-openings.php?search=true",
 )
 _COMMON_SECOND_LEVEL_SUFFIXES = {
     "co.uk",
@@ -73,6 +92,23 @@ _COMMON_SECOND_LEVEL_SUFFIXES = {
     "co.nz",
     "co.jp",
     "co.in",
+}
+_DOMAIN_COMPANY_SUFFIXES = (
+    "technologies",
+    "technology",
+    "aerospace",
+    "machines",
+    "systems",
+    "space",
+    "labs",
+    "corp",
+    "inc",
+)
+_KNOWN_PUBLIC_CAREER_HANDOFFS = {
+    (
+        "www.sony.com",
+        "/en_us/sca/careers/main.html",
+    ): "https://sonyglobal.wd1.myworkdayjobs.com/SonyGlobalCareers",
 }
 
 
@@ -325,6 +361,18 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
         return _slug_detection("lever", slug, careers_url)
     if host == "jobs.ashbyhq.com" and slug:
         return _slug_detection("ashby", slug, careers_url)
+    if host.endswith(".hrmdirect.com") and host.count(".") >= 2:
+        return DetectedEmployerSource(
+            source_type="html",
+            source_identifier=f"hrmdirect:{host.casefold()}",
+            source_config={
+                "source_url": careers_url,
+                "careers_url": careers_url,
+                "job_link_patterns": ["job-opening.php?req="],
+            },
+            scan_ready=True,
+            evidence=("HRMDirect public job board",),
+        )
     if host.endswith(".myworkdayjobs.com"):
         workday_detection = _workday_detection(careers_url, careers_url)
         if workday_detection is not None:
@@ -910,6 +958,7 @@ def _resolve_generic_source(
         normalized_url,
         discovery_observer=discovery_observer,
     )
+    discoveries.sort(key=_discovery_priority)
     discoveries.append(
         DetectedEmployerSource(
             source_type="html",
@@ -926,6 +975,23 @@ def _resolve_generic_source(
         walmart_scope=walmart_scope,
     )
     if tested_source is None:
+        if any(
+            "explicit no current openings" in item.evidence
+            or item.source_config.get("validate_deadlines") is True
+            for item in discoveries
+        ):
+            return EmployerResolutionResult(
+                status=NO_CURRENT_JOBS,
+                message=(
+                    "Junior reached the employer's live careers page and it "
+                    "currently states that there are no open positions. No "
+                    "company was added because Junior requires at least one "
+                    "actual job before saving a new source. Try this same URL "
+                    "again when the employer is hiring."
+                ),
+                employer_name=display_name,
+                careers_url=normalized_url,
+            )
         return EmployerResolutionResult(
             status=UNSUPPORTED_SITE,
             message=(
@@ -941,6 +1007,36 @@ def _resolve_generic_source(
             careers_url=normalized_url,
         )
     return tested_source
+
+
+def _discovery_priority(discovery: DetectedEmployerSource) -> int:
+    """Prefer complete feeds over landing-page teasers without losing order."""
+
+    if "embedded public job data" in discovery.evidence:
+        return 0
+    source_url = str(discovery.source_config.get("source_url") or "")
+    careers_url = str(discovery.source_config.get("careers_url") or "")
+    if discovery.source_type == "html" and _same_public_url(source_url, careers_url):
+        return 1
+    if discovery.source_type != "html":
+        return 2
+    return 3
+
+
+def _same_public_url(left: str, right: str) -> bool:
+    """Compare user-facing URLs without insignificant trailing slashes."""
+
+    if not left or not right:
+        return False
+    parsed_left = urlsplit(left)
+    parsed_right = urlsplit(right)
+    return (
+        parsed_left.scheme.casefold() == parsed_right.scheme.casefold()
+        and parsed_left.netloc.casefold() == parsed_right.netloc.casefold()
+        and parsed_left.path.rstrip("/").casefold()
+        == parsed_right.path.rstrip("/").casefold()
+        and parsed_left.query == parsed_right.query
+    )
 
 
 def _domain_slug_ats_candidates(careers_url: str) -> list[DetectedEmployerSource]:
@@ -966,24 +1062,30 @@ def _domain_slug_ats_candidates(careers_url: str) -> list[DetectedEmployerSource
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,62}", slug):
         return []
 
+    slugs = [slug]
+    for suffix in _DOMAIN_COMPANY_SUFFIXES:
+        shortened = slug.removesuffix(suffix).rstrip("-")
+        if shortened != slug and len(shortened) >= 3:
+            slugs.append(shortened)
     candidates: list[DetectedEmployerSource] = []
-    for template in _DOMAIN_SLUG_ATS_URLS:
-        detected = detect_employer_source(template.format(slug=slug))
-        if not detected.scan_ready:
-            continue
-        candidates.append(
-            DetectedEmployerSource(
-                source_type=detected.source_type,
-                source_identifier=detected.source_identifier,
-                source_config={
-                    **detected.source_config,
-                    "careers_url": careers_url,
-                },
-                scan_ready=True,
-                confidence="medium",
-                evidence=("official-domain ATS board probe",),
+    for candidate_slug in dict.fromkeys(slugs):
+        for template in _DOMAIN_SLUG_ATS_URLS:
+            detected = detect_employer_source(template.format(slug=candidate_slug))
+            if not detected.scan_ready:
+                continue
+            candidates.append(
+                DetectedEmployerSource(
+                    source_type=detected.source_type,
+                    source_identifier=detected.source_identifier,
+                    source_config={
+                        **detected.source_config,
+                        "careers_url": careers_url,
+                    },
+                    scan_ready=True,
+                    confidence="medium",
+                    evidence=("official-domain ATS board probe",),
+                )
             )
-        )
     return candidates
 
 
@@ -1074,10 +1176,11 @@ def _discover_branded_sources(
 
     parsed_input = urlsplit(careers_url)
     official_host = (parsed_input.hostname or "").casefold()
+    trusted_hosts = {official_host}
     queue = [careers_url]
     queued = {careers_url.casefold()}
     visited: set[str] = set()
-    discoveries: list[DetectedEmployerSource] = []
+    discoveries = _known_public_handoff_sources(careers_url)
     document_bytes = 0
 
     while queue and len(visited) < _DISCOVERY_MAX_PAGES:
@@ -1098,7 +1201,11 @@ def _discover_branded_sources(
                 page_url,
                 headers={
                     "Accept": "text/html,application/xhtml+xml",
-                    "User-Agent": "Junior/0.2 local career-source discovery",
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/124.0 Safari/537.36 Junior/0.2"
+                    ),
                 },
                 timeout=20,
             )
@@ -1112,6 +1219,13 @@ def _discover_branded_sources(
             )
             continue
         html = response.text
+        response_host = (urlsplit(response.url).hostname or "").casefold()
+        # A server redirect from a URL already trusted for this request is an
+        # explicit careers handoff, such as a corporate page moving to its
+        # branded recruiting subsite.
+        requested_host = (urlsplit(page_url).hostname or "").casefold()
+        if any(_hosts_are_related(requested_host, host) for host in trusted_hosts):
+            trusted_hosts.add(response_host)
         discoveries.extend(
             _discover_sources_from_document(
                 source_url=response.url,
@@ -1149,7 +1263,9 @@ def _discover_branded_sources(
                 )
             if _should_follow_discovery_page(
                 advertised_url,
-                official_host=official_host,
+                source_host=response_host,
+                trusted_hosts=trusted_hosts,
+                allow_bootstrap_script=(len(visited) == 1 and len(html) < 50_000),
             ):
                 candidate_key = advertised_url.casefold()
                 if candidate_key not in queued and candidate_key not in visited:
@@ -1158,7 +1274,13 @@ def _discover_branded_sources(
         if len(visited) == 1:
             origin = urlsplit(response.url)
             root = urlunsplit((origin.scheme, origin.netloc, "/", "", ""))
-            for path in ("/careers", "/jobs", "/join-us", "/work-with-us"):
+            for path in (
+                "/wp-sitemap.xml",
+                "/careers",
+                "/jobs",
+                "/join-us",
+                "/work-with-us",
+            ):
                 candidate = urljoin(root, path)
                 candidate_key = candidate.casefold()
                 if candidate_key not in queued:
@@ -1176,6 +1298,35 @@ def _discover_branded_sources(
     return unique
 
 
+def _known_public_handoff_sources(
+    careers_url: str,
+) -> list[DetectedEmployerSource]:
+    """Return maintained ATS handoffs for official pages that block discovery."""
+
+    parsed = urlsplit(careers_url)
+    handoff = _KNOWN_PUBLIC_CAREER_HANDOFFS.get(
+        ((parsed.hostname or "").casefold(), parsed.path.rstrip("/").casefold())
+    )
+    if handoff is None:
+        return []
+    detected = detect_employer_source(handoff)
+    if not detected.scan_ready:
+        return []
+    return [
+        DetectedEmployerSource(
+            source_type=detected.source_type,
+            source_identifier=detected.source_identifier,
+            source_config={
+                **detected.source_config,
+                "careers_url": careers_url,
+            },
+            scan_ready=True,
+            confidence="high",
+            evidence=("maintained public careers handoff",),
+        )
+    ]
+
+
 def _advertised_page_urls(source_url: str, html: str) -> list[str]:
     """Extract linked and embedded URLs without executing page scripts."""
 
@@ -1184,6 +1335,17 @@ def _advertised_page_urls(source_url: str, html: str) -> list[str]:
         urljoin(source_url, unescape(value))
         for value in re.findall(
             r"(?:href|src|action)=[\"']([^\"']+)[\"']",
+            html,
+            flags=re.IGNORECASE,
+        )
+    )
+    # Modern company sites often lazy-load the careers route. Inspect only
+    # explicitly career/job-named same-site modules; the normal page and byte
+    # ceilings still bound traversal and no script is executed.
+    values.extend(
+        urljoin(source_url, unescape(value))
+        for value in re.findall(
+            r"[\"']([^\"']*(?:career|job)[^\"']*\.js)[\"']",
             html,
             flags=re.IGNORECASE,
         )
@@ -1205,13 +1367,35 @@ def _advertised_page_urls(source_url: str, html: str) -> list[str]:
     return list(dict.fromkeys(normalized))
 
 
-def _should_follow_discovery_page(url: str, *, official_host: str) -> bool:
+def _should_follow_discovery_page(
+    url: str,
+    *,
+    source_host: str,
+    trusted_hosts: set[str],
+    allow_bootstrap_script: bool = False,
+) -> bool:
+    """Allow bounded same-site traversal and explicit recruiting handoffs."""
+
     parsed = urlsplit(url)
     host = (parsed.hostname or "").casefold()
-    if not host or not _hosts_are_related(host, official_host):
+    if not host or parsed.scheme.casefold() != "https":
         return False
     target = f"{parsed.path}?{parsed.query}".casefold()
-    return any(term in target for term in _CAREER_LINK_TERMS)
+    if allow_bootstrap_script and parsed.path.casefold().endswith(".js") and any(
+        _hosts_are_related(host, trusted) for trusted in trusted_hosts
+    ):
+        return True
+    if not any(term in target for term in _CAREER_LINK_TERMS):
+        return False
+    if any(_hosts_are_related(host, trusted) for trusted in trusted_hosts):
+        return True
+    if not any(_hosts_are_related(source_host, trusted) for trusted in trusted_hosts):
+        return False
+    blocked = host.removeprefix("www.")
+    return not any(
+        blocked == denied or blocked.endswith(f".{denied}")
+        for denied in _EXTERNAL_HANDOFF_BLOCKED_HOSTS
+    )
 
 
 def _hosts_are_related(left: str, right: str) -> bool:
@@ -1264,6 +1448,22 @@ def _discover_sources_from_document(
     """Extract collector configurations from one already-fetched document."""
 
     discoveries: list[DetectedEmployerSource] = []
+    document_text = clean_human_text(html)
+    if re.search(
+        r"\b(?:there are no current openings|currently there are no openings|"
+        r"we are not currently hiring|no current vacancies)\b",
+        document_text,
+        flags=re.IGNORECASE,
+    ) or _document_reports_expired_opening(document_text):
+        discoveries.append(
+            DetectedEmployerSource(
+                source_type=None,
+                source_identifier=None,
+                source_config={},
+                scan_ready=False,
+                evidence=("explicit no current openings",),
+            )
+        )
     advertised_urls = [source_url]
     advertised_urls.extend(
         urljoin(source_url, unescape(match))
@@ -1273,6 +1473,14 @@ def _discover_sources_from_document(
             flags=re.IGNORECASE,
         )
     )
+    html_source = _html_detection_from_document(
+        source_url=source_url,
+        careers_url=careers_url,
+        html=html,
+        advertised_urls=advertised_urls,
+    )
+    if html_source is not None:
+        discoveries.append(html_source)
     for advertised_url in advertised_urls:
         try:
             normalized_advertised_url = normalize_careers_url(advertised_url)
@@ -1350,6 +1558,88 @@ def _discover_sources_from_document(
     return discoveries
 
 
+def _html_detection_from_document(
+    *,
+    source_url: str,
+    careers_url: str,
+    html: str,
+    advertised_urls: list[str],
+) -> DetectedEmployerSource | None:
+    """Recognize an authoritative public page containing repeated job records."""
+
+    patterns: list[str] = []
+    paths = [urlsplit(url).path for url in advertised_urls]
+    for pattern in (
+        "/careers/positions/",
+        "/hcmUI/CandidateExperience/",
+        "/job-post/",
+        "/jobs/",
+        "/job/",
+    ):
+        detail_paths = {
+            path
+            for path in paths
+            if pattern.casefold() in path.casefold()
+            and path.rstrip("/").casefold()
+            != pattern.rstrip("/").casefold()
+        }
+        if len(detail_paths) >= 2:
+            patterns.append(pattern)
+    has_embedded_jobs = bool(
+        re.search(r"\b(?:const|let|var)\s+jobsData\s*=\s*\[", html)
+    )
+    if not patterns and not has_embedded_jobs:
+        return None
+    parsed = urlsplit(source_url)
+    if not parsed.hostname:
+        return None
+    return DetectedEmployerSource(
+        source_type="html",
+        source_identifier=(
+            f"html:{parsed.hostname.casefold()}:{parsed.path.rstrip('/') or '/'}"
+        ),
+        source_config={
+            "source_url": source_url,
+            "careers_url": careers_url,
+            "job_link_patterns": patterns,
+            "validate_deadlines": "/job-post/" in patterns,
+        },
+        scan_ready=True,
+        evidence=(
+            "embedded public job data"
+            if has_embedded_jobs
+            else "repeated public job records",
+        ),
+    )
+
+
+def _document_reports_expired_opening(
+    text: str,
+    *,
+    today: date | None = None,
+) -> bool:
+    """Recognize an explicit application deadline that has already passed."""
+
+    current_date = today or date.today()
+    matches = re.findall(
+        r"(?:end date for tendering position|application deadline|closing date)"
+        r"\s*:?\s*([A-Za-z]+\s+\d{1,2},?\s+\d{4}|"
+        r"\d{1,2}\s+[A-Za-z]+\s+\d{4})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    for value in matches:
+        normalized = " ".join(value.replace(",", "").split())
+        for date_format in ("%B %d %Y", "%d %B %Y"):
+            try:
+                deadline = datetime.strptime(normalized, date_format).date()
+            except ValueError:
+                continue
+            if deadline < current_date:
+                return True
+    return False
+
+
 def _discover_custom_platform(
     source_url: str,
     *,
@@ -1424,11 +1714,31 @@ def _talentbrew_detection_from_html(
     if not parsed.hostname:
         return None
     source_root = urlunsplit((parsed.scheme, parsed.netloc, "", "", ""))
+    source_path = parsed.path.rstrip("/")
+    if "/search-jobs" in source_path.casefold():
+        scope_query = [
+            (key, value)
+            for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+            if key.casefold() not in _TALENTBREW_NON_SCOPE_QUERY_KEYS
+        ]
+        search_url = urlunsplit(
+            (
+                parsed.scheme,
+                parsed.netloc,
+                source_path,
+                urlencode(scope_query, doseq=True),
+                "",
+            )
+        )
+    else:
+        search_url = urljoin(source_root, "/search-jobs")
     return DetectedEmployerSource(
         source_type="talentbrew",
-        source_identifier=f"talentbrew:{parsed.hostname.casefold()}",
+        source_identifier=(
+            f"talentbrew:{parsed.hostname.casefold()}:{search_url.casefold()}"
+        ),
         source_config={
-            "source_url": urljoin(source_root, "/search-jobs"),
+            "source_url": search_url,
             "careers_url": careers_url,
             "job_link_patterns": ["/job/"],
         },
