@@ -14,6 +14,8 @@ from job_radar.employer_connection_service import (
     test_employer_connection as run_employer_connection_test,
 )
 from job_radar.models import JobPosting
+from job_radar.profile_models import ManagedProfile, ProfilePreferences
+from job_radar.profile_storage import create_profile, set_active_profile
 
 
 def _create_test_employer(database_path: Path, **source_config: str) -> str:
@@ -189,6 +191,52 @@ def test_greenhouse_empty_connection_is_authoritatively_healthy(
     assert result.state == "success"
     assert result.category == "connected_no_openings"
     assert result.job_count == 0
+
+
+def test_walmart_empty_connection_is_healthy_without_profile_matches(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = ManagedProfile(
+        profile_id="profile_1234abcd",
+        display_name="Test User",
+        preferences=ProfilePreferences(
+            target_roles=("Platform Engineer",),
+            preferred_locations=("Remote",),
+        ),
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    employer_id = _create_test_employer(
+        database_path,
+        source_type="walmart",
+        source_url="https://careers.walmart.com/api/graphql",
+    )
+    received_config = {}
+
+    def collect(config):
+        received_config.update(config)
+        return []
+
+    monkeypatch.setattr(
+        "job_radar.employer_connection_service.collect_jobs_for_company",
+        collect,
+    )
+
+    result = run_employer_connection_test(database_path, employer_id)
+
+    assert result.state == "success"
+    assert result.category == "connected_no_profile_matches"
+    assert result.job_count == 0
+    assert result.message == (
+        "Connection succeeded, but no jobs matched the active profile's "
+        "target roles and locations."
+    )
+    assert result.last_success_at is not None
+    assert result.last_error_at is None
+    assert received_config["walmart_target_roles"] == ["Platform Engineer"]
+    assert received_config["walmart_locations"] == ["Remote"]
 
 
 def test_empty_scan_result_replaces_stale_success_with_source_review(

@@ -145,6 +145,7 @@ def test_employer_connection(
                     source_config.get(AUTHORITATIVE_EMPTY_CONFIG_KEY)
                 )
                 or employer.source_type == "greenhouse",
+                profile_scoped=employer.source_type == "walmart",
             )
 
     _store_health(database_path, employer_id, health)
@@ -234,9 +235,20 @@ def _collection_health(
     *,
     context: str,
     confirmed_empty: bool = False,
+    profile_scoped: bool = False,
 ) -> EmployerConnectionHealth:
     """Treat an empty result as ambiguous source health, not proof of success."""
 
+    if count == 0 and profile_scoped:
+        return EmployerConnectionHealth(
+            state=SUCCESS,
+            category="connected_no_profile_matches",
+            message=(
+                f"{context} succeeded, but no jobs matched the active "
+                "profile's target roles and locations."
+            ),
+            job_count=0,
+        )
     if count == 0 and confirmed_empty:
         return EmployerConnectionHealth(
             state=SUCCESS,

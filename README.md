@@ -43,6 +43,9 @@ Changing a source returns it to Not tested until verification succeeds. A newer
 successful connection test clears an older scan warning from the current health
 display without removing that historical warning from the scan audit. Valid
 empty Greenhouse and iCIMS boards are reported as connected with no openings.
+Because Walmart tests use the active profile's target roles and locations, a
+reachable Walmart source with no matching jobs is reported as healthy with no
+profile matches rather than as a broken or empty recruiting source.
 Junior does not start a source-test batch while a scan is running, and an
 unexpected background-test failure is identified as a Junior test problem
 rather than being mislabeled as a failed employer source. When a background

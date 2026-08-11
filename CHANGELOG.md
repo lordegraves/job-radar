@@ -6,6 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Fixed Walmart connection health so a successful profile-scoped search with
+  zero matching jobs is reported as connected with no active-profile matches,
+  rather than incorrectly suggesting that Walmart has no openings or changed
+  recruiting platforms. Network, API, configuration, and response failures
+  remain source-health errors.
 - Added bounded recovery for official company pages that block automated page
   inspection. Junior derives an exact company identifier from the official
   domain, tests matching public Ashby, Greenhouse, and Lever boards, and still
