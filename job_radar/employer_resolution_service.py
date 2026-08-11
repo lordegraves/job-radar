@@ -60,6 +60,20 @@ _CAREER_LINK_TERMS = (
     "opportunit",
     "work-with-us",
 )
+_DOMAIN_SLUG_ATS_URLS = (
+    "https://jobs.ashbyhq.com/{slug}",
+    "https://boards.greenhouse.io/{slug}",
+    "https://jobs.lever.co/{slug}",
+)
+_COMMON_SECOND_LEVEL_SUFFIXES = {
+    "co.uk",
+    "com.au",
+    "com.br",
+    "com.mx",
+    "co.nz",
+    "co.jp",
+    "co.in",
+}
 
 
 @dataclass(frozen=True)
@@ -904,6 +918,7 @@ def _resolve_generic_source(
             scan_ready=True,
         )
     )
+    discoveries.extend(_domain_slug_ats_candidates(normalized_url))
     tested_source = _first_working_source(
         discoveries,
         display_name=display_name,
@@ -926,6 +941,50 @@ def _resolve_generic_source(
             careers_url=normalized_url,
         )
     return tested_source
+
+
+def _domain_slug_ats_candidates(careers_url: str) -> list[DetectedEmployerSource]:
+    """Build bounded public ATS probes from an official company's domain.
+
+    Some legitimate career pages block automated page reads even though their
+    public ATS board remains available. The domain label is used only as an
+    exact board identifier; the normal collector must still return real jobs
+    before Junior accepts any candidate.
+    """
+
+    host = (urlsplit(careers_url).hostname or "").casefold().strip(".")
+    labels = [label for label in host.split(".") if label]
+    if labels and labels[0] in {"careers", "jobs", "www"}:
+        labels.pop(0)
+    if len(labels) < 2:
+        return []
+    suffix_length = 2 if ".".join(labels[-2:]) in _COMMON_SECOND_LEVEL_SUFFIXES else 1
+    company_index = len(labels) - suffix_length - 1
+    if company_index < 0:
+        return []
+    slug = labels[company_index]
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,62}", slug):
+        return []
+
+    candidates: list[DetectedEmployerSource] = []
+    for template in _DOMAIN_SLUG_ATS_URLS:
+        detected = detect_employer_source(template.format(slug=slug))
+        if not detected.scan_ready:
+            continue
+        candidates.append(
+            DetectedEmployerSource(
+                source_type=detected.source_type,
+                source_identifier=detected.source_identifier,
+                source_config={
+                    **detected.source_config,
+                    "careers_url": careers_url,
+                },
+                scan_ready=True,
+                confidence="medium",
+                evidence=("official-domain ATS board probe",),
+            )
+        )
+    return candidates
 
 
 def _first_working_source(

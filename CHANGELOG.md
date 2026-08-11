@@ -6,6 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Added bounded recovery for official company pages that block automated page
+  inspection. Junior derives an exact company identifier from the official
+  domain, tests matching public Ashby, Greenhouse, and Lever boards, and still
+  saves nothing unless the normal collector returns actual jobs. This allows
+  Vultr's official careers URL to resolve to its current public Ashby board.
 - Fixed qualification parsing for postings that label mandatory sections
   **Basic Qualifications** or **Additional Required Qualifications**. These
   requirements are now evaluated while a following **Preferred

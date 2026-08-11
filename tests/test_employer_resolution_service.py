@@ -831,6 +831,71 @@ def test_generic_discovery_accepts_profile_scope_without_changing_page_traversal
     }
 
 
+def test_blocked_official_page_recovers_matching_public_ashby_board(
+    monkeypatch,
+) -> None:
+    attempted: list[tuple[str, str | None]] = []
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda url, **kwargs: [],
+    )
+
+    def collect(config):
+        attempted.append((config["source_type"], config.get("source_slug")))
+        if config["source_type"] == "ashby" and config["source_slug"] == "vultr":
+            return [object(), object()]
+        return []
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        collect,
+    )
+
+    result = _resolve_generic_source(
+        display_name="Vultr",
+        normalized_url="https://www.vultr.com/company/careers/",
+        discovery_observer=None,
+    )
+
+    assert isinstance(result, tuple)
+    source, job_count = result
+    assert source.source_type == "ashby"
+    assert source.source_identifier == "vultr"
+    assert source.source_config["careers_url"] == (
+        "https://www.vultr.com/company/careers/"
+    )
+    assert job_count == 2
+    assert attempted == [("html", None), ("ashby", "vultr")]
+
+
+def test_domain_ats_recovery_rejects_candidates_without_actual_jobs(
+    monkeypatch,
+) -> None:
+    attempted: list[str] = []
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._discover_branded_sources",
+        lambda url, **kwargs: [],
+    )
+
+    def collect(config):
+        attempted.append(config["source_type"])
+        return []
+
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service.collect_jobs_for_company",
+        collect,
+    )
+
+    result = _resolve_generic_source(
+        display_name="No Openings Example",
+        normalized_url="https://www.no-openings-example.com/careers/",
+        discovery_observer=None,
+    )
+
+    assert result.status == UNSUPPORTED_SITE
+    assert attempted == ["html", "ashby", "greenhouse", "lever"]
+
+
 def test_unknown_site_discovery_has_an_overall_timeout_and_writes_nothing(
     tmp_path: Path,
     monkeypatch,

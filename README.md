@@ -183,7 +183,11 @@ company, the user may paste any official company URL: a homepage, careers page,
 department page, search page, or public job posting. Junior follows a bounded
 set of relevant public links, derives the recruiting-platform configuration,
 uses the collector's normal pagination, and saves nothing until it validates
-actual public jobs. An unsupported result saves no partial company and does not
+actual public jobs. If the official page blocks Junior from reading its links,
+Junior also makes a bounded check for a matching public Ashby, Greenhouse, or
+Lever board derived from the official company domain. A board is accepted only
+when its normal collector returns actual jobs. An unsupported result saves no
+partial company and does not
 ask the user to hunt for a technical ATS URL.
 
 USAJOBS is the exception because its public search API requires credentials
