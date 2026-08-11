@@ -16,6 +16,7 @@ from job_radar.employer_resolution_service import (
     AMBIGUOUS_MATCH,
     CREATED_SCAN_READY,
     DetectedEmployerSource,
+    EmployerResolutionResult,
     DETECTED_SCAN_READY,
     DETECTED_SETUP_REQUIRED,
     DISCOVERY_TIMED_OUT,
@@ -25,6 +26,7 @@ from job_radar.employer_resolution_service import (
     UNSUPPORTED_SITE,
     _eightfold_detection_from_html,
     _discover_branded_sources,
+    _discover_sources_from_document,
     _discovery_priority,
     _domain_slug_ats_candidates,
     _document_reports_expired_opening,
@@ -597,6 +599,58 @@ def test_similar_name_requires_confirmation_without_merging(
     assert result.possible_employers == (
         ("example-systems", "Example Systems Group"),
     )
+
+
+def test_url_submission_never_uses_similar_catalog_name(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "junior.sqlite3"
+    profile = create_test_profile(database_path)
+    add_catalog_employer(database_path, name="VAST Data")
+    monkeypatch.setattr(
+        "job_radar.employer_resolution_service._resolve_generic_source",
+        lambda **_kwargs: EmployerResolutionResult(
+            status=UNSUPPORTED_SITE,
+            message="unsupported",
+        ),
+    )
+
+    result = resolve_employer_submission(
+        database_path,
+        profile_id=profile.profile_id,
+        company_name="Vast",
+        careers_url="https://www.vastspace.com/careers",
+        confirm_detected=True,
+    )
+
+    assert result.status == UNSUPPORTED_SITE
+    assert result.possible_employers == ()
+
+
+def test_official_subsidiary_page_derives_scoped_parent_job_search() -> None:
+    discoveries = _discover_sources_from_document(
+        source_url="https://subsidiary.example/careers/",
+        careers_url="https://subsidiary.example/careers/",
+        html=(
+            "<p>Located in beautiful Fort Collins, CO.</p>"
+            '<a href="https://jobs.example-parent.com/">Careers</a>'
+        ),
+    )
+
+    scoped = next(
+        item
+        for item in discoveries
+        if "official location-scoped recruiting handoff" in item.evidence
+    )
+    assert scoped.source_type == "html"
+    assert scoped.source_config["source_url"] == (
+        "https://jobs.example-parent.com/search/"
+        "?q=&locationsearch=Fort+Collins%2C+CO"
+    )
+    assert scoped.source_config["required_job_url_terms"] == [
+        "/job/fort-collins-"
+    ]
 
 
 def test_recognized_scan_ready_url_requires_confirmation_before_creation(

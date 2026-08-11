@@ -312,6 +312,15 @@ def _parse_html_jobs(
             )
         )
 
+    required_terms = company_config.get("required_job_url_terms", ())
+    if isinstance(required_terms, (list, tuple)):
+        terms = tuple(str(item).casefold() for item in required_terms if str(item))
+        if terms:
+            postings = [
+                posting
+                for posting in postings
+                if any(term in posting.source_url.casefold() for term in terms)
+            ]
     return postings
 
 

@@ -172,7 +172,10 @@ def resolve_employer_submission(
     }
     exact = _find_exact_matches(
         db_path,
-        normalized_name=normalized_name,
+        # A URL identifies a source, not a fuzzy company-name query. During a
+        # confirmation post the derived display name must not select another
+        # catalog employer that happens to share one word (Vast vs VAST Data).
+        normalized_name="" if normalized_url is not None else normalized_name,
         normalized_url=normalized_url,
     )
     if len(exact) == 1:
@@ -195,7 +198,11 @@ def resolve_employer_submission(
     if len(exact) > 1:
         return _ambiguous(exact)
 
-    strong_candidates = _find_strong_name_candidates(db_path, normalized_name)
+    strong_candidates = (
+        _find_strong_name_candidates(db_path, normalized_name)
+        if normalized_url is None
+        else []
+    )
     if strong_candidates:
         return _ambiguous(strong_candidates)
 
@@ -1513,6 +1520,14 @@ def _discover_sources_from_document(
     )
     if talentbrew is not None:
         discoveries.append(talentbrew)
+    successfactors_handoff = _successfactors_handoff_from_document(
+        source_url=source_url,
+        careers_url=careers_url,
+        html=html,
+        advertised_urls=advertised_urls,
+    )
+    if successfactors_handoff is not None:
+        discoveries.append(successfactors_handoff)
     workday_links = re.findall(
         r'https://[^"\'<>\s]+\.myworkdayjobs\.com/[^"\'<>\s?&]+',
         unescape(html),
@@ -1556,6 +1571,65 @@ def _discover_sources_from_document(
                 )
             )
     return discoveries
+
+
+def _successfactors_handoff_from_document(
+    *,
+    source_url: str,
+    careers_url: str,
+    html: str,
+    advertised_urls: list[str],
+) -> DetectedEmployerSource | None:
+    """Scope a subsidiary's advertised parent job board to its location."""
+
+    target_url = next(
+        (
+            item
+            for item in advertised_urls
+            if (urlsplit(item).hostname or "").casefold().startswith("jobs.")
+            and urlsplit(item).path.rstrip("/") in {"", "/search"}
+        ),
+        None,
+    )
+    if target_url is None:
+        return None
+    target_host = (urlsplit(target_url).hostname or "").casefold()
+    if target_host == (urlsplit(source_url).hostname or "").casefold():
+        return None
+
+    text = clean_human_text(html)
+    location_match = re.search(
+        r"\b([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2}),\s*"
+        r"([A-Z]{2})\b",
+        text,
+    )
+    if location_match is None:
+        return None
+    city, state = location_match.groups()
+    city_slug = re.sub(r"[^a-z0-9]+", "-", city.casefold()).strip("-")
+    parsed_target = urlsplit(target_url)
+    scoped_url = urlunsplit(
+        (
+            parsed_target.scheme or "https",
+            parsed_target.netloc,
+            "/search/",
+            urlencode({"q": "", "locationsearch": f"{city}, {state}"}),
+            "",
+        )
+    )
+    return DetectedEmployerSource(
+        source_type="html",
+        source_identifier=f"successfactors:{target_host}:{city_slug}-{state.casefold()}",
+        source_config={
+            "source_url": scoped_url,
+            "careers_url": careers_url,
+            "job_link_patterns": ["/job/"],
+            "required_job_url_terms": [f"/job/{city_slug}-"],
+        },
+        scan_ready=True,
+        confidence="high",
+        evidence=("official location-scoped recruiting handoff",),
+    )
 
 
 def _html_detection_from_document(

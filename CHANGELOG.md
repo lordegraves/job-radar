@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Prevent URL-based company setup from falling into partial catalog-name
+  matching, so similarly named employers such as Vast Space and VAST Data stay
+  separate.
+- Follow official subsidiary-to-parent public career handoffs with an
+  evidence-based location scope, and enforce that scope on returned job URLs.
+  Wolf Robotics' public careers page now resolves to verified Fort Collins
+  openings without importing Lincoln Electric's worldwide catalog.
+
 - Expanded layered company discovery to follow explicit cross-domain ATS
   handoffs, browser-rendered careers modules, Workday links embedded in
   blocked corporate pages, HRMDirect/ClearCompany boards, and bounded

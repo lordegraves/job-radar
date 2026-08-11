@@ -17,7 +17,11 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 RC6 Build 1.19 is a field-test build. It improves company setup by accepting
 any official company page, discovering linked recruiting platforms through a
 bounded layered process, validating actual jobs at normal result depth, and
-eliminating dependence on an external company-name search. It also carries the
+eliminating dependence on an external company-name search. URL submissions
+remain source-based and never use partial catalog-name matching. Official
+subsidiary pages may hand off to a parent company's public career platform;
+when the subsidiary page supplies clear location evidence, Junior preserves
+that scope rather than importing the parent's entire catalog. It also carries the
 active profile's Strong fit capabilities into résumé comparison, while still
 requiring matching evidence in the résumé and posting. Broad shared words or
 tools do not make different professions equivalent, and Junior keeps sparse

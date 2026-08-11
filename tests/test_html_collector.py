@@ -255,6 +255,25 @@ def test_parse_html_jobs_recognizes_talentbrew_data_job_id_links() -> None:
     assert postings[0].title == "Platform Engineer"
 
 
+def test_html_collector_enforces_required_job_url_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    html = """
+        <a class="jobTitle-link" href="/job/Fort-Collins-Robot-CO/101/">Robot</a>
+        <a class="jobTitle-link" href="/job/Fort-Loramie-Welder-OH/202/">Welder</a>
+    """
+    monkeypatch.setattr(
+        "job_radar.collectors.html.get_response",
+        lambda *_args, **_kwargs: FakeResponse(html),
+    )
+
+    config = _company_config()
+    config["required_job_url_terms"] = ["/job/fort-collins-"]
+    postings = collect_html_jobs(config)
+
+    assert [posting.title for posting in postings] == ["Robot"]
+
+
 def test_parse_html_jobs_dedupes_desktop_and_mobile_links() -> None:
     html = """
     <html>
