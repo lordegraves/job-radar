@@ -6,6 +6,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Fixed qualification parsing for postings that label mandatory sections
+  **Basic Qualifications** or **Additional Required Qualifications**. These
+  requirements are now evaluated while a following **Preferred
+  Qualifications** section remains non-mandatory.
 - Added a versioned 50-employer starter catalog built from sources that returned
   current jobs through Junior's collectors. It is append-only, creates no
   profile assignments, preserves existing employer definitions, does not alter

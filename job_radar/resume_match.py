@@ -267,6 +267,8 @@ _REQUIREMENT_HEADINGS = (
     "required",
     "requirements",
     "required qualifications",
+    "additional required qualifications",
+    "basic qualifications",
     "other requirements",
     "required/minimum qualifications",
     "required minimum qualifications",
@@ -2969,6 +2971,7 @@ def _description_lines(description: str) -> list[str]:
     # Broad phrases such as "the role" or "qualifications" also occur in
     # ordinary sentences and must not split a requirement mid-sentence.
     inline_headings = (
+        "additional required qualifications",
         "additional preferred qualifications",
         "required/minimum qualifications",
         "required minimum qualifications",

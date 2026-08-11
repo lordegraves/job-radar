@@ -1038,6 +1038,36 @@ def test_two_of_two_missing_required_qualifications_are_decisive() -> None:
     assert result.has_critical_gap
 
 
+def test_nlr_basic_and_additional_required_qualification_sections_are_mandatory() -> None:
+    posting = make_posting(
+        title="Professional IV - Power Platform Engineer",
+        description=(
+            "Basic Qualifications\n"
+            "Relevant Bachelor's Degree and 9 or more years of experience or "
+            "equivalent relevant education/experience. Or, relevant Master's "
+            "Degree and 7 or more years of experience or equivalent relevant "
+            "education/experience. Or, relevant PhD and 4 or more years of "
+            "experience or equivalent relevant education/experience.\n"
+            "Additional Required Qualifications\n"
+            "Extensive programming and architecture abilities with various "
+            "computer software programs and information systems.\n"
+            "Preferred Qualifications\n"
+            "Experience supporting a national laboratory."
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        "Built and operated infrastructure platforms using Python and PowerShell.",
+    )
+
+    assert result.requirements_reviewed
+    assert any("9 or more years" in item for item in result.requirements_reviewed)
+    assert any("programming and architecture" in item for item in result.requirements_reviewed)
+    assert all("national laboratory" not in item for item in result.requirements_reviewed)
+
+
 def test_optional_strong_plus_clause_is_not_a_required_gap() -> None:
     posting = make_posting(
         title="Infrastructure Solution Architect",
