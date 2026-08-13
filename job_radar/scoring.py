@@ -316,6 +316,9 @@ def classify_location(
     location_text = clean_text(posting.location).lower()
     location_preferences = scoring_config["location_preferences"]
 
+    if not any(location_preferences.get(group) for group in ("allowed", "conditional", "skipped")):
+        return "allowed"
+
     if not location_text:
         return "unknown"
 

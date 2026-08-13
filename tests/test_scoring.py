@@ -794,6 +794,54 @@ def test_missing_practical_details_do_not_rescue_weak_professional_fit() -> None
         "strong_signals": ["title:infrastructure"],
     }
 
+
+def test_sparse_profile_filters_are_wildcards_but_do_not_invent_evidence() -> None:
+    posting = make_posting("Implementation Engineer", "Customer deployment work", None)
+    config = {
+        "top_matches": {
+            "min_score": 100,
+            "excluded_title_keywords": [],
+            "strong_signals": [],
+            "review_signals": [],
+        },
+        "review_needed": {
+            "min_score": 100,
+            "excluded_location_statuses": [],
+            "strong_signals": [],
+        },
+        "location_preferences": {"allowed": {}, "conditional": {}, "skipped": {}},
+    }
+
+    location_status = classify_location(posting, config)
+    top_match, reasons = evaluate_top_match_eligibility(
+        posting, 100, [], location_status, config
+    )
+    review = evaluate_review_needed_eligibility(
+        100, [], location_status, top_match, config
+    )
+
+    assert location_status == "allowed"
+    assert top_match is True
+    assert "no strong-signal filter is configured" in reasons
+    assert review is False
+
+
+def test_sparse_profile_keeps_plausible_below_top_threshold_job_for_review() -> None:
+    config = {
+        "top_matches": {
+            "min_score": 120,
+            "excluded_title_keywords": [],
+            "strong_signals": [],
+            "review_signals": [],
+        },
+        "review_needed": {
+            "min_score": 100,
+            "excluded_location_statuses": [],
+            "strong_signals": [],
+        },
+    }
+    assert evaluate_review_needed_eligibility(105, [], "allowed", False, config)
+
     assert not evaluate_review_needed_eligibility(
         score=180,
         score_reasons=["+30 title:infrastructure"],

@@ -231,6 +231,11 @@ def evaluate_workplace_eligibility(
     if preferences is None:
         return None
 
+    # An empty selection means the user did not apply this filter. This matches
+    # the behavior of ordinary job-search sites and keeps sparse profiles broad.
+    if not preferences.work_arrangements:
+        return None
+
     arrangement = _classify_workplace_arrangement(posting)
 
     if arrangement is None:
@@ -946,14 +951,14 @@ def _evaluate_remote_arrangement(
     if specific_remote_location is not None:
         if not selected_locations:
             return EligibilityResult(
-                status=ELIGIBILITY_NEEDS_REVIEW,
+                status=ELIGIBILITY_ELIGIBLE,
                 reasons=(
                     EligibilityReason(
-                        code="remote_region_needs_confirmation",
+                        code="remote_region_unrestricted",
                         message=(
                             "The job is remote but restricted to a specific "
-                            "geographic area, and this profile has no selected "
-                            "locations for comparison."
+                            "geographic area. This profile has no location "
+                            "filter, so the region is accepted."
                         ),
                     ),
                 ),
@@ -1008,14 +1013,14 @@ def _evaluate_remote_arrangement(
 
     if not selected_locations:
         return EligibilityResult(
-            status=ELIGIBILITY_NEEDS_REVIEW,
+            status=ELIGIBILITY_ELIGIBLE,
             reasons=(
                 EligibilityReason(
-                    code="remote_region_needs_confirmation",
+                    code="remote_region_unrestricted",
                     message=(
                         "The job is remote but appears restricted to a specific "
-                        "state, and this profile has no selected locations to "
-                        "confirm residency eligibility."
+                        "state. This profile has no location filter, so the "
+                        "state is accepted."
                     ),
                 ),
             ),
@@ -1080,13 +1085,13 @@ def _evaluate_location_based_arrangement(
 
     if not selected_locations:
         return EligibilityResult(
-            status=ELIGIBILITY_NEEDS_REVIEW,
+            status=ELIGIBILITY_ELIGIBLE,
             reasons=(
                 EligibilityReason(
-                    code="no_preferred_locations_configured",
+                    code="location_unrestricted",
                     message=(
-                        f"The job is {arrangement.lower()}, but this profile does "
-                        "not have any approved commute locations configured."
+                        f"The job is {arrangement.lower()}. This profile has no "
+                        "location filter, so its location is accepted."
                     ),
                 ),
             ),

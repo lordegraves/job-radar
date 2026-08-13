@@ -10,7 +10,10 @@ from job_radar.profile_models import ManagedProfile, ProfilePreferences
 from job_radar.profile_storage import create_profile
 from job_radar.runtime_paths import RuntimePaths
 from job_radar.storage import complete_scan_run, initialize_database, start_scan_run
-from job_radar.support_bundle_service import build_support_bundle
+from job_radar.support_bundle_service import (
+    _matching_scan_artifacts,
+    build_support_bundle,
+)
 
 
 def test_support_bundle_contains_safe_reproduction_data_only(tmp_path: Path) -> None:
@@ -35,6 +38,7 @@ def test_support_bundle_contains_safe_reproduction_data_only(tmp_path: Path) -> 
         encoding="utf-8",
     )
     (reports / "target-scan.json").write_text('{"summary": {}}', encoding="utf-8")
+    (reports / "target-scan.html").write_text("safe report", encoding="utf-8")
     (reports / "target-scan-raw.zip").write_bytes(b"private raw scan")
     (logs / "junior-diagnostics.log").write_text("safe log", encoding="utf-8")
     (logs / "junior-application.log").write_text(
@@ -101,6 +105,9 @@ def test_support_bundle_contains_safe_reproduction_data_only(tmp_path: Path) -> 
         report_status="completed",
         email_status="disabled",
     )
+    (reports / "job-evaluation-audit.txt").write_text(
+        f"Scan run ID: {scan_id}\n", encoding="utf-8"
+    )
     matching_bundle = build_support_bundle(
         runtime,
         application_info,
@@ -113,3 +120,25 @@ def test_support_bundle_contains_safe_reproduction_data_only(tmp_path: Path) -> 
         matching_manifest = json.loads(archive.read("manifest.json"))
     assert "latest-scan/target-scan.json" in matching_names
     assert matching_manifest["matching_scan_included"] is True
+
+
+def test_scan_artifacts_must_match_latest_scan_run_id(tmp_path: Path) -> None:
+    (tmp_path / "target-scan.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "target-scan.html").write_text("report", encoding="utf-8")
+    audit = tmp_path / "job-evaluation-audit.txt"
+    audit.write_text("Scan run ID: 41\n", encoding="utf-8")
+
+    assert _matching_scan_artifacts(
+        tmp_path, {"id": 42, "trigger_source": "manual"}
+    ) == ()
+    names = {
+        path.name
+        for path in _matching_scan_artifacts(
+            tmp_path, {"id": 41, "trigger_source": "manual"}
+        )
+    }
+    assert names == {
+        "target-scan.json",
+        "target-scan.html",
+        "job-evaluation-audit.txt",
+    }

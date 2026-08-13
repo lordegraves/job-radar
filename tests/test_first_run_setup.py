@@ -292,16 +292,13 @@ def test_setup_cannot_finish_without_successful_validation(
     completion_page = client.get(completion.headers["Location"])
 
     assert "Add at least one company" in validation_page.get_data(as_text=True)
-    assert "Review Job Fit and save at least one" in validation_page.get_data(
-        as_text=True
-    )
     assert "Test the setup successfully" in completion_page.get_data(as_text=True)
     progress = get_setup_progress(database_path)
     assert progress is not None
     assert progress.completed_at is None
 
 
-def test_setup_validation_explains_leadership_level_conflict(tmp_path: Path) -> None:
+def test_profile_page_explains_leadership_level_conflict(tmp_path: Path) -> None:
     app = _app(tmp_path)
     client = app.test_client()
     database_path = tmp_path / "junior.sqlite3"
@@ -319,10 +316,9 @@ def test_setup_validation_explains_leadership_level_conflict(tmp_path: Path) -> 
     start_setup(database_path)
     advance_setup(database_path, REVIEW, profile_id=profile.profile_id)
 
-    response = client.post("/setup/validate")
-    html = client.get(response.headers["Location"]).get_data(as_text=True)
+    html = client.get("/profile").get_data(as_text=True)
 
-    assert "does not include the Executive job level" in html
+    assert "filters out the Executive job level" in html
 
 
 def test_setup_can_skip_resume_and_resume_at_companies(tmp_path: Path) -> None:

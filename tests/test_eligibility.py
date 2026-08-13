@@ -249,7 +249,7 @@ def test_location_based_job_is_not_eligible_for_clear_mismatch() -> None:
     assert result.reasons[0].code == "location_outside_selected_areas"
 
 
-def test_location_based_job_needs_review_without_selected_locations() -> None:
+def test_location_based_job_is_allowed_without_location_filter() -> None:
     result = evaluate_workplace_eligibility(
         posting=make_posting(
             location="Fort Collins, CO",
@@ -261,8 +261,8 @@ def test_location_based_job_needs_review_without_selected_locations() -> None:
     )
 
     assert result is not None
-    assert result.status == ELIGIBILITY_NEEDS_REVIEW
-    assert result.reasons[0].code == "no_preferred_locations_configured"
+    assert result.status == ELIGIBILITY_ELIGIBLE
+    assert result.reasons[0].code == "location_unrestricted"
 
 
 def test_location_based_job_needs_review_for_broad_location() -> None:
@@ -426,6 +426,15 @@ def test_broad_country_location_without_title_city_still_needs_review() -> None:
     assert result is not None
     assert result.status == ELIGIBILITY_NEEDS_REVIEW
     assert result.reasons[0].code == "workplace_arrangement_unclear"
+
+
+def test_workplace_arrangement_is_not_filtered_when_selection_is_empty() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(location="Fort Collins, CO", remote_status="On-site"),
+        preferences=ProfilePreferences(),
+    )
+
+    assert result is None
 
 
 def test_legacy_context_does_not_create_structured_eligibility() -> None:
@@ -763,8 +772,8 @@ def test_missing_schedule_does_not_imply_a_conflict() -> None:
     ("description", "expected_code"),
     [
         ("This role is fully remote.", "remote_arrangement_selected"),
-        ("Workplace type: hybrid.", "no_preferred_locations_configured"),
-        ("This is an on-site position.", "no_preferred_locations_configured"),
+        ("Workplace type: hybrid.", "location_unrestricted"),
+        ("This is an on-site position.", "location_unrestricted"),
     ],
 )
 def test_explicit_description_workplace_language_is_detected(

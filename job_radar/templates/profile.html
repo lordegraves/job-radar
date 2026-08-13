@@ -388,19 +388,25 @@
         </div>
     </div>
     {% if active_managed_profile %}
+    {% if profile_advisories %}
+    <div class="warning" role="alert">
+        <strong>Review conflicting profile settings before scanning.</strong>
+        <ul>{% for advisory in profile_advisories %}<li>{{ advisory.message }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
     <h3>What junior will scan for</h3>
     <p class="muted">A plain-English summary of the active profile junior uses for practical eligibility and fit scoring.</p>
     <dl class="profile-scan-summary" aria-label="Active scan profile">
-        <div><dt>Target work</dt><dd>{{ active_managed_profile.preferences.target_roles | join(', ') or 'No target roles selected' }}</dd></div>
-        <div><dt>Job levels</dt><dd>{{ active_managed_profile.preferences.seniority_levels | join(', ') or 'No job levels selected' }}</dd></div>
-        <div><dt>Employment</dt><dd>{{ active_managed_profile.preferences.employment_types | join(', ') or 'No employment types selected' }}</dd></div>
-        <div><dt>Workplace</dt><dd>{{ active_managed_profile.preferences.work_arrangements | join(', ') or 'No workplace arrangements selected' }}</dd></div>
-        <div><dt>Locations</dt><dd>{{ active_managed_profile.preferences.preferred_locations | join(', ') or 'No locations selected' }}</dd></div>
+        <div><dt>Target work</dt><dd>{{ active_managed_profile.preferences.target_roles | join(', ') or 'Any role (not filtered)' }}</dd></div>
+        <div><dt>Job levels</dt><dd>{{ active_managed_profile.preferences.seniority_levels | join(', ') or 'Any level (not filtered)' }}</dd></div>
+        <div><dt>Employment</dt><dd>{{ active_managed_profile.preferences.employment_types | join(', ') or 'Any employment type (not filtered)' }}</dd></div>
+        <div><dt>Workplace</dt><dd>{{ active_managed_profile.preferences.work_arrangements | join(', ') or 'Any arrangement (not filtered)' }}</dd></div>
+        <div><dt>Locations</dt><dd>{{ active_managed_profile.preferences.preferred_locations | join(', ') or 'Any location (not filtered)' }}</dd></div>
         <div><dt>Outside-area matches</dt><dd>{{ 'Enabled — shown in a separate review group' if active_managed_profile.preferences.include_strong_location_outliers else 'Disabled' }}</dd></div>
         <div><dt>Schedule</dt><dd>{{ active_managed_profile.preferences.schedule_preference or 'Any schedule' }}</dd></div>
         <div><dt>On-call</dt><dd>{{ active_managed_profile.preferences.on_call_preference }}</dd></div>
         <div><dt>Security clearance</dt><dd>{{ active_managed_profile.preferences.clearance_preference }}</dd></div>
-        <div><dt>Travel</dt><dd>Jobs may require up to {{ active_managed_profile.preferences.travel_tolerance or '0' }}% travel</dd></div>
+        <div><dt>Travel</dt><dd>{% if active_managed_profile.preferences.travel_tolerance %}Jobs may require up to {{ active_managed_profile.preferences.travel_tolerance }}% travel{% else %}Any travel amount (not filtered){% endif %}</dd></div>
         <div>
             <dt>Companies</dt>
             <dd>

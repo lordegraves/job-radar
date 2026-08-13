@@ -1770,6 +1770,29 @@ def fetch_latest_scan_run_for_trigger(
         ).fetchone()
 
 
+def fetch_latest_completed_scan_run_for_profile(
+    database_path: str | Path,
+    profile_id: str,
+) -> sqlite3.Row | None:
+    """Return the newest complete report owned by one selected profile."""
+
+    db_path = Path(database_path)
+    with connect_database(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+        return connection.execute(
+            """
+            SELECT *
+            FROM scan_runs
+            WHERE profile_id = ?
+              AND status IN ('completed', 'completed_with_warnings')
+              AND report_status = 'completed'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (profile_id,),
+        ).fetchone()
+
+
 def start_scan_run(
     database_path: str | Path,
     *,

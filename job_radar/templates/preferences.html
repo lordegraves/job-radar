@@ -434,7 +434,7 @@
 
 <div class="section">
     <h2>Build a profile Junior can use</h2>
-    <p>An effective profile describes both <strong>the jobs you want</strong> and <strong>the work you can demonstrate</strong>. Junior needs both to separate realistic opportunities from jobs that only share a title or a few keywords.</p>
+    <p>An effective profile describes both <strong>the jobs you want</strong> and <strong>the work you can demonstrate</strong>. Every optional field you leave blank means <strong>Any</strong>: Junior will not use that field to filter jobs. Add a setting only when you want it enforced.</p>
     <ol>
         <li><strong>Choose a focused group of related target roles.</strong> Add titles that describe work you would genuinely accept, not every role you might consider someday.</li>
         <li><strong>Set the practical limits for this search.</strong> Include every acceptable job level, employment type, workplace arrangement, location, schedule, travel amount, and compensation range.</li>
@@ -483,7 +483,7 @@
             <div class="employment-settings">
                 <div class="control-field">
                     <label>Job levels to include</label>
-                    <span class="field-help">Select every level you would accept. Director, Head, Vice President, and similar leadership roles are usually classified as Executive.</span>
+                    <span class="field-help">Select every level you would accept, or leave all unchecked to accept any level. Director, Head, Vice President, and similar leadership roles are usually classified as Executive.</span>
                     <details id="job-levels" class="checklist-select">
                         <summary id="job-levels-summary">Choose job levels</summary>
                         <div class="checklist-menu">
@@ -495,7 +495,7 @@
                 </div>
                 <div class="control-field">
                     <label>Employment types to include</label>
-                    <span class="field-help">Select every type you are willing to accept.</span>
+                    <span class="field-help">Select every type you are willing to accept, or leave all unchecked to accept any type.</span>
                     <details id="employment-types" class="checklist-select">
                         <summary id="employment-types-summary">Choose employment types</summary>
                         <div class="checklist-menu">
@@ -553,7 +553,7 @@
             <div class="arrangement-content">
                 <div>
                     <label>Arrangements to include</label>
-                    <span class="field-help">Select every arrangement you are willing to accept.</span>
+                    <span class="field-help">Select every arrangement you are willing to accept, or leave all unchecked to accept any arrangement.</span>
                     <details id="workplace-arrangements" class="checklist-select">
                         <summary id="workplace-arrangements-summary">Choose workplace arrangements</summary>
                         <div class="checklist-menu">
@@ -569,7 +569,7 @@
 
         <section class="preference-panel location-panel">
             <h2>Add your desired locations</h2>
-            <p class="muted">Add where you live or genuinely plan to move. These locations define acceptable commutes for hybrid and on-site jobs and residency eligibility for region-restricted remote jobs.</p>
+            <p class="muted">Add where you live or genuinely plan to move. Leave locations empty to accept jobs anywhere. Selected locations define acceptable commutes and region-restricted remote work.</p>
             <div class="field-stack location-entry">
                 <div class="location-row input-row">
                     <div class="search-box">
@@ -609,6 +609,10 @@
                         <input id="travel-tolerance" name="travel_percentage" type="range" min="0" max="100" step="5" value="{{ saved_travel }}">
                         <output id="travel-output" class="range-output" for="travel-tolerance">{{ saved_travel }}%</output>
                     </div>
+                    <label class="checkbox-row">
+                        <input name="travel_unrestricted" type="checkbox" value="1"{% if saved_preferences and saved_preferences.travel_tolerance is none %} checked{% endif %}>
+                        <span><strong>Any travel amount</strong><span class="field-help">Do not use travel as a filter.</span></span>
+                    </label>
                 </div>
             </div>
         </section>

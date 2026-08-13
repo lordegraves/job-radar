@@ -13,6 +13,8 @@ from job_radar.runtime_paths import (
     RuntimePaths,
 )
 from job_radar.company_workspace_service import build_company_workspace
+from job_radar.profile_advisory_service import build_profile_advisories
+from job_radar.profile_storage import get_active_profile
 from job_radar.report_snapshot import load_report_snapshot
 from job_radar.scan_task_runner import ScanTaskRunner
 from job_radar.scan_progress import calculate_scan_elapsed_seconds
@@ -75,6 +77,9 @@ def register_scan_routes(
             selected_scan_receipt=selected_scan_receipt,
             company_workspace=build_company_workspace(
                 runtime_paths.database_path
+            ),
+            profile_advisories=build_profile_advisories(
+                get_active_profile(runtime_paths.database_path)
             ),
         )
 

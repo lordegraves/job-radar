@@ -166,6 +166,7 @@ def update_managed_search_preferences(
     schedule_preference: str,
     compensation_floor_usd: str,
     travel_percentage: str,
+    travel_unrestricted: bool = False,
     base_directory: str | Path | None = None,
 ) -> ManagedProfile:
     """Validate and save only the preference fields owned by Profile / Resume."""
@@ -189,7 +190,7 @@ def update_managed_search_preferences(
     schedule = schedule_preference.strip()
     if schedule not in SCHEDULE_PREFERENCES:
         raise ConfigError("Choose a valid schedule preference.")
-    travel = _percentage(travel_percentage, "Maximum travel")
+    travel = None if travel_unrestricted else _percentage(travel_percentage, "Maximum travel")
 
     preferences = replace(
         current.preferences,
@@ -201,7 +202,7 @@ def update_managed_search_preferences(
         compensation_floor_usd=_optional_non_negative_int(
             compensation_floor_usd, "Minimum annual compensation"
         ),
-        travel_tolerance=str(travel),
+        travel_tolerance=str(travel) if travel is not None else None,
         schedule_preference=schedule,
         occupation_selections=occupations,
         location_selections=locations,
@@ -228,6 +229,7 @@ def save_managed_search_profile(
     clearance_preference: str,
     compensation_floor_usd: str,
     travel_percentage: str,
+    travel_unrestricted: bool = False,
     exclusions: str = "",
     include_strong_location_outliers: bool = False,
     base_directory: str | Path | None = None,
@@ -267,6 +269,7 @@ def save_managed_search_profile(
         clearance_preference=clearance_preference,
         compensation_floor_usd=compensation_floor_usd,
         travel_percentage=travel_percentage,
+        travel_unrestricted=travel_unrestricted,
         exclusions=exclusions,
         include_strong_location_outliers=include_strong_location_outliers,
     )
@@ -309,6 +312,7 @@ def _validated_search_preferences(
     clearance_preference: str,
     compensation_floor_usd: str,
     travel_percentage: str,
+    travel_unrestricted: bool,
     exclusions: str,
     include_strong_location_outliers: bool,
 ) -> ProfilePreferences:
@@ -333,7 +337,7 @@ def _validated_search_preferences(
     if clearance not in CLEARANCE_PREFERENCES:
         raise ConfigError("Choose a valid security-clearance preference.")
 
-    travel = _percentage(travel_percentage, "Maximum travel")
+    travel = None if travel_unrestricted else _percentage(travel_percentage, "Maximum travel")
     exclusion_values = _profile_exclusions(exclusions)
 
     return replace(
@@ -346,7 +350,7 @@ def _validated_search_preferences(
         compensation_floor_usd=_optional_non_negative_int(
             compensation_floor_usd, "Minimum annual compensation"
         ),
-        travel_tolerance=str(travel),
+        travel_tolerance=str(travel) if travel is not None else None,
         schedule_preference=schedule,
         on_call_preference=on_call,
         clearance_preference=clearance,

@@ -533,7 +533,7 @@ An effective profile describes both the jobs you want and the work you can demon
 3. Upload a current résumé so Junior can compare the posting with evidence from your work history.
 4. Open **Job Fit** after saving. Put clearly demonstrated skills and responsibilities in **Strong Match**, related work that needs closer review in **Needs Review**, and unwanted work in **Avoid**.
 
-Uploading a résumé extracts text for comparison; it does not choose strengths or Job Fit preferences automatically. Junior may place bounded exact phrases from clearly labeled résumé skills or competency sections into Needs Review as suggestions. These suggestions do not affect scans until you review and save them. A profile with target roles but no saved Strong Match or Needs Review evidence is incomplete and cannot finish first-run setup.
+Uploading a résumé extracts text for comparison; it does not choose strengths or Job Fit preferences automatically. Junior may place bounded exact phrases from clearly labeled résumé skills or competency sections into Needs Review as suggestions. These suggestions do not affect scans until you review and save them. Every optional blank profile field means **Any** and does not filter jobs. Removing target roles, levels, employment types, workplace arrangements, locations, or Job Fit signals therefore broadens the search. Selected filters remain enforced, and missing facts needed to evaluate a selected filter go to Needs Review. Junior warns on Profile and Scan when saved choices conflict.
 
 When a target title contains Director, Head, Vice President, or VP and Executive is not selected, the profile form displays a warning and an **Include Executive** action. Keep Executive excluded only when you intentionally do not want Junior to consider that level.
 
@@ -612,7 +612,7 @@ on **Scanning** only for employers you want in the active profile, then return
 to setup. Catalog-wide testing is recommended, while the final setup validation
 separately requires at least one enabled company source to connect successfully.
 
-The RC6 Build 1.21 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
+The RC6 Build 1.22 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
 Block, Brex, Canonical, Carta, Carvana, Chime, Cloudflare, Coinbase, Coursera,
 Datadog, Discord, DoorDash, Dropbox, Duolingo, Elastic, Figma, Ford Motor
 Company, GitLab, Google, Grafana Labs, Gusto, HelloFresh, HubSpot, Instacart,
@@ -778,7 +778,7 @@ credentials, or raw exception text. **Open Data Directory** opens the active
 workspace, and **Copy details** copies safe version and health information for
 support.
 
-The troubleshooting package automatically includes Junior's unified
+The troubleshooting package exports the selected profile and public company catalog at the moment the user clicks Download. It identifies that profile's newest completed scan by database run ID, includes only a report set whose audit header proves the same run ID, and prioritizes that run's scan and evaluation logs. It never substitutes another profile's newer scan or an older fixed-name report. The package also includes Junior's unified
 `junior-application.log` and its separate scan diagnostics. Application events
 share a safe operation ID so support can reconstruct company setup, user
 actions, database work, email, updates, decisions, and failures without form

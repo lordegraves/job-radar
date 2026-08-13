@@ -20,6 +20,7 @@ from job_radar.profile_fit_service import (
     save_profile_fit_board,
 )
 from job_radar.profile_storage import ProfileStorageError
+from job_radar.profile_advisory_service import build_profile_advisories
 from job_radar.role_discovery_service import (
     list_role_suggestions,
     record_role_feedback,
@@ -132,6 +133,7 @@ def register_profile_routes(
             "profile": profile_view,
             "profile_management": management_view,
             "active_managed_profile": active_managed_profile,
+            "profile_advisories": build_profile_advisories(active_managed_profile),
             "fit_summary": fit_summary,
             "has_profile": (
                 active_managed_profile is not None
@@ -437,6 +439,7 @@ def register_profile_routes(
                     "compensation_floor_usd", ""
                 ),
                 travel_percentage=request.form.get("travel_percentage", ""),
+                travel_unrestricted=request.form.get("travel_unrestricted") == "1",
                 exclusions=request.form.get("exclusions", ""),
                 include_strong_location_outliers=(
                     request.form.get("include_strong_location_outliers") == "1"

@@ -47,11 +47,9 @@ def evaluate_top_match_eligibility(
     if excluded_keyword:
         return False, [f"excluded_title_keyword:{excluded_keyword}"]
 
-    strong_signal = _find_configured_signal(
-        score_reasons,
-        scoring_config["top_matches"]["strong_signals"],
-    )
-    if strong_signal is None:
+    configured_strong_signals = scoring_config["top_matches"]["strong_signals"]
+    strong_signal = _find_configured_signal(score_reasons, configured_strong_signals)
+    if configured_strong_signals and strong_signal is None:
         return False, ["missing_strong_signal"]
 
     review_signal = _find_major_review_signal(
@@ -61,11 +59,15 @@ def evaluate_top_match_eligibility(
     if review_signal is not None:
         return False, [f"needs_review_signal:{review_signal}"]
 
-    return True, [
+    reasons = [
         f"score {score} meets top-match threshold {min_score}",
         f"location fit is acceptable: {location_status}",
-        f"strong signal matched: {strong_signal}",
     ]
+    if strong_signal is not None:
+        reasons.append(f"strong signal matched: {strong_signal}")
+    else:
+        reasons.append("no strong-signal filter is configured")
+    return True, reasons
 
 
 def evaluate_potential_top_match_eligibility(
@@ -144,9 +146,12 @@ def evaluate_review_needed_eligibility(
     if location_status in review_needed_config["excluded_location_statuses"]:
         return False
 
+    configured_signals = review_needed_config["strong_signals"]
+    if not configured_signals:
+        return True
     return _has_configured_signal(
         score_reasons,
-        review_needed_config["strong_signals"],
+        configured_signals,
     )
 
 

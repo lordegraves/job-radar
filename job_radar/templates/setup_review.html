@@ -11,7 +11,7 @@
         <p><strong>Profile:</strong> {{ profile.display_name }}</p>
         <p><strong>Résumé:</strong> {{ profile.resume.source_file_name if profile.resume else 'Not added yet' }}</p>
         <p><strong>Target roles:</strong> {{ profile.preferences.target_roles|join(', ') or 'None selected' }}</p>
-        <p><strong>Job levels:</strong> {{ profile.preferences.seniority_levels|join(', ') or 'None selected' }}</p>
+        <p><strong>Job levels:</strong> {{ profile.preferences.seniority_levels|join(', ') or 'Any (not filtered)' }}</p>
         <p><strong>Roles or responsibilities to avoid:</strong> {{ profile.preferences.exclusions|join(', ') or 'None recorded' }}</p>
         <a class="button-link button-secondary" href="{{ url_for('edit_profile_page', profile_id=profile.profile_id) }}">Review profile</a>
         <a class="button-link button-secondary" href="{{ url_for('profile_fit_board_page', profile_id=profile.profile_id) }}">Review Job Fit</a>
@@ -22,9 +22,9 @@
         <p><strong>Schedule:</strong> {{ profile.preferences.schedule_preference or 'Any schedule' }}</p>
         <p><strong>On-call:</strong> {{ profile.preferences.on_call_preference }}</p>
         <p><strong>Security clearance:</strong> {{ profile.preferences.clearance_preference }}</p>
-        <p><strong>Workplace arrangements:</strong> {{ profile.preferences.work_arrangements|join(', ') or 'None selected' }}</p>
+        <p><strong>Workplace arrangements:</strong> {{ profile.preferences.work_arrangements|join(', ') or 'Any (not filtered)' }}</p>
         <p><strong>Minimum compensation:</strong> {% if profile.preferences.compensation_floor_usd is not none %}${{ "{:,}".format(profile.preferences.compensation_floor_usd) }}{% else %}Not set{% endif %}</p>
-        <p><strong>Maximum travel:</strong> {{ (profile.preferences.travel_tolerance ~ '%') if profile.preferences.travel_tolerance else '0%' }}</p>
+        <p><strong>Maximum travel:</strong> {{ (profile.preferences.travel_tolerance ~ '%') if profile.preferences.travel_tolerance else 'Any (not filtered)' }}</p>
     </section>
     <section class="page-card">
         <h2>Locations</h2>

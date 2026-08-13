@@ -106,6 +106,14 @@
 
 <h2>Run scan</h2>
 
+{% if profile_advisories %}
+<div class="warning" role="alert">
+    <strong>Review conflicting profile settings.</strong>
+    <ul>{% for advisory in profile_advisories %}<li>{{ advisory.message }}</li>{% endfor %}</ul>
+    <a href="{{ url_for('profile') }}">Edit profile</a>
+</div>
+{% endif %}
+
 <div class="page-card">
     <p>Run a scan using the current junior settings. Email sending is disabled for manual scans started here.</p>
 

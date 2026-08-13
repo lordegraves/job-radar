@@ -6,7 +6,13 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
-- Prepare **RC6 Build 1.21** for field testing with clear profile-building
+- Prepare **RC6 Build 1.22** for field testing. Blank optional profile fields
+  now mean Any and do not filter jobs; missing location and fit-signal filters
+  no longer collapse recommendation results. Profile and Scan warn about
+  contradictory saved choices. Troubleshooting packages export current
+  profile/company configuration and include only report artifacts proven to
+  belong to that profile's newest completed scan, prioritizing its run logs.
+- RC6 Build 1.21 added clear profile-building
   guidance, guided starter-catalog verification, unambiguous automatic versus checkbox-based source testing,
   reliable embedded-browser test-scope submission, and recognition of
   **Key Qualifications** as mandatory posting requirements.

@@ -20,18 +20,12 @@ from job_radar.diagnostic_service import DiagnosticsView
 from job_radar.profile_storage import get_profile
 from job_radar.profile_transfer_service import export_profile
 from job_radar.runtime_paths import RuntimePaths
-from job_radar.storage import fetch_latest_scan_run
+from job_radar.storage import fetch_latest_completed_scan_run_for_profile
 
 
 MAX_BUNDLE_BYTES = 30_000_000
-MAX_MEMBER_BYTES = 5_000_000
+MAX_MEMBER_BYTES = 20_000_000
 MAX_LOG_FILES = 20
-_REPORT_FILES = (
-    "target-scan.json",
-    "target-scan.html",
-    "job-evaluation-audit.txt",
-    "targeted-job-evaluation-audit.txt",
-)
 
 
 class SupportBundleError(ValueError):
@@ -81,30 +75,44 @@ def build_support_bundle(
         omitted,
     )
 
-    latest_scan = fetch_latest_scan_run(runtime_paths.database_path)
-    scan_matches_profile = bool(
-        latest_scan is not None
-        and latest_scan["profile_id"] == profile.profile_id
-        and latest_scan["status"] in {"completed", "completed_with_warnings"}
-        and latest_scan["report_status"] == "completed"
+    latest_scan = fetch_latest_completed_scan_run_for_profile(
+        runtime_paths.database_path, profile.profile_id
     )
+    scan_artifacts = (
+        _matching_scan_artifacts(runtime_paths.reports_path, latest_scan)
+        if latest_scan is not None
+        else ()
+    )
+    scan_matches_profile = bool(scan_artifacts)
     if scan_matches_profile:
-        for name in _REPORT_FILES:
-            path = runtime_paths.reports_path / name
-            if path.is_file():
-                _add_file(members, f"latest-scan/{name}", path, omitted)
+        for path in scan_artifacts:
+            _add_file(members, f"latest-scan/{path.name}", path, omitted)
     else:
         omitted.append(
-            "Latest scan artifacts were not included because the most recent "
-            "completed report does not belong to the selected profile."
+            "Latest scan artifacts were not included because Junior could not "
+            "verify a retained report set for the selected profile's newest scan."
         )
 
-    for log in list_diagnostic_logs(runtime_paths.logs_path)[:MAX_LOG_FILES]:
+    log_names: list[str] = []
+    if latest_scan is not None:
+        for prefix in ("junior-scan", "junior-evaluation"):
+            log_names.extend(
+                path.name
+                for path in sorted(
+                    runtime_paths.logs_path.glob(
+                        f"{prefix}-run-{latest_scan['id']}-*.log"
+                    ),
+                    reverse=True,
+                )
+            )
+    log_names.extend(log.name for log in list_diagnostic_logs(runtime_paths.logs_path))
+    log_names = list(dict.fromkeys(log_names))
+    for log_name in log_names[:MAX_LOG_FILES]:
         content = build_diagnostic_log_download(
             runtime_paths.logs_path,
-            log.name,
+            log_name,
         ).encode("utf-8")
-        _add_member(members, f"logs/{log.name}", content, omitted)
+        _add_member(members, f"logs/{log_name}", content, omitted)
 
     instructions = (
         "Junior troubleshooting package\n\n"
@@ -125,6 +133,9 @@ def build_support_bundle(
         "schema_version": 1,
         "generated_at": generated.astimezone(UTC).isoformat(),
         "selected_profile": profile.display_name,
+        "selected_profile_id": profile.profile_id,
+        "latest_scan_run_id": latest_scan["id"] if latest_scan is not None else None,
+        "latest_scan_trigger": latest_scan["trigger_source"] if latest_scan is not None else None,
         "matching_scan_included": scan_matches_profile,
         "files": sorted([*members, "manifest.json"]),
         "omitted": omitted,
@@ -162,6 +173,46 @@ def build_support_bundle(
         filename=f"junior-troubleshooting-{stamp}.zip",
         content=content,
     )
+
+
+def _matching_scan_artifacts(
+    reports_path: Path,
+    scan_run,
+) -> tuple[Path, ...]:
+    """Find one report set whose audit header proves the scan-run identity."""
+
+    targeted = scan_run["trigger_source"] == "manual:selected"
+    audit_name = (
+        "targeted-job-evaluation-audit.txt"
+        if targeted
+        else "job-evaluation-audit.txt"
+    )
+    report_names = (
+        ("targeted-scan.json", "targeted-scan.html", audit_name)
+        if targeted
+        else ("target-scan.json", "target-scan.html", audit_name)
+    )
+    candidates = [reports_path]
+    archive_root = reports_path / "archive"
+    if archive_root.is_dir():
+        candidates.extend(
+            path for path in sorted(archive_root.iterdir(), reverse=True) if path.is_dir()
+        )
+    marker = f"Scan run ID: {scan_run['id']}"
+    for directory in candidates:
+        audit = directory / audit_name
+        if not audit.is_file():
+            continue
+        try:
+            header = audit.read_text(encoding="utf-8", errors="replace")[:4096]
+        except OSError:
+            continue
+        if marker not in header:
+            continue
+        return tuple(
+            path for name in report_names if (path := directory / name).is_file()
+        )
+    return ()
 
 
 def _add_file(
