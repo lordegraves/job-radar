@@ -35,6 +35,12 @@ def evaluate_top_match_eligibility(
     if location_status not in allowed_top_match_location_statuses:
         return False, [f"location_not_allowed:{location_status}"]
 
+    # A blank Job Fit board is a broad search, not affirmative evidence that a
+    # job is a Top Match. Keep plausible work visible for review below without
+    # manufacturing the strongest recommendation.
+    if _ranking_rules_are_empty(scoring_config):
+        return False, ["top_match_requires_affirmative_fit_evidence"]
+
     min_score = scoring_config["top_matches"]["min_score"]
 
     if score < min_score:
@@ -140,7 +146,8 @@ def evaluate_review_needed_eligibility(
     if resume_match is not None and resume_match.label in {"Poor Fit", "Weak"}:
         return False
 
-    if score < review_needed_config["min_score"]:
+    ranking_rules_are_empty = _ranking_rules_are_empty(scoring_config)
+    if score < review_needed_config["min_score"] and not ranking_rules_are_empty:
         return False
 
     if location_status in review_needed_config["excluded_location_statuses"]:
@@ -152,6 +159,23 @@ def evaluate_review_needed_eligibility(
     return _has_configured_signal(
         score_reasons,
         configured_signals,
+    )
+
+
+def _ranking_rules_are_empty(scoring_config: dict[str, Any]) -> bool:
+    """Identify a deliberately unrestricted managed-profile scoring board."""
+
+    top = scoring_config["top_matches"]
+    review = scoring_config.get("review_needed", {})
+    return not any(
+        (
+            scoring_config.get("positive_keywords"),
+            scoring_config.get("negative_keywords"),
+            top.get("excluded_title_keywords"),
+            top.get("strong_signals"),
+            top.get("review_signals"),
+            review.get("strong_signals"),
+        )
     )
 
 

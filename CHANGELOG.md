@@ -8,7 +8,10 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 - Prepare **RC6 Build 1.22** for field testing. Blank optional profile fields
   now mean Any and do not filter jobs; missing location and fit-signal filters
-  no longer collapse recommendation results. Profile and Scan warn about
+  no longer collapse recommendation results. An entirely blank Job Fit board
+  bypasses the legacy numeric floor for Needs Review but cannot manufacture a
+  Top Match; explicit practical filters and confirmed résumé gaps still apply.
+  Profile and Scan warn about
   contradictory saved choices. Troubleshooting packages export current
   profile/company configuration and include only report artifacts proven to
   belong to that profile's newest completed scan, prioritizing its run logs.

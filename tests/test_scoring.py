@@ -795,7 +795,7 @@ def test_missing_practical_details_do_not_rescue_weak_professional_fit() -> None
     }
 
 
-def test_sparse_profile_filters_are_wildcards_but_do_not_invent_evidence() -> None:
+def test_sparse_profile_filters_are_wildcards_but_do_not_invent_top_match() -> None:
     posting = make_posting("Implementation Engineer", "Customer deployment work", None)
     config = {
         "top_matches": {
@@ -809,6 +809,8 @@ def test_sparse_profile_filters_are_wildcards_but_do_not_invent_evidence() -> No
             "excluded_location_statuses": [],
             "strong_signals": [],
         },
+        "positive_keywords": {},
+        "negative_keywords": {},
         "location_preferences": {"allowed": {}, "conditional": {}, "skipped": {}},
     }
 
@@ -821,13 +823,15 @@ def test_sparse_profile_filters_are_wildcards_but_do_not_invent_evidence() -> No
     )
 
     assert location_status == "allowed"
-    assert top_match is True
-    assert "no strong-signal filter is configured" in reasons
-    assert review is False
+    assert top_match is False
+    assert reasons == ["top_match_requires_affirmative_fit_evidence"]
+    assert review is True
 
 
 def test_sparse_profile_keeps_plausible_below_top_threshold_job_for_review() -> None:
     config = {
+        "positive_keywords": {},
+        "negative_keywords": {},
         "top_matches": {
             "min_score": 120,
             "excluded_title_keywords": [],
@@ -841,6 +845,52 @@ def test_sparse_profile_keeps_plausible_below_top_threshold_job_for_review() -> 
         },
     }
     assert evaluate_review_needed_eligibility(105, [], "allowed", False, config)
+
+
+def test_jerry_style_empty_scoring_keeps_zero_score_unknown_fit_for_review() -> None:
+    config = {
+        "positive_keywords": {},
+        "negative_keywords": {},
+        "top_matches": {
+            "min_score": 120,
+            "excluded_title_keywords": [],
+            "strong_signals": [],
+            "review_signals": [],
+        },
+        "review_needed": {
+            "min_score": 100,
+            "excluded_location_statuses": ["skipped"],
+            "strong_signals": [],
+        },
+    }
+    unknown = ResumeMatchResult(label="Unknown", evidence=(), gaps=())
+
+    assert evaluate_review_needed_eligibility(
+        0, [], "allowed", False, config, unknown
+    )
+
+
+def test_empty_scoring_does_not_rescue_confirmed_poor_fit() -> None:
+    config = {
+        "positive_keywords": {},
+        "negative_keywords": {},
+        "top_matches": {
+            "min_score": 120,
+            "excluded_title_keywords": [],
+            "strong_signals": [],
+            "review_signals": [],
+        },
+        "review_needed": {
+            "min_score": 100,
+            "excluded_location_statuses": [],
+            "strong_signals": [],
+        },
+    }
+    poor = ResumeMatchResult(label="Poor Fit", evidence=(), gaps=("missing",))
+
+    assert not evaluate_review_needed_eligibility(
+        0, [], "allowed", False, config, poor
+    )
 
     assert not evaluate_review_needed_eligibility(
         score=180,
