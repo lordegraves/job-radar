@@ -266,10 +266,12 @@ def _classify_resume_match(
 _REQUIREMENT_HEADINGS = (
     "required",
     "requirements",
+    "job requirements",
     "required qualifications",
     "additional required qualifications",
     "basic qualifications",
     "key qualifications",
+    "key competencies",
     "other requirements",
     "required/minimum qualifications",
     "required minimum qualifications",
@@ -363,6 +365,8 @@ _ROLE_SECTION_HEADINGS = (
     "the role",
     "role overview",
     "responsibilities",
+    "main tasks & responsibilities",
+    "main tasks and responsibilities",
     "your responsibilities",
     "your responsibilities will include",
     "what you will do",
@@ -799,6 +803,7 @@ def _is_post_qualification_heading(value: str) -> bool:
         return True
     return (
         (lowered.startswith("what you") and "receive" in lowered)
+        or lowered.startswith("about the ")
         or "referral program" in lowered
         or "equal opportunity" in lowered
         or "privacy notice" in lowered
@@ -2980,6 +2985,8 @@ def _description_lines(description: str) -> list[str]:
         "minimum qualifications",
         "basic qualifications",
         "key qualifications",
+        "key competencies",
+        "job requirements",
         "preferred qualifications",
         "other requirements",
         "responsibilities",
@@ -3002,8 +3009,13 @@ def _contains_phrase(text: str, phrase: str) -> bool:
 
 
 def _term_matches(term: str, text: str) -> bool:
-    if term in text:
+    if _contains_phrase(text, term):
         return True
+
+    # Some compound concepts lose their meaning when split across unrelated
+    # sentences. "Data" work plus a support "center" is not data-center work.
+    if term in {"data center"}:
+        return False
 
     term_words = [word for word in term.split() if len(word) >= 3]
 

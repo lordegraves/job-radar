@@ -11,7 +11,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
   no longer collapse recommendation results. An entirely blank Job Fit board
   bypasses the legacy numeric floor for Needs Review but cannot manufacture a
   Top Match; explicit practical filters and confirmed résumé gaps still apply.
-  Profile and Scan warn about
+  Compound data-center evidence must appear as an actual phrase, full-time
+  internships remain internships for profile filtering, explicit office
+  attendance is recognized as on-site work, visible labeled locations fill
+  missing structured fields, and **Job Requirements** sections are included in
+  the résumé comparison. Profile and Scan warn about
   contradictory saved choices. Troubleshooting packages export current
   profile/company configuration and include only report artifacts proven to
   belong to that profile's newest completed scan, prioritizing its run logs.

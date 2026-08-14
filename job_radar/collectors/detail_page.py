@@ -168,7 +168,9 @@ def enrich_from_public_detail_page(
             or remote_status
         )
         salary_text = _structured_salary(structured.get("baseSalary")) or salary_text
-    description = description or parser.visible_text
+    visible_text = parser.visible_text
+    location = location or _visible_labeled_location(visible_text)
+    description = description or visible_text
     return replace(
         posting,
         location=location,
@@ -179,6 +181,24 @@ def enrich_from_public_detail_page(
             None if description and len(description) >= 200 else "unavailable"
         ),
     )
+
+
+def _visible_labeled_location(visible_text: str | None) -> str | None:
+    """Read a simple public ``Location`` label when structured data is absent."""
+
+    if not visible_text:
+        return None
+    match = re.search(r"(?:^|\n)Location\s*\n\s*([^\n]+)", visible_text, re.IGNORECASE)
+    if match is None:
+        return None
+    candidate = clean_human_text(match.group(1))
+    if (
+        not candidate
+        or candidate.casefold().startswith("select ")
+        or len(candidate) > 120
+    ):
+        return None
+    return candidate
 
 
 def _fetch_public_detail_response(

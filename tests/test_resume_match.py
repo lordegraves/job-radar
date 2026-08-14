@@ -87,6 +87,52 @@ def test_match_resume_to_posting_reports_gap() -> None:
     assert result.gaps == ["production Kubernetes ownership"]
 
 
+def test_disney_media_intern_does_not_invent_data_center_evidence() -> None:
+    profile = CandidateProfile(
+        name="Infrastructure Candidate",
+        compensation_floor_usd=125000,
+        preferred_base_usd=150000,
+        resume=CandidateResumeConfig(source_path="resume.md"),
+        core_strengths=["Data Center"],
+        credible_adjacent=[],
+        learning_or_gap=[],
+        avoid=[],
+        target_roles=["Infrastructure Engineer"],
+    )
+    posting = make_posting(
+        title="Media Research Intern Balkans",
+        description=(
+            "MAIN TASKS & RESPONSIBILITIES\n"
+            "Work with TV viewership data processing software and prepare reports.\n"
+            "JOB REQUIREMENTS\n"
+            "Good command of English.\n"
+            "Strong knowledge of MS Excel and MS Power Point.\n"
+            "Strong analytical skills, with attention to detail.\n"
+            "KEY COMPETENCIES\n"
+            "Interest in media and research.\n"
+            "About The Walt Disney Company (EMEA)\n"
+            "Our support center assists employees with technical issues."
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        profile,
+        "Designed and operated enterprise data center infrastructure.",
+    )
+
+    assert "Data Center" not in result.evidence
+    assert result.label == "Poor Fit"
+    assert result.has_critical_gap
+    assert result.requirements_reviewed is not None
+    assert result.requirements_reviewed == [
+        "Good command of English.",
+        "Strong knowledge of MS Excel and MS Power Point.",
+        "Strong analytical skills, with attention to detail.",
+        "Interest in media and research.",
+    ]
+
+
 def test_oracle_labeled_qualifications_produce_resume_gaps() -> None:
     posting = JobPosting(
         company_key="oracle-example",

@@ -668,6 +668,29 @@ def test_labeled_full_time_employment_type_is_eligible() -> None:
     assert result.reasons[-1].code == "employment_type_selected"
 
 
+def test_full_time_internship_is_controlled_by_internship_preference() -> None:
+    result = evaluate_practical_eligibility(
+        posting=make_posting(
+            title="Media Research Intern Balkans",
+            location="Sofia, Bulgaria",
+            description=(
+                "We offer a 12-month full-time paid internship under an "
+                "employment contract."
+            ),
+        ),
+        preferences=ProfilePreferences(
+            work_arrangements=("Remote", "Hybrid", "On-site"),
+            employment_types=("Full-time",),
+        ),
+        compensation=None,
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[-1].code == "employment_type_not_selected"
+    assert "Internship" in result.reasons[-1].message
+
+
 def test_unselected_employment_type_is_not_eligible() -> None:
     posting = make_posting(
         description="This is a contract role supporting Linux infrastructure.",
@@ -840,6 +863,21 @@ def test_explicit_onsite_description_overrides_loose_remote_metadata() -> None:
     assert result is not None
     assert result.status == ELIGIBILITY_NOT_ELIGIBLE
     assert result.reasons[0].code == "location_outside_selected_areas"
+
+
+def test_work_onsite_at_named_office_is_not_reported_as_unstated() -> None:
+    result = evaluate_workplace_eligibility(
+        posting=make_posting(
+            location="Sofia, Bulgaria",
+            remote_status=None,
+            description="You must be able to work onsite at our Sofia office 4 days a week.",
+        ),
+        preferences=ProfilePreferences(work_arrangements=("Remote",)),
+    )
+
+    assert result is not None
+    assert result.status == ELIGIBILITY_NOT_ELIGIBLE
+    assert result.reasons[0].code == "workplace_arrangement_not_selected"
 
 
 def test_hybrid_or_remote_arrangements_available_is_remote_eligible() -> None:

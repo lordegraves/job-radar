@@ -391,9 +391,17 @@ def _evaluate_employment_type_eligibility(
             ),
         )
 
+    # Internship describes the position's career category; "full-time" only
+    # describes its schedule. Do not let a full-time internship pass a profile
+    # that accepts permanent full-time work but excludes internships.
+    controlling_types = (
+        (EMPLOYMENT_INTERNSHIP,)
+        if EMPLOYMENT_INTERNSHIP in detected_types
+        else detected_types
+    )
     matching_types = tuple(
         employment_type
-        for employment_type in detected_types
+        for employment_type in controlling_types
         if employment_type in preferences.employment_types
     )
 
@@ -418,7 +426,7 @@ def _evaluate_employment_type_eligibility(
                 code="employment_type_not_selected",
                 message=(
                     f"The posting identifies the job as "
-                    f"{', '.join(detected_types)}, which is not included in "
+                    f"{', '.join(controlling_types)}, which is not included in "
                     "this profile's selected employment types."
                 ),
             ),
@@ -489,6 +497,11 @@ def _detect_employment_types(posting: JobPosting) -> tuple[str, ...]:
     for employment_type, employment_markers in markers:
         if any(marker in text for marker in employment_markers):
             detected.append(employment_type)
+
+    # Match the role title separately so ordinary words such as "internal"
+    # cannot be mistaken for an internship.
+    if re.search(r"\bintern(?:ship)?\b", clean_text(posting.title).lower()):
+        detected.append(EMPLOYMENT_INTERNSHIP)
 
     if re.search(r"\bfulltime\b", text):
         detected.append(EMPLOYMENT_FULL_TIME)
@@ -1710,6 +1723,7 @@ def _classify_workplace_arrangement(posting: JobPosting) -> str | None:
                 r"[\"'‘’“”]*on[- ]?site[\"'‘’“”]*\b",
                 r"\b(?:on[- ]?site|in[- ]?person)\s+"
                 r"(?:role|position|job|work arrangement)\b",
+                r"\bwork\s+(?:on[- ]?site|in[- ]?person)\s+at\b",
                 r"\bexpectation\s+that\s+you\s+will\s+primarily\s+work\s+from\b"
                 r".{0,100}\boffice\b",
                 r"\bworkplace\s+type\s*:\s*(?:on[- ]?site|in[- ]?person)\b",

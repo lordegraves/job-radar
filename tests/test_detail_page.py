@@ -61,6 +61,30 @@ def test_enrich_from_public_detail_page_uses_visible_detail_text(
     assert result.detail_retrieval_state is None
 
 
+def test_visible_location_label_fills_missing_structured_location(monkeypatch) -> None:
+    html = """
+    <html><body><main>
+    <h1>Media Research Intern Balkans</h1>
+    <div>Location</div><div>Sofia, Bulgaria</div>
+    <h2>Job Summary</h2>
+    <p>We offer a 12-month full-time paid internship.</p>
+    <p>You must work onsite at our Sofia office four days a week.</p>
+    <h2>Job Requirements</h2>
+    <p>Strong knowledge of Excel and strong analytical skills.</p>
+    <p>Support research, reporting, and audience data processing.</p>
+    </main></body></html>
+    """
+    monkeypatch.setattr(
+        "job_radar.collectors.detail_page.get_response",
+        lambda *args, **kwargs: SimpleNamespace(text=html),
+    )
+
+    result = enrich_from_public_detail_page(_posting())
+
+    assert result.location == "Sofia, Bulgaria"
+    assert result.detail_retrieval_state is None
+
+
 def test_amentum_retries_empty_accepted_detail_response(monkeypatch) -> None:
     posting = JobPosting(
         **{
