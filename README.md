@@ -9,12 +9,12 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.22`
+- Current field-test build: `RC6 Build 1.23`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-RC6 Build 1.22 is a field-test build. It makes blank profile fields behave as
+RC6 Build 1.23 is a field-test build. It makes blank profile fields behave as
 unrestricted job-search filters, warns about conflicting choices, and binds
 troubleshooting packages to the selected profile's latest completed scan. It also improves company setup by accepting
 any official company page, discovering linked recruiting platforms through a
@@ -29,6 +29,16 @@ requiring matching evidence in the résumé and posting. Broad shared words or
 tools do not make different professions equivalent, and Junior keeps sparse
 postings at review level unless their title specifically matches configured
 target work.
+
+Fresh-profile Job Fit suggestions split dense résumé skills lists into terms a
+posting can realistically contain. Exact selected target roles are compared
+with job titles; demonstrated skills and responsibilities are compared with job
+descriptions. Practical unknowns such as missing compensation or workplace
+details can downgrade an otherwise relevant job, but cannot make a job bypass
+the configured professional-fit threshold. Managed Job Fit uses attainable
+thresholds: two demonstrated description signals can reach review, while an
+exact target-role title plus demonstrated skill evidence can reach Top Match.
+Application encouragement is not treated as a required qualification.
 
 The Companies page now shows the complete shared catalog. Each row has a
 sliding scan toggle for the active profile; turning it off keeps the company
@@ -463,11 +473,12 @@ Junior's local-first or user-controlled behavior:
   distribution. The Store version is intended to remain free to users and use
   Microsoft-managed package signing and updates. The existing open-source
   repository and direct GitHub release channel will remain available.
-- The project will apply to the SignPath Foundation open-source program for
-  free signing of GitHub-distributed releases. This requires a verifiable
-  GitHub Actions build, explicit signing approvals, documented project roles,
-  and public privacy and code-signing policies. If Junior is not accepted,
-  Microsoft Artifact Signing will be reassessed before purchasing a commercial
+- The repository includes a public [code-signing policy](CODE_SIGNING_POLICY.md)
+  and a manually dispatched GitHub-hosted build-and-sign workflow prepared for
+  the SignPath Foundation open-source program. Releases remain unsigned until
+  SignPath accepts Junior and the maintainer configures its protected project,
+  approval, and credential settings. If Junior is not accepted, Microsoft
+  Artifact Signing will be reassessed before purchasing a commercial
   certificate.
 
 MSIX readiness requires more than converting the installer format. Store
@@ -478,7 +489,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support email handoff, MSIX, and signing items above remain planned
-RC6 capabilities and are not implemented in RC6 Build 1.22. Users choose the
+RC6 capabilities and are not implemented in RC6 Build 1.23. Users choose the
 profile and download the troubleshooting ZIP themselves. Interactive
 company-source discovery writes correlated events to the bounded
 `junior-application.log`. Each attempt records its submission type, public
@@ -649,7 +660,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.22.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.23.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from job_radar.database import connect_database
-from job_radar.profile_models import ManagedProfile
+from job_radar.profile_models import FitSignal, ManagedProfile, ProfilePreferences
 from job_radar.profile_scoring import (
     build_neutral_scoring_config,
     import_pending_legacy_scoring,
@@ -242,6 +242,64 @@ def test_resolve_effective_scoring_uses_profile_owned_config(
     )
 
     assert resolved == profile_scoring
+
+
+def test_resolve_effective_scoring_corrects_saved_fit_signal_scope(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "data" / "job_radar.sqlite3"
+    profile = ManagedProfile(
+        profile_id="profile_bbbbbbbb",
+        display_name="Solution Architect",
+        preferences=ProfilePreferences(target_roles=("Solution Architect",)),
+        fit_signals=(
+            FitSignal(term="Solution Architect", category="strong"),
+            FitSignal(term="Disaster Recovery", category="strong"),
+            FitSignal(
+                term="Business Continuity & Disaster Recovery",
+                category="strong",
+            ),
+        ),
+        scoring_config={
+            "positive_keywords": {
+                "solution architect": 10,
+                "disaster recovery": 10,
+                "business continuity & disaster recovery": 10,
+            },
+            "negative_keywords": {},
+            "location_preferences": {"allowed": {}, "conditional": {}, "skipped": {}},
+            "top_matches": {
+                "min_score": 120,
+                "excluded_title_keywords": [],
+                "strong_signals": [
+                    "title:solution architect",
+                    "title:disaster recovery",
+                    "title:business continuity & disaster recovery",
+                ],
+                "review_signals": [],
+            },
+            "review_needed": {
+                "min_score": 100,
+                "excluded_location_statuses": [],
+                "strong_signals": [],
+            },
+        },
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+
+    resolved = resolve_effective_scoring_config(
+        database_path,
+        tmp_path / "missing-scoring.yaml",
+    )
+
+    assert resolved["top_matches"]["strong_signals"] == [
+        "title:solution architect",
+        "body:business continuity",
+        "body:disaster recovery",
+    ]
+    assert resolved["top_matches"]["min_score"] == 40
+    assert resolved["review_needed"]["min_score"] == 20
 
 
 def test_existing_profile_owned_scoring_is_not_replaced_by_neutral_defaults(

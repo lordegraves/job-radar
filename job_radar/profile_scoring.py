@@ -105,6 +105,18 @@ def resolve_effective_scoring_config(
     active_profile = get_active_profile(database_path)
 
     if active_profile is not None and active_profile.scoring_config is not None:
+        if active_profile.fit_signals:
+            # Re-derive only the user-owned Job Fit terms so profiles saved by
+            # older builds receive corrected title-versus-skill scoping too.
+            from job_radar.profile_fit_service import (
+                _apply_fit_signals_to_scoring_config,
+            )
+
+            return _apply_fit_signals_to_scoring_config(
+                active_profile.scoring_config,
+                active_profile.fit_signals,
+                target_roles=active_profile.preferences.target_roles,
+            )
         return active_profile.scoring_config
 
     return load_scoring_config(scoring_path)

@@ -369,32 +369,6 @@ def _has_occupational_relevance(scored_posting: ScoredPosting) -> bool:
     ):
         return True
 
-    if (
-        scored_posting.resume_match is not None
-        and scored_posting.resume_match.label in {"Medium", "Strong", "Very Strong"}
-    ):
-        return True
-    if (
-        scored_posting.resume_match is not None
-        and scored_posting.resume_match.label in {"Weak", "Poor Fit"}
-    ):
-        return False
-
-    positive_title_signals = 0
-    positive_body_keywords: set[str] = set()
-
-    for reason in scored_posting.score_reasons:
-        if not reason.startswith("+") or ":" not in reason:
-            continue
-
-        signal = reason.split(maxsplit=1)[-1]
-        source, keyword = signal.split(":", maxsplit=1)
-
-        if source == "title":
-            positive_title_signals += 1
-        elif source == "body" and keyword:
-            positive_body_keywords.add(keyword)
-
-    # One configured title match is deliberate evidence. Body text is noisier,
-    # so require two distinct profile-owned signals when the title is unfamiliar.
-    return positive_title_signals >= 1 or len(positive_body_keywords) >= 2
+    # Practical unknowns may downgrade a job that already passed a configured
+    # professional-fit gate. They must not independently bypass that gate.
+    return False

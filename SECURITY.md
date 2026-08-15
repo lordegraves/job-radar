@@ -41,9 +41,11 @@ before choosing to continue.
 
 Published release tags and history are not rewritten. Future stable releases
 should use signed annotated tags once the maintainer's signing key and recovery
-process are established. Windows Authenticode signing remains planned and must
-not be claimed until a code-signing certificate and protected signing process
-are in place.
+process are established. Windows Authenticode signing is being prepared through
+the SignPath Foundation open-source program. It must not be claimed until the
+project is accepted and a release artifact completes the protected signing
+process. See [`CODE_SIGNING_POLICY.md`](CODE_SIGNING_POLICY.md) for the public
+policy and current status.
 
 ## Security boundaries
 

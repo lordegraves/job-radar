@@ -161,7 +161,7 @@ def test_fit_board_save_persists_board_and_updates_scan_scoring(
     assert "kubernetes" not in scoring["positive_keywords"]
     assert "kubernetes" not in scoring["negative_keywords"]
     assert scoring["negative_keywords"]["sales"] == -15
-    assert scoring["top_matches"]["strong_signals"] == ["title:linux"]
+    assert scoring["top_matches"]["strong_signals"] == ["body:linux"]
     assert scoring["review_needed"]["strong_signals"] == ["body:kubernetes"]
     assert "sales" in scoring["top_matches"]["excluded_title_keywords"]
     assert "terraform" not in scoring["positive_keywords"]
@@ -245,3 +245,49 @@ def test_fit_board_suggests_exact_resume_capabilities_without_activating_them(
     assert stored.fit_signals == ()
     assert stored.scoring_config is not None
     assert stored.scoring_config["positive_keywords"] == {}
+
+
+def test_fit_board_splits_dense_resume_skills_into_usable_suggestions(
+    tmp_path: Path,
+) -> None:
+    settings_path = _write_settings(tmp_path)
+    database_path = tmp_path / "data" / "job_radar.sqlite3"
+    profile = ManagedProfile(
+        profile_id="profile_cccccccc",
+        display_name="Solution Architecture",
+        preferences=ProfilePreferences(target_roles=("Solution Architect",)),
+        scoring_config={
+            "positive_keywords": {},
+            "negative_keywords": {},
+            "top_matches": {"strong_signals": []},
+            "review_needed": {"strong_signals": []},
+        },
+    )
+    create_profile(database_path, profile)
+    set_active_profile(database_path, profile.profile_id)
+    app = create_app(settings_path=str(settings_path), base_directory=str(tmp_path))
+    client = app.test_client()
+    client.post(
+        f"/profile/{profile.profile_id}/resume",
+        data={
+            "resume_file": (
+                BytesIO(
+                    b"Summary\nSolution Architect\nTechnical Skills\n"
+                    b"Business Continuity & Disaster Recovery\n"
+                    b"Hypervisors & VDI: VMware ESXi / vSphere, Microsoft Hyper-V\n"
+                    b"Professional Experience\n"
+                ),
+                "resume.txt",
+            )
+        },
+        content_type="multipart/form-data",
+    )
+
+    html = client.get(f"/profile/{profile.profile_id}/fit").get_data(as_text=True)
+
+    assert "Business Continuity" in html
+    assert "Disaster Recovery" in html
+    assert "Hypervisors &amp; VDI" in html
+    assert "VMware ESXi" in html
+    assert "vSphere" in html
+    assert "Microsoft Hyper-V" in html

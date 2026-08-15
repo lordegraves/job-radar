@@ -2298,6 +2298,29 @@ def test_application_closing_date_after_requirements_is_not_a_resume_gap() -> No
     assert all("applications for this job" not in gap.lower() for gap in result.gaps)
 
 
+def test_application_encouragement_after_requirements_is_not_a_resume_gap() -> None:
+    posting = make_posting(
+        title="Solution Architect",
+        description=(
+            "Required Qualifications\n"
+            "Experience designing enterprise storage solutions.\n"
+            "If you meet these requirements, you are encouraged to apply."
+        ),
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        "Designed enterprise storage solutions for customers.",
+    )
+
+    assert all("encouraged to apply" not in gap.lower() for gap in result.gaps)
+    assert all(
+        "encouraged to apply" not in requirement.lower()
+        for requirement in result.requirements_reviewed
+    )
+
+
 def test_centralized_logging_requirement_has_concise_gap_summary() -> None:
     posting = make_posting(
         title="Site Reliability and Observability Engineer",

@@ -230,4 +230,10 @@ Inspect the repository, build context, wheel, release archive, installer, and co
   uploaded beside them.
 - [ ] Release notes identify the official GitHub release page and do not claim
   Authenticode signing until a protected signing process exists.
+- [ ] For a SignPath release, the protected GitHub workflow built the artifact
+  from the intended public commit, the signing request received manual
+  approval, and the downloaded signed artifact passes Authenticode validation.
+- [ ] SignPath project, policy, artifact configuration, role, and credential
+  settings remain protected; no secret value appears in repository data,
+  workflow logs, release notes, or diagnostic output.
 - [ ] Post-release smoke test passes.

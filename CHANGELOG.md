@@ -6,6 +6,21 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Prepare **RC6 Build 1.23** and the public repository for a SignPath
+  Foundation application. Add a public code-signing policy and a manual,
+  GitHub-hosted release workflow that can build the reviewed installer and
+  submit it for protected signing after project approval and credential setup.
+  Correct the privacy notice by removing the retired Bing lookup disclosure.
+
+- Correct fresh-profile Job Fit scoring so only exact selected target roles are
+  title-scoped; résumé skills and responsibilities are description-scoped, and
+  dense skills-list lines produce usable suggestions. Existing saved Job Fit
+  boards receive the corrected scope without changing the user's categories.
+  Managed profiles use attainable Job Fit thresholds instead of legacy floors
+  that effectively required ten exact résumé phrases in one posting.
+  Missing practical details no longer bypass the configured professional-fit
+  gate, and application encouragement is excluded from qualification gaps.
+
 - Prepare **RC6 Build 1.22** for field testing. Blank optional profile fields
   now mean Any and do not filter jobs; missing location and fit-signal filters
   no longer collapse recommendation results. An entirely blank Job Fit board

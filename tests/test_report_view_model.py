@@ -24,6 +24,7 @@ def make_scored_posting(
     top_match_reasons: list[str] | None = None,
     eligibility: EligibilityResult | None = None,
     resume_match: ResumeMatchResult | None = None,
+    score: int = 140,
 ) -> ScoredPosting:
     posting = JobPosting(
         company_key="example",
@@ -52,7 +53,7 @@ def make_scored_posting(
 
     return ScoredPosting(
         posting=posting,
-        score=140,
+        score=score,
         score_reasons=score_reasons
         or [
             "+30 title:infrastructure",
@@ -360,9 +361,11 @@ def test_needs_review_role_moves_from_top_match_to_potential_top_match() -> None
     assert view.email_review_needed == []
 
 
-def test_practical_unknown_is_review_needed_even_below_legacy_score_gate() -> None:
+def test_practical_unknown_does_not_bypass_professional_fit_gate() -> None:
     posting = make_scored_posting(
         title="Unfamiliar but potentially relevant role",
+        score=30,
+        resume_match=ResumeMatchResult(label="Medium", evidence=[], gaps=[]),
         eligibility=EligibilityResult(
             status="needs_review",
             reasons=(
@@ -378,11 +381,11 @@ def test_practical_unknown_is_review_needed_even_below_legacy_score_gate() -> No
 
     assert view.top_matches == []
     assert view.potential_top_matches == []
-    assert view.review_needed == [posting]
+    assert view.review_needed == []
     assert view.email_top_matches == []
     assert view.email_potential_top_matches == []
-    assert view.email_review_needed == [posting]
-    assert _is_storage_relevant_posting(posting)
+    assert view.email_review_needed == []
+    assert not _is_storage_relevant_posting(posting)
 
 
 def test_location_alone_does_not_make_unrelated_work_review_worthy() -> None:

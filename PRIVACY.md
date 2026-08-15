@@ -33,28 +33,20 @@ address and normal connection details.
 Junior does not send the user's résumé, profile, application history, or email
 credentials to employer career sites as part of scanning.
 
-## Optional external company lookup
+## Company-source discovery
 
-External company lookup is disabled by default and is not required for normal
-scans. If the user enables it, Junior may query Bing only after its direct
-company-source checks fail.
+When a user submits an official public company page, Junior follows a bounded
+set of links and public recruiting-platform signals from that site to locate a
+job source. It does not send the request to a general-purpose search engine.
+Each candidate source must return an actual public job, or an explicit
+no-openings result from a supported platform, before Junior accepts it.
 
-The exact Bing request contains:
-
-- the submitted public company name;
-- the hostname from the submitted public careers address;
-- the words `official careers jobs`; and
-- `format=rss`.
-
-Bing can also observe the user's IP address and ordinary connection metadata.
-Junior does not include profile or résumé information, desired roles,
-locations, application history, contact details, database contents, or the path
-and query string from the submitted careers address.
-
-External results are suggestions, not authority. Junior independently tests a
-candidate with its normal collectors before saving a working company source.
-Failed probes, candidate sources, intermediate search results, and external
-responses are transient and are not retained as durable application data.
+The visited company and recruiting sites can observe the user's IP address and
+ordinary connection metadata. Junior does not include profile or résumé
+information, desired roles, application history, contact details, database
+contents, or credentials in discovery requests. Candidate addresses and safe
+stage outcomes may appear in bounded local diagnostics, but page contents and
+raw network responses are not retained there.
 
 ## Email
 

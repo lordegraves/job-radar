@@ -43,6 +43,8 @@ _NON_CAPABILITY_LINES = _SKILL_SECTION_HEADINGS | {
     "expired certifications",
 }
 _MAX_RESUME_SUGGESTIONS = 20
+_MANAGED_TOP_MATCH_MIN_SCORE = 40
+_MANAGED_REVIEW_MIN_SCORE = 20
 
 
 def build_profile_fit_board(
@@ -107,7 +109,7 @@ def _resume_backed_suggestions(
             break
         if not in_skill_section or not _is_capability_line(line, normalized):
             continue
-        suggestions.append(line)
+        suggestions.extend(_resume_capability_terms(line))
 
     result: list[FitSignal] = []
     seen: set[str] = set()
@@ -131,6 +133,28 @@ def _resume_backed_suggestions(
         if len(result) >= _MAX_RESUME_SUGGESTIONS:
             break
     return tuple(result)
+
+
+def _resume_capability_terms(line: str) -> tuple[str, ...]:
+    """Turn dense skills-list lines into phrases postings can realistically use."""
+
+    if ":" not in line:
+        parts = [part.strip() for part in line.replace("/", " & ").split(" & ")]
+        if len(parts) > 1 and all(len(part.split()) >= 2 for part in parts):
+            return tuple(parts)
+        return (line,)
+
+    label, raw_values = (part.strip() for part in line.split(":", maxsplit=1))
+    values = tuple(
+        value.strip()
+        for value in raw_values.replace("/", ",").split(",")
+        if value.strip()
+    )
+    return tuple(
+        part
+        for part in (label, *values)
+        if _is_capability_line(part, clean_text(part).casefold())
+    )
 
 
 def _is_capability_line(line: str, normalized: str) -> bool:
@@ -163,6 +187,7 @@ def save_profile_fit_board(
     scoring_config = _apply_fit_signals_to_scoring_config(
         current_scoring,
         signals,
+        target_roles=profile.preferences.target_roles,
     )
     updated = replace(
         profile,
@@ -179,6 +204,8 @@ def save_profile_fit_board(
 def _apply_fit_signals_to_scoring_config(
     current_scoring: dict[str, Any],
     signals: tuple[FitSignal, ...],
+    *,
+    target_roles: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     scoring = deepcopy(current_scoring)
 
@@ -192,29 +219,81 @@ def _apply_fit_signals_to_scoring_config(
     review_signals = _string_list(review_needed, "strong_signals")
     excluded_titles = _string_list(top_matches, "excluded_title_keywords")
 
+    # Managed Job Fit terms carry 10 points each and exact target roles carry
+    # the established 30-point title weight. The legacy 120/100 YAML floors
+    # required an unrealistic ten exact résumé phrases before any job could be
+    # reviewed. Two demonstrated skills now reach review; a target title plus
+    # one demonstrated skill can reach Top Match, subject to every existing
+    # résumé-gap and practical-eligibility gate.
+    if (
+        top_matches.get("min_score") == 120
+        and review_needed.get("min_score") == 100
+    ):
+        top_matches["min_score"] = _MANAGED_TOP_MATCH_MIN_SCORE
+        review_needed["min_score"] = _MANAGED_REVIEW_MIN_SCORE
+
     for signal in signals:
         term = clean_text(signal.term).lower()
         if not term:
             continue
 
-        _remove_mapping_term(positive_keywords, term)
-        _remove_mapping_term(negative_keywords, term)
-        _remove_signal_term(top_signals, term)
-        _remove_signal_term(top_review_signals, term)
-        _remove_signal_term(review_signals, term)
-        _remove_signal_term(excluded_titles, term)
+        scoring_terms = _scoring_terms_for_signal(
+            term,
+            target_roles=target_roles,
+            split_capability=signal.category in {"strong", "review"},
+        )
+
+        for scoring_term in {term, *scoring_terms}:
+            _remove_mapping_term(positive_keywords, scoring_term)
+            _remove_mapping_term(negative_keywords, scoring_term)
+            _remove_signal_term(top_signals, scoring_term)
+            _remove_signal_term(top_review_signals, scoring_term)
+            _remove_signal_term(review_signals, scoring_term)
+            _remove_signal_term(excluded_titles, scoring_term)
 
         if signal.category == "strong":
-            positive_keywords[term] = 10
-            top_signals.append(f"title:{term}")
+            for scoring_term in scoring_terms:
+                positive_keywords[scoring_term] = 10
+                scope = (
+                    "title"
+                    if _is_target_role(scoring_term, target_roles)
+                    else "body"
+                )
+                top_signals.append(f"{scope}:{scoring_term}")
         elif signal.category == "review":
-            top_review_signals.append(term)
-            review_signals.append(f"body:{term}")
+            for scoring_term in scoring_terms:
+                top_review_signals.append(scoring_term)
+                review_signals.append(f"body:{scoring_term}")
         elif signal.category == "avoid":
             negative_keywords[term] = -15
             excluded_titles.append(term)
 
     return scoring
+
+
+def _is_target_role(term: str, target_roles: tuple[str, ...]) -> bool:
+    """Reserve title matching for role names the user explicitly selected."""
+
+    normalized = clean_text(term).casefold()
+    return any(clean_text(role).casefold() == normalized for role in target_roles)
+
+
+def _scoring_terms_for_signal(
+    term: str,
+    *,
+    target_roles: tuple[str, ...],
+    split_capability: bool,
+) -> tuple[str, ...]:
+    """Reuse dense saved capabilities without rewriting the user's board."""
+
+    if not split_capability or _is_target_role(term, target_roles):
+        return (term,)
+    result = tuple(
+        clean_text(part).lower()
+        for part in _resume_capability_terms(term)
+        if clean_text(part)
+    )
+    return result or (term,)
 
 
 def _mapping_section(
