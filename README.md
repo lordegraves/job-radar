@@ -473,7 +473,7 @@ Junior's local-first or user-controlled behavior:
   distribution. The Store version is intended to remain free to users and use
   Microsoft-managed package signing and updates. The existing open-source
   repository and direct GitHub release channel will remain available.
-- The repository includes a public [code-signing policy](CODE_SIGNING_POLICY.md)
+- The repository includes a public [Code signing policy](CODE_SIGNING_POLICY.md)
   and a manually dispatched GitHub-hosted build-and-sign workflow prepared for
   the SignPath Foundation open-source program. Releases remain unsigned until
   SignPath accepts Junior and the maintainer configures its protected project,
