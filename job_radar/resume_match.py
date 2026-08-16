@@ -18,6 +18,8 @@ class ResumeMatchResult:
     critical_gaps: list[str] | None = None
     requirements_reviewed: list[str] | None = None
     supported_requirements: list[str] | None = None
+    role_alignment_confirmed: bool = False
+    specific_role_alignment_confirmed: bool = False
 
     @property
     def has_critical_gap(self) -> bool:
@@ -47,7 +49,7 @@ def match_resume_to_posting(
             label="Weak",
             evidence=[],
             gaps=[incomplete_gap],
-            critical_gaps=[incomplete_gap],
+            critical_gaps=[],
             requirements_reviewed=[],
         )
     role_relevant_text = clean_text(
@@ -95,37 +97,8 @@ def match_resume_to_posting(
         configured_gaps=configured_gaps,
         evidence=evidence,
     )
-    central_platform_gaps = [
-        gap
-        for gap in qualification_gaps
-        if gap.lower().startswith("no demonstrated ownership of a production ")
-        or "at the scale required by the posting" in gap.lower()
-        or (
-            gap.lower().startswith("no clear résumé evidence of ")
-            and " years of " in gap.lower()
-        )
-    ]
-    if central_platform_gaps:
-        # Explicit production ownership or at-scale depth is central required
-        # work, not an adjacent skill that can safely remain review-only.
-        critical_gaps = _dedupe_preserving_order(
-            critical_gaps + central_platform_gaps
-        )
-    # Several independent mandatory capability gaps are collectively decisive
-    # even when no single one names the role's central discipline. Reuse the
-    # concise visible gaps so reports do not gain a duplicate explanation.
-    decisive_required_gaps = (
-        len(qualification_gaps) >= 3
-        or (
-            len(requirements) >= 2
-            and len(qualification_gaps) >= 2
-            and len(qualification_gaps) * 2 >= len(requirements)
-        )
-    )
-    if decisive_required_gaps:
-        critical_gaps = _dedupe_preserving_order(
-            critical_gaps + qualification_gaps
-        )
+    # Missing résumé evidence is uncertainty, even when several requirements
+    # are unverified. Only an affirmative profile conflict may become critical.
     gaps = _dedupe_preserving_order(
         configured_gaps + qualification_gaps + critical_gaps
     )
@@ -153,6 +126,8 @@ def match_resume_to_posting(
         critical_gaps=critical_gaps,
         requirements_reviewed=requirements,
         supported_requirements=supported_requirements,
+        role_alignment_confirmed=role_alignment_confirmed,
+        specific_role_alignment_confirmed=specific_role_alignment_confirmed,
     )
 
 
@@ -2618,7 +2593,7 @@ def _find_critical_gaps(
     configured_gaps: list[str],
     evidence: list[str],
 ) -> list[str]:
-    """Find unsupported central disciplines and explicit must-have technologies."""
+    """Find affirmative profile conflicts, never gaps inferred from silence."""
 
     title = clean_text(posting.title).lower()
     required_text = " ".join(requirements).lower()
@@ -2626,7 +2601,7 @@ def _find_critical_gaps(
     profile_evidence = " ".join(
         candidate_profile.core_strengths + candidate_profile.credible_adjacent
     ).lower()
-    supported_text = f"{resume_text} {profile_evidence} {target_text}"
+    declared_fit_text = f"{profile_evidence} {target_text}"
     critical: list[str] = []
 
     avoided_role = _find_avoided_role_family(
@@ -2641,45 +2616,20 @@ def _find_critical_gaps(
         required_marker_count = sum(
             1 for marker in markers if _contains_phrase(required_text, marker)
         )
-        central_to_requirements = required_marker_count >= (
-            1
-            if discipline
-            in {"software engineering", "data engineering", "security engineering"}
-            else 2
-        )
         if discipline in _DISCIPLINES_REQUIRING_DESCRIPTION_CONFIRMATION:
-            central_to_title = central_to_title and central_to_requirements
-        supported = any(_contains_phrase(supported_text, marker) for marker in markers)
-        if (central_to_title or central_to_requirements) and not supported:
+            central_to_title = central_to_title and required_marker_count >= 2
+        declared_fit = any(
+            _contains_phrase(declared_fit_text, marker) for marker in markers
+        )
+        if central_to_title and not declared_fit:
             if discipline == "civil, structural, or architectural engineering":
                 critical.append(
                     "No Civil, Structural, and Architectural (CSA) experience"
-                )
-            elif discipline == "software engineering" and (
-                software_years := re.search(
-                    r"\b(\d+\+?)\s+years?\b[^.]{0,100}"
-                    r"(?:software development|software engineering)",
-                    required_text,
-                )
-            ):
-                critical.append(
-                    "No clear résumé evidence of "
-                    f"{software_years.group(1)} years of professional "
-                    "software development"
                 )
             else:
                 critical.append(
                     f"central discipline requires {discipline} experience"
                 )
-
-    for label, aliases in _TECHNOLOGY_REQUIREMENTS.items():
-        explicitly_required = any(
-            _technology_is_individually_required(clause, aliases)
-            for clause in requirements
-        )
-        supported = any(_contains_phrase(supported_text, alias) for alias in aliases)
-        if explicitly_required and not supported:
-            critical.append(f"required {label} experience is not shown in the résumé")
 
     for gap in configured_gaps:
         normalized_gap = clean_text(gap).lower()
@@ -2702,6 +2652,9 @@ def _find_critical_gaps(
         evidence=evidence,
     )
     if alignment_gap is not None:
+        # This is evidence from the job itself: its stated occupation does not
+        # match the target or adjacent work. It is not inferred from résumé
+        # silence and remains a valid relevance rejection.
         critical.append(alignment_gap)
 
     return _dedupe_preserving_order(critical)

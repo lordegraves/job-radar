@@ -26,6 +26,40 @@
         gap: 18px;
     }
 
+    .review-priority-group {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        margin-bottom: 14px;
+        overflow: hidden;
+    }
+
+    .review-priority-group > summary {
+        align-items: center;
+        cursor: pointer;
+        display: flex;
+        gap: 20px;
+        justify-content: space-between;
+        padding: 18px 20px;
+    }
+
+    .review-priority-group > summary strong,
+    .review-priority-group > summary small {
+        display: block;
+    }
+
+    .review-priority-group > summary small {
+        color: var(--muted);
+        font-weight: 400;
+        margin-top: 4px;
+        max-width: 760px;
+    }
+
+    .review-priority-content {
+        border-top: 1px solid var(--border);
+        padding: 14px;
+    }
+
     .company-job-group {
         background: rgba(24, 24, 28, 0.72);
         border: 1px solid var(--border);
@@ -544,14 +578,29 @@
     </div>
 </nav>
 {% endif %}
-{% if job_groups %}
+{% if job_groups or review_priority_groups %}
 <div class="company-display-controls">
     <button id="expand-company-groups" class="button-secondary" type="button">Expand all companies</button>
     <button id="collapse-company-groups" class="button-secondary" type="button">Collapse all companies</button>
 </div>
 {% endif %}
+{% for priority in review_priority_groups %}
+{% if section_name == "review_needed" %}
+<details class="review-priority-group">
+    <summary>
+        <span>
+            <strong>{{ priority.title }}</strong>
+            <small>{{ priority.description }}</small>
+        </span>
+        <span>{{ priority.total }} total{% if priority.jobs_on_page %} · {{ priority.jobs_on_page }} on this page{% endif %}</span>
+    </summary>
+    <div class="review-priority-content">
+    {% if not priority.company_groups %}
+        <p class="muted">No jobs from this group are on the current page.</p>
+    {% endif %}
+{% endif %}
 <section class="job-card-grid" aria-label="{{ section_title }} job cards">
-    {% for group in job_groups %}
+    {% for group in priority.company_groups %}
     {% set company_loop = loop %}
     <details class="company-job-group">
         <summary>
@@ -670,7 +719,8 @@
 
         {% if job.resume_gaps %}
         <section class="job-section">
-            <h2>{% if job.llm_advisory_label %}AI-assisted possible gaps{% else %}Possible gaps{% endif %}</h2>
+            <h2>{% if job.llm_advisory_label %}AI-assisted qualifications to verify{% else %}Qualifications Junior could not verify{% endif %}</h2>
+            <p class="muted">These are questions for you. Missing résumé evidence does not mean you lack the qualification.</p>
             <ul>
                 {% for gap in job.resume_gaps.splitlines() %}
                 <li>{{ gap }}</li>
@@ -802,6 +852,11 @@
     </details>
     {% endfor %}
 </section>
+{% if section_name == "review_needed" %}
+    </div>
+</details>
+{% endif %}
+{% endfor %}
 {% if total_pages > 1 %}
 <nav class="pagination" aria-label="Job result pages">
     <span>Page {{ current_page }} of {{ total_pages }}</span>

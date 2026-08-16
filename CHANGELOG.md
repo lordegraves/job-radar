@@ -6,6 +6,15 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Prepare **RC6 Build 1.24** for field testing. Résumé qualification matching
+  now treats missing evidence as an unanswered question rather than a
+  rejection. Only affirmative profile conflicts and clearly unrelated
+  occupations can create hard professional-fit exclusions. Exact target-role
+  jobs with unverified qualifications remain reviewable. Needs Review is
+  ranked into four collapsible bands—likely, plausible, low-confidence, and
+  incomplete—with company grouping, bounded pagination, bulk decisions, notes,
+  save, pass, and application tracking preserved.
+
 - Prepare **RC6 Build 1.23** and the public repository for a SignPath
   Foundation application. Add a public code-signing policy and a manual,
   GitHub-hosted release workflow that can build the reviewed installer and

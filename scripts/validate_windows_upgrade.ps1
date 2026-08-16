@@ -3,10 +3,10 @@
 [CmdletBinding()]
 param(
     [string]$InstallerPath = (
-        Join-Path $PSScriptRoot "..\artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.23.exe"
+        Join-Path $PSScriptRoot "..\artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.24.exe"
     ),
     [string]$PreviousInstallerPath = (
-        Join-Path $PSScriptRoot "..\artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.11.exe"
+        Join-Path $PSScriptRoot "..\artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.23.exe"
     ),
     [switch]$KeepValidationFilesOnFailure
 )

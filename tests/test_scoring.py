@@ -892,6 +892,28 @@ def test_empty_scoring_does_not_rescue_confirmed_poor_fit() -> None:
         0, [], "allowed", False, config, poor
     )
 
+
+def test_exact_target_role_with_unverified_qualifications_stays_reviewable() -> None:
+    config = make_policy_scoring_config()
+    config["review_needed"]["strong_signals"] = ["title:solution architect"]
+    uncertain_match = ResumeMatchResult(
+        label="Weak",
+        evidence=[],
+        gaps=["Could not verify five years of architecture experience"],
+        critical_gaps=[],
+        role_alignment_confirmed=True,
+        specific_role_alignment_confirmed=True,
+    )
+
+    assert evaluate_review_needed_eligibility(
+        score=120,
+        score_reasons=["+30 title:solution architect"],
+        location_status="allowed",
+        top_match_eligible=False,
+        scoring_config=config,
+        resume_match=uncertain_match,
+    )
+
     assert not evaluate_review_needed_eligibility(
         score=180,
         score_reasons=["+30 title:infrastructure"],

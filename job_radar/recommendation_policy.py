@@ -141,9 +141,14 @@ def evaluate_review_needed_eligibility(
     if resume_match is not None and resume_match.has_critical_gap:
         return False
 
-    # Missing practical facts must not rescue work that Junior has already
-    # determined is professionally weak or unrelated to the profile.
-    if resume_match is not None and resume_match.label in {"Poor Fit", "Weak"}:
+    # An exact target title remains reviewable when the résumé comparison is
+    # uncertain. Silence in a résumé is not proof that the candidate lacks the
+    # qualification.
+    if (
+        resume_match is not None
+        and resume_match.label in {"Poor Fit", "Weak"}
+        and not resume_match.specific_role_alignment_confirmed
+    ):
         return False
 
     ranking_rules_are_empty = _ranking_rules_are_empty(scoring_config)

@@ -652,14 +652,21 @@ def _apply_llm_fit_review(
     label = {
         "strong": "Strong",
         "plausible": "Moderate",
-        "weak": "Poor Fit",
+        "weak": "Weak",
     }[review.fit_assessment]
     merged_match = ResumeMatchResult(
         label=label,
         evidence=list(review.evidence) or deterministic.evidence,
         gaps=gaps,
-        critical_gaps=(gaps if review.fit_assessment == "weak" else []),
+        # A review that cannot verify qualifications is uncertainty, not an
+        # affirmative contradiction and therefore never a hard rejection.
+        critical_gaps=[],
         requirements_reviewed=deterministic.requirements_reviewed,
+        supported_requirements=deterministic.supported_requirements,
+        role_alignment_confirmed=deterministic.role_alignment_confirmed,
+        specific_role_alignment_confirmed=(
+            deterministic.specific_role_alignment_confirmed
+        ),
     )
     top, top_reasons = evaluate_top_match_eligibility(
         posting=item.posting,

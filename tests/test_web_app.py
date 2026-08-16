@@ -1394,6 +1394,69 @@ def test_review_needed_compact_view_is_bounded_and_keeps_controls(
     )
 
 
+def test_review_needed_is_ranked_into_four_collapsible_company_groups(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+    jobs = [
+        make_report_snapshot_job(
+            title="Likely Architect",
+            url="https://example.invalid/likely",
+            company="Alpha Company",
+            resume_match="Strong",
+            job_radar_id="jr-likely-12345678",
+        ),
+        make_report_snapshot_job(
+            title="Plausible Architect",
+            url="https://example.invalid/plausible",
+            company="Beta Company",
+            resume_match="Medium",
+            job_radar_id="jr-plausible-12345678",
+        ),
+        make_report_snapshot_job(
+            title="Low Confidence Architect",
+            url="https://example.invalid/low",
+            company="Gamma Company",
+            resume_match="Weak",
+            job_radar_id="jr-low-12345678",
+        ),
+        make_report_snapshot_job(
+            title="Incomplete Architect",
+            url="https://example.invalid/incomplete",
+            company="Delta Company",
+            resume_match="Weak",
+            resume_gaps=(
+                "The collected posting did not include enough job-description "
+                "detail to verify its required qualifications."
+            ),
+            job_radar_id="jr-incomplete-12345678",
+        ),
+    ]
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-08-15T10:00:00+00:00",
+        review_needed=jobs,
+    )
+
+    html = create_app(settings_path=str(settings_file)).test_client().get(
+        "/reports/section/review_needed"
+    ).get_data(as_text=True)
+
+    assert html.count('<details class="review-priority-group">') == 4
+    assert "Likely matches — confirm details" in html
+    assert "Plausible matches" in html
+    assert "Low-confidence matches" in html
+    assert "Incomplete postings" in html
+    assert html.count('<details class="company-job-group">') == 4
+    assert "Save for later" in html
+    assert "Pass" in html
+    assert "I applied — track application" in html
+
+
 def test_report_jobs_can_be_passed_together_atomically(
     tmp_path: Path,
 ) -> None:
@@ -5809,7 +5872,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.23" in html
+    assert "RC6 Build 1.24" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

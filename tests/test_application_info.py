@@ -84,8 +84,8 @@ def test_about_page_shows_safe_version_and_update_details(tmp_path: Path) -> Non
     assert "Scans &amp; results" in about_html
     assert "Privacy &amp; safety" in about_html
     assert "automatically refreshes affected cached details" in about_html
-    assert "does not state any required qualifications" in about_html
-    assert "does not turn preferred qualifications into mandatory ones" in about_html
+    assert "treats that as a question for the user" in about_html
+    assert "Preferred qualifications never become mandatory ones" in about_html
     assert "run a new scan so Junior can refresh affected job details" in about_html
     assert "Enter a name only to select a company already" in about_html
     assert "To discover and add a new company, paste any official company URL" in about_html

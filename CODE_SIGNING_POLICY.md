@@ -3,7 +3,7 @@
 ## Current status
 
 Junior is applying to the SignPath Foundation open-source code-signing program.
-RC6 Build 1.23 is not Authenticode-signed unless its GitHub release explicitly
+RC6 Build 1.24 is not Authenticode-signed unless its GitHub release explicitly
 identifies a signed artifact and publishes the corresponding verification
 details. Until then, users should download Junior only from the official GitHub
 release page and verify the published SHA-256 checksum.

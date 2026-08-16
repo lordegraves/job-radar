@@ -45,7 +45,7 @@ def scoring_config():
     }
 
 
-def test_weak_llm_fit_blocks_recommendation_without_changing_location() -> None:
+def test_weak_llm_fit_remains_noncritical_without_changing_location() -> None:
     original = scored_posting()
     review = LlmFitReview(
         fit_assessment="weak",
@@ -70,7 +70,8 @@ def test_weak_llm_fit_blocks_recommendation_without_changing_location() -> None:
     assert result.location_status == "allowed"
     assert result.top_match_eligible is False
     assert result.review_needed_eligible is False
-    assert result.resume_match.label == "Poor Fit"
+    assert result.resume_match.label == "Weak"
+    assert not result.resume_match.has_critical_gap
     assert result.resume_match.gaps == ["No Linux kernel-development experience"]
     assert result.llm_review == review
     assert result.deterministic_resume_match == original.resume_match

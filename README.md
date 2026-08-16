@@ -9,12 +9,12 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.23`
+- Current field-test build: `RC6 Build 1.24`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-RC6 Build 1.23 is a field-test build. It makes blank profile fields behave as
+RC6 Build 1.24 is a field-test build. It makes blank profile fields behave as
 unrestricted job-search filters, warns about conflicting choices, and binds
 troubleshooting packages to the selected profile's latest completed scan. It also improves company setup by accepting
 any official company page, discovering linked recruiting platforms through a
@@ -39,6 +39,16 @@ the configured professional-fit threshold. Managed Job Fit uses attainable
 thresholds: two demonstrated description signals can reach review, while an
 exact target-role title plus demonstrated skill evidence can reach Top Match.
 Application encouragement is not treated as a required qualification.
+
+Résumé comparison now distinguishes verified support, affirmative conflicts,
+and qualifications Junior could not verify. Missing résumé evidence never
+becomes a rejection merely because several requirements are uncertain. An
+exact target-role match remains available for review unless the posting proves
+a conflict with a firm profile choice. Clearly unrelated occupations and
+explicit profile exclusions remain non-actionable. Needs Review ranks the
+remaining uncertainty into four collapsible groups—likely, plausible,
+low-confidence, and incomplete—and keeps jobs grouped by company with the same
+save, pass, apply, notes, bulk-selection, and pagination controls.
 
 The Companies page now shows the complete shared catalog. Each row has a
 sliding scan toggle for the active profile; turning it off keeps the company
@@ -398,9 +408,10 @@ trustworthy:
 - Junior evaluates required qualifications and the work described in the job
   posting, not merely a loose collection of matching words. It distinguishes
   required qualifications from preferred or bonus qualifications.
-- The active profile's target roles now participate directly in role-family
-  alignment. Clearly unrelated work and central missing disciplines become
-  critical gaps and are omitted instead of being sent to Review Jobs.
+- The active profile's target roles participate directly in role-family
+  alignment. Clearly unrelated work and explicit profile conflicts can be
+  omitted, while qualifications that Junior cannot verify remain questions for
+  the user in Needs Review.
 - Generic words such as `system` and `systems`, and a profile strength by
   itself, cannot establish that a job belongs to the user's target profession.
   Unrelated aerospace, finance, retail, and other cross-discipline work is
@@ -489,7 +500,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support email handoff, MSIX, and signing items above remain planned
-RC6 capabilities and are not implemented in RC6 Build 1.23. Users choose the
+RC6 capabilities and are not implemented in RC6 Build 1.24. Users choose the
 profile and download the troubleshooting ZIP themselves. Interactive
 company-source discovery writes correlated events to the bounded
 `junior-application.log`. Each attempt records its submission type, public
@@ -660,7 +671,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.23.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.24.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

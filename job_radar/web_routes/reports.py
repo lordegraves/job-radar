@@ -65,6 +65,29 @@ REVIEW_NAVIGATION_SECTIONS = {
 REPORT_JOBS_PER_PAGE = 20
 COMPACT_REPORT_JOBS_PER_PAGE = 50
 
+REVIEW_PRIORITY_DETAILS = (
+    (
+        "likely",
+        "Likely matches — confirm details",
+        "Junior found strong résumé evidence; confirm the unresolved details.",
+    ),
+    (
+        "plausible",
+        "Plausible matches",
+        "The work appears relevant, but important qualifications or practical details need your judgment.",
+    ),
+    (
+        "low_confidence",
+        "Low-confidence matches",
+        "Junior found enough relevance to ask you, but little qualification evidence it can verify.",
+    ),
+    (
+        "incomplete",
+        "Incomplete postings",
+        "The collected posting did not contain enough detail for a reliable comparison.",
+    ),
+)
+
 REPORT_HTML_BODY_PATTERN = re.compile(
     r"<body\b[^>]*>(.*?)</body>",
     flags=re.IGNORECASE | re.DOTALL,
@@ -210,6 +233,7 @@ class ReportJobCardView:
     llm_explanation: str
     deterministic_resume_evidence: str
     deterministic_resume_gaps: tuple[str, ...]
+    review_priority: str
 
 
 @dataclass(frozen=True)
@@ -298,6 +322,7 @@ def register_report_routes(
         page_start_index = 0
         page_end_index = 0
         job_groups: list[dict[str, object]] = []
+        review_priority_groups: list[dict[str, object]] = []
         pagination_pages: list[int | None] = [1]
         view_mode = (
             "compact"
@@ -359,6 +384,7 @@ def register_report_routes(
             ]
             all_job_cards.sort(
                 key=lambda card: (
+                    _review_priority_order(card.review_priority),
                     (card.company or "Unknown company").casefold(),
                     card.title.casefold(),
                 )
@@ -384,22 +410,51 @@ def register_report_routes(
                 total_jobs,
             )
             job_cards = all_job_cards[page_start_index:page_end_index]
-            for card in job_cards:
-                company_name = card.company or "Unknown company"
-                if (
-                    not job_groups
-                    or job_groups[-1]["company"] != company_name
-                ):
-                    job_groups.append(
+            if section_name == "review_needed":
+                priority_totals = Counter(
+                    card.review_priority for card in all_job_cards
+                )
+                for key, title, description in REVIEW_PRIORITY_DETAILS:
+                    all_priority_cards = [
+                        card
+                        for card in all_job_cards
+                        if card.review_priority == key
+                    ]
+                    priority_cards = [
+                        card for card in job_cards if card.review_priority == key
+                    ]
+                    priority_company_totals = Counter(
+                        card.company or "Unknown company"
+                        for card in all_priority_cards
+                    )
+                    review_priority_groups.append(
                         {
-                            "company": company_name,
-                            "jobs": [],
-                            "total": company_totals[company_name],
+                            "key": key,
+                            "title": title,
+                            "description": description,
+                            "total": priority_totals[key],
+                            "jobs_on_page": len(priority_cards),
+                            "company_groups": _group_job_cards_by_company(
+                                priority_cards,
+                                priority_company_totals,
+                            ),
                         }
                     )
-                group_jobs = job_groups[-1]["jobs"]
-                assert isinstance(group_jobs, list)
-                group_jobs.append(card)
+            else:
+                job_groups = _group_job_cards_by_company(
+                    job_cards,
+                    company_totals,
+                )
+                review_priority_groups = [
+                    {
+                        "key": "all",
+                        "title": section_details["page_title"],
+                        "description": section_details["description"],
+                        "total": total_jobs,
+                        "jobs_on_page": len(job_cards),
+                        "company_groups": job_groups,
+                    }
+                ]
             pagination_pages = _build_pagination_pages(
                 current_page,
                 total_pages,
@@ -441,6 +496,7 @@ def register_report_routes(
                 get_database_path(),
                 profile_id=get_profile_id(),
             ),
+            review_priority_groups=review_priority_groups,
         )
 
     @app.post("/reports/jobs/<path:job_radar_id>/llm-advice")
@@ -1232,4 +1288,56 @@ def _build_report_job_card(
         llm_explanation=job.llm_explanation,
         deterministic_resume_evidence=job.deterministic_resume_evidence,
         deterministic_resume_gaps=tuple(job.deterministic_resume_gaps or []),
+        review_priority=_classify_review_priority(job),
     )
+
+
+def _classify_review_priority(job: ReportSnapshotJob) -> str:
+    """Rank uncertainty without converting it into a rejection."""
+
+    gap_text = " ".join(
+        [job.resume_gaps or "", *(job.deterministic_resume_gaps or [])]
+    ).lower()
+    if any(
+        marker in gap_text
+        for marker in (
+            "did not include enough job-description detail",
+            "complete job description was unavailable",
+            "without the complete job description",
+        )
+    ):
+        return "incomplete"
+    if job.resume_match in {"Very Strong", "Strong"}:
+        return "likely"
+    if job.resume_match == "Medium" or (
+        job.why_matched
+        and job.why_matched not in {"No scoring reasons recorded", "No positive match reasons"}
+    ):
+        return "plausible"
+    return "low_confidence"
+
+
+def _review_priority_order(value: str) -> int:
+    order = {key: index for index, (key, _title, _description) in enumerate(REVIEW_PRIORITY_DETAILS)}
+    return order.get(value, len(order))
+
+
+def _group_job_cards_by_company(
+    cards: list[ReportJobCardView],
+    company_totals: Counter[str],
+) -> list[dict[str, object]]:
+    groups: list[dict[str, object]] = []
+    for card in cards:
+        company_name = card.company or "Unknown company"
+        if not groups or groups[-1]["company"] != company_name:
+            groups.append(
+                {
+                    "company": company_name,
+                    "jobs": [],
+                    "total": company_totals[company_name],
+                }
+            )
+        group_jobs = groups[-1]["jobs"]
+        assert isinstance(group_jobs, list)
+        group_jobs.append(card)
+    return groups

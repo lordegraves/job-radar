@@ -339,6 +339,30 @@ A scan:
 6. loads tracker and application-history context
 7. stores postings and structured results
 8. writes the HTML report, structured snapshot, and email preview
+
+## Review Jobs
+
+Needs Review separates unanswered questions from confirmed rejection reasons.
+If Junior cannot verify a qualification from the résumé, the job remains
+reviewable when its title or duties establish enough occupational relevance.
+The queue is ranked into four collapsible groups:
+
+- **Likely matches — confirm details:** strong résumé evidence with one or more
+  unresolved qualifications or practical facts.
+- **Plausible matches:** relevant work with important questions that need the
+  user's judgment.
+- **Low-confidence matches:** enough relevance to ask the user, but little
+  qualification evidence Junior can verify.
+- **Incomplete postings:** the collected description lacks enough detail for a
+  reliable comparison.
+
+Each ranked group is organized by company. Company groups and ranked groups
+start collapsed so the page remains readable. Pagination, compact review,
+current-page bulk selection, notes, Save for later, Pass, Open job posting, and
+application tracking continue to work within these groups. Several unverified
+qualifications never become a rejection merely because there are several of
+them. A hard professional-fit rejection requires affirmative evidence, such as
+an explicit profile conflict or a clearly unrelated occupation.
 9. records completion or stage-specific failure
 
 The first scan after installing Build 1.6 creates an incremental cache of
@@ -548,7 +572,7 @@ Supported resume formats:
 
 Resume replacement is written to the active user-data area. For a managed profile, junior copies the upload under `resumes/<profile-id>/` using an app-owned filename such as `resume.pdf`; moving or renaming the original uploaded file cannot break the profile. To use a revised resume, upload it again through the Profile / Resume page. Private resumes and profiles must not be committed to the repository.
 
-Managed profiles store target roles, locations, work arrangements, employment types, schedules, on-call and security-clearance choices, compensation minimums, travel tolerance, and related job-fit preferences. Current scans use the implemented workplace, location, employment, schedule, on-call, clearance, compensation, and practical-eligibility rules. A clearly stated requirement for an existing active clearance follows the profile's choice; unclear clearance language goes to Needs Review. Recommendation actions and risks are occupation-neutral: junior does not globally favor or penalize a particular industry, employer, job title, skill, or region. Profile-owned fit terms, resume evidence and gaps, exclusions, compensation, location eligibility, and that profile's application history supply the relevant context. Some broader scoring configuration still uses the established scoring boundary, so the application continues to explain recommendations in plain language rather than treating every saved field as an independent score boost.
+Managed profiles store target roles, locations, work arrangements, employment types, schedules, on-call and security-clearance choices, compensation minimums, travel tolerance, and related job-fit preferences. Current scans use the implemented workplace, location, employment, schedule, on-call, clearance, compensation, and practical-eligibility rules. A clearly stated requirement for an existing active clearance follows the profile's choice; unclear clearance language goes to Needs Review. Recommendation actions and risks are occupation-neutral: junior does not globally favor or penalize a particular industry, employer, job title, skill, or region. Profile-owned fit terms, resume evidence and gaps, exclusions, compensation, location eligibility, and that profile's application history supply the relevant context. Missing résumé evidence is an unanswered question, not proof that the qualification is absent. Only an affirmative conflict with the profile or a clearly unrelated occupation can create a hard professional-fit rejection. Some broader scoring configuration still uses the established scoring boundary, so the application continues to explain recommendations in plain language rather than treating every saved field as an independent score boost.
 
 ### Related roles
 
@@ -612,7 +636,7 @@ on **Scanning** only for employers you want in the active profile, then return
 to setup. Catalog-wide testing is recommended, while the final setup validation
 separately requires at least one enabled company source to connect successfully.
 
-The RC6 Build 1.23 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
+The RC6 Build 1.24 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
 Block, Brex, Canonical, Carta, Carvana, Chime, Cloudflare, Coinbase, Coursera,
 Datadog, Discord, DoorDash, Dropbox, Duolingo, Elastic, Figma, Ford Motor
 Company, GitLab, Google, Grafana Labs, Gusto, HelloFresh, HubSpot, Instacart,
