@@ -285,6 +285,61 @@ def _build_pagination_pages(
     return result
 
 
+def _review_priority_page_url(
+    *,
+    section_name: str,
+    priority: str,
+    page: int,
+    priority_pages: dict[str, int],
+    view_mode: str,
+) -> str:
+    """Build a stable URL for one independently paged review bucket."""
+    query: dict[str, object] = {
+        "priority": priority,
+        "view": "compact" if view_mode == "compact" else None,
+    }
+    for key, _title, _description in REVIEW_PRIORITY_DETAILS:
+        selected_page = page if key == priority else priority_pages.get(key, 1)
+        if selected_page > 1:
+            query[f"{key}_page"] = selected_page
+    return (
+        url_for(
+            "report_section_view",
+            section_name=section_name,
+            **query,
+        )
+        + f"#review-priority-{priority}"
+    )
+
+
+def _report_return_url(
+    *,
+    section_name: str,
+    return_page: int,
+    view_mode: str,
+    priority: str,
+    priority_page: int,
+) -> str:
+    """Return users to the report page and review bucket they acted in."""
+    if (
+        section_name == "review_needed"
+        and priority in {key for key, _title, _description in REVIEW_PRIORITY_DETAILS}
+    ):
+        return _review_priority_page_url(
+            section_name=section_name,
+            priority=priority,
+            page=priority_page,
+            priority_pages={priority: priority_page},
+            view_mode=view_mode,
+        )
+    return url_for(
+        "report_section_view",
+        section_name=section_name,
+        page=return_page,
+        view="compact" if view_mode == "compact" else None,
+    )
+
+
 def register_report_routes(
     app: Flask,
     *,
@@ -395,45 +450,103 @@ def register_report_routes(
                 for card in all_job_cards
             )
             total_jobs = len(all_job_cards)
-            total_pages = max(
-                1,
-                (total_jobs + jobs_per_page - 1)
-                // jobs_per_page,
-            )
-            current_page = min(
-                requested_page,
-                total_pages,
-            )
-            page_start_index = (current_page - 1) * jobs_per_page
-            page_end_index = min(
-                page_start_index + jobs_per_page,
-                total_jobs,
-            )
-            job_cards = all_job_cards[page_start_index:page_end_index]
             if section_name == "review_needed":
-                priority_totals = Counter(
-                    card.review_priority for card in all_job_cards
+                requested_priority = request.args.get("priority", "")
+                priority_keys = tuple(
+                    key for key, _title, _description in REVIEW_PRIORITY_DETAILS
                 )
+                if requested_priority not in priority_keys:
+                    requested_priority = ""
+                current_priority_pages = {
+                    key: max(request.args.get(f"{key}_page", 1, type=int) or 1, 1)
+                    for key in priority_keys
+                }
                 for key, title, description in REVIEW_PRIORITY_DETAILS:
                     all_priority_cards = [
                         card
                         for card in all_job_cards
                         if card.review_priority == key
                     ]
-                    priority_cards = [
-                        card for card in job_cards if card.review_priority == key
+                    priority_total = len(all_priority_cards)
+                    priority_total_pages = max(
+                        1,
+                        (priority_total + jobs_per_page - 1) // jobs_per_page,
+                    )
+                    priority_page = min(
+                        current_priority_pages[key],
+                        priority_total_pages,
+                    )
+                    current_priority_pages[key] = priority_page
+                    priority_start_index = (priority_page - 1) * jobs_per_page
+                    priority_end_index = min(
+                        priority_start_index + jobs_per_page,
+                        priority_total,
+                    )
+                    priority_cards = all_priority_cards[
+                        priority_start_index:priority_end_index
                     ]
+                    job_cards.extend(priority_cards)
                     priority_company_totals = Counter(
                         card.company or "Unknown company"
                         for card in all_priority_cards
                     )
+                    page_links = []
+                    for page_number in _build_pagination_pages(
+                        priority_page,
+                        priority_total_pages,
+                    ):
+                        page_links.append(
+                            {
+                                "number": page_number,
+                                "url": None if page_number is None else (
+                                    _review_priority_page_url(
+                                        section_name=section_name,
+                                        priority=key,
+                                        page=page_number,
+                                        priority_pages=current_priority_pages,
+                                        view_mode=view_mode,
+                                    )
+                                ),
+                            }
+                        )
                     review_priority_groups.append(
                         {
                             "key": key,
                             "title": title,
                             "description": description,
-                            "total": priority_totals[key],
+                            "total": priority_total,
+                            "company_total": len(priority_company_totals),
                             "jobs_on_page": len(priority_cards),
+                            "current_page": priority_page,
+                            "total_pages": priority_total_pages,
+                            "page_start": (
+                                priority_start_index + 1 if priority_total else 0
+                            ),
+                            "page_end": priority_end_index,
+                            "page_links": page_links,
+                            "previous_url": (
+                                _review_priority_page_url(
+                                    section_name=section_name,
+                                    priority=key,
+                                    page=priority_page - 1,
+                                    priority_pages=current_priority_pages,
+                                    view_mode=view_mode,
+                                )
+                                if priority_page > 1
+                                else None
+                            ),
+                            "next_url": (
+                                _review_priority_page_url(
+                                    section_name=section_name,
+                                    priority=key,
+                                    page=priority_page + 1,
+                                    priority_pages=current_priority_pages,
+                                    view_mode=view_mode,
+                                )
+                                if priority_page < priority_total_pages
+                                else None
+                            ),
+                            "open": requested_priority == key,
                             "company_groups": _group_job_cards_by_company(
                                 priority_cards,
                                 priority_company_totals,
@@ -441,6 +554,17 @@ def register_report_routes(
                         }
                     )
             else:
+                total_pages = max(
+                    1,
+                    (total_jobs + jobs_per_page - 1) // jobs_per_page,
+                )
+                current_page = min(requested_page, total_pages)
+                page_start_index = (current_page - 1) * jobs_per_page
+                page_end_index = min(
+                    page_start_index + jobs_per_page,
+                    total_jobs,
+                )
+                job_cards = all_job_cards[page_start_index:page_end_index]
                 job_groups = _group_job_cards_by_company(
                     job_cards,
                     company_totals,
@@ -455,10 +579,10 @@ def register_report_routes(
                         "company_groups": job_groups,
                     }
                 ]
-            pagination_pages = _build_pagination_pages(
-                current_page,
-                total_pages,
-            )
+                pagination_pages = _build_pagination_pages(
+                    current_page,
+                    total_pages,
+                )
 
         return render_template(
             "report_section.html",
@@ -497,6 +621,14 @@ def register_report_routes(
                 profile_id=get_profile_id(),
             ),
             review_priority_groups=review_priority_groups,
+            active_review_priority=(
+                requested_priority if section_name == "review_needed" else ""
+            ),
+            active_review_priority_page=(
+                current_priority_pages.get(requested_priority, 1)
+                if section_name == "review_needed" and requested_priority
+                else 1
+            ),
         )
 
     @app.post("/reports/jobs/<path:job_radar_id>/llm-advice")
@@ -560,6 +692,11 @@ def register_report_routes(
             abort(400)
         section_name = request.form.get("section_name", "review_needed")
         return_page = max(request.form.get("page", 1, type=int) or 1, 1)
+        return_priority = request.form.get("priority", "")
+        return_priority_page = max(
+            request.form.get("priority_page", 1, type=int) or 1,
+            1,
+        )
         view_mode = _validated_view_mode(
             section_name,
             request.form.get("view"),
@@ -618,11 +755,12 @@ def register_report_routes(
                 "error",
             )
             return redirect(
-                url_for(
-                    "report_section_view",
+                _report_return_url(
                     section_name=section_name,
-                    page=return_page,
-                    view="compact" if view_mode == "compact" else None,
+                    return_page=return_page,
+                    view_mode=view_mode,
+                    priority=return_priority,
+                    priority_page=return_priority_page,
                 )
             )
         record_decision_event(
@@ -643,11 +781,12 @@ def register_report_routes(
             "success",
         )
         return redirect(
-            url_for(
-                "report_section_view",
+            _report_return_url(
                 section_name=section_name,
-                page=return_page,
-                view="compact" if view_mode == "compact" else None,
+                return_page=return_page,
+                view_mode=view_mode,
+                priority=return_priority,
+                priority_page=return_priority_page,
             )
         )
 
@@ -659,6 +798,11 @@ def register_report_routes(
         if section_name not in JOB_DECISION_SECTIONS:
             abort(400)
         return_page = max(request.form.get("page", 1, type=int) or 1, 1)
+        return_priority = request.form.get("priority", "")
+        return_priority_page = max(
+            request.form.get("priority_page", 1, type=int) or 1,
+            1,
+        )
         view_mode = _validated_view_mode(
             section_name,
             request.form.get("view"),
@@ -676,11 +820,12 @@ def register_report_routes(
         if not selected_ids:
             flash("Select at least one job first.", "error")
             return redirect(
-                url_for(
-                    "report_section_view",
+                _report_return_url(
                     section_name=section_name,
-                    page=return_page,
-                    view="compact" if view_mode == "compact" else None,
+                    return_page=return_page,
+                    view_mode=view_mode,
+                    priority=return_priority,
+                    priority_page=return_priority_page,
                 )
             )
 
@@ -726,11 +871,12 @@ def register_report_routes(
                 "error",
             )
             return redirect(
-                url_for(
-                    "report_section_view",
+                _report_return_url(
                     section_name=section_name,
-                    page=return_page,
-                    view="compact" if view_mode == "compact" else None,
+                    return_page=return_page,
+                    view_mode=view_mode,
+                    priority=return_priority,
+                    priority_page=return_priority_page,
                 )
             )
         record_decision_event(
@@ -745,11 +891,12 @@ def register_report_routes(
         action = "saved for later" if decision == DECISION_SAVED else "passed"
         flash(f"{len(verified_jobs)} selected jobs were {action}.", "success")
         return redirect(
-            url_for(
-                "report_section_view",
+            _report_return_url(
                 section_name=section_name,
-                page=return_page,
-                view="compact" if view_mode == "compact" else None,
+                return_page=return_page,
+                view_mode=view_mode,
+                priority=return_priority,
+                priority_page=return_priority_page,
             )
         )
 

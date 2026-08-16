@@ -539,13 +539,21 @@ def _apply_normalization_quality_gate(
 ) -> tuple[bool, bool, bool]:
     """Prevent incomplete source evidence from becoming a recommendation."""
 
+    if posting.normalization_state == "skipped_unrelated":
+        # The profile-owned detail planner records an affirmative title-level
+        # reason before skipping retrieval. Preserve that proven exclusion;
+        # only genuinely incomplete or uncertain postings belong in review.
+        return False, False, False
     if posting.normalization_state != "incomplete":
         return (
             top_match_eligible,
             review_needed_eligible,
             potential_top_match_eligible,
         )
-    return False, False, False
+    # Incomplete source evidence cannot support a top recommendation, but the
+    # missing evidence is not proof of a mismatch. Preserve Needs Review so the
+    # user can inspect the posting instead of silently losing it.
+    return False, review_needed_eligible, False
 
 
 def _augment_ambiguous_jobs_with_llm(

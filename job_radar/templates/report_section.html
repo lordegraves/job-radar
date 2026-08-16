@@ -536,10 +536,14 @@
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="page" value="{{ current_page }}">
     <input type="hidden" name="view" value="{{ view_mode }}">
+    {% if section_name == "review_needed" and active_review_priority %}
+    <input type="hidden" name="priority" value="{{ active_review_priority }}">
+    <input type="hidden" name="priority_page" value="{{ active_review_priority_page }}">
+    {% endif %}
     <h2>Update selected jobs</h2>
-    <p class="muted">Select jobs on this page, then save or pass them together. Jobs on other pages are never selected automatically.</p>
+    <p class="muted">Select visible jobs, then save or pass them together. Jobs on other bucket pages are never selected automatically.</p>
     <div class="bulk-selection-controls">
-        <button id="select-visible-jobs" class="button-secondary" type="button">Select all on this page</button>
+        <button id="select-visible-jobs" class="button-secondary" type="button">Select all visible jobs</button>
         <button id="clear-visible-jobs" class="button-secondary" type="button">Clear selections</button>
     </div>
     <label for="bulk-decision-reason">Reason for passing (optional)</label>
@@ -555,7 +559,7 @@
     </div>
 </form>
 {% endif %}
-{% if total_jobs %}
+{% if total_jobs and section_name != "review_needed" %}
 <nav class="pagination" aria-label="Job result pages">
     <span>Showing {{ page_start }}–{{ page_end }} of {{ total_jobs }} jobs</span>
     <span>Page {{ current_page }} of {{ total_pages }}</span>
@@ -586,17 +590,17 @@
 {% endif %}
 {% for priority in review_priority_groups %}
 {% if section_name == "review_needed" %}
-<details class="review-priority-group">
+<details id="review-priority-{{ priority.key }}" class="review-priority-group"{% if priority.open %} open{% endif %}>
     <summary>
         <span>
             <strong>{{ priority.title }}</strong>
             <small>{{ priority.description }}</small>
         </span>
-        <span>{{ priority.total }} total{% if priority.jobs_on_page %} · {{ priority.jobs_on_page }} on this page{% endif %}</span>
+        <span>{{ priority.total }} jobs · {{ priority.company_total }} companies</span>
     </summary>
     <div class="review-priority-content">
     {% if not priority.company_groups %}
-        <p class="muted">No jobs from this group are on the current page.</p>
+        <p class="muted">No jobs are currently in this group.</p>
     {% endif %}
 {% endif %}
 <section class="job-card-grid" aria-label="{{ section_title }} job cards">
@@ -821,6 +825,10 @@
                 <input type="hidden" name="section_name" value="{{ section_name }}">
                 <input type="hidden" name="page" value="{{ current_page }}">
                 <input type="hidden" name="view" value="{{ view_mode }}">
+                {% if section_name == "review_needed" %}
+                <input type="hidden" name="priority" value="{{ priority.key }}">
+                <input type="hidden" name="priority_page" value="{{ priority.current_page }}">
+                {% endif %}
                 <div class="job-decision-field">
                     <label for="review-notes-{{ company_loop.index }}-{{ loop.index }}">Notes for my review (optional)</label>
                     <input id="review-notes-{{ company_loop.index }}-{{ loop.index }}" name="notes" maxlength="300" placeholder="Example: Three-month contract and on-site in California">
@@ -853,11 +861,34 @@
     {% endfor %}
 </section>
 {% if section_name == "review_needed" %}
+    {% if priority.total %}
+    <nav class="pagination" aria-label="{{ priority.title }} pages">
+        <span>Showing {{ priority.page_start }}–{{ priority.page_end }} of {{ priority.total }} jobs</span>
+        <span>Page {{ priority.current_page }} of {{ priority.total_pages }}</span>
+        <div class="pagination-actions">
+            {% if priority.previous_url %}
+            <a class="button-link button-secondary" href="{{ priority.previous_url }}">Previous</a>
+            {% endif %}
+            {% for page_link in priority.page_links %}
+                {% if page_link.number is none %}
+                <span class="pagination-gap" aria-hidden="true">…</span>
+                {% elif page_link.number == priority.current_page %}
+                <span class="button-link pagination-current" aria-current="page">{{ page_link.number }}</span>
+                {% else %}
+                <a class="button-link button-secondary" href="{{ page_link.url }}">{{ page_link.number }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if priority.next_url %}
+            <a class="button-link button-secondary" href="{{ priority.next_url }}">Next</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
     </div>
 </details>
 {% endif %}
 {% endfor %}
-{% if total_pages > 1 %}
+{% if total_pages > 1 and section_name != "review_needed" %}
 <nav class="pagination" aria-label="Job result pages">
     <span>Page {{ current_page }} of {{ total_pages }}</span>
     <div class="pagination-actions">

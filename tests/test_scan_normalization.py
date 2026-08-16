@@ -28,12 +28,23 @@ def _posting(state: str) -> JobPosting:
     )
 
 
-def test_incomplete_posting_cannot_enter_recommendation_groups() -> None:
+def test_incomplete_posting_is_downgraded_to_needs_review() -> None:
     result = _apply_normalization_quality_gate(
         _posting("incomplete"),
         top_match_eligible=True,
         review_needed_eligible=True,
         potential_top_match_eligible=True,
+    )
+
+    assert result == (False, True, False)
+
+
+def test_proven_unrelated_title_remains_excluded() -> None:
+    result = _apply_normalization_quality_gate(
+        _posting("skipped_unrelated"),
+        top_match_eligible=False,
+        review_needed_eligible=True,
+        potential_top_match_eligible=False,
     )
 
     assert result == (False, False, False)

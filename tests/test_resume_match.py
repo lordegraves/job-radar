@@ -994,6 +994,23 @@ def test_incomplete_listing_teaser_cannot_report_no_gaps() -> None:
     ]
 
 
+def test_incomplete_exact_target_role_preserves_specific_alignment() -> None:
+    posting = make_posting(
+        title="Site Reliability Engineer",
+        description="",
+    )
+
+    result = match_resume_to_posting(
+        posting,
+        make_profile(),
+        "Linux infrastructure and site reliability engineering.",
+    )
+
+    assert result.label == "Weak"
+    assert result.role_alignment_confirmed
+    assert result.specific_role_alignment_confirmed
+
+
 def test_generic_gap_keeps_complete_core_qualification_without_ellipsis() -> None:
     posting = make_posting(
         title="Detection Engineering & Response Lead",

@@ -133,38 +133,18 @@ def evaluate_review_needed_eligibility(
     scoring_config: dict[str, Any],
     resume_match: ResumeMatchResult | None = None,
 ) -> bool:
-    review_needed_config = scoring_config["review_needed"]
-
     if top_match_eligible:
         return False
 
     if resume_match is not None and resume_match.has_critical_gap:
         return False
 
-    # An exact target title remains reviewable when the résumé comparison is
-    # uncertain. Silence in a résumé is not proof that the candidate lacks the
-    # qualification.
-    if (
-        resume_match is not None
-        and resume_match.label in {"Poor Fit", "Weak"}
-        and not resume_match.specific_role_alignment_confirmed
-    ):
-        return False
-
-    ranking_rules_are_empty = _ranking_rules_are_empty(scoring_config)
-    if score < review_needed_config["min_score"] and not ranking_rules_are_empty:
-        return False
-
-    if location_status in review_needed_config["excluded_location_statuses"]:
-        return False
-
-    configured_signals = review_needed_config["strong_signals"]
-    if not configured_signals:
-        return True
-    return _has_configured_signal(
-        score_reasons,
-        configured_signals,
-    )
+    # Score, keywords, missing résumé evidence, and unresolved location data
+    # rank a job; they do not prove that it should disappear. Hard practical
+    # conflicts and explicit profile exclusions are enforced by the shared
+    # recommendation boundary after this fit policy runs. Everything else must
+    # remain visible for the user's decision.
+    return True
 
 
 def _ranking_rules_are_empty(scoring_config: dict[str, Any]) -> bool:

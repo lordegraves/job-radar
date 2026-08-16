@@ -57,6 +57,14 @@ def register_scan_routes(
                 "manual:selected",
             )
         )
+        full_scan_summary = _build_latest_scan_summary(
+            runtime_paths.reports_path / "target-scan.json",
+            scan_status=full_scan_receipt,
+        )
+        selected_scan_summary = _build_latest_scan_summary(
+            runtime_paths.reports_path / "targeted-scan.json",
+            scan_status=selected_scan_receipt,
+        )
         snapshot_name = (
             "targeted-scan.json"
             if scan_status.get("trigger_source") == "manual:selected"
@@ -75,6 +83,8 @@ def register_scan_routes(
             scan_summary=scan_summary,
             full_scan_receipt=full_scan_receipt,
             selected_scan_receipt=selected_scan_receipt,
+            full_scan_summary=full_scan_summary,
+            selected_scan_summary=selected_scan_summary,
             company_workspace=build_company_workspace(
                 runtime_paths.database_path
             ),
@@ -86,13 +96,23 @@ def register_scan_routes(
     @app.get("/scan/status")
     def scan_status():
         runtime_paths = get_runtime_paths()
-
-        return jsonify(
-            _build_scan_status_payload(
-                runtime_paths.database_path,
-                scan_runner=scan_runner,
-            )
+        payload = _build_scan_status_payload(
+            runtime_paths.database_path,
+            scan_runner=scan_runner,
         )
+        snapshot_name = (
+            "targeted-scan.json"
+            if payload.get("trigger_source") == "manual:selected"
+            else "target-scan.json"
+        )
+        summary = _build_latest_scan_summary(
+            runtime_paths.reports_path / snapshot_name,
+            scan_status=payload,
+        )
+        payload["potential_top_matches_count"] = int(
+            summary.get("potential_top_matches") or 0
+        )
+        return jsonify(payload)
 
     @app.post("/scan/run")
     def run_scan():

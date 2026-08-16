@@ -39,6 +39,15 @@ def match_resume_to_posting(
     # Preserve résumé line boundaries so one qualification cannot be "proven"
     # by combining unrelated words from separate bullets or positions.
     normalized_resume_text = unescape(resume_text).lower()
+    normalized_title = clean_text(posting.title).lower()
+    role_alignment_confirmed = _role_alignment_is_confirmed(
+        title=normalized_title,
+        candidate_profile=candidate_profile,
+    )
+    specific_role_alignment_confirmed = _title_has_specific_target_role(
+        title=normalized_title,
+        candidate_profile=candidate_profile,
+    )
     description = clean_text(posting.description or "")
     if not _description_is_substantive(description):
         incomplete_gap = (
@@ -51,6 +60,8 @@ def match_resume_to_posting(
             gaps=[incomplete_gap],
             critical_gaps=[],
             requirements_reviewed=[],
+            role_alignment_confirmed=role_alignment_confirmed,
+            specific_role_alignment_confirmed=specific_role_alignment_confirmed,
         )
     role_relevant_text = clean_text(
         " ".join(
@@ -102,15 +113,6 @@ def match_resume_to_posting(
     gaps = _dedupe_preserving_order(
         configured_gaps + qualification_gaps + critical_gaps
     )
-    role_alignment_confirmed = _role_alignment_is_confirmed(
-        title=clean_text(posting.title).lower(),
-        candidate_profile=candidate_profile,
-    )
-    specific_role_alignment_confirmed = _title_has_specific_target_role(
-        title=clean_text(posting.title).lower(),
-        candidate_profile=candidate_profile,
-    )
-
     return ResumeMatchResult(
         label=_classify_resume_match(
             evidence=evidence,

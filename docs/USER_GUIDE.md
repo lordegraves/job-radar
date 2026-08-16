@@ -343,9 +343,15 @@ A scan:
 ## Review Jobs
 
 Needs Review separates unanswered questions from confirmed rejection reasons.
-If Junior cannot verify a qualification from the résumé, the job remains
-reviewable when its title or duties establish enough occupational relevance.
-The queue is ranked into four collapsible groups:
+If Junior cannot prove that a job conflicts with the profile, the job remains
+reviewable. Résumé evidence, Job Fit signals, and description completeness
+determine its rank; weak or missing evidence is not an omission reason. The
+queue is ranked into four collapsible groups:
+
+A clearly unrelated title can still be omitted when Junior's profile-owned
+title check records the exact reason. For example, an Accountant posting does
+not become uncertain merely because Junior avoided downloading its full
+description for an infrastructure profile.
 
 - **Likely matches — confirm details:** strong résumé evidence with one or more
   unresolved qualifications or practical facts.
@@ -357,12 +363,15 @@ The queue is ranked into four collapsible groups:
   reliable comparison.
 
 Each ranked group is organized by company. Company groups and ranked groups
-start collapsed so the page remains readable. Pagination, compact review,
-current-page bulk selection, notes, Save for later, Pass, Open job posting, and
-application tracking continue to work within these groups. Several unverified
+start collapsed so the page remains readable. Each ranked group has its own
+pagination, so expanding a group always shows that group's current jobs.
+Navigating a group keeps it open and does not move the other groups. Compact
+review, visible-job bulk selection, notes, Save for later, Pass, Open job
+posting, and application tracking continue to work within these groups. Several unverified
 qualifications never become a rejection merely because there are several of
-them. A hard professional-fit rejection requires affirmative evidence, such as
-an explicit profile conflict or a clearly unrelated occupation.
+them. A hard rejection requires an auditable affirmative reason, such as an
+explicit profile conflict, proven practical incompatibility, prior user
+decision, or clearly unrelated occupation.
 9. records completion or stage-specific failure
 
 The first scan after installing Build 1.6 creates an incremental cache of
@@ -384,9 +393,9 @@ company, local evaluation, report generation, and the number of source details
 reused without storing descriptions or profile contents.
 
 After completion, the Scan page summarizes the run without requiring a report
-download: duration, companies completed, jobs collected, top matches, jobs
-needing review, jobs omitted as not actionable, new/previously seen/changed
-jobs, and company-source warnings.
+download: duration, companies completed, jobs collected, top matches,
+potential top matches, jobs needing review, jobs omitted as not actionable,
+new/previously seen/changed jobs, and company-source warnings.
 
 Occasional company or network errors may be temporary. The interface preserves error details and does not imply that one collector failure invalidates the entire scan.
 
@@ -636,7 +645,7 @@ on **Scanning** only for employers you want in the active profile, then return
 to setup. Catalog-wide testing is recommended, while the final setup validation
 separately requires at least one enabled company source to connect successfully.
 
-The RC6 Build 1.24 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
+The RC6 Build 1.25 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
 Block, Brex, Canonical, Carta, Carvana, Chime, Cloudflare, Coinbase, Coursera,
 Datadog, Discord, DoorDash, Dropbox, Duolingo, Elastic, Figma, Ford Motor
 Company, GitLab, Google, Grafana Labs, Gusto, HelloFresh, HubSpot, Instacart,

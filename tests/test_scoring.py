@@ -870,7 +870,7 @@ def test_jerry_style_empty_scoring_keeps_zero_score_unknown_fit_for_review() -> 
     )
 
 
-def test_empty_scoring_does_not_rescue_confirmed_poor_fit() -> None:
+def test_unproven_poor_fit_remains_reviewable() -> None:
     config = {
         "positive_keywords": {},
         "negative_keywords": {},
@@ -888,7 +888,7 @@ def test_empty_scoring_does_not_rescue_confirmed_poor_fit() -> None:
     }
     poor = ResumeMatchResult(label="Poor Fit", evidence=(), gaps=("missing",))
 
-    assert not evaluate_review_needed_eligibility(
+    assert evaluate_review_needed_eligibility(
         0, [], "allowed", False, config, poor
     )
 
@@ -914,7 +914,7 @@ def test_exact_target_role_with_unverified_qualifications_stays_reviewable() -> 
         resume_match=uncertain_match,
     )
 
-    assert not evaluate_review_needed_eligibility(
+    assert evaluate_review_needed_eligibility(
         score=180,
         score_reasons=["+30 title:infrastructure"],
         location_status="unknown",
@@ -1363,6 +1363,44 @@ def test_evaluate_review_needed_eligibility_rejects_weak_signal() -> None:
         scoring_config=config,
     )
 
+    assert result is True
+
+
+def test_review_needed_does_not_require_legacy_signal_after_resume_review() -> None:
+    config = make_policy_scoring_config()
+    result = evaluate_review_needed_eligibility(
+        score=0,
+        score_reasons=[],
+        location_status="unknown",
+        top_match_eligible=False,
+        scoring_config=config,
+        resume_match=ResumeMatchResult(
+            label="Weak",
+            evidence=[],
+            gaps=["The posting does not provide enough evidence."],
+            critical_gaps=[],
+        ),
+    )
+
+    assert result is True
+
+
+def test_review_needed_rejects_only_affirmative_resume_conflict() -> None:
+    config = make_policy_scoring_config()
+    result = evaluate_review_needed_eligibility(
+        score=200,
+        score_reasons=["+30 title:infrastructure"],
+        location_status="allowed",
+        top_match_eligible=False,
+        scoring_config=config,
+        resume_match=ResumeMatchResult(
+            label="Poor Fit",
+            evidence=[],
+            gaps=["Security engineering is a declared profile gap."],
+            critical_gaps=["Security engineering is central to this role."],
+        ),
+    )
+
     assert result is False
 
 
@@ -1401,7 +1439,7 @@ def test_policy_config_omits_data_center_sourcing_roles_from_review_needed() -> 
     assert "-90 title:sourcing" in reasons
     assert top_match_eligible is False
     assert top_match_reasons == [f"score_below_top_match_threshold:{score}<120"]
-    assert review_needed_eligible is False
+    assert review_needed_eligible is True
 
 
 def test_policy_config_body_linux_alone_is_not_top_match() -> None:
@@ -1484,4 +1522,4 @@ def test_policy_config_data_center_alone_is_review_needed_not_top_match() -> Non
     assert "+10 body:hpc" in reasons
     assert top_match_eligible is False
     assert top_match_reasons == ["score_below_top_match_threshold:58<120"]
-    assert review_needed_eligible is False
+    assert review_needed_eligible is True

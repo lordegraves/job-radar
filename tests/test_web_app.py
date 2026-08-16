@@ -1258,7 +1258,9 @@ def test_report_section_paginates_large_result_sets(
 
     first_page = client.get("/reports/section/review_needed")
     first_html = first_page.get_data(as_text=True)
-    last_page = client.get("/reports/section/review_needed?page=3")
+    last_page = client.get(
+        "/reports/section/review_needed?priority=low_confidence&low_confidence_page=3"
+    )
     last_html = last_page.get_data(as_text=True)
 
     assert first_page.status_code == 200
@@ -1266,9 +1268,10 @@ def test_report_section_paginates_large_result_sets(
     assert "Synthetic Review Role 01" in first_html
     assert "Synthetic Review Role 20" in first_html
     assert "Synthetic Review Role 21" not in first_html
-    assert 'href="/reports/section/review_needed?page=2">Next</a>' in first_html
+    assert "priority=low_confidence" in first_html
+    assert "low_confidence_page=2" in first_html
     assert 'aria-current="page">1</span>' in first_html
-    assert 'href="/reports/section/review_needed?page=3">3</a>' in first_html
+    assert "low_confidence_page=3" in first_html
     assert "Expand all companies" in first_html
     assert "Collapse all companies" in first_html
     assert 'class="company-toggle-closed">Expand</span>' in first_html
@@ -1282,6 +1285,10 @@ def test_report_section_paginates_large_result_sets(
     assert "Notes are for you and do not affect scoring." in first_html
     assert "Show supporting details" in first_html
     assert last_page.status_code == 200
+    assert (
+        'id="review-priority-low_confidence" class="review-priority-group" open'
+        in last_html
+    )
     assert "Showing 41–45 of 45 jobs" in last_html
     assert "Synthetic Review Role 41" in last_html
     assert "Synthetic Review Role 45" in last_html
@@ -1378,8 +1385,8 @@ def test_review_needed_compact_view_is_bounded_and_keeps_controls(
     assert "Compact Synthetic Role 01" in first_html
     assert "Compact Synthetic Role 50" in first_html
     assert "Compact Synthetic Role 51" not in first_html
-    assert "Select all on this page" in first_html
-    assert "Jobs on other pages are never selected automatically." in first_html
+    assert "Select all visible jobs" in first_html
+    assert "Jobs on other bucket pages are never selected automatically." in first_html
     assert "Review details and individual actions" in first_html
     assert "I applied" in first_html
     assert ".job-links .button-link" in first_html
@@ -1387,11 +1394,10 @@ def test_review_needed_compact_view_is_bounded_and_keeps_controls(
     assert "Save for later" in first_html
     assert "Pass" in first_html
     assert 'href="#review-page-top">Back to top</a>' in first_html
-    assert first_html.count("Page 1 of 2") == 2
-    assert (
-        'href="/reports/section/review_needed?page=2&amp;view=compact"'
-        in first_html
-    )
+    assert first_html.count("Page 1 of 2") == 1
+    assert "priority=low_confidence" in first_html
+    assert "low_confidence_page=2" in first_html
+    assert "view=compact" in first_html
 
 
 def test_review_needed_is_ranked_into_four_collapsible_company_groups(
@@ -1446,7 +1452,7 @@ def test_review_needed_is_ranked_into_four_collapsible_company_groups(
         "/reports/section/review_needed"
     ).get_data(as_text=True)
 
-    assert html.count('<details class="review-priority-group">') == 4
+    assert html.count('class="review-priority-group"') == 4
     assert "Likely matches — confirm details" in html
     assert "Plausible matches" in html
     assert "Low-confidence matches" in html
@@ -1455,6 +1461,66 @@ def test_review_needed_is_ranked_into_four_collapsible_company_groups(
     assert "Save for later" in html
     assert "Pass" in html
     assert "I applied — track application" in html
+
+
+def test_review_needed_paginates_each_priority_bucket_independently(
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    database_file = tmp_path / "job_radar.sqlite3"
+    reports_path = tmp_path / "reports"
+    reports_path.mkdir()
+    write_settings_file(settings_file, database_file, reports_path=reports_path)
+    jobs = [
+        make_report_snapshot_job(
+            title=f"Likely Role {index:02d}",
+            url=f"https://example.invalid/likely/{index}",
+            company="Likely Company",
+            resume_match="Strong",
+            job_radar_id=f"jr-likely-page-{index:04d}",
+        )
+        for index in range(1, 26)
+    ] + [
+        make_report_snapshot_job(
+            title=f"Plausible Role {index:02d}",
+            url=f"https://example.invalid/plausible/{index}",
+            company="Plausible Company",
+            resume_match="Medium",
+            job_radar_id=f"jr-plausible-page-{index:04d}",
+        )
+        for index in range(1, 26)
+    ]
+    write_report_snapshot_file(
+        reports_path / "target-scan.json",
+        generated_at="2026-08-16T10:00:00+00:00",
+        review_needed=jobs,
+    )
+
+    client = create_app(settings_path=str(settings_file)).test_client()
+    first_html = client.get(
+        "/reports/section/review_needed"
+    ).get_data(as_text=True)
+    plausible_second_html = client.get(
+        "/reports/section/review_needed"
+        "?priority=plausible&plausible_page=2"
+    ).get_data(as_text=True)
+
+    assert "Likely Role 01" in first_html
+    assert "Likely Role 20" in first_html
+    assert "Likely Role 21" not in first_html
+    assert "Plausible Role 01" in first_html
+    assert "Plausible Role 20" in first_html
+    assert "Plausible Role 21" not in first_html
+    assert first_html.count("Showing 1–20 of 25 jobs") == 2
+    assert "No jobs from this group are on the current page." not in first_html
+    assert "Likely Role 01" in plausible_second_html
+    assert "Plausible Role 20" not in plausible_second_html
+    assert "Plausible Role 21" in plausible_second_html
+    assert "Plausible Role 25" in plausible_second_html
+    assert (
+        'id="review-priority-plausible" class="review-priority-group" open'
+        in plausible_second_html
+    )
 
 
 def test_report_jobs_can_be_passed_together_atomically(
@@ -3438,6 +3504,7 @@ def test_scan_status_endpoint_returns_durable_progress(
         "jobs_seen": 0,
         "jobs_changed": 0,
         "top_matches_count": 0,
+        "potential_top_matches_count": 0,
         "review_needed_count": 0,
     }
 
@@ -3504,6 +3571,10 @@ def test_scan_status_endpoint_exposes_completed_report_links(
     assert '<span id="latest-duration">5m 00s</span>' in page_html
     assert '<span id="latest-jobs">500</span> jobs collected.' in page_html
     assert '<span id="latest-top-matches">2</span> top matches' in page_html
+    assert (
+        '<span id="latest-potential-top-matches">0</span> potential top matches'
+        in page_html
+    )
     assert '<span id="latest-review-needed">8</span> need review' in page_html
     assert '<span id="latest-not-actionable">490</span> not actionable' in page_html
     assert 'class="scan-result-metrics"' not in page_html
@@ -5872,7 +5943,7 @@ review_needed:
     assert 'name="employment-type" type="checkbox" value="Contract"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Remote"' in html
     assert 'name="workplace-arrangement" type="checkbox" value="Flex"' in html
-    assert "RC6 Build 1.24" in html
+    assert "RC6 Build 1.25" in html
     assert 'value="Remote" checked' not in html
     assert "If arrangement or location is unclear" not in html
     assert "Add a location" in html

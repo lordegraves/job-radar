@@ -9,12 +9,12 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.24`
+- Current field-test build: `RC6 Build 1.25`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-RC6 Build 1.24 is a field-test build. It makes blank profile fields behave as
+RC6 Build 1.25 is a field-test build. It makes blank profile fields behave as
 unrestricted job-search filters, warns about conflicting choices, and binds
 troubleshooting packages to the selected profile's latest completed scan. It also improves company setup by accepting
 any official company page, discovering linked recruiting platforms through a
@@ -41,11 +41,14 @@ exact target-role title plus demonstrated skill evidence can reach Top Match.
 Application encouragement is not treated as a required qualification.
 
 Résumé comparison now distinguishes verified support, affirmative conflicts,
-and qualifications Junior could not verify. Missing résumé evidence never
-becomes a rejection merely because several requirements are uncertain. An
-exact target-role match remains available for review unless the posting proves
-a conflict with a firm profile choice. Clearly unrelated occupations and
-explicit profile exclusions remain non-actionable. Needs Review ranks the
+and qualifications Junior could not verify. Missing résumé evidence, a low
+legacy keyword score, or incomplete source text never becomes a rejection
+merely because Junior is uncertain. These signals rank the review queue; they
+do not remove a job. A title that the profile-owned planner can affirmatively
+identify as an unrelated occupation remains excluded even when Junior wisely
+skips retrieving its complete description. Other omissions require an auditable affirmative conflict, an
+explicit profile exclusion, a prior user decision, or another proven practical
+incompatibility. Needs Review ranks the
 remaining uncertainty into four collapsible groups—likely, plausible,
 low-confidence, and incomplete—and keeps jobs grouped by company with the same
 save, pass, apply, notes, bulk-selection, and pagination controls.
@@ -256,12 +259,15 @@ Review Needed, and New Jobs groups remain organized by the scan's
 classification. Top Matches retain confirmed practical eligibility. Potential Top
 Matches already satisfy the profile's existing top-match score and strong-signal
 rules but list the practical facts still awaiting confirmation; no threshold is
-lowered and no internal score is shown. Each group loads at most 20 full job
-cards per page. Review Needed also offers a compact view with at most 50
-collapsed job summaries per page, page-only Select all, matching navigation at
-the top and bottom, and a Back to top link that never changes pages or clears
-selections. Numbered page links allow direct movement between distant pages.
-Jobs on each page are grouped into collapsible company sections; a company
+lowered and no internal score is shown. Each ordinary result group loads at
+most 20 full job cards per page. In Review Needed, each of the four ranked
+buckets has its own page of at most 20 full cards or 50 compact summaries.
+Opening or paging one bucket never produces an empty bucket because another
+bucket owns the global page, and the bucket stays open after navigation.
+Bulk selection applies only to the jobs currently visible across the bucket
+pages. Numbered links allow direct movement within each bucket, and Back to top
+never changes pages or clears selections. Visible jobs are grouped into
+collapsible company sections; a company
 that spans pages shows both the number on the current page and its total in the
 result group. Each company header clearly shows **Expand** or **Collapse**, and
 the page also provides expand-all and collapse-all controls. Changing a company
@@ -500,7 +506,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support email handoff, MSIX, and signing items above remain planned
-RC6 capabilities and are not implemented in RC6 Build 1.24. Users choose the
+RC6 capabilities and are not implemented in RC6 Build 1.25. Users choose the
 profile and download the troubleshooting ZIP themselves. Interactive
 company-source discovery writes correlated events to the bounded
 `junior-application.log`. Each attempt records its submission type, public
@@ -671,7 +677,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.24.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.25.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release

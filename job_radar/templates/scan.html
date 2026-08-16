@@ -184,7 +184,7 @@
         <ul class="scan-result-summary-list" aria-label="Latest completed scan summary">
             <li><strong>Duration:</strong> <span id="latest-duration">{{ full_scan_receipt.elapsed_label or "Unknown" }}</span></li>
             <li><strong>Collection:</strong> <span id="latest-companies">{{ full_scan_receipt.companies_scanned }}</span> company sources; <span id="latest-jobs">{{ full_scan_receipt.jobs_found }}</span> jobs collected.</li>
-            <li><strong>Recommendation outcome:</strong> <span id="latest-top-matches">{{ full_scan_receipt.top_matches_count }}</span> top matches; <span id="latest-review-needed">{{ full_scan_receipt.review_needed_count }}</span> need review; <span id="latest-not-actionable">{{ full_scan_receipt.jobs_not_actionable }}</span> not actionable.</li>
+            <li><strong>Recommendation outcome:</strong> <span id="latest-top-matches">{{ full_scan_receipt.top_matches_count }}</span> top matches; <span id="latest-potential-top-matches">{{ full_scan_summary.potential_top_matches if full_scan_summary.available else 0 }}</span> potential top matches; <span id="latest-review-needed">{{ full_scan_receipt.review_needed_count }}</span> need review; <span id="latest-not-actionable">{{ full_scan_receipt.jobs_not_actionable }}</span> not actionable.</li>
             <li><strong>Job changes:</strong> <span id="latest-new-jobs">{{ full_scan_receipt.jobs_new }}</span> new; <span id="latest-seen-jobs">{{ full_scan_receipt.jobs_seen }}</span> previously seen; <span id="latest-changed-jobs">{{ full_scan_receipt.jobs_changed }}</span> changed.</li>
             <li><strong>Source health:</strong> <span id="latest-warnings">{{ full_scan_receipt.collector_errors }}</span> warnings.</li>
         </ul>
@@ -212,7 +212,7 @@
         <ul class="scan-result-summary-list" aria-label="Latest selected-company scan summary">
             <li><strong>Duration:</strong> <span id="selected-duration">{{ selected_scan_receipt.elapsed_label or "Unknown" }}</span></li>
             <li><strong>Collection:</strong> <span id="selected-companies">{{ selected_scan_receipt.companies_scanned }}</span> company sources; <span id="selected-jobs">{{ selected_scan_receipt.jobs_found }}</span> jobs collected.</li>
-            <li><strong>Recommendation outcome:</strong> <span id="selected-top-matches">{{ selected_scan_receipt.top_matches_count }}</span> top matches; <span id="selected-review-needed">{{ selected_scan_receipt.review_needed_count }}</span> need review; <span id="selected-not-actionable">{{ selected_scan_receipt.jobs_not_actionable }}</span> not actionable.</li>
+            <li><strong>Recommendation outcome:</strong> <span id="selected-top-matches">{{ selected_scan_receipt.top_matches_count }}</span> top matches; <span id="selected-potential-top-matches">{{ selected_scan_summary.potential_top_matches if selected_scan_summary.available else 0 }}</span> potential top matches; <span id="selected-review-needed">{{ selected_scan_receipt.review_needed_count }}</span> need review; <span id="selected-not-actionable">{{ selected_scan_receipt.jobs_not_actionable }}</span> not actionable.</li>
         </ul>
     </div>
 
@@ -344,6 +344,7 @@
     const selectedCompanies = document.getElementById("selected-companies");
     const selectedJobs = document.getElementById("selected-jobs");
     const selectedTopMatches = document.getElementById("selected-top-matches");
+    const selectedPotentialTopMatches = document.getElementById("selected-potential-top-matches");
     const selectedReviewNeeded = document.getElementById("selected-review-needed");
     const selectedNotActionable = document.getElementById("selected-not-actionable");
     const scanProblemsHeading = document.getElementById("scan-problems-heading");
@@ -351,6 +352,7 @@
     const latestCompanies = document.getElementById("latest-companies");
     const latestJobs = document.getElementById("latest-jobs");
     const latestTopMatches = document.getElementById("latest-top-matches");
+    const latestPotentialTopMatches = document.getElementById("latest-potential-top-matches");
     const latestReviewNeeded = document.getElementById("latest-review-needed");
     const latestNotActionable = document.getElementById("latest-not-actionable");
     const latestNewJobs = document.getElementById("latest-new-jobs");
@@ -433,6 +435,7 @@
             latestCompanies.textContent = status.companies_scanned;
             latestJobs.textContent = status.jobs_found;
             latestTopMatches.textContent = status.top_matches_count;
+            latestPotentialTopMatches.textContent = status.potential_top_matches_count || 0;
             latestReviewNeeded.textContent = status.review_needed_count;
             latestNotActionable.textContent = status.jobs_not_actionable;
             latestNewJobs.textContent = status.jobs_new;
@@ -450,6 +453,7 @@
             selectedCompanies.textContent = status.companies_scanned;
             selectedJobs.textContent = status.jobs_found;
             selectedTopMatches.textContent = status.top_matches_count;
+            selectedPotentialTopMatches.textContent = status.potential_top_matches_count || 0;
             selectedReviewNeeded.textContent = status.review_needed_count;
             selectedNotActionable.textContent = status.jobs_not_actionable;
         }
