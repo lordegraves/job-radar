@@ -6,8 +6,15 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
-- Prepare **RC6 Build 1.25** for field testing. Résumé qualification matching
-  now treats missing evidence as an unanswered question rather than a
+- Prepare **RC6 Build 1.26** for field testing. Profile configuration export
+  now accepts older valid scoring settings that omit the optional Top Match
+  review-signal list, normalizes that list to empty in the portable file, and
+  returns a useful Profile-page error instead of an unhandled server response
+  when expected export validation fails. Add current macOS source-install,
+  update, data-location, Keychain, and configuration-transfer instructions;
+  packaged macOS distribution remains unavailable.
+- RC6 Build 1.25 changed résumé qualification matching to treat missing
+  evidence as an unanswered question rather than a
   rejection. Only affirmative profile conflicts and clearly unrelated
   occupations can create hard professional-fit exclusions. Exact target-role
   jobs with unverified qualifications remain reviewable. Needs Review is

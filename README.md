@@ -9,12 +9,14 @@ junior does **not** apply to jobs automatically, contact employers, scrape Linke
 ## Status
 
 - Current version: `0.2.0`
-- Current field-test build: `RC6 Build 1.25`
+- Current field-test build: `RC6 Build 1.26`
 - MVP completed and acceptance-tested: July 14, 2026
 - Current development branch: `feature/productization-foundation`
 - Python requirement: 3.11 or newer
 
-RC6 Build 1.25 is a field-test build. It makes blank profile fields behave as
+RC6 Build 1.26 is a field-test build. It restores profile-configuration export
+for older managed profiles whose valid scoring settings predate the optional
+Top Match review-signal list. It makes blank profile fields behave as
 unrestricted job-search filters, warns about conflicting choices, and binds
 troubleshooting packages to the selected profile's latest completed scan. It also improves company setup by accepting
 any official company page, discovering linked recruiting platforms through a
@@ -506,7 +508,7 @@ Existing user-owned data must remain outside the application package and must
 not be removed by an update, repair, or uninstall.
 
 The Contact support email handoff, MSIX, and signing items above remain planned
-RC6 capabilities and are not implemented in RC6 Build 1.25. Users choose the
+RC6 capabilities and are not implemented in RC6 Build 1.26. Users choose the
 profile and download the troubleshooting ZIP themselves. Interactive
 company-source discovery writes correlated events to the bounded
 `junior-application.log`. Each attempt records its submission type, public
@@ -677,7 +679,7 @@ Build the unsigned per-user Windows installer:
 .\scripts\build_windows_installer.ps1
 ```
 
-The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.25.exe` installs under the
+The resulting `artifacts\installer\Junior-Setup-0.2.0-RC6-build-1.26.exe` installs under the
 current user's local application area, adds a Start Menu shortcut, and offers
 an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
@@ -715,6 +717,49 @@ sh Junior/install.sh
 The launcher checks for Linux and a WebKit GTK desktop library before opening
 Junior. Uninstall with `sh Junior/uninstall.sh` from the extracted archive, or
 the installed copy, to remove application files while preserving user data.
+
+### macOS source installation
+
+RC6 Build 1.26 does not yet provide a packaged macOS `.app`, DMG, or normal-user
+installer. The current Mac path is a developer/field-tester installation from
+the cloned repository and requires Python 3.11 or newer. macOS supplies the
+WKWebView runtime used by pywebview; Junior stores credentials in Keychain and
+user-owned application data under `~/Library/Application Support/JobRadar`.
+
+From Terminal in the cloned repository, create an isolated environment,
+install Junior, and launch the shared desktop application:
+
+```sh
+cd /absolute/path/to/junior
+python3 --version
+python3 -m venv .venv
+./.venv/bin/python -m pip install --upgrade pip
+./.venv/bin/python -m pip install -e .
+./.venv/bin/junior-desktop
+```
+
+If `python3 --version` reports anything older than 3.11, install a current
+Python release first and use that interpreter to create `.venv`. Do not point
+the Mac installation at a Windows data directory. For a supported
+configuration handoff, first download and import the company catalog, then
+download and import the profile configuration so its company selections can
+be resolved. Upload the résumé separately because profile export deliberately
+excludes résumé files and text. Credentials must be configured again on the
+Mac because Junior never exports them from Windows Credential Manager or
+imports them into macOS Keychain.
+
+To update this source installation after pulling a newer reviewed commit, run:
+
+```sh
+cd /absolute/path/to/junior
+git pull --ff-only
+./.venv/bin/python -m pip install -e .
+./.venv/bin/junior-desktop
+```
+
+The repository clone and virtual environment are application code. Removing
+them does not remove the separate user-owned Junior data directory. Back up
+that data before manual migration or repair work.
 
 ### Container/server mode
 

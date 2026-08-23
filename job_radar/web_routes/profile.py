@@ -175,7 +175,16 @@ def register_profile_routes(
                 "error",
                 "Choose an available saved profile to export.",
             )
-        filename, content = export_profile(database_path, profile_id)
+        try:
+            filename, content = export_profile(database_path, profile_id)
+        except (ConfigError, ProfileStorageError, ValueError):
+            return _profile_redirect(
+                "error",
+                "Junior could not export that profile. Review the saved profile "
+                "and try again. If the problem continues, contact Clayton Graves "
+                "at claytonmgraves@outlook.com. Do not include passwords, access "
+                "tokens, or credentials.",
+            )
         response = make_response(content)
         response.headers["Content-Type"] = "application/json; charset=utf-8"
         response.headers["Content-Disposition"] = (

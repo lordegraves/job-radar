@@ -86,6 +86,27 @@ def test_profile_transfer_creates_new_inactive_profile_without_resume(tmp_path: 
     assert exported.profile_id not in text
 
 
+def test_profile_export_normalizes_legacy_missing_review_signals(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.sqlite3"
+    scoring = build_neutral_scoring_config()
+    del scoring["top_matches"]["review_signals"]
+    profile = ManagedProfile(
+        profile_id="profile_11111111",
+        display_name="Legacy Profile",
+        scoring_config=scoring,
+    )
+    create_profile(source, profile)
+
+    _, content = export_profile(source, profile.profile_id)
+
+    payload = json.loads(content)
+    assert payload["profile"]["scoring_config"]["top_matches"][
+        "review_signals"
+    ] == []
+
+
 def test_profile_import_rejects_unknown_fields(tmp_path: Path) -> None:
     payload = {
         "format": "junior-profile-configuration",

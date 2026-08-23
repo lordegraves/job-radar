@@ -645,7 +645,7 @@ on **Scanning** only for employers you want in the active profile, then return
 to setup. Catalog-wide testing is recommended, while the final setup validation
 separately requires at least one enabled company source to connect successfully.
 
-The RC6 Build 1.25 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
+The RC6 Build 1.26 starter set is: Affirm, Airbnb, Anduril Industries, Asana,
 Block, Brex, Canonical, Carta, Carvana, Chime, Cloudflare, Coinbase, Coursera,
 Datadog, Discord, DoorDash, Dropbox, Duolingo, Elastic, Figma, Ford Motor
 Company, GitLab, Google, Grafana Labs, Gusto, HelloFresh, HubSpot, Instacart,

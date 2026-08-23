@@ -302,9 +302,13 @@ def _scoring_config(value: object) -> dict[str, object] | None:
     locations = _mapping(data["location_preferences"], "location scoring")
     _exact_keys(locations, {"allowed", "conditional", "skipped"}, "location scoring")
     top = _mapping(data["top_matches"], "Top Match settings")
-    _exact_keys(
+    # Older managed profiles legitimately omit review_signals because the
+    # scoring loader has always treated it as an optional empty list. Preserve
+    # that compatibility during export while still rejecting unknown fields.
+    _required_and_optional_keys(
         top,
-        {"min_score", "excluded_title_keywords", "strong_signals", "review_signals"},
+        {"min_score", "excluded_title_keywords", "strong_signals"},
+        {"review_signals"},
         "Top Match settings",
     )
     review = _mapping(data["review_needed"], "Needs Review settings")
@@ -324,7 +328,9 @@ def _scoring_config(value: object) -> dict[str, object] | None:
             "min_score": _integer(top["min_score"], "Top Match threshold"),
             "excluded_title_keywords": list(_string_tuple(top["excluded_title_keywords"], "excluded titles")),
             "strong_signals": list(_string_tuple(top["strong_signals"], "Top Match signals")),
-            "review_signals": list(_string_tuple(top["review_signals"], "review signals")),
+            "review_signals": list(
+                _string_tuple(top.get("review_signals", []), "review signals")
+            ),
         },
         "review_needed": {
             "min_score": _integer(review["min_score"], "Needs Review threshold"),
@@ -416,6 +422,17 @@ def _boolean(value: object, label: str) -> bool:
 
 def _exact_keys(data: dict[str, object], expected: set[str], label: str) -> None:
     if set(data) != expected:
+        raise ConfigError(f"The imported {label} has missing or unsupported fields.")
+
+
+def _required_and_optional_keys(
+    data: dict[str, object],
+    required: set[str],
+    optional: set[str],
+    label: str,
+) -> None:
+    keys = set(data)
+    if not required.issubset(keys) or not keys.issubset(required | optional):
         raise ConfigError(f"The imported {label} has missing or unsupported fields.")
 
 

@@ -227,7 +227,7 @@ catalog. Any official company URL may seed bounded public-page discovery.
 | Privacy-safe reconstruction | Completed | Unified diagnostics record bounded page, host, candidate, collector, outcome, timing, and job-count evidence without secrets, profile contents, raw errors, or URL query data. |
 | Honest failure | Completed | Unsupported results identify a Junior compatibility limitation, do not ask users to hunt for another URL, and provide a safe support path. |
 
-### Current implementation (RC6 Build 1.25 observations)
+### Current implementation (RC6 Build 1.26 observations)
 
 - External company-name lookup and its Settings control have been removed.
 - NetApp's ordinary careers homepage resolves to TalentBrew and returned 302

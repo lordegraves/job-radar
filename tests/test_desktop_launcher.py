@@ -468,7 +468,7 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
     )
 
     title, url, options = calls["window"]
-    assert title == "Junior — RC6 Build 1.25"
+    assert title == "Junior — RC6 Build 1.26"
     assert url == "http://127.0.0.1:5000/"
     assert options["resizable"] is True
     assert options["min_size"] == (960, 640)

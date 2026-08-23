@@ -5,7 +5,9 @@ from pathlib import Path
 
 from job_radar.employer_models import EmployerSource
 from job_radar.employer_storage import list_employer_sources, upsert_employer_source
+from job_radar.config import ConfigError
 from job_radar.profile_models import ManagedProfile
+from job_radar.profile_scoring import build_neutral_scoring_config
 from job_radar.profile_storage import create_profile, get_active_profile, list_profiles, set_active_profile
 from job_radar.web_app import create_app
 
@@ -65,6 +67,69 @@ def test_profile_page_exports_named_profile_and_imports_inactive_copy(tmp_path: 
         and profile.resume is None
         for profile in list_profiles(database)
     )
+
+
+def test_profile_route_exports_legacy_scoring_without_internal_error(
+    tmp_path: Path,
+) -> None:
+    settings = tmp_path / "settings.yaml"
+    database = tmp_path / "junior.sqlite3"
+    _settings(settings, database)
+    scoring = build_neutral_scoring_config()
+    del scoring["top_matches"]["review_signals"]
+    profile = ManagedProfile(
+        profile_id="profile_11111111",
+        display_name="Legacy Profile",
+        scoring_config=scoring,
+    )
+    create_profile(database, profile)
+    client = create_app(settings_path=settings, base_directory=tmp_path).test_client()
+
+    response = client.post(
+        "/profile/export",
+        data={"profile_id": profile.profile_id},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["Content-Disposition"].endswith(
+        'filename="junior-profile-configuration.json"'
+    )
+
+
+def test_profile_route_reports_expected_export_failure_safely(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings = tmp_path / "settings.yaml"
+    database = tmp_path / "junior.sqlite3"
+    _settings(settings, database)
+    profile = ManagedProfile(
+        profile_id="profile_11111111",
+        display_name="Saved Profile",
+    )
+    create_profile(database, profile)
+    set_active_profile(database, profile.profile_id)
+
+    def fail_export(*_args, **_kwargs):
+        raise ConfigError("private export detail")
+
+    monkeypatch.setattr(
+        "job_radar.web_routes.profile.export_profile",
+        fail_export,
+    )
+    client = create_app(settings_path=settings, base_directory=tmp_path).test_client()
+
+    response = client.post(
+        "/profile/export",
+        data={"profile_id": profile.profile_id},
+        follow_redirects=True,
+    )
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Junior could not export that profile." in html
+    assert "claytonmgraves@outlook.com" in html
+    assert "private export detail" not in html
 
 
 def test_companies_page_import_appends_global_catalog_only(tmp_path: Path) -> None:
