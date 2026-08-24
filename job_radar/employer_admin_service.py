@@ -25,7 +25,6 @@ from job_radar.employer_storage import (
 from job_radar.profile_storage import get_profile, list_profiles
 from job_radar.storage import initialize_database
 
-
 NOT_CHECKED = "not_checked"
 VALID = "valid"
 INVALID = "invalid"
@@ -95,6 +94,7 @@ class EmployerAdminError(ValueError):
 
 _SLUG_SOURCES = {"ashby", "greenhouse", "lever", "rippling"}
 _URL_SOURCES = {
+    "avature",
     "dayforce",
     "html",
     "icims",
@@ -673,6 +673,10 @@ def validate_source_configuration(employer: EmployerSource) -> tuple[str, ...]:
     config = employer.source_config
     for field in source_fields(employer.source_type):
         value = config.get(field.key)
+        if field.key == "organization" and employer.source_type == "usajobs":
+            query_params = config.get("query_params")
+            if isinstance(query_params, dict):
+                value = query_params.get("Organization")
         if field.required and not _has_text(value):
             issues.append(f"{field.label} is required.")
         elif _has_text(value) and field.key.endswith("url") and not _http_url(value):
@@ -750,7 +754,7 @@ def _load_records(database_path: str | Path) -> list[EmployerAdminRecord]:
                 assigned_profile_count=int(row["assigned_count"]),
                 source_change_pending_test=bool(
                     row["source_change_pending_test"]
-                    if "source_change_pending_test" in row.keys()
+                    if "source_change_pending_test" in row.keys()  # noqa: SIM118, SIM401 - sqlite3.Row has no get and membership checks values
                     else False
                 ),
             )

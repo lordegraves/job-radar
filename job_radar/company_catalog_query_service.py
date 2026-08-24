@@ -21,6 +21,7 @@ UNAVAILABLE = "unavailable"
 
 _SLUG_SOURCE_TYPES = {"ashby", "greenhouse", "lever", "rippling"}
 _URL_SOURCE_TYPES = {
+    "avature",
     "dayforce",
     "eightfold",
     "html",

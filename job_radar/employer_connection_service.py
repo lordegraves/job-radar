@@ -16,9 +16,8 @@ from job_radar.database import connect_database
 from job_radar.diagnostic_service import classify_collector_failure
 from job_radar.employer_admin_service import validate_source_configuration
 from job_radar.employer_storage import get_employer_source
-from job_radar.storage import initialize_database
 from job_radar.profile_storage import get_active_profile
-
+from job_radar.storage import initialize_database
 
 SUCCESS = "success"
 ERROR = "error"
@@ -129,7 +128,7 @@ def test_employer_connection(
                 "Junior could not reach the job source. Check the network "
                 "connection and try again.",
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - health checks must fail closed safely
             # Raw exception text may contain URLs, credentials, or response data.
             health = _error_health(
                 "unexpected",
@@ -146,6 +145,7 @@ def test_employer_connection(
                 )
                 or employer.source_type == "greenhouse",
                 profile_scoped=employer.source_type == "walmart",
+                bounded_sample=True,
             )
 
     _store_health(database_path, employer_id, health)
@@ -236,6 +236,7 @@ def _collection_health(
     context: str,
     confirmed_empty: bool = False,
     profile_scoped: bool = False,
+    bounded_sample: bool = False,
 ) -> EmployerConnectionHealth:
     """Treat an empty result as ambiguous source health, not proof of success."""
 
@@ -270,6 +271,16 @@ def _collection_health(
             job_count=0,
         )
     noun = "job" if count == 1 else "jobs"
+    if bounded_sample:
+        return EmployerConnectionHealth(
+            state=SUCCESS,
+            category="connected_sample",
+            message=(
+                f"{context} succeeded and found at least {count} {noun} in a "
+                "bounded source-health sample. A scan checks additional pages."
+            ),
+            job_count=count,
+        )
     return EmployerConnectionHealth(
         state=SUCCESS,
         category="connected",

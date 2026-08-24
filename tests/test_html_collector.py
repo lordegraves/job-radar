@@ -167,14 +167,13 @@ def test_parse_html_jobs_supports_configured_nintendo_job_cards() -> None:
     assert jobs[0].source_job_id == "4130435009"
 
 
-def test_parse_html_jobs_supports_configured_valve_query_links() -> None:
+def test_parse_html_jobs_supports_valve_query_links_without_configuration() -> None:
     html = """
     <a href="https://www.valvesoftware.com/en/jobs?job_id=27">
       <h5 class="job_title">Software Engineer</h5>
     </a>
     """
     config = _company_config()
-    config["job_link_patterns"] = ["?job_id="]
 
     jobs = _parse_html_jobs(
         config,
@@ -185,6 +184,46 @@ def test_parse_html_jobs_supports_configured_valve_query_links() -> None:
     assert len(jobs) == 1
     assert jobs[0].title == "Software Engineer"
     assert jobs[0].source_job_id == "27"
+
+
+def test_collect_html_jobs_rejects_browser_challenge(monkeypatch) -> None:
+    class FakeResponse:
+        text = (
+            '<script src="/cdn-cgi/challenge-platform/start"></script>'
+            "Enable JavaScript and cookies to continue"
+        )
+
+    monkeypatch.setattr(
+        "job_radar.collectors.html.get_response",
+        lambda *_args, **_kwargs: FakeResponse(),
+    )
+
+    with pytest.raises(CollectorError, match="interactive browser challenge"):
+        collect_html_jobs(_company_config())
+
+
+def test_parse_html_jobs_supports_rocket_lab_position_cards() -> None:
+    html = """
+    <div class="job__container">
+      <a class="job" href="/careers/positions/systems-engineer-denver-123/">
+        <div class="job__title">Systems Engineer</div>
+        <div class="job__location">Denver, CO</div>
+      </a>
+    </div>
+    """
+
+    jobs = _parse_html_jobs(
+        _company_config(),
+        html,
+        "https://rocketlabcorp.com/careers/positions/",
+    )
+
+    assert len(jobs) == 1
+    assert jobs[0].title == "Systems Engineer"
+    assert jobs[0].source_url == (
+        "https://rocketlabcorp.com/careers/positions/"
+        "systems-engineer-denver-123/"
+    )
 
 def test_extract_source_job_id_from_successfactors_url() -> None:
     assert (

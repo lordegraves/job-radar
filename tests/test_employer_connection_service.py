@@ -6,11 +6,12 @@ from pathlib import Path
 import requests
 
 from job_radar.collectors.greenhouse import CollectorError
-from job_radar.employer_admin_service import create_employer
-from job_radar.employer_admin_service import update_employer
+from job_radar.employer_admin_service import create_employer, update_employer
 from job_radar.employer_connection_service import (
     get_employer_connection_health,
     record_scan_connection_result,
+)
+from job_radar.employer_connection_service import (
     test_employer_connection as run_employer_connection_test,
 )
 from job_radar.models import JobPosting
@@ -68,7 +69,11 @@ def test_connection_success_stores_count_without_importing_jobs(
     assert result.job_count == 1
     assert result.last_success_at is not None
     assert result.last_error_at is None
-    assert result.message == "Connection succeeded and returned 1 job."
+    assert result.category == "connected_sample"
+    assert result.message == (
+        "Connection succeeded and found at least 1 job in a bounded "
+        "source-health sample. A scan checks additional pages."
+    )
     assert received_config["max_pages"] == 1
     assert received_config["connection_test"] is True
     with sqlite3.connect(database_path) as connection:

@@ -1011,10 +1011,16 @@ def test_company_detail_shows_and_refreshes_safe_source_health(
     assert "https://example.invalid/api/jobs" in initial_html
     assert "Test job source" in initial_html
     assert 'data-submit-pending-label="Testing job source..."' in initial_html
-    assert "Connection succeeded and returned 12 jobs." in tested_html
+    assert (
+        "Connection succeeded and found at least 12 jobs in a bounded "
+        "source-health sample. A scan checks additional pages."
+    ) in tested_html
     assert "Connected" in tested_html
     assert "Jobs returned" in tested_html
-    assert tested_html.count("Connection succeeded and returned 12 jobs.") == 1
+    assert tested_html.count(
+        "Connection succeeded and found at least 12 jobs in a bounded "
+        "source-health sample. A scan checks additional pages."
+    ) == 1
     assert 'class="flash-dismiss"' not in tested_html
     assert "Unlock Administration to edit the job source" in initial_html
 

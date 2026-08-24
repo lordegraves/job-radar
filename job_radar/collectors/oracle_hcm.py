@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 from urllib.parse import urlparse
-import re
 
 import requests
 
@@ -319,6 +319,7 @@ def _build_job_url(
     if referer_url:
         base = referer_url.rstrip("/")
         if "/sites/" in base:
+            base = base.removesuffix("/jobs")
             return f"{base}/job/{source_job_id}"
 
     parsed = urlparse(source_url)

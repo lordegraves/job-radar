@@ -511,7 +511,12 @@
                     <span class="source-cell-detail" data-source-meta>
                         {{ company.last_checked_label }}
                         {% if health and health.job_count is not none %}
-                        &middot; {{ health.job_count }} jobs returned
+                        &middot;
+                        {% if health.category == 'connected_sample' %}
+                        at least {{ health.job_count }} jobs found in sample
+                        {% else %}
+                        {{ health.job_count }} jobs returned
+                        {% endif %}
                         {% endif %}
                     </span>
                 </td>
@@ -890,7 +895,9 @@
         row.querySelector("[data-source-meta]").textContent =
             result.job_count == null
                 ? (result.tested_at || "Test completed")
-                : `${result.tested_at || "Test completed"} · ${result.job_count} jobs returned`;
+                : result.category === "connected_sample"
+                    ? `${result.tested_at || "Test completed"} · at least ${result.job_count} jobs found in sample`
+                    : `${result.tested_at || "Test completed"} · ${result.job_count} jobs returned`;
     }
 
     function renderResults(items) {

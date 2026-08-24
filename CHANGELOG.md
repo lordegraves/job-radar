@@ -6,6 +6,17 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Restore normal URL-based company setup for Idaho National Laboratory,
+  Jacobs, and Sandia National Laboratories. Junior now recognizes INL's
+  custom-domain Oracle Candidate Experience board, reads Jacobs' official
+  public Avature feed, and configures Sandia's current JobSync search API.
+  Oracle job links no longer retain an extra `/jobs` path segment.
+
+- Correct source-health checks to describe bounded samples honestly, accept
+  Workday's trusted `myworkdaysite.com` boards, validate existing USAJobs
+  organization mappings consistently, recognize Valve's query-based job
+  links, and classify browser challenge pages as blocked instead of empty.
+
 - Recover missing Workday public job-link bases from their trusted search API
   endpoints so upgraded or imported employer records do not silently discard
   every returned posting and incorrectly report that active employers have no

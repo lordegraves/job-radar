@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import re
 import json
-
+import re
 from html import unescape
 from html.parser import HTMLParser
 from typing import Any
@@ -14,7 +13,6 @@ from job_radar.collectors.collector_http import get_response
 from job_radar.collectors.greenhouse import CollectorError
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
-
 
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_USER_AGENT = "JobRadar/0.1 local career-source scanner"
@@ -58,20 +56,23 @@ class HTMLJobLinkParser(HTMLParser):
         tag: str,
         attrs: list[tuple[str, str | None]],
     ) -> None:
+        attrs_dict = dict(attrs)
         if tag.lower() == "script":
-            attrs_dict = dict(attrs)
             if (attrs_dict.get("type") or "").casefold() == "application/ld+json":
                 self._in_job_json = True
                 self._json_parts = []
             return
-        if tag.lower() in {"h1", "h2", "h3", "h4", "h5", "h6"}:
+        title_element = tag.lower() in {"h1", "h2", "h3", "h4", "h5", "h6"} or (
+            tag.lower() == "div"
+            and "job__title" in (attrs_dict.get("class") or "").split()
+        )
+        if title_element:
             if self._current_href is not None:
                 self._title_depth += 1
             return
         if tag.lower() != "a":
             return
 
-        attrs_dict = dict(attrs)
         href = attrs_dict.get("href")
         if not href:
             return
@@ -83,18 +84,23 @@ class HTMLJobLinkParser(HTMLParser):
         supported_link_classes = {
             "js-view-job",
             "jobTitle-link",
+            "job",
             "results-list__item-title--link",
             "list-item__link",
         }
 
         has_supported_class = not classes.isdisjoint(supported_link_classes)
         has_supported_id = element_id.startswith("link_job_title_")
-        has_job_identifier = bool(attrs_dict.get("data-job-id"))
+        query = parse_qs(urlparse(href).query)
+        has_job_identifier = bool(
+            attrs_dict.get("data-job-id") or query.get("job_id")
+        )
 
         supported_path_parts = {
             "/job/",
             "/job-opening/",
             "/jobs/",
+            "/careers/positions/",
         }
 
         has_supported_pattern = any(
@@ -107,8 +113,10 @@ class HTMLJobLinkParser(HTMLParser):
             and not has_supported_pattern
         ):
             return
-        if not has_supported_pattern and not any(
-            path_part in href for path_part in supported_path_parts
+        if (
+            not has_supported_pattern
+            and not has_job_identifier
+            and not any(path_part in href for path_part in supported_path_parts)
         ):
             return
 
@@ -138,9 +146,11 @@ class HTMLJobLinkParser(HTMLParser):
                 return
             self.structured_jobs.extend(_find_job_postings(payload))
             return
-        if tag.lower() in {"h1", "h2", "h3", "h4", "h5", "h6"}:
-            if self._title_depth:
-                self._title_depth -= 1
+        if (
+            tag.lower() in {"h1", "h2", "h3", "h4", "h5", "h6", "div"}
+            and self._title_depth
+        ):
+            self._title_depth -= 1
             return
         if tag.lower() != "a":
             return
@@ -540,10 +550,26 @@ def collect_html_jobs_document(
         include_response_body=True,
     )
 
+    if _is_access_challenge(response.text):
+        raise CollectorError(
+            "The public career page requires an interactive browser challenge.",
+            failure_stage="listing_response",
+        )
+
     return response.text, _parse_html_jobs(
         company_config=company_config,
         html=response.text,
         source_url=source_url,
+    )
+
+
+def _is_access_challenge(html: str) -> bool:
+    """Recognize a public anti-bot interstitial without storing its contents."""
+
+    normalized = html.casefold()
+    return (
+        "challenge-platform" in normalized
+        and "enable javascript and cookies to continue" in normalized
     )
 
 

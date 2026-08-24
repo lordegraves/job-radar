@@ -6,29 +6,31 @@ from pathlib import Path
 
 import pytest
 
+from job_radar.domain_errors import EmployerInUseError
 from job_radar.employer_admin_service import (
     EmployerAdminError,
     create_employer,
     get_admin_employer,
-    list_employer_profile_assignments,
     list_admin_employers,
     list_employer_audit,
+    list_employer_profile_assignments,
     permanently_delete_employer,
     set_employer_lifecycle,
     set_employer_profile_assignment,
     update_employer,
     update_employer_links,
     validate_employer,
+    validate_source_configuration,
 )
+from job_radar.employer_connection_service import (
+    test_employer_connection as run_employer_connection_test,
+)
+from job_radar.employer_models import EmployerSource
 from job_radar.employer_storage import (
     assign_employer_to_profile,
     delete_employer_source,
     list_profile_employer_assignments,
 )
-from job_radar.employer_connection_service import (
-    test_employer_connection as run_employer_connection_test,
-)
-from job_radar.domain_errors import EmployerInUseError
 from job_radar.profile_models import ManagedProfile
 from job_radar.profile_storage import create_profile
 from job_radar.web_app import create_app
@@ -209,6 +211,17 @@ def test_invalid_configuration_cannot_be_enabled(tmp_path: Path) -> None:
         set_employer_lifecycle(
             database_path, created.employer.employer_id, "enable"
         )
+
+
+def test_usajobs_validation_accepts_collector_query_params() -> None:
+    employer = EmployerSource(
+        employer_id="nasa",
+        name="NASA",
+        source_type="usajobs",
+        source_config={"query_params": {"Organization": "NN"}},
+    )
+
+    assert validate_source_configuration(employer) == ()
 
 
 def test_disable_and_retire_preserve_profile_assignment(tmp_path: Path) -> None:

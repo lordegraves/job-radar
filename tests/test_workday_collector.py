@@ -195,6 +195,37 @@ def test_parse_workday_jobs_derives_missing_public_base_url() -> None:
     )
 
 
+def test_parse_workday_jobs_supports_trusted_myworkdaysite_host() -> None:
+    company_config = {
+        "company_key": "ocean_infinity",
+        "name": "Ocean Infinity",
+        "source_type": "workday",
+        "source_url": (
+            "https://wd1.myworkdaysite.com/"
+            "wday/cxs/oceaninfinity/ocean_infinity_careers/jobs"
+        ),
+    }
+
+    postings = parse_workday_jobs(
+        company_config,
+        {
+            "jobPostings": [
+                {
+                    "title": "Systems Engineer",
+                    "externalPath": "/job/Southampton/Systems-Engineer_JR100993",
+                    "locationsText": "Southampton",
+                }
+            ]
+        },
+    )
+
+    assert len(postings) == 1
+    assert postings[0].source_url == (
+        "https://wd1.myworkdaysite.com/ocean_infinity_careers/"
+        "job/Southampton/Systems-Engineer_JR100993"
+    )
+
+
 def test_parse_workday_jobs_does_not_derive_untrusted_base_url() -> None:
     company_config = {
         "company_key": "example_company",

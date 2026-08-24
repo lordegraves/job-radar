@@ -178,8 +178,10 @@ junior currently provides:
   they enable Scanning for the employers they want
 - a global Collector Catalog shipped on every installation, automatic setup
   for supported ATS platforms including ADP, Recruitee, Workday, Oracle,
-  Phenom, Eightfold, UKG Pro Recruiting/UltiPro, Google Careers, and a
-  validated public-page fallback
+  Avature, JobSync, Phenom, Eightfold, UKG Pro Recruiting/UltiPro, Google
+  Careers, and a validated public-page fallback. Maintained public handoffs
+  recognize INL's custom-domain Oracle board, Jacobs' official Avature feed,
+  and Sandia's JobSync search application.
 - clickable Diagnostics details with safe latest-scan warnings, read-only
   company-source health, background connection testing, and selected-company
   scans that preserve the latest full-scan report
@@ -223,6 +225,11 @@ Lever board derived from the official company domain. A board is accepted only
 when its normal collector returns actual jobs. An unsupported result saves no
 partial company and does not
 ask the user to hunt for a technical ATS URL.
+
+Some recruiting platforms deliberately expose a smaller machine-readable
+public feed than their browser interface. Jacobs' official Avature feed is
+currently limited to 20 active postings. Junior can add and scan that source,
+but does not represent that feed as the company's complete opening count.
 
 USAJOBS is the exception because its public search API requires credentials
 issued to the user. Request free API access from the USAJOBS Developer site,

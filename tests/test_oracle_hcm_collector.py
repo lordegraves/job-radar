@@ -98,6 +98,29 @@ def test_collect_oracle_hcm_jobs_builds_posting(monkeypatch):
     assert jobs[0].detail_retrieval_state == "summary_only"
 
 
+def test_oracle_jobs_listing_referer_builds_a_direct_job_url(monkeypatch):
+    monkeypatch.setattr(
+        requests,
+        "get",
+        lambda *_args, **_kwargs: FakeResponse(
+            _payload([{"Id": "1976", "Title": "Nuclear Engineer"}])
+        ),
+    )
+    config = {
+        **_config(),
+        "referer_url": (
+            "https://careers.inl.gov/hcmUI/CandidateExperience/en/sites/pro/jobs"
+        ),
+        "site_number": "pro",
+    }
+
+    job = collect_oracle_hcm_jobs(config)[0]
+
+    assert job.source_url == (
+        "https://careers.inl.gov/hcmUI/CandidateExperience/en/sites/pro/job/1976"
+    )
+
+
 def test_oracle_boilerplate_qualifications_still_require_detail(monkeypatch):
     def fake_get(url, params, headers, timeout):
         return FakeResponse(

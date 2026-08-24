@@ -75,6 +75,12 @@ COLLECTOR_CAPABILITIES = (
         "Scans configured Oracle Cloud recruiting sites.",
     ),
     CollectorCapability(
+        "avature",
+        "Avature",
+        "Automatic from supported public Avature career sites",
+        "Scans the employer's official public Avature job feed.",
+    ),
+    CollectorCapability(
         "smartrecruiters",
         "SmartRecruiters",
         "Automatic when Junior finds the SmartRecruiters site",

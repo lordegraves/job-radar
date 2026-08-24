@@ -20,6 +20,7 @@ from job_radar.collectors.usajobs import collect_usajobs
 from job_radar.collectors.workday import collect_workday_jobs
 from job_radar.collectors.jobsyn import collect_jobsyn_jobs
 from job_radar.collectors.oracle_hcm import collect_oracle_hcm_jobs
+from job_radar.collectors.avature import collect_avature_jobs
 from job_radar.collectors.smartrecruiters import collect_smartrecruiters_jobs
 from job_radar.collectors.selectminds import collect_selectminds_jobs
 from job_radar.collectors.phenom import collect_phenom_jobs
@@ -87,6 +88,9 @@ def collect_jobs_for_company(company_config: dict[str, Any]) -> list[JobPosting]
     
     elif source_type == "oracle_hcm":
         postings = collect_oracle_hcm_jobs(company_config)
+
+    elif source_type == "avature":
+        postings = collect_avature_jobs(company_config)
     
     elif source_type == "smartrecruiters":
         postings = collect_smartrecruiters_jobs(company_config)

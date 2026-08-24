@@ -181,6 +181,24 @@ def test_name_and_url_normalization_is_safe_and_stable() -> None:
             True,
         ),
         (
+            "https://careers.inl.gov/hcmUI/CandidateExperience/en/sites/pro/jobs",
+            "oracle_hcm",
+            "careers.inl.gov:pro",
+            True,
+        ),
+        (
+            "https://jacobs.avature.net/en_US/careers/SearchJobs/feed/",
+            "avature",
+            "avature:jacobs.avature.net:/en_us/careers/searchjobs/feed",
+            True,
+        ),
+        (
+            "https://sandia.jobs/",
+            "jobsyn",
+            "jobsyn:sandia.jobs",
+            True,
+        ),
+        (
             "https://example.icims.com/jobs",
             "icims",
             "example.icims.com",

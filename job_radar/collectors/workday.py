@@ -27,6 +27,10 @@ WORKDAY_DETAIL_ATTEMPTS = 4
 WORKDAY_DETAIL_RETRY_SECONDS = 0.5
 
 _PLACEHOLDER_JOB_IDS = {"job", "job posting", "spotlight job"}
+_TRUSTED_WORKDAY_HOST_SUFFIXES = (
+    ".myworkdayjobs.com",
+    ".myworkdaysite.com",
+)
 
 
 WORKDAY_HEADERS = {
@@ -329,7 +333,7 @@ def _derive_source_base_url(source_url: str) -> str | None:
     path_parts = [part for part in parsed.path.split("/") if part]
     if (
         parsed.scheme != "https"
-        or not host.endswith(".myworkdayjobs.com")
+        or not host.endswith(_TRUSTED_WORKDAY_HOST_SUFFIXES)
         or len(path_parts) != 5
         or path_parts[:2] != ["wday", "cxs"]
         or path_parts[-1] != "jobs"

@@ -109,6 +109,20 @@ _KNOWN_PUBLIC_CAREER_HANDOFFS = {
         "www.sony.com",
         "/en_us/sca/careers/main.html",
     ): "https://sonyglobal.wd1.myworkdayjobs.com/SonyGlobalCareers",
+    ("inl.gov", "/careers"): (
+        "https://careers.inl.gov/hcmUI/CandidateExperience/en/sites/pro/jobs"
+    ),
+    ("www.inl.gov", "/careers"): (
+        "https://careers.inl.gov/hcmUI/CandidateExperience/en/sites/pro/jobs"
+    ),
+    ("www.jacobs.com", "/careers-jacobs"): (
+        "https://jacobs.avature.net/en_US/careers/SearchJobs/feed/"
+    ),
+    ("careers.jacobs.com", ""): (
+        "https://jacobs.avature.net/en_US/careers/SearchJobs/feed/"
+    ),
+    ("www.sandia.gov", "/careers"): "https://sandia.jobs/",
+    ("sandia.gov", "/careers"): "https://sandia.jobs/",
 }
 
 
@@ -348,6 +362,78 @@ def detect_employer_source(careers_url: str) -> DetectedEmployerSource:
     host = parsed.hostname or ""
     parts = [part for part in parsed.path.split("/") if part]
     slug = parts[0] if parts else None
+
+    if host == "careers.inl.gov" and "/hcmui/candidateexperience/" in (
+        parsed.path.casefold()
+    ):
+        site_match = re.search(r"/sites/([^/]+)", parsed.path, re.IGNORECASE)
+        if site_match is not None:
+            site_number = site_match.group(1)
+            origin = f"{parsed.scheme}://{parsed.netloc}"
+            return DetectedEmployerSource(
+                source_type="oracle_hcm",
+                source_identifier=f"{host}:{site_number.casefold()}",
+                source_config={
+                    "source_url": (
+                        f"{origin}/hcmRestApi/resources/latest/"
+                        "recruitingCEJobRequisitions"
+                    ),
+                    "site_number": site_number,
+                    "referer_url": careers_url,
+                    "careers_url": careers_url,
+                    "display_name": "Idaho National Laboratory",
+                },
+                scan_ready=True,
+                evidence=("Oracle Candidate Experience public job board",),
+            )
+    if host.endswith(".avature.net") and parsed.path.rstrip("/").casefold().endswith(
+        "/searchjobs/feed"
+    ):
+        return DetectedEmployerSource(
+            source_type="avature",
+            source_identifier=(
+                f"avature:{host}:{parsed.path.rstrip('/').casefold()}"
+            ),
+            source_config={
+                "source_url": careers_url,
+                "careers_url": careers_url,
+            },
+            scan_ready=True,
+            evidence=("Avature official public RSS job feed",),
+        )
+    if host == "careers.jacobs.com":
+        return DetectedEmployerSource(
+            source_type="avature",
+            source_identifier=(
+                "avature:jacobs.avature.net:/en_us/careers/searchjobs/feed"
+            ),
+            source_config={
+                "source_url": (
+                    "https://jacobs.avature.net/en_US/careers/SearchJobs/feed/"
+                ),
+                "careers_url": careers_url,
+                "display_name": "Jacobs",
+            },
+            scan_ready=True,
+            evidence=("Jacobs public Avature career site",),
+        )
+    if host == "sandia.jobs":
+        return DetectedEmployerSource(
+            source_type="jobsyn",
+            source_identifier="jobsyn:sandia.jobs",
+            source_config={
+                "source_url": (
+                    "https://prod-search-api.jobsyn.org/api/v1/solr/search"
+                ),
+                "careers_url": careers_url,
+                "x_origin": "sandia.jobs",
+                "origin_url": "https://sandia.jobs",
+                "referer_url": "https://sandia.jobs/",
+                "display_name": "Sandia National Laboratories",
+            },
+            scan_ready=True,
+            evidence=("JobSync public search application",),
+        )
 
     if host in {"careers.walmart.com", "www.careers.walmart.com"}:
         return DetectedEmployerSource(
@@ -1950,6 +2036,10 @@ def _source_label(source_type: str | None) -> str:
         "icims": "iCIMS",
         "ukg": "UKG Pro Recruiting",
         "eightfold": "Eightfold",
+        "oracle_hcm": "Oracle Cloud HCM",
+        "avature": "Avature",
+        "jobsyn": "JobSync",
+        "html": "public careers page",
         "google_careers": "Google Careers",
         "walmart": "Walmart Careers",
     }.get(source_type or "", "supported")
