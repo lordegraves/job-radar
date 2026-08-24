@@ -74,6 +74,16 @@ def test_build_local_url_uses_browser_safe_host(
     assert desktop_launcher.build_local_url(host, 5000) == expected_url
 
 
+def test_default_desktop_port_avoids_macos_airplay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(desktop_launcher.sys, "platform", "darwin")
+    assert desktop_launcher.default_desktop_port() == 5050
+
+    monkeypatch.setattr(desktop_launcher.sys, "platform", "win32")
+    assert desktop_launcher.default_desktop_port() == 5000
+
+
 def test_main_reuses_running_junior(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -104,7 +114,8 @@ def test_main_reuses_running_junior(
 
     desktop_launcher.launch_desktop()
 
-    assert opened_urls == ["http://127.0.0.1:5000/"]
+    expected_port = desktop_launcher.default_desktop_port()
+    assert opened_urls == [f"http://127.0.0.1:{expected_port}/"]
 
 
 def test_second_launcher_uses_locked_workspace_instance(
@@ -237,16 +248,17 @@ def test_main_bootstraps_starts_native_junior(
 
     shutdown_event = calls.pop("shutdown_event")
     assert isinstance(shutdown_event, desktop_launcher.threading.Event)
+    expected_port = desktop_launcher.default_desktop_port()
     assert calls == {
         "settings_path": settings_path,
         "base_directory": tmp_path,
         "isolate_scan_process": True,
         "host": "127.0.0.1",
-        "port": 5000,
+        "port": expected_port,
         "app": fake_app,
         "threaded": True,
         "server": fake_server,
-        "url": "http://127.0.0.1:5000/",
+        "url": f"http://127.0.0.1:{expected_port}/",
         "window_state_path": tmp_path
         / "runtime"
         / desktop_launcher.WINDOW_STATE_NAME,
@@ -360,9 +372,10 @@ def test_main_no_browser_starts_without_opening_browser(
 
     shutdown_event = calls.pop("shutdown_event")
     assert isinstance(shutdown_event, desktop_launcher.threading.Event)
+    expected_port = desktop_launcher.default_desktop_port()
     assert calls == {
         "server": fake_server,
-        "url": "http://127.0.0.1:5000/",
+        "url": f"http://127.0.0.1:{expected_port}/",
         "open_browser": False,
         "scan_waited": True,
     }
@@ -478,10 +491,7 @@ def test_native_window_uses_shared_url_icon_and_normal_chrome(
     assert options["y"] is None
     assert options["background_color"] == "#101114"
     assert len(FakeEvents.closing.handlers) == 1
-    assert calls["start"] == {
-        "icon": str(icon_path),
-        "private_mode": True,
-    }
+    assert calls["start"] == desktop_launcher._webview_start_options()
     assert FakeWebview.settings["ALLOW_DOWNLOADS"] is True
     assert shutdown_event.is_set()
     assert server_stopped.is_set()
@@ -751,7 +761,12 @@ def test_windows_native_window_sets_junior_taskbar_identity(
         shell32 = FakeShell32()
 
     monkeypatch.setattr(desktop_launcher.sys, "platform", "win32")
-    monkeypatch.setattr(desktop_launcher.ctypes, "windll", FakeWindll())
+    monkeypatch.setattr(
+        desktop_launcher.ctypes,
+        "windll",
+        FakeWindll(),
+        raising=False,
+    )
 
     desktop_launcher.set_windows_app_identity()
 
@@ -818,7 +833,12 @@ def test_show_desktop_error_uses_windows_message_box(
         user32 = FakeUser32()
 
     monkeypatch.setattr(desktop_launcher.sys, "platform", "win32")
-    monkeypatch.setattr(desktop_launcher.ctypes, "windll", FakeWindll())
+    monkeypatch.setattr(
+        desktop_launcher.ctypes,
+        "windll",
+        FakeWindll(),
+        raising=False,
+    )
 
     desktop_launcher.show_desktop_error("Helpful failure message")
 

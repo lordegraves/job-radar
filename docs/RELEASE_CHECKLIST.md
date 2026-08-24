@@ -12,11 +12,17 @@ preservation checks. It never uses the active Junior workspace. A previously
 built or separately supplied installer may be checked with
 `-SkipInstallerBuild` and optional `-InstallerPath`.
 
-Then validate the packaged Windows and Linux applications without repository
-Python, a virtual environment, existing settings, or developer tools:
+Then validate the packaged Windows, macOS, and Linux applications without
+repository Python, a virtual environment, existing settings, or developer
+tools. Run the macOS validation on a Mac after building its DMG:
 
 ```powershell
 .\scripts\validate_clean_packages.ps1
+```
+
+```sh
+./scripts/build_macos_dmg.sh
+./scripts/validate_clean_macos_package.sh
 ```
 
 The Windows check launches only the temporary installed `Junior.exe` with an
@@ -113,7 +119,8 @@ git diff --check
 
 - [ ] Wheel builds from a clean temporary source copy.
 - [ ] Wheel contains all required packages, templates, and safe bootstrap starter files.
-- [ ] Wheel, source distribution, Windows bundle and installation, Linux archive, and container image include `LICENSE`, `PRIVACY.md`, `SECURITY.md`, `THIRD_PARTY_LICENSES.md`, `dependency-license-report.json`, and required supplemental notices; package metadata and the container label declare `GPL-3.0-only`.
+- [ ] Wheel, source distribution, Windows bundle and installation, macOS application and DMG, Linux archive, and container image include `LICENSE`, `PRIVACY.md`, `SECURITY.md`, `THIRD_PARTY_LICENSES.md`, `dependency-license-report.json`, and required supplemental notices; package metadata and the container label declare `GPL-3.0-only`.
+- [ ] The mounted macOS DMG provides `Junior.app` and an Applications shortcut; the bundle has Junior's icon and identity, launches against isolated user data without repository Python, and leaves existing user data outside the application bundle.
 - [ ] `.\.venv\Scripts\python.exe scripts\audit_dependency_licenses.py --check` passes with no blockers.
 - [ ] Source distribution builds from a clean temporary source copy.
 - [ ] Source distribution includes safe bootstrap starter files.

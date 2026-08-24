@@ -13,7 +13,6 @@ from pathlib import Path
 
 from job_radar.config import ApplicationSettings, load_settings
 
-
 DEFAULT_SETTINGS_PATH = "config/settings.yaml"
 DEFAULT_COMPANY_CONFIG_PATH = "config/target-companies.yaml"
 DEFAULT_SCORING_CONFIG_PATH = "config/scoring.yaml"
@@ -216,7 +215,7 @@ def get_default_user_data_directory() -> Path:
     if configured_directory:
         return Path(configured_directory).expanduser().resolve()
 
-    if os.name == "nt":
+    if sys.platform == "win32":
         local_app_data = os.environ.get("LOCALAPPDATA")
 
         if local_app_data:

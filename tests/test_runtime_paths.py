@@ -42,7 +42,7 @@ def test_default_user_data_directory_uses_windows_local_app_data(
     local_app_data = tmp_path / "LocalAppData"
     monkeypatch.delenv(APPLICATION_DATA_ENVIRONMENT_VARIABLE, raising=False)
     monkeypatch.setenv("LOCALAPPDATA", str(local_app_data))
-    monkeypatch.setattr(runtime_paths_module.os, "name", "nt")
+    monkeypatch.setattr(runtime_paths_module.sys, "platform", "win32")
 
     assert get_default_user_data_directory() == (
         local_app_data / "JobRadar"

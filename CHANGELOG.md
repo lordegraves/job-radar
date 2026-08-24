@@ -6,6 +6,14 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Add a native macOS `Junior.app` and drag-to-Applications DMG build with
+  Junior's application icon, packaged shared runtime, ad-hoc local field-test
+  signing, isolated clean-package validation, and user data under
+  `~/Library/Application Support/JobRadar`. macOS desktop launches now default
+  to port 5050 so AirPlay Receiver's normal use of port 5000 does not prevent
+  Junior from opening. Public downloads still require Developer ID signing and
+  Apple notarization.
+
 - Prepare **RC6 Build 1.25** for field testing. Résumé qualification matching
   now treats missing evidence as an unanswered question rather than a
   rejection. Only affirmative profile conflicts and clearly unrelated

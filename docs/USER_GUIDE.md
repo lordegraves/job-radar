@@ -1,7 +1,7 @@
 # junior User Guide
 
-This guide describes the current local application and its supported Windows
-and Linux packaging paths.
+This guide describes the current local application and its supported Windows,
+macOS, and Linux packaging paths.
 
 Junior is licensed under the GNU General Public License version 3.0 only
 (`GPL-3.0-only`). Every supported distribution includes the complete terms in
@@ -30,6 +30,38 @@ downloads remain future release work.
 Launch Junior from the Start Menu or optional desktop shortcut. A normal user
 does not need Python, PowerShell, a virtual environment, a localhost address,
 or repository access.
+
+## macOS installation
+
+Open the verified
+`Junior-0.2.0-RC6-build-1.25-macos-<arch>.dmg`, drag **Junior** to the
+Applications shortcut, eject the installer, and open Junior from Applications
+or Launchpad. The application bundle supplies Junior's normal Dock and Finder
+icon. A normal user does not need Python, Terminal, a virtual environment, a
+localhost address, or repository access.
+
+Junior stores profiles, résumés, settings, databases, reports, logs, backups,
+and runtime files separately under:
+
+```text
+~/Library/Application Support/JobRadar
+```
+
+Replacing `Junior.app` during an update replaces application files only and
+does not remove that user-data directory. Create and verify a Junior backup
+before testing an update. After replacement, launch Junior and verify the
+active profile, companies, Tracker, History, and latest Reports before
+scanning.
+
+Local field-test builds are ad-hoc signed. Public downloads require a verified
+checksum, an approved Developer ID signature, and Apple notarization before
+they can provide the normal downloaded-app trust experience. Do not bypass a
+macOS security warning for an artifact whose origin and checksum are unknown.
+Uninstalling the application means closing Junior and moving `Junior.app` from
+Applications to Trash. That does not delete Junior's separate user data.
+
+Junior uses local port 5050 on macOS because AirPlay Receiver commonly uses
+port 5000. Users do not need to know or enter this address.
 
 ## Linux installation
 

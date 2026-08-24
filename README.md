@@ -683,6 +683,33 @@ an optional desktop shortcut. Uninstall removes application files but preserves
 Junior's separate user-data directory. Code signing and public release
 distribution remain later release work.
 
+Build the native macOS application and drag-to-Applications installer on a
+Mac:
+
+```sh
+./scripts/build_macos_dmg.sh
+```
+
+The resulting `artifacts/macos/Junior-0.2.0-RC6-build-1.25-macos-<arch>.dmg`
+contains `Junior.app` and an Applications shortcut. Opening the installed app
+requires no repository, Python installation, virtual environment, terminal,
+or localhost address. The application bundle owns Junior's Dock and Finder
+icon, while user data remains separately under
+`~/Library/Application Support/JobRadar`.
+
+Local field-test builds use an ad-hoc signature. A downloaded public build
+still requires an approved Developer ID signature and Apple notarization; do
+not bypass a macOS security warning for an artifact whose origin and checksum
+you have not verified. Validate the local DMG against disposable data with:
+
+```sh
+./scripts/validate_clean_macos_package.sh
+```
+
+macOS uses local port 5050 by default because AirPlay Receiver commonly owns
+port 5000. Windows and Linux retain port 5000 unless the user supplies another
+port explicitly.
+
 Validate install, repair/upgrade, and uninstall preservation using only
 disposable data:
 

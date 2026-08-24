@@ -23,11 +23,10 @@ from typing import Any, BinaryIO
 from urllib.error import URLError
 from urllib.request import urlopen
 
-from werkzeug.serving import BaseWSGIServer, make_server
 import webview
+from werkzeug.serving import BaseWSGIServer, make_server
 
 from job_radar import __build__
-
 from job_radar.runtime_paths import UserDataPaths
 from job_radar.user_data_bootstrap import bootstrap_packaged_user_configuration
 from job_radar.web_app import (
@@ -38,6 +37,7 @@ from job_radar.web_app import (
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 5000
+DEFAULT_MACOS_PORT = 5050
 DEFAULT_STARTUP_TIMEOUT_SECONDS = 10.0
 DESKTOP_ERROR_TITLE = "junior could not start"
 INSTANCE_LOCK_NAME = "desktop-instance.lock"
@@ -48,6 +48,14 @@ MINIMUM_WINDOW_WIDTH = 960
 MINIMUM_WINDOW_HEIGHT = 640
 MAXIMUM_WINDOW_WIDTH = 7680
 MAXIMUM_WINDOW_HEIGHT = 4320
+
+
+def default_desktop_port() -> int:
+    """Avoid macOS AirPlay's normal port without changing other platforms."""
+
+    if sys.platform == "darwin":
+        return DEFAULT_MACOS_PORT
+    return DEFAULT_PORT
 
 
 class DesktopInstanceLock(AbstractContextManager["DesktopInstanceLock"]):
@@ -108,7 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--port",
-        default=DEFAULT_PORT,
+        default=default_desktop_port(),
         type=int,
         help="Port for the local junior server",
     )
