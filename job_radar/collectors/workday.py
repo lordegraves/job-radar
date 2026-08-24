@@ -1,8 +1,9 @@
 """Collect and normalize jobs from Workday recruiting APIs."""
 
-from concurrent.futures import ThreadPoolExecutor
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
+from urllib.parse import urlsplit
 
 import requests
 
@@ -16,7 +17,6 @@ from job_radar.collectors.incremental_cache import (
 from job_radar.collectors.pagination import get_max_pages, get_page_size
 from job_radar.models import JobPosting
 from job_radar.normalize import make_canonical_key, make_content_hash
-
 
 DEFAULT_WORKDAY_LIMIT = 20
 DEFAULT_WORKDAY_MAX_PAGES = 100
@@ -125,8 +125,7 @@ def _detail_api_url(source_url: str, external_path: str) -> str | None:
         return None
 
     detail_path = external_path.lstrip("/")
-    if detail_path.startswith("job/"):
-        detail_path = detail_path[4:]
+    detail_path = detail_path.removeprefix("job/")
     # Split at the final search endpoint. Some employers name the Workday site
     # itself "jobs" (for example, /cxs/tenant/jobs/jobs); splitting at the
     # first occurrence drops the site name and makes every detail URL invalid.
@@ -312,12 +311,32 @@ def _get_source_url(
             return str(source_url)
 
     external_path = job.get("externalPath")
-    source_base_url = company_config.get("source_base_url")
+    source_base_url = company_config.get("source_base_url") or (
+        _derive_source_base_url(str(company_config.get("source_url") or ""))
+    )
 
     if external_path and source_base_url:
         return str(source_base_url).rstrip("/") + "/" + str(external_path).lstrip("/")
 
     return None
+
+
+def _derive_source_base_url(source_url: str) -> str | None:
+    """Recover a Workday public board URL from its JSON search endpoint."""
+
+    parsed = urlsplit(source_url)
+    host = parsed.hostname or ""
+    path_parts = [part for part in parsed.path.split("/") if part]
+    if (
+        parsed.scheme != "https"
+        or not host.endswith(".myworkdayjobs.com")
+        or len(path_parts) != 5
+        or path_parts[:2] != ["wday", "cxs"]
+        or path_parts[-1] != "jobs"
+    ):
+        return None
+    board = path_parts[-2]
+    return f"https://{parsed.netloc}/{board}"
 
 
 def parse_workday_jobs(

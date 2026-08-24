@@ -4,12 +4,12 @@ import pytest
 import requests
 
 from job_radar.collectors.greenhouse import CollectorError
+from job_radar.collectors.incremental_cache import DETAIL_PLANNER_CONFIG_KEY
 from job_radar.collectors.workday import (
     WORKDAY_DETAIL_NORMALIZATION_VERSION,
     collect_workday_jobs,
     parse_workday_jobs,
 )
-from job_radar.collectors.incremental_cache import DETAIL_PLANNER_CONFIG_KEY
 from job_radar.detail_retrieval import DetailRetrievalDecision
 
 
@@ -162,6 +162,61 @@ def test_parse_workday_jobs_uses_external_url_when_present() -> None:
 
     assert len(postings) == 1
     assert postings[0].source_url == "https://example.com/job/R123"
+
+
+def test_parse_workday_jobs_derives_missing_public_base_url() -> None:
+    company_config = {
+        "company_key": "intel",
+        "name": "Intel",
+        "source_type": "workday",
+        "source_url": (
+            "https://intel.wd1.myworkdayjobs.com/"
+            "wday/cxs/intel/External/jobs"
+        ),
+    }
+    external_path = "/job/US/Infrastructure-Engineer_JR123"
+
+    postings = parse_workday_jobs(
+        company_config,
+        {
+            "jobPostings": [
+                {
+                    "title": "Infrastructure Engineer",
+                    "externalPath": external_path,
+                    "locationsText": "US",
+                }
+            ]
+        },
+    )
+
+    assert len(postings) == 1
+    assert postings[0].source_url == (
+        "https://intel.wd1.myworkdayjobs.com/External" + external_path
+    )
+
+
+def test_parse_workday_jobs_does_not_derive_untrusted_base_url() -> None:
+    company_config = {
+        "company_key": "example_company",
+        "name": "Example Company",
+        "source_type": "workday",
+        "source_url": "https://example.com/wday/cxs/example/External/jobs",
+    }
+
+    postings = parse_workday_jobs(
+        company_config,
+        {
+            "jobPostings": [
+                {
+                    "title": "Infrastructure Engineer",
+                    "externalPath": "/job/US/Engineer_R123",
+                    "locationsText": "US",
+                }
+            ]
+        },
+    )
+
+    assert postings == []
 
 
 def test_parse_workday_jobs_skips_jobs_missing_title() -> None:

@@ -6,6 +6,11 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ## Unreleased
 
+- Recover missing Workday public job-link bases from their trusted search API
+  endpoints so upgraded or imported employer records do not silently discard
+  every returned posting and incorrectly report that active employers have no
+  openings.
+
 - Add a native macOS `Junior.app` and drag-to-Applications DMG build with
   Junior's application icon, packaged shared runtime, ad-hoc local field-test
   signing, isolated clean-package validation, and user data under
